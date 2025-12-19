@@ -27,7 +27,7 @@ export default function EmergencyFundPage() {
               </div>
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
-                Michael Torres
+                Vinod Lakhani
               </div>
             </div>
 
@@ -257,6 +257,26 @@ export default function EmergencyFundPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center gap-3 mb-4 md:mb-0">
+              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
+            </div>
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
+              <p className="mb-2 md:mb-0">© 2024 WeLeap.</p>
+              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+                Privacy Policy
+              </Link>
+              <Link href="/terms-of-service" className="hover:underline">
+                Terms of Service
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

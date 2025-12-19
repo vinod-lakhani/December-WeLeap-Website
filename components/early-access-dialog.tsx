@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,17 +16,48 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-export function EarlyAccessDialog({ children }: { children: React.ReactNode }) {
+interface EarlyAccessDialogProps {
+  children: React.ReactNode
+  signupType?: string // Optional: e.g., "button", "cta", "navigation", etc.
+}
+
+export function EarlyAccessDialog({ children, signupType = "button" }: EarlyAccessDialogProps) {
   const [email, setEmail] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pathname = usePathname()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real application, you would send this email to your backend
-    console.log("Email submitted for early access:", email)
-    setIsSubmitted(true)
-    // Optionally, reset the form after a short delay or close the dialog
-    // setTimeout(() => { setEmail(''); setIsSubmitted(false); }, 3000);
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          signupType,
+          page: pathname || "/",
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to join waitlist")
+      }
+
+      setIsSubmitted(true)
+      setEmail("")
+    } catch (err) {
+      setError("Something went wrong. Please try again.")
+      console.error("Error joining waitlist:", err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -64,11 +96,15 @@ export function EarlyAccessDialog({ children }: { children: React.ReactNode }) {
                 <li>No spam, just updates</li>
               </ul>
             </div>
+            {error && (
+              <div className="text-red-600 text-sm mt-2">{error}</div>
+            )}
             <Button
               type="submit"
-              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium"
+              disabled={isLoading}
+              className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Join Waitlist
+              {isLoading ? "Joining..." : "Join Waitlist"}
             </Button>
           </form>
         ) : (

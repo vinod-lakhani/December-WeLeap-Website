@@ -100,7 +100,7 @@ return (
     </article>
 
     <div className="text-center mt-16">
-      <EarlyAccessDialog>
+      <EarlyAccessDialog signupType="resource">
         <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-xl text-lg font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
           Join Waitlist
         </Button>
@@ -110,14 +110,14 @@ return (
   </main>
 
   {/* Footer */}
-  <footer className="bg-white border-t border-gray-200 py-12">
-    <div className="container mx-auto px-6">
+  <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
+    <div className="container mx-auto max-w-6xl">
       <div className="flex flex-col md:flex-row justify-between items-center">
         <div className="flex items-center gap-3 mb-4 md:mb-0">
           <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
         </div>
         <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-          <p className="mb-2 md:mb-0">© 2024 WeLeap. Backed by Berkeley SkyDeck.</p>
+          <p className="mb-2 md:mb-0">© 2024 WeLeap.</p>
           <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
             Privacy Policy
           </Link>

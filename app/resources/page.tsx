@@ -1,7 +1,7 @@
 import { Navigation } from "../../components/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users } from "lucide-react"
 import Link from "next/link"
 
 const blogPosts = [
@@ -11,7 +11,7 @@ const blogPosts = [
     excerpt:
       "Learn why this happens and how to restructure your money habits for lasting control. This common experience has less to do with budgeting skills and more to do with how money flows through your life.",
     author: "Vinod Lakhani",
-    date: "Jan 15, 2024",
+    date: "Aug 18, 2025",
     readTime: "5 min read",
     category: "Saving",
     icon: PiggyBank,
@@ -24,7 +24,7 @@ const blogPosts = [
     excerpt:
       "True automation turns your priorities into rules that run in the background, freeing up brain-space while staying aligned with your goals. Learn how to build a system that works for you.",
     author: "Vinod Lakhani",
-    date: "Jan 12, 2024",
+    date: "Jul 28, 2025",
     readTime: "8 min read",
     category: "Investing",
     icon: TrendingUp,
@@ -37,7 +37,7 @@ const blogPosts = [
     excerpt:
       "You checked your budget, saw the pie chart, nodded in recognition—and kept spending the same way. Break free from passive budgeting and turn financial awareness into real action.", // Changed excerpt
     author: "Vinod Lakhani",
-    date: "Jan 10, 2024",
+    date: "Jul 7, 2025",
     readTime: "6 min read",
     category: "Emergency Planning",
     icon: DollarSign,
@@ -48,8 +48,8 @@ const blogPosts = [
     id: 4,
     title: "The Adaptable Money System: Stop Budgeting, Start Building",
     excerpt: "Why rigid budgets fail and how you can grow wealth with a dynamic approach.",
-    author: "David Park",
-    date: "Jan 8, 2024",
+    author: "Vinod Lakhani",
+    date: "Jun 14, 2025",
     readTime: "7 min read",
     category: "Credit",
     icon: CreditCard,
@@ -61,8 +61,8 @@ const blogPosts = [
     title: "Why Traditional Financial Tools Fail Builders",
     excerpt:
       "Explore the behavioral patterns that lead to poor financial choices and learn strategies to overcome emotional spending.",
-    author: "Dr. Lisa Wang",
-    date: "Jan 5, 2024",
+    author: "Vinod Lakhani",
+    date: "May 24, 2025",
     readTime: "10 min read",
     category: "Psychology",
     icon: TrendingUp,
@@ -73,8 +73,8 @@ const blogPosts = [
     id: 6,
     title: "Income Allocation: The Blueprint to Make Your Paycheck Work Smarter",
     excerpt: "Tired of feeling behind? Learn the simple system to turn your income into a wealth-building engine.",
-    author: "Robert Kim",
-    date: "Jan 3, 2024",
+    author: "Vinod Lakhani",
+    date: "May 3, 2025",
     readTime: "9 min read",
     category: "Retirement",
     icon: PiggyBank,
@@ -86,8 +86,8 @@ const blogPosts = [
     title: "Savings Allocation: How to Grow Your Savings Without Feeling the Pinch",
     excerpt:
       "Build goals into your plan and let automation make it painless. Learn the priority stack for strategic savings allocation.",
-    author: "Dr. Sarah Chen",
-    date: "Jan 15, 2024",
+    author: "Vinod Lakhani",
+    date: "May 9, 2025",
     readTime: "8 min read",
     category: "Saving",
     icon: PiggyBank,
@@ -99,26 +99,52 @@ const blogPosts = [
     title: "Building Your Emergency Fund: A Step-by-Step Guide",
     excerpt:
       "Learn how to build a safety net that protects you from life's unexpected expenses without derailing your financial goals.",
-    author: "Michael Torres",
-    date: "Dec 20, 2024",
+    author: "Vinod Lakhani",
+    date: "Sep 30, 2025",
     readTime: "6 min read",
     category: "Emergency Planning",
     icon: DollarSign,
     image: "/safety-net-financial-security.jpg",
-    href: "/resources/emergency-fund-guide",
+    href: "/resources/emergency-fund",
   },
   {
     id: 9,
     title: "Credit Score Myths Debunked: What Really Matters",
     excerpt:
       "Cut through the misinformation and learn what actually impacts your credit score and how to improve it strategically.",
-    author: "Jennifer Martinez",
-    date: "Dec 15, 2024",
+    author: "Vinod Lakhani",
+    date: "Oct 20, 2025",
     readTime: "8 min read",
     category: "Credit",
     icon: CreditCard,
     image: "/credit-score-chart-myths.jpg",
     href: "/resources/credit-score-myths",
+  },
+  {
+    id: 10,
+    title: "Why WeLeap's Pricing Is Different (and Built for You)",
+    excerpt:
+      "Most financial apps profit when you spend more. WeLeap breaks that model by aligning incentives with your success, not transactions.",
+    author: "Vinod Lakhani",
+    date: "Nov 11, 2025",
+    readTime: "6 min read",
+    category: "Pricing",
+    icon: Wallet,
+    image: "/images/Pricing.png",
+    href: "/resources/pricing-philosophy",
+  },
+  {
+    id: 11,
+    title: "The WeLeap Community Fund — A Financial First",
+    excerpt:
+      "When you sign up for financial products, the fees flow back into your community—not corporate revenue. See how member governance works.",
+    author: "Vinod Lakhani",
+    date: "Dec 1, 2025",
+    readTime: "7 min read",
+    category: "Community",
+    icon: Users,
+    image: "/images/Community%20Fund.png",
+    href: "/resources/community-fund-explained",
   },
 ]
 
@@ -197,14 +223,18 @@ export default function ResourcesPage() {
         <div className="container mx-auto px-6">
           <div className="max-w-6xl mx-auto">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {blogPosts.map((post) => {
+              {blogPosts.sort((a, b) => {
+                const dateA = new Date(a.date)
+                const dateB = new Date(b.date)
+                return dateA - dateB
+              }).map((post) => {
                 const IconComponent = post.icon
                 return (
-                  <Link href={post.href} key={post.id}>
+                  <Link href={post.href} key={post.id} className="h-full">
                     {" "}
                     {/* Wrap card with Link */}
-                    <Card className="bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer">
-                      <CardContent className="p-0">
+                    <Card className="bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col">
+                      <CardContent className="p-0 flex flex-col flex-1">
                         <div className="relative overflow-hidden">
                           <img
                             src={post.image || "/placeholder.svg"}
@@ -217,7 +247,7 @@ export default function ResourcesPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 flex flex-col flex-1">
                           <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
@@ -231,8 +261,8 @@ export default function ResourcesPage() {
                           <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200">
                             {post.title}
                           </h3>
-                          <p className="text-gray-600 mb-4 leading-relaxed">{post.excerpt}</p>
-                          <div className="flex items-center justify-between">
+                          <p className="text-gray-600 mb-4 leading-relaxed flex-1">{post.excerpt}</p>
+                          <div className="flex items-center justify-between mt-auto">
                             <span className="text-sm font-medium text-gray-700">{post.author}</span>
                             <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
                               {post.category}
@@ -272,14 +302,14 @@ export default function ResourcesPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-12">
-        <div className="container mx-auto px-6">
+      <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center gap-3 mb-4 md:mb-0">
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p className="mb-2 md:mb-0">© 2024 WeLeap. Backed by Berkeley SkyDeck.</p>
+              <p className="mb-2 md:mb-0">© 2024 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>
