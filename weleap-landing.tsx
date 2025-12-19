@@ -176,9 +176,6 @@ export default function Component() {
                 Get Early Access
               </Button>
             </EarlyAccessDialog>
-            <a href="#how-it-works" className={cn("text-white underline underline-offset-4", TYPOGRAPHY.subtext, "self-center")}>
-              See how it works
-            </a>
           </div>
         </Container>
       </Section>
@@ -231,6 +228,27 @@ export default function Component() {
         </Container>
       </Section>
 
+      {/* ================= INTRO VIDEO ================= */}
+      <Section variant="white" className="text-center">
+        <Container>
+          <div className="max-w-5xl mx-auto">
+            <div className="relative rounded-3xl overflow-hidden border border-gray-200 shadow-2xl">
+              <video
+                src="/Intro.mp4"
+                loop
+                muted
+                playsInline
+                className="w-full h-auto mx-auto bg-black"
+                controls
+              />
+            </div>
+            <p className={cn(TYPOGRAPHY.body, "text-gray-700 mt-4 md:mt-6")}>
+              Hit play to learn more about WeLeap
+            </p>
+          </div>
+        </Container>
+      </Section>
+
       {/* ================= TESTIMONIALS ================= */}
       <Section variant="brand" className="text-center">
         <Container>
@@ -260,11 +278,11 @@ export default function Component() {
           <p className={cn(TYPOGRAPHY.body, "text-gray-700 mb-8 md:mb-10")}>
             Start free, upgrade when ready. Early users lock in founding-member perks.
           </p>
-          <Link href="/pricing">
+          <EarlyAccessDialog signupType="cta">
             <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl">
-              See Pricing
+              Join Waitlist
             </Button>
-          </Link>
+          </EarlyAccessDialog>
         </Container>
       </Section>
 
