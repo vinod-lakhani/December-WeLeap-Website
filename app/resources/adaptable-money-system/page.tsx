@@ -1,7 +1,6 @@
 import { Navigation } from "../../../components/navigation"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 
 export default function AdaptableMoneySystemPage() {
   return (
@@ -27,7 +26,7 @@ export default function AdaptableMoneySystemPage() {
               </div>
               <div className="flex items-center gap-1">
                 <User className="w-4 h-4" />
-                David Park
+                Vinod Lakhani
               </div>
             </div>
 
@@ -40,11 +39,9 @@ export default function AdaptableMoneySystemPage() {
             </p>
 
             <div className="mb-8">
-              <Image
+              <img
                 src="/images/adaptable-money-full.png"
                 alt="Illustration showing the journey from outdated budgets to financial freedom through emergency fund, debt payoff, and home savings"
-                width={1200}
-                height={675}
                 className="w-full h-auto object-contain rounded-lg shadow-lg"
               />
             </div>
@@ -114,6 +111,26 @@ export default function AdaptableMoneySystemPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center gap-3 mb-4 md:mb-0">
+              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
+            </div>
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
+              <p className="mb-2 md:mb-0">© 2024 WeLeap.</p>
+              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
+                Privacy Policy
+              </Link>
+              <Link href="/terms-of-service" className="hover:underline">
+                Terms of Service
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
