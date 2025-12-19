@@ -46,14 +46,17 @@ export function EarlyAccessDialog({ children, signupType = "button" }: EarlyAcce
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to join waitlist")
+        throw new Error(data.error || "Failed to join waitlist")
       }
 
       setIsSubmitted(true)
       setEmail("")
     } catch (err) {
-      setError("Something went wrong. Please try again.")
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Please try again."
+      setError(errorMessage)
       console.error("Error joining waitlist:", err)
     } finally {
       setIsLoading(false)
