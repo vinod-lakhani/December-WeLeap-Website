@@ -7,14 +7,14 @@ import {
   Headphones,
   CreditCard,
   Zap,
-  ChevronLeft,
-  ChevronRight,
   PiggyBank,
   Receipt,
   TrendingUp,
 } from "lucide-react"
-import { Navigation } from "./components/navigation"
 import { EarlyAccessDialog } from "./components/early-access-dialog"
+import { PageShell, Section, Container } from "@/components/layout"
+import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 /* ===============================
@@ -69,7 +69,7 @@ function TypingAnimation() {
   }, [text, deleting, index])
 
   return (
-    <span className="inline-block text-white text-balance">
+    <span className="inline-block text-white break-words w-full">
       {text}
       <span className="animate-pulse text-white">|</span>
     </span>
@@ -116,166 +116,167 @@ export default function Component() {
   }, [testimonials.length])
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-
+    <PageShell>
       {/* ================= HERO ================= */}
-      <section className="pt-36 pb-16 md:pt-40 md:pb-20 bg-[#386641]">
-        <div className="container mx-auto px-6 text-center">
-
-          <h1 className="mx-auto max-w-5xl text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-[0.95] tracking-tight">
+      <Section variant="brand" className="text-center" isHero>
+        <Container>
+          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4 md:mb-6 leading-[0.95] tracking-tight max-w-5xl mx-auto")}>
             <span className="block">How much</span>
-            <span className="block mt-2 min-h-[3.5rem] md:min-h-[4.25rem] lg:min-h-[4.75rem]">
+            <span className="block mt-2 min-h-[3rem] md:min-h-[4rem] lg:min-h-[4.5rem] break-words">
               <TypingAnimation />
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-white/85 max-w-3xl mx-auto mb-10">
+          <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-3xl mx-auto mb-8 md:mb-10 break-words")}>
             WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next
-            step — a smart <span className="font-semibold text-white">Leap</span> — so you’re never guessing what to do
+            step — a smart <span className="font-semibold text-white">Leap</span> — so you're never guessing what to do
             next.
           </p>
 
           {/* Leaps cards */}
-          <div className="max-w-5xl mx-auto mb-10 grid md:grid-cols-3 gap-4">
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm">
+          <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3", SPACING.cardGap, "max-w-5xl mx-auto mb-8 md:mb-10")}>
+            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
                   <PiggyBank className="w-5 h-5 text-white" />
                 </div>
-                <p className="font-semibold">Save without thinking</p>
+                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Save without thinking</p>
               </div>
-              <p className="text-white/90 text-sm md:text-base">
+              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
                 Shift <span className="font-semibold">3%</span> to savings → <span className="font-semibold">+$412</span> this year
               </p>
             </div>
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm">
+            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
                   <Receipt className="w-5 h-5 text-white" />
                 </div>
-                <p className="font-semibold">Cut waste instantly</p>
+                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Cut waste instantly</p>
               </div>
-              <p className="text-white/90 text-sm md:text-base">
+              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
                 Cancel unused subscription → <span className="font-semibold">+$190</span>/year
               </p>
             </div>
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm">
+            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
-                <p className="font-semibold">Get ahead faster</p>
+                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Get ahead faster</p>
               </div>
-              <p className="text-white/90 text-sm md:text-base">
+              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
                 Save <span className="font-semibold">$50</span> today → emergency fund <span className="font-semibold">1 month sooner</span>
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
             <EarlyAccessDialog signupType="hero">
-              <Button className="bg-white text-primary-600 hover:bg-gray-100 px-8 py-4 rounded-xl text-lg font-medium shadow-lg">
+              <Button className="bg-white text-primary-600 hover:bg-gray-100 px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-lg">
                 Get Early Access
               </Button>
             </EarlyAccessDialog>
-            <a href="#how-it-works" className="text-white underline underline-offset-4 text-base self-center">
+            <a href="#how-it-works" className={cn("text-white underline underline-offset-4", TYPOGRAPHY.subtext, "self-center")}>
               See how it works
             </a>
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       {/* ================= FEATURES ================= */}
-      <section id="how-it-works" className="py-20 bg-white">
-        <div className="container mx-auto px-6 max-w-6xl text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+      <Section id="how-it-works" variant="white" className="text-center">
+        <Container>
+          <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>
             Most money apps show numbers. WeLeap tells you what to do.
           </h2>
-          <p className="text-xl text-gray-700 max-w-3xl mx-auto mb-16">
+          <p className={cn(TYPOGRAPHY.body, "text-gray-700 max-w-3xl mx-auto mb-10 md:mb-12")}>
             Your Sidekick cuts through the noise and focuses on actions that actually improve your future.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="p-8 rounded-2xl shadow-lg">
+          <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3", SPACING.cardGap)}>
+            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
               <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
                   <Headphones className="w-7 h-7 text-primary-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Clear Next Steps</h3>
-                <p className="text-gray-700">
+                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Clear Next Steps</h3>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   Designed to reduce anxiety, remove guesswork, and turn insight into action.
                 </p>
               </CardContent>
             </Card>
-            <Card className="p-8 rounded-2xl shadow-lg">
+            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
               <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
                   <CreditCard className="w-7 h-7 text-primary-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Action with Impact</h3>
-                <p className="text-gray-700">
+                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Action with Impact</h3>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   Designed to reduce anxiety, remove guesswork, and turn insight into action.
                 </p>
               </CardContent>
             </Card>
-            <Card className="p-8 rounded-2xl shadow-lg">
+            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
               <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6">
+                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
                   <Zap className="w-7 h-7 text-primary-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Aligned Incentives</h3>
-                <p className="text-gray-700">
+                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Aligned Incentives</h3>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   Designed to reduce anxiety, remove guesswork, and turn insight into action.
                 </p>
               </CardContent>
             </Card>
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       {/* ================= TESTIMONIALS ================= */}
-      <section className="py-20 bg-[#386641]">
-        <div className="container mx-auto px-6 text-center max-w-6xl">
-          <h2 className="text-4xl font-bold text-white mb-4">What Our Demo Users Have Said</h2>
-          <p className="text-white/80 text-lg mb-12">
-            Early users don’t want another budgeting app — they want guidance they can trust.
+      <Section variant="brand" className="text-center">
+        <Container>
+          <h2 className={cn(TYPOGRAPHY.h2, "text-white mb-4")}>What Our Demo Users Have Said</h2>
+          <p className={cn(TYPOGRAPHY.body, "text-white/80 mb-12")}>
+            Early users don't want another budgeting app — they want guidance they can trust.
           </p>
 
-          <div ref={testimonialRef} className="flex gap-8 overflow-hidden">
+          <div ref={testimonialRef} className="flex gap-6 md:gap-8 overflow-x-auto overflow-y-hidden snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {testimonials.map((t) => (
-              <Card key={t.id} className="min-w-[300px] bg-black/40 text-white p-8 rounded-2xl">
-                <CardContent className="p-0 italic text-lg">"{t.quote}"</CardContent>
+              <Card key={t.id} className="min-w-[280px] md:min-w-[300px] max-w-[280px] md:max-w-[300px] bg-black/40 text-white p-6 md:p-8 rounded-2xl snap-start flex-shrink-0">
+                <CardContent className="p-0 italic">
+                  <p className={cn(TYPOGRAPHY.body, "break-words")}>"{t.quote}"</p>
+                </CardContent>
               </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       {/* ================= CTA ================= */}
-      <section className="py-20 bg-white text-center">
-        <h2 className="text-4xl font-bold text-gray-900 mb-6">
-          Want deeper guidance and automation?
-        </h2>
-        <p className="text-xl text-gray-700 mb-10">
-          Start free, upgrade when ready. Early users lock in founding-member perks.
-        </p>
-        <Link href="/pricing">
-          <Button className="bg-primary-600 hover:bg-primary-700 text-white px-10 py-4 rounded-xl text-lg">
-            See Pricing
-          </Button>
-        </Link>
-      </section>
+      <Section variant="white" className="text-center">
+        <Container>
+          <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-4 md:mb-6")}>
+            Want deeper guidance and automation?
+          </h2>
+          <p className={cn(TYPOGRAPHY.body, "text-gray-700 mb-8 md:mb-10")}>
+            Start free, upgrade when ready. Early users lock in founding-member perks.
+          </p>
+          <Link href="/pricing">
+            <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl">
+              See Pricing
+            </Button>
+          </Link>
+        </Container>
+      </Section>
 
       {/* ================= FOOTER ================= */}
-      <footer className="bg-white border-t border-gray-200 py-8 sm:py-10 px-4 sm:px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center gap-3 mb-4 md:mb-0">
+      <footer className="bg-white border-t border-gray-200 py-8 px-6">
+        <Container>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p className="mb-2 md:mb-0">© 2024 WeLeap.</p>
+              <p>© 2024 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>
@@ -284,9 +285,8 @@ export default function Component() {
               </Link>
             </div>
           </div>
-        </div>
+        </Container>
       </footer>
-    </div>
+    </PageShell>
   )
 }
-
