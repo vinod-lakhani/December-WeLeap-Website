@@ -3,6 +3,9 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
+// Force dynamic rendering to prevent static generation timeout
+export const dynamic = 'force-dynamic'
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
@@ -105,10 +108,6 @@ export default function AboutPage() {
                     src="/images/shubha.jpeg"
                     alt="Shubhashree Venkatesh"
                     className="w-full h-full rounded-full object-cover"
-                    onError={(e) => {
-                      console.error("Failed to load Shubha image:", e);
-                      // Fallback to a placeholder or try alternative path
-                    }}
                   />
                 </div>
                 <div className="text-center sm:text-left flex-1">
