@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
 
     if (GOOGLE_SCRIPT_URL) {
       try {
-        console.log("Sending to Google Sheets:", sheetData)
+        console.log("[Waitlist API] Sending to Google Sheets:", sheetData)
+        console.log("[Waitlist API] Google Script URL configured:", !!GOOGLE_SCRIPT_URL)
+        
         const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: "POST",
           headers: {
@@ -39,22 +41,28 @@ export async function POST(request: NextRequest) {
         })
 
         const responseText = await response.text()
-        console.log("Google Sheets response status:", response.status)
-        console.log("Google Sheets response:", responseText)
+        console.log("[Waitlist API] Google Sheets response status:", response.status)
+        console.log("[Waitlist API] Google Sheets response:", responseText)
 
         if (!response.ok) {
-          console.error("Failed to write to Google Sheets:", responseText)
-          // Still return success to user, but log error
+          console.error("[Waitlist API] Failed to write to Google Sheets:", responseText)
+          // Still return success to user, but log error for debugging
         } else {
-          console.log("Successfully wrote to Google Sheets")
+          console.log("[Waitlist API] Successfully wrote to Google Sheets")
         }
       } catch (error) {
-        console.error("Error sending to Google Sheets:", error)
+        console.error("[Waitlist API] Error sending to Google Sheets:", error)
+        // Log the full error for debugging
+        if (error instanceof Error) {
+          console.error("[Waitlist API] Error message:", error.message)
+          console.error("[Waitlist API] Error stack:", error.stack)
+        }
         // Still return success to user
       }
     } else {
       // Log to console if no webhook is configured
-      console.log("Waitlist signup (Google Sheets not configured):", sheetData)
+      console.warn("[Waitlist API] Google Sheets not configured - GOOGLE_SCRIPT_URL environment variable is missing")
+      console.log("[Waitlist API] Waitlist signup data (not saved to Google Sheets):", sheetData)
     }
 
     return NextResponse.json(

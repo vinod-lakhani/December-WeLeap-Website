@@ -83,18 +83,52 @@ export default function AboutPage() {
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* Personal Motivation Text - Condensed */}
-          <div className="mt-10 sm:mt-12 max-w-4xl mx-auto px-4">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-5 sm:p-6 rounded-2xl border border-green-100">
-              <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
-                <strong>
-                  We didn't start WeLeap because we saw a market. We started it because our kids needed it.
-                </strong>{" "}
-                As a father of Gen Z daughters, I've seen first-hand the challenges young adults face managing their finances. 
-                Most feel the same way—excited but overwhelmed, ambitious but underserved by a system built around profits, not people.
-              </p>
+            {/* Personal Motivation Text - Condensed */}
+            <div className="mt-10 sm:mt-12 max-w-4xl mx-auto px-4">
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-5 sm:p-6 rounded-2xl border border-green-100">
+                <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
+                  <strong>
+                    We didn't start WeLeap because we saw a market. We started it because our kids needed it.
+                  </strong>{" "}
+                  As a father of Gen Z daughters, I've seen first-hand the challenges young adults face managing their finances. 
+                  Most feel the same way—excited but overwhelmed, ambitious but underserved by a system built around profits, not people.
+                </p>
+              </div>
+            </div>
+
+            {/* Shubhashree Venkatesh */}
+            <div className="flex flex-col mt-10">
+              <div className="flex flex-col sm:flex-row items-start mb-5">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 mb-4 sm:mb-0 sm:mr-6 flex-shrink-0 mx-auto sm:mx-0">
+                  <img
+                    src="/images/shubha.jpeg"
+                    alt="Shubhashree Venkatesh"
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                </div>
+                <div className="text-center sm:text-left flex-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-black mb-1">Shubhashree Venkatesh</h3>
+                  <p className="text-green-600 font-semibold mb-2">Head of Engineering</p>
+                  <p className="text-gray-600 text-sm">
+                    Mother of two - in early career and college
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-5">
+                <p className="text-gray-700">• Built and scaled high-performance global engineering teams, delivering complex systems with strong culture, retention, and execution discipline</p>
+                <p className="text-gray-700">• Deep expertise in cloud-native and distributed systems, architecting resilient platforms with up to 99.999% availability across multiple domains</p>
+                <p className="text-gray-700">
+                  • Proven execution leader, partnering closely with Product and cross-functional teams to ship critical initiatives under tight timelines
+                </p>
+              </div>
+
+              <div className="border-l-4 border-green-500 pl-4 bg-green-50 p-4 rounded-r-lg mb-6">
+                <p className="text-gray-700 italic">
+                  "I've spent my career building systems that must work at scale. At WeLeap, we're building systems people can trust with their financial future."
+                </p>
+              </div>
             </div>
           </div>
         </div>
