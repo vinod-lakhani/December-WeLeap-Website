@@ -16,6 +16,12 @@ GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
 NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 ```
 
+### 3. Substack Newsletter Integration (Optional)
+```
+SUBSTACK_PUBLICATION_URL=https://yourpublication.substack.com
+```
+**Note**: Replace `yourpublication` with your actual Substack publication name. If not set, subscriptions will be logged to Google Sheets (if configured) but won't redirect to Substack.
+
 ## Setting Up Environment Variables
 
 ### For Vercel
@@ -30,7 +36,8 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
    - **Environment**: Select all (Production, Preview, Development)
    - Click **Save**
 6. Repeat for `NEXT_PUBLIC_GA_ID` if using Google Analytics
-7. **Important**: After adding variables, you need to **redeploy** your site:
+7. Repeat for `SUBSTACK_PUBLICATION_URL` if using Substack newsletter
+8. **Important**: After adding variables, you need to **redeploy** your site:
    - Go to **Deployments** tab
    - Click the **three dots (⋯)** on the latest deployment
    - Click **Redeploy**
@@ -47,7 +54,8 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
    - **Scopes**: Select all (Production, Deploy previews, Branch deploys)
    - Click **Save**
 6. Repeat for `NEXT_PUBLIC_GA_ID` if using Google Analytics
-7. **Important**: After adding variables, trigger a new deployment:
+7. Repeat for `SUBSTACK_PUBLICATION_URL` if using Substack newsletter
+8. **Important**: After adding variables, trigger a new deployment:
    - Go to **Deploys** tab
    - Click **Trigger deploy** → **Deploy site**
 

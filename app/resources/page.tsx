@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users } from "lucide-react"
@@ -151,6 +154,51 @@ const blogPosts = [
 ]
 
 export default function ResourcesPage() {
+  const [email, setEmail] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to subscribe")
+      }
+
+      // If Substack URL is configured, open Substack in a new window/tab
+      if (data.redirectUrl) {
+        window.open(data.redirectUrl, "_blank", "noopener,noreferrer")
+        // Show success message on WeLeap page
+        setIsSubmitted(true)
+        setEmail("")
+      } else {
+        // Otherwise, show success message
+        setIsSubmitted(true)
+        setEmail("")
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Please try again."
+      setError(errorMessage)
+      console.error("Error subscribing:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <PageShell>
       {/* Hero Section */}
@@ -275,16 +323,37 @@ export default function ResourcesPage() {
           <p className={cn(TYPOGRAPHY.body, "text-gray-600 mb-6 md:mb-8")}>
             Get the latest financial tips and insights delivered to your inbox weekly.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-2 md:py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm md:text-base"
-            />
-            <Button className="bg-primary-600 hover:bg-primary-700 text-white px-5 md:px-6 py-2 md:py-3 rounded-xl font-medium text-sm md:text-base">
-              Subscribe
-            </Button>
-          </div>
+          {isSubmitted ? (
+            <div className="max-w-md mx-auto">
+              <p className={cn(TYPOGRAPHY.body, "text-primary-600 font-medium")}>
+                ✓ Thanks for subscribing! A new window opened to complete your subscription. Check your email to confirm.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center max-w-md mx-auto">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 md:py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <Button 
+                type="submit"
+                disabled={isLoading}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-5 md:px-6 py-2 md:py-3 rounded-xl font-medium text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Subscribing..." : "Subscribe"}
+              </Button>
+            </form>
+          )}
+          {error && (
+            <p className={cn(TYPOGRAPHY.subtext, "text-red-600 mt-3")}>
+              {error}
+            </p>
+          )}
         </Container>
       </Section>
 
