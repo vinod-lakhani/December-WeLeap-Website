@@ -18,9 +18,9 @@ NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
 
 ### 3. Substack Newsletter Integration (Optional)
 ```
-SUBSTACK_PUBLICATION_URL=https://yourpublication.substack.com
+NEXT_PUBLIC_SUBSTACK_PUBLICATION_URL=https://yourpublication.substack.com
 ```
-**Note**: Replace `yourpublication` with your actual Substack publication name. If not set, subscriptions will be logged to Google Sheets (if configured) but won't redirect to Substack.
+**Note**: Replace `yourpublication` with your actual Substack publication name. The `NEXT_PUBLIC_` prefix makes it available client-side. If not set, defaults to `https://vinodlakhani.substack.com`.
 
 ## Setting Up Environment Variables
 

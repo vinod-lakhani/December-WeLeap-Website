@@ -45,12 +45,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Construct Substack subscribe URL
-    // Format: https://[publication].substack.com/subscribe?email=[email]
-    const substackSubscribeUrl = `${SUBSTACK_PUBLICATION_URL}/subscribe?email=${encodeURIComponent(email)}`
+    // Construct Substack subscribe URL (without email parameter since Substack doesn't support pre-fill)
+    const baseUrl = SUBSTACK_PUBLICATION_URL.replace(/\/$/, "") // Remove trailing slash if present
+    const substackSubscribeUrl = `${baseUrl}/subscribe`
 
-    // Log the subscription attempt
-    console.log("[Subscribe API] Redirecting to Substack:", { email, url: substackSubscribeUrl })
+    // Log the subscription attempt with details for debugging
+    console.log("[Subscribe API] Substack subscription:", {
+      email,
+      encodedEmail,
+      baseUrl,
+      fullUrl: substackSubscribeUrl,
+      timestamp: new Date().toISOString()
+    })
 
     // Optionally send to Google Sheets for tracking
     const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL
