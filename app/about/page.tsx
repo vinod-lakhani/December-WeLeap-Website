@@ -40,10 +40,7 @@ export default function AboutPage() {
             <div className={cn(CARD_STYLES.base, CARD_STYLES.padding, "bg-muted/30")}>
               <h3 className={cn(TYPOGRAPHY.h3, "text-black mb-4 text-center")}>Our Founding Story</h3>
               <p className={cn(TYPOGRAPHY.subtext, "md:text-lg text-gray-700 leading-relaxed")}>
-                <strong>We didn't start WeLeap because we saw a market. We started it because our kids needed it.</strong>{" "}
-                As a father of Gen Z daughters, I've seen first-hand the challenges young adults face managing their
-                finances. Most feel the same way—excited but overwhelmed, ambitious but underserved by a system built
-                around profits, not people.
+                We didn't start WeLeap because we saw a gap in the market. We started it because we saw a gap in support for our kids. As parents of Gen Z daughters, we've watched smart, motivated young adults struggle with money—not because they lack discipline, but because the system wasn't built for them. It's built around profits, not people. WeLeap exists to change that.
               </p>
             </div>
           </div>
