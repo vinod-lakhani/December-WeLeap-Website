@@ -102,7 +102,7 @@ export default function ProductFeaturesPage() {
                   <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 mt-0.5 text-primary-600 flex-shrink-0" />
                   <div>
                     <p className={cn("font-semibold text-gray-900", TYPOGRAPHY.subtext)}>Aligned incentives</p>
-                    <p className={cn("text-gray-600", TYPOGRAPHY.subtext)}>We disclose how we make money — always.</p>
+                    <p className={cn("text-gray-600", TYPOGRAPHY.subtext)}>We only win when you save.</p>
                   </div>
                 </div>
               </CardContent>
@@ -181,8 +181,7 @@ export default function ProductFeaturesPage() {
                 </div>
                 <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-6")}>Adjusted to Your Life</h2>
                 <p className={cn(TYPOGRAPHY.body, "text-gray-700 mb-8 leading-relaxed")}>
-                  You get hit with a $600 car repair. Instead of scrambling, WeLeap adjusts your plan — boosting your
-                  emergency fund, trimming variable spend, and keeping your goals on track.
+                  Life happens. When a $600 car repair hits, WeLeap instantly recalculates your month—pausing your 'vacation fund' deposit to cover the bill—so you stay debt-free without the math.
                 </p>
 
                 <div className="space-y-3">
@@ -203,7 +202,7 @@ export default function ProductFeaturesPage() {
                 <CardContent className="p-6 text-left">
                   <p className={cn("font-semibold text-gray-900 mb-2", TYPOGRAPHY.subtext)}>How it works (in plain English)</p>
                   <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                    WeLeap watches your plan vs. reality. When something changes, it proposes a single clear move — a
+                    WeLeap runs in the background. When your spending or income shifts, it notifies you with a single, smart adjustment — a
                     smart Leap — and you stay in control with a quick approve.
                   </p>
                 </CardContent>
