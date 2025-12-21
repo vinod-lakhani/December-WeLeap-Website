@@ -185,7 +185,7 @@ export default function Component() {
       <Section id="how-it-works" variant="white" className="text-center">
         <Container>
           <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>
-            Most money apps show numbers. WeLeap tells you what to do.
+            Most money apps show you what you did. WeLeap shows you what to do next.
           </h2>
           <p className={cn(TYPOGRAPHY.body, "text-gray-700 max-w-3xl mx-auto mb-10 md:mb-12")}>
             Your Sidekick cuts through the noise and focuses on actions that actually improve your future.
@@ -199,7 +199,7 @@ export default function Component() {
                 </div>
                 <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Clear Next Steps</h3>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Designed to reduce anxiety, remove guesswork, and turn insight into action.
+                  Stop drowning in data. We prioritize your financial life into a single, doable task so you always know exactly what to do next.
                 </p>
               </CardContent>
             </Card>
@@ -210,7 +210,7 @@ export default function Component() {
                 </div>
                 <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Action with Impact</h3>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Designed to reduce anxiety, remove guesswork, and turn insight into action.
+                  See the long-term ripple effect of today's choices. We show you exactly how a $50 saving today grows into a safety net tomorrow.
                 </p>
               </CardContent>
             </Card>
@@ -221,7 +221,7 @@ export default function Component() {
                 </div>
                 <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Aligned Incentives</h3>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Designed to reduce anxiety, remove guesswork, and turn insight into action.
+                  We only win when you do. No ads, no selling your data, and no pushing credit cards you don't need.
                 </p>
               </CardContent>
             </Card>
@@ -269,6 +269,7 @@ export default function Component() {
               <Card key={t.id} className="min-w-[280px] md:min-w-[300px] max-w-[280px] md:max-w-[300px] bg-black/40 text-white p-6 md:p-8 rounded-2xl snap-start flex-shrink-0">
                 <CardContent className="p-0 italic">
                   <p className={cn(TYPOGRAPHY.body, "break-words")}>"{t.quote}"</p>
+                  <p className={cn(TYPOGRAPHY.subtext, "text-white/70 mt-3 not-italic")}>– Early Access Member</p>
                 </CardContent>
               </Card>
             ))}

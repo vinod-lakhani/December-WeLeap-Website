@@ -17,10 +17,11 @@ export default function PricingPage() {
           <p className={cn(TYPOGRAPHY.body, "font-semibold text-white mb-2")}>
             🎉 Early Access is free. No credit card required.
           </p>
-          <p className={cn(TYPOGRAPHY.subtext, "md:text-base text-white/85 mb-4 md:mb-6")}>
-            The first <span className="font-semibold text-white">500 signups</span> are automatically recognized
-            as <span className="font-semibold text-white">Founding Members</span>.
-          </p>
+          <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 md:px-6 py-3 md:py-4 mb-4 md:mb-6 max-w-2xl mx-auto">
+            <p className={cn(TYPOGRAPHY.body, "font-bold text-white text-center")}>
+              Only 500 Founding Member spots available. Join now to lock in lifetime benefits.
+            </p>
+          </div>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-3 md:mb-4 break-words")}>Pricing</h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-2xl mx-auto text-balance break-words")}>
             We're keeping Phase 1 simple: one experience, free during early access. We'll introduce paid plans once the
@@ -35,12 +36,6 @@ export default function PricingPage() {
           <div className="max-w-4xl mx-auto mb-10 md:mb-12">
             <Card className="border-primary/30 shadow-lg">
               <CardHeader className="text-center pb-4 md:pb-6 px-4 md:px-6">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Badge className="bg-primary text-primary-foreground text-xs md:text-sm">
-                    <Star className="w-3 h-3 mr-1" />
-                    Founding Members = first 500
-                  </Badge>
-                </div>
                 <CardTitle className={cn(TYPOGRAPHY.h3, "text-gray-900")}>Early Access</CardTitle>
                 <div className="mt-3 md:mt-4">
                   <span className="text-4xl md:text-5xl font-bold text-gray-900">$0</span>
@@ -50,9 +45,9 @@ export default function PricingPage() {
 
               <CardContent className="px-4 md:px-6">
                 <div className="grid sm:grid-cols-2 gap-6 md:gap-8">
-                  {/* What you get */}
+                  {/* What everyone gets right now */}
                   <div>
-                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>What you get</h3>
+                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>What everyone gets right now</h3>
                     <ul className="space-y-3">
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
@@ -60,22 +55,18 @@ export default function PricingPage() {
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Automation & alerts</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                         <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Track spending, income, and savings</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Automation & alerts (included during early access)</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Concierge Q&A (limited during MVP)</span>
                       </li>
                     </ul>
                   </div>
 
-                  {/* Founding member perks */}
+                  {/* What the First 500 get forever */}
                   <div>
-                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>Founding Member perks</h3>
+                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>What the First 500 get forever</h3>
                     <ul className="space-y-3">
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
@@ -83,11 +74,15 @@ export default function PricingPage() {
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Priority access to new features</span>
+                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Priority support</span>
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>First access to Community Fund governance when it launches</span>
+                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Locked-in pricing (lowest rate for life)</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Vote on how the Community Fund is used (e.g., which charities we support or which member rewards we prioritize)</span>
                       </li>
                     </ul>
 
@@ -95,7 +90,7 @@ export default function PricingPage() {
                       <p className={cn(TYPOGRAPHY.subtext, "text-gray-900 font-medium mb-1")}>What happens after early access?</p>
                       <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
                         We'll introduce paid plans only after we've earned it. Founding Members will keep access to
-                        founding perks and get the best available "founder" pricing when subscriptions launch.
+                        founding perks and lock in our lowest possible rate for life once paid plans launch.
                       </p>
                     </div>
                   </div>
@@ -150,7 +145,7 @@ export default function PricingPage() {
                   <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
                     <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>Governed by members</div>
                     <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      Founding Members get first access to governance when it launches.
+                      Founding Members vote on how the Fund is used (e.g., which charities we support or which member rewards we prioritize).
                     </div>
                   </div>
                 </div>
@@ -199,8 +194,7 @@ export default function PricingPage() {
                 <CardContent className="p-6">
                 <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>How do you make money?</h3>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  We may earn subscription revenue in later phases, and we may earn referral/transaction revenue when
-                  users choose optional financial products. When we're paid, we disclose it — and we route that revenue
+                  Currently, we don't. We are venture-backed and focused on growth. In the future, we will introduce fair subscription fees and transparent referral models. When we're paid, we disclose it — and we route that revenue
                   into the WeLeap Community Fund so the upside benefits the community.
                   </p>
                 </CardContent>
