@@ -110,7 +110,7 @@ export default function AboutPage() {
                   <img
                     src="/images/shubha.jpeg"
                     alt="Shubhashree Venkatesh"
-                    className="w-full h-full rounded-full object-cover border-4 border-green-600"
+                    className="w-full h-full rounded-full object-cover"
                   />
                 </div>
 
@@ -121,8 +121,7 @@ export default function AboutPage() {
 
                   <div className="mt-5 space-y-2">
                     <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                      • Built and scaled high-performance global engineering teams, delivering complex systems with strong
-                      culture, retention, and execution discipline
+                      • Built high-performance global teams that deliver when it matters most. Deep expertise in creating systems that never fail—because your financial data has to be safe.
                     </p>
                     <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                       • Deep expertise in cloud-native and distributed systems, architecting resilient platforms with up
@@ -233,7 +232,7 @@ export default function AboutPage() {
               </div>
               <h3 className={cn("text-lg md:text-xl font-bold text-black mb-3 text-center")}>Action over dashboards</h3>
               <p className={cn(TYPOGRAPHY.subtext, "text-gray-700 text-center flex-grow")}>
-                We give you one clear next step, not endless charts to interpret.
+                Financial wellness isn't about having more information—it's about taking the right action at the right time. We believe in progress over perfection, and clarity over complexity.
               </p>
             </div>
 
@@ -249,7 +248,7 @@ export default function AboutPage() {
               </div>
               <h3 className={cn("text-lg md:text-xl font-bold text-black mb-3 text-center")}>Clarity over clutter</h3>
               <p className={cn(TYPOGRAPHY.subtext, "text-gray-700 text-center flex-grow")}>
-                Your Sidekick cuts through the noise and focuses on what matters.
+                We believe that financial tools should reduce stress, not create it. Every feature we build is designed to simplify your financial life, not complicate it with unnecessary complexity.
               </p>
             </div>
 
@@ -265,7 +264,7 @@ export default function AboutPage() {
               </div>
               <h3 className={cn("text-lg md:text-xl font-bold text-black mb-3 text-center")}>Aligned incentives</h3>
               <p className={cn(TYPOGRAPHY.subtext, "text-gray-700 text-center flex-grow")}>
-                No hidden kickbacks. We show how we make money, always.
+                We believe that financial advice should be trustworthy and transparent. Our success is directly tied to your financial success—we only win when you do.
               </p>
             </div>
           </div>
@@ -292,7 +291,7 @@ export default function AboutPage() {
               </div>
               <div className="rounded-2xl border bg-gray-50 p-5">
                 <div className="text-sm font-semibold text-black mb-1">Support when life hits</div>
-                <div className="text-sm text-gray-600">The fund can help members through real-world financial surprises.</div>
+                <div className="text-sm text-gray-600">A portion of our revenue goes into a fund that rewards successful saving streaks or provides emergency micro-grants for members in need.</div>
               </div>
               <div className="rounded-2xl border bg-gray-50 p-5">
                 <div className="text-sm font-semibold text-black mb-1">Shared upside</div>

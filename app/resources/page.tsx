@@ -284,7 +284,7 @@ export default function ResourcesPage() {
         <Container maxWidth="narrow">
           <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>Stay Updated</h2>
           <p className={cn(TYPOGRAPHY.body, "text-gray-600 mb-6 md:mb-8")}>
-            Get the latest financial tips and insights delivered to your inbox weekly.
+            Don't miss a Leap. Get one actionable financial tip every week—no spam, just strategy.
           </p>
           <Button 
             onClick={handleSubscribe}
