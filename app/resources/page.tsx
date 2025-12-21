@@ -183,24 +183,24 @@ export default function ResourcesPage() {
             <Card className="bg-gradient-to-r from-primary-600 to-primary-700 border-0 rounded-2xl md:rounded-3xl overflow-hidden group cursor-pointer hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-0">
                 <div className="grid md:grid-cols-2 gap-0">
-                  <div className="p-6 md:p-8 lg:p-12 text-white">
+                  <div className="p-6 md:p-8 lg:p-12 text-white flex flex-col justify-center">
                     <div className="flex items-center gap-2 mb-4">
                       <span className="bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium">
                         Featured
                       </span>
-                      <span className="text-white/80 text-sm">6 min read</span>
+                      <span className={cn(TYPOGRAPHY.subtext, "text-white/80")}>6 min read</span>
                     </div>
-                    <div className="text-white/80 text-sm mb-4">By Vinod Lakhani</div>
-                    <h2 className={cn("text-3xl font-bold mb-4 group-hover:underline")}>
+                    <div className={cn(TYPOGRAPHY.subtext, "text-white/80 mb-4")}>By Vinod Lakhani</div>
+                    <h2 className={cn(TYPOGRAPHY.h2, "text-white mb-4 group-hover:underline")}>
                       Real Finance for Real Life: Why We Built WeLeap
                     </h2>
-                    <p className="text-white/90 mb-6 leading-relaxed">
+                    <p className={cn(TYPOGRAPHY.body, "text-white/90 mb-6 leading-relaxed")}>
                       We didn't set out to build another budgeting app. We built WeLeap because the system is broken —
                       and it's failing the very people it claims to serve.
                     </p>
                     <Button
                       asChild
-                      className="inline-flex items-center justify-center bg-white text-primary-600 hover:bg-gray-100 px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium text-sm md:text-base"
+                      className="inline-flex items-center justify-center bg-white text-primary-600 hover:bg-gray-100 px-4 md:px-6 py-2 md:py-3 rounded-xl font-medium text-sm md:text-base self-start"
                     >
                       <span>
                         Read Article

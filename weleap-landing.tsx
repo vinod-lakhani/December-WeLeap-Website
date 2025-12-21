@@ -94,6 +94,7 @@ export default function Component() {
 
   const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0)
   const testimonialRef = useRef<HTMLDivElement>(null)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
   useEffect(() => {
     if (testimonialRef.current) {
@@ -233,6 +234,13 @@ export default function Component() {
         <Container>
           <div className="max-w-5xl mx-auto">
             <div className="relative rounded-3xl overflow-hidden border border-gray-200 shadow-2xl">
+              {!isVideoPlaying && (
+                <div className="absolute top-4 left-0 right-0 z-10">
+                  <p className={cn(TYPOGRAPHY.body, "text-white drop-shadow-lg")}>
+                    Hit play to learn more about WeLeap
+                  </p>
+                </div>
+              )}
               <video
                 src="/Intro.mp4"
                 loop
@@ -240,11 +248,10 @@ export default function Component() {
                 playsInline
                 className="w-full h-auto mx-auto bg-black"
                 controls
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
               />
             </div>
-            <p className={cn(TYPOGRAPHY.body, "text-gray-700 mt-4 md:mt-6")}>
-              Hit play to learn more about WeLeap
-            </p>
           </div>
         </Container>
       </Section>

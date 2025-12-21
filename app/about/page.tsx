@@ -183,7 +183,7 @@ export default function AboutPage() {
 
                 <div className="flex-1 text-center sm:text-left">
                   <h3 className={cn(TYPOGRAPHY.h3, "text-black mb-1")}>Maurizio Greco</h3>
-                  <p className="text-blue-600 font-semibold mb-2">Trusted Advisor (formerly Co-Founder)</p>
+                  <p className="text-blue-600 font-semibold mb-2">Advisor (Co-founder, former CTO)</p>
                   <p className="text-gray-600 text-sm">Father of two — in college and middle school</p>
 
                   <div className="mt-5 space-y-2">
