@@ -20,7 +20,7 @@ export default function EmergencyFundPage() {
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              Jan 18, 2024
+              Sep 30, 2025
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-4 h-4" />

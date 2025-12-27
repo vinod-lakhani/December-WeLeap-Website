@@ -25,7 +25,7 @@ export default function AwarenessToActionPage() {
             You checked your budget, saw the pie chart, nodded in recognition—and kept spending the same way. Break free
             from passive budgeting and turn financial awareness into real action.
           </p>
-          <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • January 10, 2024 • 6 min read</div>
+          <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • July 7, 2025 • 6 min read</div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
             <img

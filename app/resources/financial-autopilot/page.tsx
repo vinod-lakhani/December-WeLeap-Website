@@ -25,7 +25,7 @@ export default function FinancialAutopilotPage() {
             True automation turns your priorities into rules that run in the background, freeing up brain-space while
             staying aligned with your goals. Learn how to build a system that works for you.
           </p>
-          <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • January 12, 2024 • 8 min read</div>
+          <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • July 28, 2025 • 8 min read</div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
             <img src="/images/financial-autopilot.jpg" alt="Financial Autopilot" className="w-full h-full object-cover" />
