@@ -25,7 +25,7 @@ export default function TheRentCheckPanicPage() {
             Learn why this happens and how to restructure your money habits for lasting control. This common experience has less to do with budgeting skills and more to do with how money flows through your life.
           </p>
           <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>
-            By Vinod Lakhani • January 15, 2024 • 5 min read
+            By Vinod Lakhani • August 18, 2025 • 5 min read
           </div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
