@@ -69,7 +69,7 @@ function TypingAnimation() {
   }, [text, deleting, index])
 
   return (
-    <span className="inline-block text-white break-words w-full">
+    <span className="inline-block text-white break-words w-full leading-[1.6]">
       {text}
       <span className="animate-pulse text-white">|</span>
     </span>
