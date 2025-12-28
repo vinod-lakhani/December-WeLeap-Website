@@ -123,7 +123,7 @@ export default function Component() {
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4 md:mb-6 leading-[0.95] tracking-tight max-w-5xl mx-auto")}>
             <span className="block">How much</span>
-            <span className="block mt-2 h-[4.5rem] md:h-[6rem] lg:h-[7.5rem] break-words flex items-start justify-center">
+            <span className="block mt-2 mb-2 h-[4.5rem] md:h-[6rem] lg:h-[7.5rem] break-words flex items-start justify-center">
               <TypingAnimation />
             </span>
           </h1>
