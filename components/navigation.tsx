@@ -2,7 +2,6 @@
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { SignInDialog } from "./sign-in-dialog"
 import { EarlyAccessDialog } from "./early-access-dialog"
 import { useState } from "react"
 
@@ -80,11 +79,6 @@ export function Navigation() {
               )}
             </button>
             <div className="hidden md:flex items-center gap-4">
-              <SignInDialog>
-                <Button className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md">
-                  Sign In
-                </Button>
-              </SignInDialog>
               <EarlyAccessDialog signupType="navigation">
                 <Button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md">
                   Join Waitlist
@@ -144,11 +138,6 @@ export function Navigation() {
               </Link>
 
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200">
-                <SignInDialog>
-                  <Button className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-3 rounded-xl font-medium shadow-sm transition-all duration-200">
-                    Sign In
-                  </Button>
-                </SignInDialog>
                 <EarlyAccessDialog signupType="navigation-mobile">
                   <Button className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm transition-all duration-200">
                     Join Waitlist
