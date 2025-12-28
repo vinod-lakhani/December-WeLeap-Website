@@ -69,7 +69,7 @@ function TypingAnimation() {
   }, [text, deleting, index])
 
   return (
-    <span className="inline-block text-white break-words w-full leading-[1.6]">
+    <span className="inline-block text-white break-words leading-[1.2]">
       {text}
       <span className="animate-pulse text-white">|</span>
     </span>
@@ -123,9 +123,11 @@ export default function Component() {
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-6 md:mb-8 leading-[0.95] tracking-tight max-w-5xl mx-auto")}>
             <span className="block">How much</span>
-            <span className="block mt-2 mb-4 md:mb-6 h-[4.5rem] md:h-[6rem] lg:h-[7.5rem] break-words flex items-start justify-center">
-              <TypingAnimation />
-            </span>
+            <div className="mt-2 mb-4 md:mb-6 min-h-[4.5rem] md:min-h-[6rem] lg:min-h-[7.5rem] flex items-start justify-center">
+              <span className="block text-center break-words leading-[1.2]">
+                <TypingAnimation />
+              </span>
+            </div>
           </h1>
 
           <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-3xl mx-auto mb-8 md:mb-10 break-words")}>
