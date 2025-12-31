@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'WeLeap - Your AI Financial Sidekick',
   description: 'WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next step - a smart Leap - so you are never guessing what to do next.',
   icons: {
-    icon: '/icon.svg',
+    icon: '/images/weleap-logo.png',
   },
 }
 
