@@ -7,9 +7,8 @@ import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'WeLeap - Your AI Financial Sidekick',
+  description: 'WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next step — a smart Leap — so you're never guessing what to do next.',
   icons: {
     icon: '/icon.svg',
   },
