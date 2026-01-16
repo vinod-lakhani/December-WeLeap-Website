@@ -8,7 +8,7 @@ export function WaitlistForm() {
   return (
     <Card className="border-[#D1D5DB] bg-white">
       <CardHeader>
-        <CardTitle className="text-xl text-[#111827]">Want the full plan along with additional leaps?</CardTitle>
+        <CardTitle className="text-xl text-[#111827]">Want help deciding your next safest move?</CardTitle>
       </CardHeader>
       <CardContent>
         <EarlyAccessDialog signupType="salary_tool">

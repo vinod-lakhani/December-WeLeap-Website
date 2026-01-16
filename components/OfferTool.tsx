@@ -126,9 +126,12 @@ export function OfferTool() {
   const takeHomeMonthly = results ? results.netIncomeAnnual / 12 : 0;
   const takeHomeAnnual = results?.netIncomeAnnual || 0;
   const debtAmount = debtEnabled ? parseFloat(debtMonthly) || 0 : 0;
-  const rentRange = results
-    ? calculateRentRange(takeHomeMonthly, debtAmount).formatted
-    : '';
+  const rentRangeData = results
+    ? calculateRentRange(takeHomeMonthly, debtAmount)
+    : null;
+  const rentRange = rentRangeData?.formatted || '';
+  const rentRangeLow = rentRangeData?.low || 0;
+  const rentRangeHigh = rentRangeData?.high || 0;
   const daysUntilStart = calculateDaysUntilStart(startDate);
   const budgetBreakdown = results ? calculateBudgetBreakdown(takeHomeMonthly) : null;
 
@@ -236,7 +239,11 @@ export function OfferTool() {
             takeHomeMonthly={takeHomeMonthly}
             takeHomeAnnual={takeHomeAnnual}
             rentRange={rentRange}
+            rentRangeLow={rentRangeLow}
+            rentRangeHigh={rentRangeHigh}
             daysUntilStart={daysUntilStart}
+            startDate={startDate}
+            city={city}
             taxBreakdown={results ? {
               grossAnnual: parseFloat(salary),
               federalTaxAnnual: results.federalTaxAnnual,
@@ -286,7 +293,7 @@ export function OfferTool() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="debt-toggle" className="text-[#111827] cursor-pointer">
-                    Adjust for debt payments (optional)
+                    Adjust for debt payments (minimums only, optional)
                   </Label>
                   <button
                     type="button"

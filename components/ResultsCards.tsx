@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { formatCurrency } from '@/lib/rounding';
+import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 
 interface TaxBreakdown {
   grossAnnual: number;
@@ -22,7 +23,11 @@ interface ResultsCardsProps {
   takeHomeMonthly: number;
   takeHomeAnnual: number;
   rentRange: string;
+  rentRangeLow: number;
+  rentRangeHigh: number;
   daysUntilStart: number;
+  startDate?: string;
+  city?: string;
   taxBreakdown?: TaxBreakdown;
 }
 
@@ -30,9 +35,34 @@ export function ResultsCards({
   takeHomeMonthly,
   takeHomeAnnual,
   rentRange,
+  rentRangeLow,
+  rentRangeHigh,
   daysUntilStart,
+  startDate,
+  city,
   taxBreakdown,
 }: ResultsCardsProps) {
+  // Get HUD rent context if city is available
+  const hudRentRange = city ? getHUDRentRange(city) : undefined;
+  const rentComparison = hudRentRange 
+    ? compareRentRanges(rentRangeLow, rentRangeHigh, hudRentRange.low, hudRentRange.high)
+    : null;
+
+  // Format start date for display
+  const formattedStartDate = startDate 
+    ? new Date(startDate).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+    : null;
+
+  // Determine timing pressure message based on daysUntilStart
+  const getTimingMessage = (): string => {
+    if (daysUntilStart === 0) {
+      return 'Even when you start soon, first paychecks often arrive 2–3 weeks after your start date. Early fixed costs can still feel tighter.';
+    } else if (daysUntilStart > 0 && daysUntilStart <= 30) {
+      return `Your job starts in ${daysUntilStart} ${daysUntilStart === 1 ? 'day' : 'days'}. First paychecks often arrive 2–3 weeks after your start date, which can make early rent decisions more sensitive.`;
+    } else {
+      return `Your job starts in ${daysUntilStart} days. Lease costs often hit before your first paycheck, so keeping fixed costs lower early on preserves flexibility.`;
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Card A: Monthly Take-Home */}
@@ -114,11 +144,37 @@ export function ResultsCards({
           <CardTitle className="text-lg text-[#111827]">Safe Rent Range</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
-            <p className="text-sm text-[#111827]/70">
-              Based on 28–35% of your take-home pay
-            </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
+              <p className="text-sm text-[#111827]/70">
+                Based on your take-home pay and early-career flexibility.
+              </p>
+            </div>
+
+            {/* Local Rent Context */}
+            {hudRentRange && rentComparison && (
+              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
+                <p className="text-xs text-[#111827]/70 mb-2">
+                  Local rent context: Typical 1-bedroom rents are around {formatCurrency(hudRentRange.low)}–{formatCurrency(hudRentRange.high)}/month.
+                </p>
+                {hudRentRange.low > rentRangeHigh && (
+                  <p className="text-xs text-[#111827]/80">
+                    Market pressure: Typical rents run higher than your safe range. Many students use roommates or delay signing until income starts.
+                  </p>
+                )}
+                {hudRentRange.high < rentRangeLow && (
+                  <p className="text-xs text-[#111827]/80">
+                    Good news: Typical rents fall within your safe range.
+                  </p>
+                )}
+                {!(hudRentRange.low > rentRangeHigh) && !(hudRentRange.high < rentRangeLow) && (
+                  <p className="text-xs text-[#111827]/80">
+                    Heads up: Parts of the market fit your range, but higher-end units may feel tight early on.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -131,11 +187,16 @@ export function ResultsCards({
         <CardContent>
           <div className="space-y-2">
             <p className="text-2xl font-semibold text-[#111827]">
-              {daysUntilStart} {daysUntilStart === 1 ? 'day' : 'days'} until start date
+              Start-date timing matters
             </p>
             <p className="text-sm text-[#111827]/70">
-              Lease costs often hit before the first paycheck, which makes early rent decisions more sensitive.
+              {getTimingMessage()}
             </p>
+            {formattedStartDate && (
+              <p className="text-xs text-[#111827]/60 mt-2">
+                Start date: {formattedStartDate}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
