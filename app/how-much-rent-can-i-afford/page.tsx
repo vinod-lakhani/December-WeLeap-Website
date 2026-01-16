@@ -16,7 +16,7 @@ export default function HowMuchRentCanIAffordPage() {
       <Section variant="brand" className="text-center" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>
-            See your take home pay and estimate how much rent can you afford
+            See what your job offer really supports — and avoid risky rent decisions
           </h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto")}>
             Turn your job offer into a clear rent range — before you sign anything.

@@ -208,6 +208,9 @@ export function OfferTool() {
               onChange={(e) => setStartDate(e.target.value)}
               className="border-[#D1D5DB]"
             />
+            <p className="text-xs text-[#111827]/60">
+              Used to understand timing before your first paycheck.
+            </p>
           </div>
 
           {error && (
@@ -221,7 +224,7 @@ export function OfferTool() {
             disabled={isCalculating}
             className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
           >
-            {isCalculating ? 'Calculating...' : 'See my numbers'}
+            {isCalculating ? 'Calculating...' : 'Translate my offer'}
           </Button>
         </CardContent>
       </Card>
