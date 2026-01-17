@@ -7,7 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { formatCurrency } from '@/lib/rounding';
+import { formatCurrency, formatCurrencyRange, roundToNearest100 } from '@/lib/rounding';
 import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 
 interface TaxBreakdown {
@@ -60,9 +60,55 @@ export function ResultsCards({
     } else if (daysUntilStart > 0 && daysUntilStart <= 30) {
       return `Your job starts in ${daysUntilStart} ${daysUntilStart === 1 ? 'day' : 'days'}. First paychecks often arrive 2–3 weeks after your start date, which can make early rent decisions more sensitive.`;
     } else {
-      return `Your job starts in ${daysUntilStart} days. Lease costs often hit before your first paycheck, so keeping fixed costs lower early on preserves flexibility.`;
+      return `Your job starts in ${daysUntilStart} days. Security deposits, first month's rent, and a short gap before your first paycheck all require cash upfront. Choosing lower rent reduces that early cash burden.`;
     }
   };
+
+  // Calculate upfront cash needed before first paycheck
+  const calculateUpfrontCash = () => {
+    if (!startDate || takeHomeMonthly === 0) {
+      return null;
+    }
+
+    // Gap days = fixed 14 days (from start date to first paycheck)
+    const gapDays = 14;
+
+    // Security deposit = 1× rent
+    const depositLow = rentRangeLow;
+    const depositHigh = rentRangeHigh;
+
+    // First month rent = 1× rent
+    const firstMonthLow = rentRangeLow;
+    const firstMonthHigh = rentRangeHigh;
+
+    // Gap living costs = 35% of take-home, prorated by gapDays/30
+    const gapLivingCosts = (takeHomeMonthly * 0.35) * (gapDays / 30);
+
+    // Moving/setup = $600 flat
+    const movingSetup = 600;
+
+    // Calculate totals (low and high)
+    const totalLow = depositLow + firstMonthLow + gapLivingCosts + movingSetup;
+    const totalHigh = depositHigh + firstMonthHigh + gapLivingCosts + movingSetup;
+
+    // Round to nearest $100 for cleaner display
+    const totalLowRounded = roundToNearest100(totalLow);
+    const totalHighRounded = roundToNearest100(totalHigh);
+
+    return {
+      gapDays,
+      depositLow,
+      depositHigh,
+      firstMonthLow,
+      firstMonthHigh,
+      gapLivingCosts: roundToNearest100(gapLivingCosts),
+      movingSetup,
+      totalLow: totalLowRounded,
+      totalHigh: totalHighRounded,
+    };
+  };
+
+  const upfrontCash = calculateUpfrontCash();
   return (
     <div className="space-y-6">
       {/* Card A: Monthly Take-Home */}
@@ -185,17 +231,71 @@ export function ResultsCards({
           <CardTitle className="text-lg text-[#111827]">Timing Pressure</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <p className="text-2xl font-semibold text-[#111827]">
-              Start-date timing matters
-            </p>
-            <p className="text-sm text-[#111827]/70">
-              {getTimingMessage()}
-            </p>
-            {formattedStartDate && (
-              <p className="text-xs text-[#111827]/60 mt-2">
-                Start date: {formattedStartDate}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-2xl font-semibold text-[#111827]">
+                Start-date timing matters
               </p>
+              <p className="text-sm text-[#111827]/70">
+                {getTimingMessage()}
+              </p>
+              {formattedStartDate && (
+                <p className="text-xs text-[#111827]/60 mt-2">
+                  Start date: {formattedStartDate}
+                </p>
+              )}
+            </div>
+
+            {/* Upfront Cash Needed */}
+            {upfrontCash && (
+              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
+                <h4 className="text-base font-semibold text-[#111827] mb-2">
+                  Upfront cash needed before your first paycheck
+                </h4>
+                <p className="text-3xl font-bold text-[#111827] mb-1">
+                  {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
+                </p>
+                <p className="text-xs text-[#111827]/60 mb-3">
+                  Estimate based on start date and typical move-in timing.
+                </p>
+                
+                {/* Assumptions Disclosure */}
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="assumptions" className="border-none">
+                    <AccordionTrigger className="text-xs text-[#111827]/70 hover:no-underline py-2">
+                      View assumptions
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2 space-y-2">
+                      <div className="space-y-2 text-xs text-[#111827]/70">
+                        <div className="flex justify-between items-center">
+                          <span>Security deposit</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>First month's rent</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Gap living costs (food/transport/etc.)</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrency(upfrontCash.gapLivingCosts)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Moving/setup costs</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrency(upfrontCash.movingSetup)}
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
             )}
           </div>
         </CardContent>
