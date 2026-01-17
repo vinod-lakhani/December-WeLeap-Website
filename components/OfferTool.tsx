@@ -151,10 +151,10 @@ export function OfferTool() {
             <Input
               id="salary"
               type="number"
-              placeholder="75000"
+              placeholder="e.g., 75000"
               value={salary}
               onChange={(e) => setSalary(e.target.value)}
-              className="border-[#D1D5DB]"
+              className="border-[#D1D5DB] !placeholder:text-[#111827]/40"
             />
           </div>
 
