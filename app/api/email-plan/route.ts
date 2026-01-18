@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     const { data, error: emailError } = await resend.emails.send({
       from: finalFromEmail,
       to: email,
-      subject: 'Your Salary vs. Rent Analysis from WeLeap',
+      subject: 'Your Day 1 Playbook from WeLeap',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
@@ -119,60 +119,63 @@ export async function POST(request: NextRequest) {
           </p>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Attached is your <strong>Salary vs. Rent analysis</strong> — the real numbers behind your offer letter and rent affordability.
+            Here's your <strong>Day 1 Playbook</strong> — built from the salary and rent details you just entered.
           </p>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            One thing becomes clear once you see this on paper:<br>
-            the math <em>works</em>, but the margin for error is thin.
+            This isn't a budget.<br>
+            It's a <strong>starting system</strong> for handling rent, bills, and your first few paychecks without falling behind.
           </p>
           
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            This is exactly the moment where most tools stop — they show you numbers and leave you to figure out what to do next.<br>
-            <strong>WeLeap is built for what comes next.</strong>
+          <h3 style="color: #111827; font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 16px;">
+            What this playbook shows
+          </h3>
+          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 24px; padding-left: 0;">
+            <li style="margin-bottom: 8px;"><strong>Your real take-home pay</strong> (after taxes)</li>
+            <li style="margin-bottom: 8px;"><strong>Your rent impact</strong> on monthly cash flow</li>
+            <li style="margin-bottom: 8px;"><strong>How much flexibility you actually have</strong> once fixed costs are covered</li>
+            <li style="margin-bottom: 8px;">Where things could get tight — <em>before</em> they become a problem</li>
+          </ul>
+          
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+            Seeing this clearly is the hardest part. You've done that.
           </p>
           
+          <h3 style="color: #111827; font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 16px;">
+            What most people miss
+          </h3>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-            Inside WeLeap, your Financial Sidekick turns this analysis into a live feed that helps you stay ahead, for example:
+            The first few months after signing a lease are when small missteps turn into stress:
           </p>
-          
-          <p style="color: #111827; font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 12px;">
-            <strong>Clarity (what just happened)</strong>
-          </p>
-          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 20px;">
-            <li><em>"New paycheck detected — want me to optimize it?"</em></li>
-            <li><em>"Your rent payment went through. I'll keep an eye on your balance."</em></li>
+          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 24px; padding-left: 0;">
+            <li style="margin-bottom: 8px;">balances running low right before payday</li>
+            <li style="margin-bottom: 8px;">savings getting skipped "just this once"</li>
+            <li style="margin-bottom: 8px;">credit cards quietly filling the gap</li>
           </ul>
           
-          <p style="color: #111827; font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 12px;">
-            <strong>Risk (what could go wrong)</strong>
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+            This playbook helps you avoid that by making the tradeoffs visible early.
           </p>
-          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 20px;">
-            <li><em>"Your account balance may dip below $200 before the next paycheck."</em></li>
-            <li><em>"Spending is trending high this month — want to adjust before it becomes a problem?"</em></li>
-          </ul>
           
-          <p style="color: #111827; font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 12px;">
-            <strong>Next Leaps (what to do now)</strong>
+          <h3 style="color: #111827; font-size: 18px; font-weight: 600; margin-top: 28px; margin-bottom: 16px;">
+            What happens next with WeLeap
+          </h3>
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+            If you choose to continue with WeLeap, this plan becomes the foundation for a live financial feed that:
           </p>
-          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 24px;">
-            <li><em>"Savings Leap: Shift $75 this month → emergency fund reaches 25% faster."</em></li>
-            <li><em>"Income Leap: Adjust your paycheck allocation → stay on track without feeling squeezed."</em></li>
-            <li><em>"Debt Leap: One small payment now saves $X in interest."</em></li>
+          <ul style="color: #111827; line-height: 1.8; margin-left: 20px; margin-bottom: 20px; padding-left: 0;">
+            <li style="margin-bottom: 8px;">watches for new paychecks</li>
+            <li style="margin-bottom: 8px;">flags risks like low balances or spending spikes</li>
+            <li style="margin-bottom: 8px;">surfaces <strong>one clear next move at a time</strong> to keep you steady</li>
           </ul>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            No dashboards to babysit.<br>
-            No generic budgeting rules.<br>
-            Just <strong>one clear next move at a time</strong>, tied to your actual numbers.
-          </p>
-          
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            We're opening a limited <strong>Beta</strong> for seniors and recent grads navigating the jump from offer letter to first paycheck — and beyond.
+            No dashboards to manage.<br>
+            No guessing what matters most.
           </p>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            If you want a sidekick that helps you stay steady <em>after</em> the lease is signed, you can join here:
+            For now, save this email — it's your <strong>Day 1 reference point</strong>.
           </p>
           
           <div style="text-align: center; margin: 32px 0;">
