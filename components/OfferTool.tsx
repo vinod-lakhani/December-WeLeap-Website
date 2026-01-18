@@ -255,7 +255,7 @@ export function OfferTool() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] pr-3 [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:mr-2"
+              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px]"
             />
             <p className="text-xs text-[#111827]/60 mt-1">
               Used to understand timing before your first paycheck.
