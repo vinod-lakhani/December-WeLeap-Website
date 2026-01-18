@@ -24,20 +24,22 @@ const nextConfig = {
       
       // Copy PDFKit font files to server build output (needed for both dev and production)
       // Only apply to server-side builds to avoid interfering with client chunks
-      config.plugins.push(
-        new CopyWebpackPlugin({
-          patterns: [
-            {
-              from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
-              to: path.join(__dirname, '.next/server/vendor-chunks/data'),
-              noErrorOnMissing: true,
-              globOptions: {
-                ignore: ['**/.DS_Store'],
+      if (CopyWebpackPlugin) {
+        config.plugins.push(
+          new CopyWebpackPlugin({
+            patterns: [
+              {
+                from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
+                to: path.join(__dirname, '.next/server/vendor-chunks/data'),
+                noErrorOnMissing: true,
+                globOptions: {
+                  ignore: ['**/.DS_Store'],
+                },
               },
-            },
-          ],
-        })
-      );
+            ],
+          })
+        );
+      }
     }
     return config;
   },
