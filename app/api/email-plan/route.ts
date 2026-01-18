@@ -40,11 +40,20 @@ export async function POST(request: NextRequest) {
     // Validate Resend API key
     if (!process.env.RESEND_API_KEY) {
       console.error('[Email Plan API] RESEND_API_KEY not configured');
+      console.error('[Email Plan API] Available env vars:', Object.keys(process.env).filter(k => k.includes('RESEND')));
       return NextResponse.json(
-        { error: 'Email service not configured' },
+        { error: 'Email service not configured - missing API key' },
         { status: 500 }
       );
     }
+    
+    // Log API key status (first few chars only for security)
+    const apiKeyPrefix = process.env.RESEND_API_KEY.substring(0, 10);
+    console.log('[Email Plan API] RESEND_API_KEY found, prefix:', apiKeyPrefix + '...');
+    
+    // Check if from email is configured
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'WeLeap <vinod@weleap.ai>';
+    console.log('[Email Plan API] From email:', fromEmail);
 
     // Generate PDF - ensure planData is valid
     if (!planData || typeof planData !== 'object') {
@@ -82,9 +91,13 @@ export async function POST(request: NextRequest) {
     const waitlistUrl = 'https://www.weleap.ai';
 
     // Send email with PDF attachment
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'WeLeap <vinod@weleap.ai>';
     console.log('[Email Plan API] Attempting to send email via Resend...');
+    console.log('[Email Plan API] From:', fromEmail);
+    console.log('[Email Plan API] To:', email);
+    
     const { data, error: emailError } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'WeLeap <vinod@weleap.ai>',
+      from: fromEmail,
       to: email,
       subject: 'Your Salary vs. Rent Analysis from WeLeap',
       html: `
@@ -189,11 +202,18 @@ export async function POST(request: NextRequest) {
       
       // Handle Resend testing mode or domain verification errors
       if (statusCode === 403 && errorMessage.includes('testing emails')) {
-        userFriendlyError = 'Email service is currently in testing mode. Please contact support at vinod@weleap.ai to enable email sending.';
+        // In testing mode, Resend only allows sending to the account owner's email
+        // This usually means the API key is a test key, or the domain isn't verified
+        userFriendlyError = 'Email service is currently in testing mode. This may be due to domain verification or API key configuration. Please check Vercel environment variables.';
+        console.error('[Email Plan API] Testing mode error - check RESEND_API_KEY and domain verification in Resend dashboard');
       } else if (errorMessage.includes('domain is not verified') || errorMessage.includes('verify your domain')) {
         userFriendlyError = 'Email service is being set up. Please try again later or contact support.';
       } else if (statusCode === 403) {
-        userFriendlyError = 'Email service configuration issue. Please contact support at vinod@weleap.ai.';
+        userFriendlyError = 'Email service configuration issue. Please verify RESEND_API_KEY in Vercel environment variables.';
+        console.error('[Email Plan API] 403 error - verify RESEND_API_KEY is set correctly in Vercel');
+      } else if (statusCode === 401) {
+        userFriendlyError = 'Invalid API key. Please verify RESEND_API_KEY in Vercel environment variables.';
+        console.error('[Email Plan API] 401 error - RESEND_API_KEY may be invalid or expired');
       }
       
       return NextResponse.json(
