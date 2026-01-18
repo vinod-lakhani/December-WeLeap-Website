@@ -246,7 +246,7 @@ export function OfferTool() {
           )}
 
           {/* Start Date */}
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <Label htmlFor="startDate" className="text-[#111827]">
               Start Date <span className="text-red-500">*</span>
             </Label>
@@ -255,7 +255,7 @@ export function OfferTool() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px]"
+              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left"
             />
             <p className="text-xs text-[#111827]/60 mt-1">
               Used to understand timing before your first paycheck.
