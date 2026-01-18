@@ -212,7 +212,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       // Labels
       doc.fontSize(8).font('Times-Roman').fillColor('#111827').text('Take-home = 100%', barX, barY - 12);
       doc.fontSize(7).font('Times-Roman').fillColor('#6b7280').text('Rent band: 28–35% of take-home', barX, barY + barHeight + 5);
-      doc.fontSize(7).font('Times-Italic').fillColor('#6b7280').text('Keeps housing within an early-career safe band.', barX, barY + barHeight + 15);
+      doc.fontSize(6).font('Times-Roman').fillColor('#6b7280').text('The shaded band shows where rent stays manageable early in your career.', barX, barY + barHeight + 12);
       
       yPos += highlightBoxHeight + 8;
       doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text('If your rent is above this range, you\'ll likely feel tighter on savings and flexibility.', 50, yPos);
@@ -293,7 +293,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('What Happens Next (If You Use WeLeap)', 50, yPos);
       yPos += 18;
       
-      doc.fontSize(9).font('Times-Roman').fillColor('#374151').text('This playbook is a snapshot. WeLeap turns it into a live feed that helps you stay on track as real life hits.', 50, yPos, { width: pageWidth });
+      doc.fontSize(9).font('Times-Roman').fillColor('#374151').text('This playbook is a snapshot. WeLeap helps you adjust as paychecks, rent, and spending hit in the real world.', 50, yPos, { width: pageWidth });
       yPos += 18;
       
       // Bullets
