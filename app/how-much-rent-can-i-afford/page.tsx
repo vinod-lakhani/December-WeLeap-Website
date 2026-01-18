@@ -15,17 +15,20 @@ export default function HowMuchRentCanIAffordPage() {
       {/* Hero Section */}
       <Section variant="brand" className="text-center" isHero>
         <Container>
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>
+          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-6 md:mb-8")}>
             Don't let rent break your first paycheck.
           </h1>
-          <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto")}>
+          <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto mb-5 md:mb-6")}>
             Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
           </p>
-          <p className={cn("text-sm text-white/75 mt-3 max-w-2xl mx-auto")}>
+          <p className={cn("text-xs md:text-sm text-white/60 mt-4 max-w-2xl mx-auto")}>
             Most people overcommit on rent before they understand their real cash flow.
           </p>
-          <p className={cn("text-sm text-white/70 mt-2")}>
+          <p className={cn("text-sm text-white/70 mt-6 md:mt-8")}>
             Built for early-career decisions. Estimates only.
+          </p>
+          <p className={cn("text-xs text-white/60 mt-3")}>
+            Built for new grads and early-career professionals making their first big money decisions.
           </p>
         </Container>
       </Section>
@@ -38,52 +41,80 @@ export default function HowMuchRentCanIAffordPage() {
               How it works (30 seconds)
             </h2>
             
-            <div className="space-y-6 md:space-y-8">
+            <div className="space-y-8 md:space-y-10">
               {/* Step 1 */}
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                  Step 1: Start with your job offer
-                </h3>
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                  Enter your salary, city, and start date. We estimate your real take-home pay after taxes — the number that actually matters.
-                </p>
+              <div className="flex gap-4 md:gap-5">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-sm md:text-base font-semibold text-gray-600">1</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                    Start with your job offer
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                    Enter your salary, city, and start date. We estimate your real take-home pay after taxes — the number that actually matters.
+                  </p>
+                </div>
               </div>
 
               {/* Step 2 */}
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                  Step 2: See what rent really does
-                </h3>
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                  We translate that take-home pay into a safe rent range, upfront cash needs, and where things may get tight once bills hit.
-                </p>
+              <div className="flex gap-4 md:gap-5">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-sm md:text-base font-semibold text-gray-600">2</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                    See what rent really does
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                    We translate that take-home pay into a safe rent range, upfront cash needs, and where things may get tight once bills hit.
+                  </p>
+                </div>
               </div>
 
               {/* Step 3 */}
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                  Step 3: Get your Day 1 Playbook
-                </h3>
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                  We generate a simple, one-page plan you can save — and we email it to you so it's there when life starts moving fast.
-                </p>
+              <div className="flex gap-4 md:gap-5">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-sm md:text-base font-semibold text-gray-600">3</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                    Get your Day 1 Playbook
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                    We generate a simple, one-page plan you can save — and we email it to you so it's there when life starts moving fast.
+                  </p>
+                </div>
               </div>
 
               {/* Step 4 */}
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                  Step 4: Decide with confidence
-                </h3>
-                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                  Use the playbook to sanity-check apartments and avoid overcommitting before you sign a lease.
-                </p>
+              <div className="flex gap-4 md:gap-5">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-sm md:text-base font-semibold text-gray-600">4</span>
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                    Decide with confidence
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                    Use the playbook to sanity-check apartments and avoid overcommitting before you sign a lease.
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Differentiation Line */}
-            <div className="mt-10 md:mt-12 pt-8 md:pt-10 border-t border-gray-200">
-              <p className="text-sm md:text-base text-gray-600 text-center leading-relaxed">
-                Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
+            <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-gray-200">
+              <p className="text-sm md:text-base font-medium text-gray-700 text-center leading-relaxed italic">
+                <span className="font-semibold not-italic">Why this is different:</span> Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
               </p>
             </div>
           </div>
@@ -94,6 +125,9 @@ export default function HowMuchRentCanIAffordPage() {
       <Section variant="muted" className="bg-[#F9FAFB]">
         <Container>
           <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
+            <p className="text-center text-base md:text-lg text-gray-700 mb-6 md:mb-8 font-medium">
+              Enter your details to generate your Day 1 Playbook
+            </p>
             <OfferTool />
           </div>
         </Container>

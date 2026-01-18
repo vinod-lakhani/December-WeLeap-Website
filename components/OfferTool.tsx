@@ -276,7 +276,7 @@ export function OfferTool() {
             {isCalculating ? 'Calculating...' : 'See my rent reality'}
           </Button>
           <p className="text-xs text-gray-500 text-center mt-2">
-            Takes about 2 minutes. No signup required.
+            Takes about 2 minutes. We'll email your plan.
           </p>
         </CardContent>
       </Card>
