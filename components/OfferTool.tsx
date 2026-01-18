@@ -250,13 +250,25 @@ export function OfferTool() {
             <Label htmlFor="startDate" className="text-[#111827]">
               Start Date <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left"
-            />
+            <div className="relative">
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left w-full pr-10"
+                style={{
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'textfield',
+                }}
+              />
+              {/* Fallback calendar icon for mobile browsers that hide the native one */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 md:hidden">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 2V4M14 2V4M3 6H17M4 4H16C16.5304 4 17.0391 4.21071 17.4142 4.58579C17.7893 4.96086 18 5.46957 18 6V16C18 16.5304 17.7893 17.0391 17.4142 17.4142C17.0391 17.7893 16.5304 18 16 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V6C2 5.46957 2.21071 4.96086 2.58579 4.58579C2.96086 4.21071 3.46957 4 4 4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
             <p className="text-xs text-[#111827]/60 mt-1">
               Used to understand timing before your first paycheck.
             </p>
