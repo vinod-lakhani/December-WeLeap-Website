@@ -135,6 +135,52 @@ export function OfferTool() {
   const daysUntilStart = calculateDaysUntilStart(startDate);
   const budgetBreakdown = results ? calculateBudgetBreakdown(takeHomeMonthly) : null;
 
+  // Calculate upfront cash needed (for plan data)
+  const calculateUpfrontCash = () => {
+    if (!startDate || takeHomeMonthly === 0 || !rentRangeData) {
+      return { low: 0, high: 0 };
+    }
+    const gapDays = 14;
+    const depositLow = rentRangeLow;
+    const depositHigh = rentRangeHigh;
+    const firstMonthLow = rentRangeLow;
+    const firstMonthHigh = rentRangeHigh;
+    const gapLivingCosts = (takeHomeMonthly * 0.35) * (gapDays / 30);
+    const movingSetup = 600;
+    const totalLow = depositLow + firstMonthLow + gapLivingCosts + movingSetup;
+    const totalHigh = depositHigh + firstMonthHigh + gapLivingCosts + movingSetup;
+    return {
+      low: Math.round(totalLow / 100) * 100,
+      high: Math.round(totalHigh / 100) * 100,
+    };
+  };
+  const upfrontCash = calculateUpfrontCash();
+
+  // Prepare plan data for email
+  const planData = results ? {
+    salary,
+    city,
+    startDate,
+    debtMonthly: debtEnabled ? debtMonthly : undefined,
+    takeHomeMonthly,
+    takeHomeAnnual,
+    rentRange,
+    rentRangeLow,
+    rentRangeHigh,
+    daysUntilStart,
+    upfrontCashLow: upfrontCash.low,
+    upfrontCashHigh: upfrontCash.high,
+    budgetBreakdown: budgetBreakdown || undefined,
+    taxBreakdown: results ? {
+      grossAnnual: parseFloat(salary),
+      federalTaxAnnual: results.federalTaxAnnual,
+      stateTaxAnnual: results.stateTaxAnnual,
+      ficaTaxAnnual: results.ficaTaxAnnual,
+      totalTaxAnnual: results.totalTaxAnnual,
+      netIncomeAnnual: results.netIncomeAnnual,
+    } : undefined,
+  } : undefined;
+
   return (
     <div className="space-y-8">
       {/* Input Form */}
@@ -167,7 +213,7 @@ export function OfferTool() {
               <SelectTrigger id="city" className="border-[#D1D5DB]">
                 <SelectValue placeholder="Select a city" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 {availableCities.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
@@ -345,7 +391,7 @@ export function OfferTool() {
           </div>
 
           {/* Waitlist Form */}
-          <WaitlistForm />
+          <WaitlistForm planData={planData} />
         </div>
       )}
     </div>
