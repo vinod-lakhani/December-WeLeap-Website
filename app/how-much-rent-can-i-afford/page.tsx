@@ -13,7 +13,7 @@ export default function HowMuchRentCanIAffordPage() {
   return (
     <PageShell>
       {/* Hero Section */}
-      <Section variant="brand" className="text-center" isHero>
+      <Section variant="brand" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-6 md:mb-8")}>
             Don't let rent break your first paycheck.
@@ -112,9 +112,9 @@ export default function HowMuchRentCanIAffordPage() {
             </div>
 
             {/* Differentiation Line */}
-            <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-gray-200">
-              <p className="text-sm md:text-base font-medium text-gray-700 text-center leading-relaxed italic">
-                <span className="font-semibold not-italic">Why this is different:</span> Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
+            <div className="mt-12 md:mt-16 pt-8 md:pt-10 border-t border-gray-200 pl-6 md:pl-8 border-l-2 border-l-[#3F6B42]/20">
+              <p className="text-sm md:text-base text-gray-800 leading-relaxed">
+                <span className="font-bold text-[#111827]">Why this is different:</span> Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
               </p>
             </div>
           </div>
