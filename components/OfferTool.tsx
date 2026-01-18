@@ -273,8 +273,11 @@ export function OfferTool() {
             disabled={isCalculating}
             className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
           >
-            {isCalculating ? 'Calculating...' : 'Translate my offer'}
+            {isCalculating ? 'Calculating...' : 'See my rent reality'}
           </Button>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Takes about 2 minutes. No signup required.
+          </p>
         </CardContent>
       </Card>
 

@@ -16,13 +16,16 @@ export default function HowMuchRentCanIAffordPage() {
       <Section variant="brand" className="text-center" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>
-            See what your job offer really supports — and avoid risky rent decisions
+            Don't let rent break your first paycheck.
           </h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto")}>
-            Turn your job offer into a clear rent range — before you sign anything.
+            Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
+          </p>
+          <p className={cn("text-sm text-white/75 mt-3 max-w-2xl mx-auto")}>
+            Most people overcommit on rent before they understand their real cash flow.
           </p>
           <p className={cn("text-sm text-white/70 mt-2")}>
-            No download. No jargon. Estimates only.
+            Built for early-career decisions. Estimates only.
           </p>
         </Container>
       </Section>
