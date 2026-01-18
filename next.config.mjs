@@ -17,6 +17,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  
+  // Ensure PDFKit's data files are included in serverless builds
+  serverExternalPackages: ['pdfkit'],
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
       // Fix for @react-pdf/renderer in Next.js
