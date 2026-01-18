@@ -24,21 +24,26 @@ const nextConfig = {
       
       // Copy PDFKit font files to server build output (needed for both dev and production)
       // Only apply to server-side builds to avoid interfering with client chunks
-      if (CopyWebpackPlugin) {
-        config.plugins.push(
-          new CopyWebpackPlugin({
-            patterns: [
-              {
-                from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
-                to: path.join(__dirname, '.next/server/vendor-chunks/data'),
-                noErrorOnMissing: true,
-                globOptions: {
-                  ignore: ['**/.DS_Store'],
+      try {
+        if (CopyWebpackPlugin) {
+          config.plugins.push(
+            new CopyWebpackPlugin({
+              patterns: [
+                {
+                  from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
+                  to: path.join(__dirname, '.next/server/vendor-chunks/data'),
+                  noErrorOnMissing: true,
+                  globOptions: {
+                    ignore: ['**/.DS_Store'],
+                  },
                 },
-              },
-            ],
-          })
-        );
+              ],
+            })
+          );
+        }
+      } catch (pluginError) {
+        console.warn('[Next Config] CopyWebpackPlugin error (non-critical):', pluginError);
+        // Continue without the plugin - PDFKit should work with built-in fonts
       }
     }
     return config;
