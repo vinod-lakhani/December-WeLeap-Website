@@ -53,8 +53,10 @@ export async function POST(request: NextRequest) {
     
     // Always use verified email address (vinod@weleap.ai) - never use resend.dev testing domain
     // Override any environment variable that might be set to a testing domain
-    const fromEmail = 'vinod@weleap.ai'; // Always use verified domain email address
-    console.log('[Email Plan API] From email:', fromEmail);
+    // Use format with display name as Resend expects: "Display Name <email@domain.com>"
+    const fromEmail = 'WeLeap <vinod@weleap.ai>'; // Always use verified domain email address
+    console.log('[Email Plan API] From email (hardcoded):', fromEmail);
+    console.log('[Email Plan API] RESEND_FROM_EMAIL env var (if set):', process.env.RESEND_FROM_EMAIL || 'NOT SET');
 
     // Generate PDF - ensure planData is valid
     if (!planData || typeof planData !== 'object') {
