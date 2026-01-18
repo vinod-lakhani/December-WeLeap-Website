@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           </p>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Attached is your <strong>Salary vs. Rent analysis</strong> — the real numbers behind your offer letter and apartment.
+            Attached is your <strong>Salary vs. Rent analysis</strong> — the real numbers behind your offer letter and rent affordability.
           </p>
           
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
