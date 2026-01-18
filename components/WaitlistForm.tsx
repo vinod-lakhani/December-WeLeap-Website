@@ -88,13 +88,16 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
   return (
     <Card className="border-[#D1D5DB] bg-white">
       <CardHeader>
-        <CardTitle className="text-xl text-[#111827]">Want to keep your plan?</CardTitle>
+        <CardTitle className="text-xl text-[#111827]">You earned the salary. Now protect it.</CardTitle>
       </CardHeader>
       <CardContent>
+        <p className="text-sm text-gray-600 mb-4">
+          Create your Day 1 Protocol in 5 minutes. We'll email you a clear plan based on your numbers, so you're not guessing once rent and paychecks start hitting.
+        </p>
         <Dialog>
           <DialogTrigger asChild>
             <Button className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-              Email me my plan
+              Create My Day 1 Playbook
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
