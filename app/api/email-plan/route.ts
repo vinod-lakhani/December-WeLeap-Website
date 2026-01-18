@@ -94,12 +94,22 @@ export async function POST(request: NextRequest) {
     const waitlistUrl = 'https://www.weleap.ai';
 
     // Send email with PDF attachment (fromEmail is already defined above)
+    // Double-check that we're not using resend.dev domain
+    const finalFromEmail = fromEmail.includes('resend.dev') 
+      ? 'WeLeap <vinod@weleap.ai>' 
+      : fromEmail;
+    
     console.log('[Email Plan API] Attempting to send email via Resend...');
-    console.log('[Email Plan API] From:', fromEmail);
+    console.log('[Email Plan API] Final from email (after safety check):', finalFromEmail);
     console.log('[Email Plan API] To:', email);
     
+    if (finalFromEmail.includes('resend.dev')) {
+      console.error('[Email Plan API] ERROR: Still using resend.dev domain! This should never happen!');
+      throw new Error('Cannot use resend.dev testing domain. Email sending aborted.');
+    }
+    
     const { data, error: emailError } = await resend.emails.send({
-      from: fromEmail,
+      from: finalFromEmail,
       to: email,
       subject: 'Your Salary vs. Rent Analysis from WeLeap',
       html: `
