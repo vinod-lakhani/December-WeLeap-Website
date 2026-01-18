@@ -176,20 +176,32 @@ export async function POST(request: NextRequest) {
     if (emailError) {
       console.error('[Email Plan API] Resend error:', JSON.stringify(emailError, null, 2));
       
-      // Check for domain verification error
+      // Check for domain verification or testing mode error
       const errorMessage = typeof emailError === 'object' && emailError !== null 
         ? (emailError as any).message || JSON.stringify(emailError)
         : String(emailError);
       
+      const statusCode = typeof emailError === 'object' && emailError !== null 
+        ? (emailError as any).statusCode 
+        : undefined;
+      
       let userFriendlyError = 'Failed to send email';
-      if (errorMessage.includes('domain is not verified') || errorMessage.includes('verify your domain')) {
+      
+      // Handle Resend testing mode or domain verification errors
+      if (statusCode === 403 && errorMessage.includes('testing emails')) {
+        userFriendlyError = 'Email service is currently in testing mode. Please contact support at vinod@weleap.ai to enable email sending.';
+      } else if (errorMessage.includes('domain is not verified') || errorMessage.includes('verify your domain')) {
         userFriendlyError = 'Email service is being set up. Please try again later or contact support.';
+      } else if (statusCode === 403) {
+        userFriendlyError = 'Email service configuration issue. Please contact support at vinod@weleap.ai.';
       }
       
       return NextResponse.json(
         { 
           error: userFriendlyError,
-          details: emailError instanceof Error ? emailError.message : errorMessage
+          details: process.env.NODE_ENV === 'development' 
+            ? (emailError instanceof Error ? emailError.message : errorMessage)
+            : undefined
         },
         { status: 500 }
       );
