@@ -250,9 +250,17 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('[Email Plan API] Error:', error);
+    console.error('[Email Plan API] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('[Email Plan API] Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    
+    // Provide more detailed error message for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send plan';
+    const errorDetails = error instanceof Error && error.stack ? error.stack : String(error);
+    
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to send plan',
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
       },
       { status: 500 }
     );

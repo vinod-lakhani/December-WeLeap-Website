@@ -49,11 +49,19 @@ function formatDate(dateString: string): string {
  */
 export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margins: { top: 40, bottom: 40, left: 40, right: 40 },
-      font: 'Times-Roman', // Explicitly set default font to avoid Helvetica
-    });
+    let doc: PDFKit.PDFDocument;
+    
+    try {
+      doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: 40, bottom: 40, left: 40, right: 40 },
+        font: 'Times-Roman', // Explicitly set default font to avoid Helvetica
+      });
+    } catch (initError) {
+      console.error('[PDF Generation] PDFDocument initialization error:', initError);
+      reject(new Error('Failed to initialize PDF document: ' + (initError instanceof Error ? initError.message : String(initError))));
+      return;
+    }
 
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -61,7 +69,10 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       const pdfBuffer = Buffer.concat(buffers);
       resolve(pdfBuffer);
     });
-    doc.on('error', (error: Error) => reject(error));
+    doc.on('error', (error: Error) => {
+      console.error('[PDF Generation] PDFDocument error event:', error);
+      reject(error);
+    });
 
     try {
       // Explicitly set the default font to Times-Roman to avoid Helvetica
@@ -161,6 +172,8 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       // End the document to trigger the 'end' event
       doc.end();
     } catch (error) {
+      console.error('[PDF Generation] Error during PDF content generation:', error);
+      console.error('[PDF Generation] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       reject(error instanceof Error ? error : new Error('Unknown error in PDF generation'));
     }
   });
