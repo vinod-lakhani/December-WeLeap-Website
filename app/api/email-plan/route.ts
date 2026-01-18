@@ -90,8 +90,7 @@ export async function POST(request: NextRequest) {
     // Get site URL for waitlist link
     const waitlistUrl = 'https://www.weleap.ai';
 
-    // Send email with PDF attachment
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'WeLeap <vinod@weleap.ai>';
+    // Send email with PDF attachment (fromEmail is already defined above)
     console.log('[Email Plan API] Attempting to send email via Resend...');
     console.log('[Email Plan API] From:', fromEmail);
     console.log('[Email Plan API] To:', email);
