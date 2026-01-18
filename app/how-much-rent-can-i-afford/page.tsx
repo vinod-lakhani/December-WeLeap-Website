@@ -30,6 +30,66 @@ export default function HowMuchRentCanIAffordPage() {
         </Container>
       </Section>
 
+      {/* How it works Section */}
+      <Section variant="white" className="bg-white">
+        <Container>
+          <div className="max-w-3xl mx-auto">
+            <h2 className={cn(TYPOGRAPHY.h2, "text-[#111827] mb-8 md:mb-10 text-center")}>
+              How it works (30 seconds)
+            </h2>
+            
+            <div className="space-y-6 md:space-y-8">
+              {/* Step 1 */}
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                  Step 1: Start with your job offer
+                </h3>
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                  Enter your salary, city, and start date. We estimate your real take-home pay after taxes — the number that actually matters.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                  Step 2: See what rent really does
+                </h3>
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                  We translate that take-home pay into a safe rent range, upfront cash needs, and where things may get tight once bills hit.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                  Step 3: Get your Day 1 Playbook
+                </h3>
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                  We generate a simple, one-page plan you can save — and we email it to you so it's there when life starts moving fast.
+                </p>
+              </div>
+
+              {/* Step 4 */}
+              <div>
+                <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
+                  Step 4: Decide with confidence
+                </h3>
+                <p className="text-base md:text-lg text-gray-700 leading-relaxed">
+                  Use the playbook to sanity-check apartments and avoid overcommitting before you sign a lease.
+                </p>
+              </div>
+            </div>
+
+            {/* Differentiation Line */}
+            <div className="mt-10 md:mt-12 pt-8 md:pt-10 border-t border-gray-200">
+              <p className="text-sm md:text-base text-gray-600 text-center leading-relaxed">
+                Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
+              </p>
+            </div>
+          </div>
+        </Container>
+      </Section>
+
       {/* Calculator Section */}
       <Section variant="muted" className="bg-[#F9FAFB]">
         <Container>
