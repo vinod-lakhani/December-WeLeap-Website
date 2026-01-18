@@ -54,10 +54,23 @@ export async function POST(request: NextRequest) {
     // Generate PDF buffer using pdfkit
     let pdfBuffer: Buffer;
     try {
+      console.log('[Email Plan API] Starting PDF generation...');
       pdfBuffer = await generatePlanPDFBuffer(planData);
       console.log('[Email Plan API] PDF generated successfully, size:', pdfBuffer.length, 'bytes');
     } catch (pdfError) {
       console.error('[Email Plan API] PDF generation error:', pdfError);
+      console.error('[Email Plan API] PDF error type:', typeof pdfError);
+      console.error('[Email Plan API] PDF error instanceof Error:', pdfError instanceof Error);
+      if (pdfError instanceof Error) {
+        console.error('[Email Plan API] PDF error message:', pdfError.message);
+        console.error('[Email Plan API] PDF error stack:', pdfError.stack);
+      }
+      // Log full error details for debugging
+      try {
+        console.error('[Email Plan API] PDF error JSON:', JSON.stringify(pdfError, Object.getOwnPropertyNames(pdfError)));
+      } catch (e) {
+        console.error('[Email Plan API] Could not stringify PDF error');
+      }
       throw new Error('Failed to generate PDF: ' + (pdfError instanceof Error ? pdfError.message : 'Unknown error'));
     }
 
