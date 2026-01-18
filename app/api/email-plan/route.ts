@@ -178,19 +178,19 @@ export async function POST(request: NextRequest) {
             For now, save this email — it's your <strong>Day 1 reference point</strong>.
           </p>
           
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-top: 32px; margin-bottom: 8px;">
+            Rooting for you,
+          </p>
+          
+          <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 24px;">
+            <strong>Vinod - Founder, WeLeap</strong>
+          </p>
+          
           <div style="text-align: center; margin: 32px 0;">
             <a href="${waitlistUrl}" style="display: inline-block; background-color: #3F6B42; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
               Join the WeLeap Waitlist
             </a>
           </div>
-          
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-top: 32px; margin-bottom: 8px;">
-            Rooting for you,
-          </p>
-          
-          <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 0;">
-            <strong>The WeLeap Team</strong>
-          </p>
         </div>
       `,
       attachments: [

@@ -86,8 +86,8 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       try {
         const logoPath = path.join(process.cwd(), 'public', 'images', 'weleap-logo.png');
         if (fs.existsSync(logoPath)) {
-          // Size logo appropriately for header (smaller)
-          doc.image(logoPath, 50, 48, { width: 25, height: 25, fit: [25, 25] });
+          // Size logo appropriately for header
+          doc.image(logoPath, 50, 48, { width: 35, height: 35, fit: [35, 35] });
         }
       } catch (logoError) {
         // Fallback to text if logo not found
@@ -266,16 +266,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       }
       
       // ========== SECTION E: YOUR CONTEXT (QUIET) ==========
-      doc.fontSize(10).font('Times-Bold').fillColor('#6b7280').text('Your Details', 50, yPos);
-      yPos += 12;
-      
-      const formattedStartDate = formatDate(planData.startDate);
-      doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text(`City: ${planData.city}`, 50, yPos);
-      if (formattedStartDate) {
-        doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text(`Start date: ${formattedStartDate}`, 50, yPos + 10);
-      }
-      doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text(`Days until start: ${planData.daysUntilStart} ${planData.daysUntilStart === 1 ? 'day' : 'days'}`, 50, yPos + 20);
-      yPos += 35;
+      // Removed "Your Details" section to create more space
       
       // ========== SECTION F: WELEAP HANDOFF ==========
       doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('What Happens Next (If You Use WeLeap)', 50, yPos);
