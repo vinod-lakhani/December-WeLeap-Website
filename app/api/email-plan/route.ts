@@ -51,13 +51,9 @@ export async function POST(request: NextRequest) {
     const apiKeyPrefix = process.env.RESEND_API_KEY.substring(0, 10);
     console.log('[Email Plan API] RESEND_API_KEY found, prefix:', apiKeyPrefix + '...');
     
-    // Use verified email address (never use resend.dev testing domain)
-    // If RESEND_FROM_EMAIL is set to a testing domain, override it
-    let fromEmail = process.env.RESEND_FROM_EMAIL || 'WeLeap <vinod@weleap.ai>';
-    if (fromEmail.includes('resend.dev')) {
-      console.warn('[Email Plan API] Detected resend.dev testing domain, overriding to vinod@weleap.ai');
-      fromEmail = 'WeLeap <vinod@weleap.ai>';
-    }
+    // Always use verified email address (vinod@weleap.ai) - never use resend.dev testing domain
+    // Override any environment variable that might be set to a testing domain
+    const fromEmail = 'vinod@weleap.ai'; // Always use verified domain email address
     console.log('[Email Plan API] From email:', fromEmail);
 
     // Generate PDF - ensure planData is valid
