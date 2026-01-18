@@ -26,6 +26,7 @@ const nextConfig = {
       config.externals = [...(config.externals || []), 'canvas', 'fs'];
       
       // Copy PDFKit font files to server build output (needed for both dev and production)
+      // Copy to multiple locations to handle different paths PDFKit might check
       // Only apply to server-side builds to avoid interfering with client chunks
       try {
         if (CopyWebpackPlugin) {
@@ -35,6 +36,22 @@ const nextConfig = {
                 {
                   from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
                   to: path.join(__dirname, '.next/server/vendor-chunks/data'),
+                  noErrorOnMissing: true,
+                  globOptions: {
+                    ignore: ['**/.DS_Store'],
+                  },
+                },
+                {
+                  from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
+                  to: path.join(__dirname, '.next/server/app/api/email-plan/data'),
+                  noErrorOnMissing: true,
+                  globOptions: {
+                    ignore: ['**/.DS_Store'],
+                  },
+                },
+                {
+                  from: path.join(__dirname, 'node_modules/pdfkit/js/data'),
+                  to: path.join(__dirname, '.next/server/data'),
                   noErrorOnMissing: true,
                   globOptions: {
                     ignore: ['**/.DS_Store'],
