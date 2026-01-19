@@ -50,20 +50,6 @@ export default function HowMuchRentCanIAffordPage() {
     };
   }, []);
 
-  // Handle hero CTA click (scroll to form)
-  // Note: Currently there's no hero CTA button, but this is ready if one is added
-  const handleHeroCTAClick = () => {
-    track('hero_cta_click', {
-      page: '/how-much-rent-can-i-afford',
-      tool_version: 'rent_tool_v1',
-    });
-    
-    // Scroll to calculator section
-    const calculatorSection = document.getElementById('calculator');
-    if (calculatorSection) {
-      calculatorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   return (
     <PageShell>

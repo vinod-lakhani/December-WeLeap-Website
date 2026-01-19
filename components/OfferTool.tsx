@@ -84,6 +84,12 @@ export function OfferTool() {
   };
 
   const handleCalculate = async () => {
+    // Track hero CTA click (this is the "See my rent reality" button)
+    track('hero_cta_click', {
+      page: '/how-much-rent-can-i-afford',
+      tool_version: 'rent_tool_v1',
+    });
+    
     setError(null);
     
     if (!salary || !city || !startDate) {
