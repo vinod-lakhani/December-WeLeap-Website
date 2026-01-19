@@ -17,21 +17,23 @@ This report tracks users from page load → email sent.
 
 ### Step 3: Configure the Funnel Steps
 
+**Important**: If an event doesn't appear in the dropdown, you can manually type it. GA4's autocomplete only shows events with significant volume, but all events are available if you type them.
+
 #### Step 1: Page View
 - **Step name**: `Page Loaded`
 - **Step definition**: 
-  - Dimension: `Event name`
-  - Condition: `exactly matches`
-  - Value: `rent_tool_page_view`
-  - **Note**: If `rent_tool_page_view` isn't showing up, you can use the automatic `page_view` event and filter by page path, OR check that cookie consent is accepted and GA4 is loading properly
+  - Click on **Dimension** dropdown → Search or type `Event name` → Select it
+  - **Condition**: Select `exactly matches` from dropdown
+  - **Value**: Type `rent_tool_page_view` (even if it doesn't appear in autocomplete)
+  - **Note**: If `rent_tool_page_view` doesn't work, you can use `page_view` with an additional filter: add `AND` condition → `Page path` → `exactly matches` → `/how-much-rent-can-i-afford`
 - Click **+ Add step**
 
 #### Step 2: Scrolled Past How It Works
 - **Step name**: `Engaged (Scrolled)`
 - **Step definition**: 
-  - Dimension: `Event name`
+  - Dimension: `Event name` (same as above)
   - Condition: `exactly matches`
-  - Value: `scrolled_past_how_it_works`
+  - **Value**: Type `scrolled_past_how_it_works` (manually type if not in dropdown)
 - Click **+ Add step**
 
 #### Step 3: Form Started
@@ -39,7 +41,7 @@ This report tracks users from page load → email sent.
 - **Step definition**: 
   - Dimension: `Event name`
   - Condition: `exactly matches`
-  - Value: `rent_form_start`
+  - **Value**: Type `rent_form_start` (manually type if not in dropdown)
 - Click **+ Add step**
 
 #### Step 4: Form Submitted
@@ -47,7 +49,7 @@ This report tracks users from page load → email sent.
 - **Step definition**: 
   - Dimension: `Event name`
   - Condition: `exactly matches`
-  - Value: `rent_form_submit`
+  - **Value**: Type `rent_form_submit` (manually type if not in dropdown)
 - Click **+ Add step**
 
 #### Step 5: Playbook Generated
@@ -55,7 +57,7 @@ This report tracks users from page load → email sent.
 - **Step definition**: 
   - Dimension: `Event name`
   - Condition: `exactly matches`
-  - Value: `playbook_generated`
+  - **Value**: Type `playbook_generated` (manually type if not in dropdown)
 - Click **+ Add step**
 
 #### Step 6: Email Sent (Conversion)
@@ -63,7 +65,7 @@ This report tracks users from page load → email sent.
 - **Step definition**: 
   - Dimension: `Event name`
   - Condition: `exactly matches`
-  - Value: `playbook_email_sent`
+  - **Value**: Type `playbook_email_sent` (manually type if not in dropdown)
 - Click **+ Add step**
 
 ### Step 4: Configure Settings
@@ -76,10 +78,31 @@ This report tracks users from page load → email sent.
    - City tier
    - Salary bucket
 
-### Step 5: Save the Report
+### Step 5: Verify Events are Working
+Before saving, verify the funnel will have data:
+1. Go to **Reports** → **Realtime** → **Event count by Event name**
+2. Make sure you see these events in the last 30 minutes:
+   - `rent_tool_page_view`
+   - `rent_form_start` (if someone started filling the form)
+   - `rent_form_submit` (if someone submitted)
+   - `playbook_generated` (if someone got results)
+   - `playbook_email_sent` (if someone received email)
+3. If events don't show up, they may not have fired yet, but you can still create the funnel - it will show data as events occur
+
+### Step 6: Save the Report
 1. Click **Save** in the top right
 2. Give it a name: **"Rent Tool Conversion Funnel"**
 3. It will appear in your **Saved explorations** list
+
+### Troubleshooting: Events Not in Dropdown
+**If events don't appear in the autocomplete dropdown:**
+1. **Type them manually** - GA4 allows you to type any event name, even if it's not in the dropdown
+2. **Wait 24-48 hours** - New events need time to be fully indexed by GA4
+3. **Check Realtime view first** - If you see the event in Realtime, it exists and can be typed manually
+4. **Verify event names are exact** - Event names are case-sensitive and must match exactly:
+   - ✅ `rent_tool_page_view` (correct)
+   - ❌ `rentToolPageView` (wrong - wrong case)
+   - ❌ `rent_tool_pageview` (wrong - missing underscore)
 
 ---
 
