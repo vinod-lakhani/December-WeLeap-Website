@@ -65,7 +65,7 @@ export default function HowMuchRentCanIAffordPage() {
           <p className={cn("text-xs md:text-sm text-white/60 mt-4 max-w-2xl mx-auto")}>
             Most people overcommit on rent before they understand their real cash flow.
           </p>
-          <p className={cn("text-sm text-white/70 mt-6 md:mt-8")}>
+          <p className={cn("text-xs md:text-sm text-white/60 mt-6 md:mt-8 max-w-2xl mx-auto")}>
             Built for early-career decisions. Estimates only.
           </p>
         </Container>
