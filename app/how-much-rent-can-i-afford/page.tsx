@@ -68,9 +68,6 @@ export default function HowMuchRentCanIAffordPage() {
           <p className={cn("text-sm text-white/70 mt-6 md:mt-8")}>
             Built for early-career decisions. Estimates only.
           </p>
-          <p className={cn("text-xs text-white/60 mt-3")}>
-            Built for new grads and early-career professionals making their first big money decisions.
-          </p>
         </Container>
       </Section>
 
