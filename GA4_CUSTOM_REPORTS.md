@@ -72,11 +72,13 @@ This report tracks users from page load → email sent.
 1. **Time period**: Select your desired date range (e.g., Last 30 days, Last 7 days)
 2. **Open step settings** (⚙️ icon):
    - **Funnel visualization**: Select "Standard"
-   - **Breakdown dimension**: (Optional) Select `City tier` or `Salary bucket` to see conversions by segment
+   - **Breakdown dimension**: (Optional) Select `City Tier` or `Salary Bucket` to see conversions by segment
+     - **Note**: These dimensions won't appear until you register them as Custom Dimensions in GA4 Admin
+     - See `GA4_CUSTOM_DIMENSIONS_SETUP.md` for step-by-step instructions
 3. **Comparison**: (Optional) Add comparisons like:
    - Device category (Desktop vs Mobile)
-   - City tier
-   - Salary bucket
+   - City Tier (after registering custom dimension)
+   - Salary Bucket (after registering custom dimension)
 
 ### Step 5: Verify Events are Working
 Before saving, verify the funnel will have data:
@@ -119,10 +121,10 @@ A quick overview of all rent tool events and their performance.
 #### Variables Panel (Left Side):
 1. **Dimensions** (drag these in):
    - `Event name`
-   - `City tier`
-   - `Salary bucket`
-   - `Rent ratio bucket`
-   - `Days until start bucket`
+   - `City Tier` (custom dimension - must register first, see `GA4_CUSTOM_DIMENSIONS_SETUP.md`)
+   - `Salary Bucket` (custom dimension - must register first)
+   - `Rent Ratio Bucket` (custom dimension - must register first)
+   - `Days Until Start Bucket` (custom dimension - must register first)
 
 2. **Metrics** (drag these in):
    - `Event count`
