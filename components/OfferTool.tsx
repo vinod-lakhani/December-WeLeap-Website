@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,12 @@ import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import {
+  bucketSalary,
+  bucketRentRatio,
+  bucketDaysUntilStart,
+  mapCityToTier,
+} from '@/lib/buckets';
 
 interface TaxCalculationResult {
   federalTaxAnnual: number;
@@ -48,9 +54,23 @@ export function OfferTool() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [results, setResults] = useState<TaxCalculationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track form start (fire once on first interaction)
+  const formStartedRef = useRef(false);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
+
+  // Track form start on first focus/input
+  const handleFormStart = () => {
+    if (!formStartedRef.current) {
+      formStartedRef.current = true;
+      track('rent_form_start', {
+        page: '/how-much-rent-can-i-afford',
+        tool_version: 'rent_tool_v1',
+      });
+    }
+  };
 
   const calculateDaysUntilStart = (dateString: string): number => {
     if (!dateString) return 0;
@@ -110,10 +130,35 @@ export function OfferTool() {
 
       const taxData: TaxCalculationResult = await taxResponse.json();
       setResults(taxData);
-      track('offer_tool_calculated', {
-        salary: salaryNum,
-        city,
-        state: stateCode,
+      
+      // Track form submit with bucketed parameters
+      const takeHomeMonthlyAfterTax = taxData.netIncomeAnnual / 12;
+      const rentRangeAfterSubmit = calculateRentRange(takeHomeMonthlyAfterTax, debtAmount);
+      
+      track('rent_form_submit', {
+        page: '/how-much-rent-can-i-afford',
+        tool_version: 'rent_tool_v1',
+        salary_bucket: bucketSalary(salaryNum),
+        city_tier: mapCityToTier(city),
+        days_until_start_bucket: bucketDaysUntilStart(startDate),
+        // Rent ratio will be calculated after we have the rent range
+        rent_ratio_bucket: bucketRentRatio(
+          (rentRangeAfterSubmit.low + rentRangeAfterSubmit.high) / 2,
+          takeHomeMonthlyAfterTax
+        ),
+      });
+      
+      // Track playbook generated (after successful calculation)
+      track('playbook_generated', {
+        page: '/how-much-rent-can-i-afford',
+        tool_version: 'rent_tool_v1',
+        salary_bucket: bucketSalary(salaryNum),
+        city_tier: mapCityToTier(city),
+        days_until_start_bucket: bucketDaysUntilStart(startDate),
+        rent_ratio_bucket: bucketRentRatio(
+          (rentRangeAfterSubmit.low + rentRangeAfterSubmit.high) / 2,
+          takeHomeMonthlyAfterTax
+        ),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -199,7 +244,11 @@ export function OfferTool() {
               type="number"
               placeholder="e.g., 75000"
               value={salary}
-              onChange={(e) => setSalary(e.target.value)}
+              onChange={(e) => {
+                setSalary(e.target.value);
+                handleFormStart();
+              }}
+              onFocus={handleFormStart}
               className="border-[#D1D5DB] !placeholder:text-[#111827]/40"
             />
           </div>
@@ -209,8 +258,15 @@ export function OfferTool() {
             <Label htmlFor="city" className="text-[#111827]">
               City <span className="text-red-500">*</span>
             </Label>
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger id="city" className="border-[#D1D5DB]">
+            <Select value={city} onValueChange={(value) => {
+              setCity(value);
+              handleFormStart();
+            }}>
+              <SelectTrigger
+                id="city"
+                className="border-[#D1D5DB]"
+                onFocus={handleFormStart}
+              >
                 <SelectValue placeholder="Select a city" />
               </SelectTrigger>
               <SelectContent className="z-[100]">
@@ -251,17 +307,21 @@ export function OfferTool() {
               Start Date <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left w-full pr-10"
-                style={{
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'textfield',
-                }}
-              />
+            <Input
+              id="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                handleFormStart();
+              }}
+              onFocus={handleFormStart}
+              className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left w-full pr-10"
+              style={{
+                WebkitAppearance: 'none',
+                MozAppearance: 'textfield',
+              }}
+            />
               {/* Fallback calendar icon for mobile browsers that hide the native one */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 md:hidden">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">

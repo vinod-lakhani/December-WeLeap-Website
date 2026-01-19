@@ -13,6 +13,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { track } from '@/lib/analytics';
+import {
+  bucketSalary,
+  bucketRentRatio,
+  bucketDaysUntilStart,
+  mapCityToTier,
+} from '@/lib/buckets';
 
 interface PlanData {
   salary: string;
@@ -75,6 +82,21 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
         const errorMsg = data.error || 'Failed to send plan';
         const details = data.details ? ` (${data.details})` : '';
         throw new Error(errorMsg + details);
+      }
+
+      // Track playbook email sent after successful send
+      if (planData) {
+        const salaryNum = parseFloat(planData.salary);
+        const rentMidpoint = (planData.rentRangeLow + planData.rentRangeHigh) / 2;
+        
+        track('playbook_email_sent', {
+          page: '/how-much-rent-can-i-afford',
+          tool_version: 'rent_tool_v1',
+          salary_bucket: bucketSalary(salaryNum),
+          city_tier: mapCityToTier(planData.city),
+          days_until_start_bucket: bucketDaysUntilStart(planData.startDate),
+          rent_ratio_bucket: bucketRentRatio(rentMidpoint, planData.takeHomeMonthly),
+        });
       }
 
       setIsSubmitted(true);

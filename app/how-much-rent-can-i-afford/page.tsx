@@ -1,15 +1,70 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
 import { OfferTool } from '@/components/OfferTool';
 import { PageShell, Section, Container } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-
-export const metadata = {
-  title: 'How much rent can I afford? | WeLeap',
-  description: 'Turn your job offer into a clear rent range — before you sign anything.',
-};
+import { track } from '@/lib/analytics';
 
 export default function HowMuchRentCanIAffordPage() {
+  // Track page view on mount
+  useEffect(() => {
+    track('rent_tool_page_view', {
+      page: '/how-much-rent-can-i-afford',
+      tool_version: 'rent_tool_v1',
+    });
+  }, []);
+
+  // Track scroll past "How it works" section
+  const howItWorksSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (!howItWorksSentinelRef.current || scrollTrackedRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !scrollTrackedRef.current) {
+            scrollTrackedRef.current = true;
+            track('scrolled_past_how_it_works', {
+              page: '/how-much-rent-can-i-afford',
+              tool_version: 'rent_tool_v1',
+            });
+            observer.disconnect();
+          }
+        });
+      },
+      {
+        // Trigger when element enters viewport
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(howItWorksSentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Handle hero CTA click (scroll to form)
+  // Note: Currently there's no hero CTA button, but this is ready if one is added
+  const handleHeroCTAClick = () => {
+    track('hero_cta_click', {
+      page: '/how-much-rent-can-i-afford',
+      tool_version: 'rent_tool_v1',
+    });
+    
+    // Scroll to calculator section
+    const calculatorSection = document.getElementById('calculator');
+    if (calculatorSection) {
+      calculatorSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <PageShell>
       {/* Hero Section */}
@@ -117,6 +172,9 @@ export default function HowMuchRentCanIAffordPage() {
                 <span className="font-bold text-[#111827]">Why this is different:</span> Most rent calculators stop at a number. This shows you what life actually looks like after you sign.
               </p>
             </div>
+            
+            {/* Sentinel element for scroll tracking */}
+            <div ref={howItWorksSentinelRef} className="absolute bottom-0 w-full h-1" />
           </div>
         </Container>
       </Section>
