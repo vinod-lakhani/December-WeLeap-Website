@@ -9,12 +9,18 @@ import Link from 'next/link';
 import { track } from '@/lib/analytics';
 
 export default function HowMuchRentCanIAffordPage() {
-  // Track page view on mount
+  // Track page view on mount - wait for gtag to be available
   useEffect(() => {
-    track('rent_tool_page_view', {
-      page: '/how-much-rent-can-i-afford',
-      tool_version: 'rent_tool_v1',
-    });
+    // Use a small delay to ensure GA4 script has loaded
+    const timer = setTimeout(() => {
+      // Don't await - fire and forget, but waitForGtagLoading will handle the waiting
+      track('rent_tool_page_view', {
+        page: '/how-much-rent-can-i-afford',
+        tool_version: 'rent_tool_v1',
+      }, true); // true = wait for gtag to load (up to 3 seconds)
+    }, 500); // Give GA4 a bit more time to initialize
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Track scroll past "How it works" section

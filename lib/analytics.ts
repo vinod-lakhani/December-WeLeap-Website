@@ -31,12 +31,45 @@ declare global {
 }
 
 /**
+ * Wait for gtag to be available (with timeout)
+ * Useful when GA4 is loaded asynchronously
+ */
+function waitForGtag(maxWaitMs: number = 3000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('Not in browser'));
+      return;
+    }
+
+    if (typeof window.gtag === 'function') {
+      resolve();
+      return;
+    }
+
+    const startTime = Date.now();
+    const checkInterval = setInterval(() => {
+      if (typeof window.gtag === 'function') {
+        clearInterval(checkInterval);
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startTime > maxWaitMs) {
+        clearInterval(checkInterval);
+        reject(new Error('gtag timeout'));
+      }
+    }, 100);
+  });
+}
+
+/**
  * Track a GA4 event
  * 
  * @param eventName - The GA4 event name
  * @param params - Event parameters (must not contain PII)
+ * @param waitForGtagLoading - If true, waits for gtag to load before sending (default: false for most events, true for critical page view events)
  */
-export function track(eventName: string, params?: Record<string, any>) {
+export async function track(eventName: string, params?: Record<string, any>, waitForGtagLoading: boolean = false) {
   // Debug logging when enabled
   if (DEBUG_ANALYTICS || (typeof window !== 'undefined' && (window as any).DEBUG_ANALYTICS)) {
     console.log('[Analytics]', eventName, params || '');
@@ -45,6 +78,18 @@ export function track(eventName: string, params?: Record<string, any>) {
   // Only run in browser
   if (typeof window === 'undefined') {
     return;
+  }
+
+  // For critical events like page views, wait for gtag to load
+  if (waitForGtagLoading && typeof window.gtag !== 'function') {
+    try {
+      await waitForGtag(3000); // Wait up to 3 seconds
+    } catch (error) {
+      if (DEBUG_ANALYTICS) {
+        console.warn('[Analytics] gtag not available after waiting, event not sent:', eventName);
+      }
+      return;
+    }
   }
 
   // Check if gtag is available
