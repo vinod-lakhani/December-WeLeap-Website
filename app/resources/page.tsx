@@ -259,6 +259,13 @@ export default function ResourcesPage() {
       {/* Blog Posts Grid */}
       <Section variant="white">
         <Container>
+          <div className="mb-8 md:mb-12">
+            <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>Articles & Guides</h2>
+            <p className={cn(TYPOGRAPHY.body, "text-gray-600 max-w-2xl")}>
+              Deep dives, strategies, and insights to help you build a smarter financial future.
+            </p>
+          </div>
+          
           <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3", SPACING.cardGap)}>
             {blogPosts.sort((a, b) => {
               const dateA = new Date(a.date)
