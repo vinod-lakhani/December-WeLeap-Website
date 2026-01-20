@@ -80,7 +80,24 @@ This report tracks users from page load → email sent.
    - City Tier (after registering custom dimension)
    - Salary Bucket (after registering custom dimension)
 
-### Step 5: Verify Events are Working
+### Step 5: Configure Funnel Settings
+
+**Important Funnel Settings:**
+
+1. **Funnel type**: Select **"Closed funnel"**
+   - This ensures users must start at Step 1 to be counted
+   - Matches how you'd expect conversion funnels to work
+
+2. **Lookback window**: Select **"Same session"** or **"30 days"**
+   - "Same session": Users must complete steps within one session (stricter)
+   - "30 days": Users can complete steps across multiple sessions (more lenient)
+   - For rent tool, "Same session" is probably best (most users complete in one go)
+
+3. **Metric**: Ensure it's set to **"Users"** (not "Sessions" or "Events")
+   - This matches the "Total users" metric in Events reports
+   - See `GA4_DATA_DISCREPANCIES.md` for why this matters
+
+### Step 6: Verify Events are Working
 Before saving, verify the funnel will have data:
 1. Go to **Reports** → **Realtime** → **Event count by Event name**
 2. Make sure you see these events in the last 30 minutes:
