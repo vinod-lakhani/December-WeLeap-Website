@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home } from "lucide-react"
 import { PageShell, Section, Container } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
@@ -219,6 +219,40 @@ export default function ResourcesPage() {
               </CardContent>
             </Card>
           </Link>
+        </Container>
+      </Section>
+
+      {/* Free Tools Section */}
+      <Section variant="white">
+        <Container>
+          <div className="mb-8 md:mb-12">
+            <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>Free Tools</h2>
+            <p className={cn(TYPOGRAPHY.body, "text-gray-600 max-w-2xl")}>
+              Practical calculators and tools to help you make smarter financial decisions.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link href="/how-much-rent-can-i-afford" className="h-full">
+              <Card className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-primary-500 hover:shadow-xl transition-all duration-300 group cursor-pointer h-full flex flex-col">
+                <CardContent className="p-6 flex flex-col h-full">
+                  <div className="bg-primary-100 rounded-xl p-4 mb-4 w-fit group-hover:bg-primary-200 transition-colors duration-300">
+                    <Home className="w-8 h-8 text-primary-600" />
+                  </div>
+                  <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200")}>
+                    Rent Affordability Calculator
+                  </h3>
+                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-6 leading-relaxed flex-1")}>
+                    Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
+                  </p>
+                  <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
+                    <span>Calculate your rent range</span>
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
         </Container>
       </Section>
 
