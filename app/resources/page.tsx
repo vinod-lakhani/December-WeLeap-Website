@@ -171,7 +171,7 @@ export default function ResourcesPage() {
             Financial <span className="text-white">Resources</span>
           </h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-2xl mx-auto mb-6 md:mb-8")}>
-            Expert insights, practical tips, and actionable advice to help you make smarter financial decisions.
+            Expert insights, practical tools, and actionable advice to help you make smarter financial decisions.
           </p>
         </Container>
       </Section>
