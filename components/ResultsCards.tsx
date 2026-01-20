@@ -206,7 +206,7 @@ export function ResultsCards({
                 </p>
                 {hudRentRange.low > rentRangeHigh && (
                   <p className="text-xs text-[#111827]/80">
-                    Market pressure: Typical rents run higher than your safe range. Many renters use roommates.
+                    Market pressure: Many early-career professionals use roommates or trade space for flexibility.
                   </p>
                 )}
                 {hudRentRange.high < rentRangeLow && (
