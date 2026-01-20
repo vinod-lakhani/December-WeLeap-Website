@@ -1,6 +1,6 @@
 /**
- * HUD Fair Market Rent (FMR) data for 1-bedroom apartments
- * Based on HUD 2024-2025 Fair Market Rent data
+ * Market reality rent data for 1-bedroom apartments
+ * Based on current market conditions and actual rental rates
  * Note: These are estimates and may vary by neighborhood
  */
 
@@ -14,29 +14,29 @@ export interface HUDRentData {
 }
 
 /**
- * HUD Fair Market Rent ranges for 1-bedroom apartments
- * Ranges represent typical market rates (not prescriptive)
+ * Market reality rent ranges for 1-bedroom apartments
+ * Ranges represent actual market rates based on current rental market conditions
  */
 export const HUD_RENTS: HUDRentData = {
   'Austin, TX': {
-    low: 1300,
-    high: 1500,
+    low: 1600,
+    high: 1900,
   },
   'New York, NY': {
-    low: 1800,
-    high: 2200,
+    low: 2800,
+    high: 3400,
   },
   'San Francisco Bay Area, CA': {
+    low: 3200,
+    high: 3600,
+  },
+  'Seattle, WA': {
     low: 2200,
     high: 2600,
   },
-  'Seattle, WA': {
-    low: 1700,
-    high: 2000,
-  },
   'Boston, MA': {
-    low: 1900,
-    high: 2200,
+    low: 2700,
+    high: 3200,
   },
   'Chicago, IL': {
     low: 1200,

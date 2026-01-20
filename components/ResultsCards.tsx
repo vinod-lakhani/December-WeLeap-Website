@@ -198,11 +198,11 @@ export function ResultsCards({
               </p>
             </div>
 
-            {/* Local Rent Context */}
+            {/* Market Reality */}
             {hudRentRange && rentComparison && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <p className="text-xs text-[#111827]/70 mb-2">
-                  Local rent context: Typical 1-bedroom rents are around {formatCurrency(hudRentRange.low)}–{formatCurrency(hudRentRange.high)}/month.
+                  Market reality: Typical 1-bedroom rents are around {formatCurrency(hudRentRange.low)}–{formatCurrency(hudRentRange.high)}/month.
                 </p>
                 {hudRentRange.low > rentRangeHigh && (
                   <p className="text-xs text-[#111827]/80">
