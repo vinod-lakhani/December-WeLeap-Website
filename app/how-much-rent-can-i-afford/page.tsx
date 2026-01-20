@@ -112,7 +112,7 @@ export default function HowMuchRentCanIAffordPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                    See what rent really does
+                    See what rent actually costs you
                   </h3>
                   <p className="text-base md:text-lg text-gray-700 leading-relaxed">
                     We translate that take-home pay into a safe rent range, upfront cash needs, and where things may get tight once bills hit.
