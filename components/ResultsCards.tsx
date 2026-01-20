@@ -206,7 +206,7 @@ export function ResultsCards({
                 </p>
                 {hudRentRange.low > rentRangeHigh && (
                   <p className="text-xs text-[#111827]/80">
-                    Market pressure: Many early-career professionals use roommates or trade space for flexibility.
+                    What this means: Many early-career professionals use roommates or trade space for flexibility.
                   </p>
                 )}
                 {hudRentRange.high < rentRangeLow && (
