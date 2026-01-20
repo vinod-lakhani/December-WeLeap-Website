@@ -234,20 +234,31 @@ export default function ResourcesPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link href="/how-much-rent-can-i-afford" className="h-full">
-              <Card className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden hover:border-primary-500 hover:shadow-xl transition-all duration-300 group cursor-pointer h-full flex flex-col">
-                <CardContent className="p-6 flex flex-col h-full">
-                  <div className="bg-primary-100 rounded-xl p-4 mb-4 w-fit group-hover:bg-primary-200 transition-colors duration-300">
-                    <Home className="w-8 h-8 text-primary-600" />
+              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
+                <CardContent className="p-0 flex flex-col flex-1">
+                  <div className="relative overflow-hidden">
+                    <img
+                      src="/images/rent-tool-illustration.png"
+                      alt="What your job offer really supports - rent calculator"
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <div className="bg-primary-100 rounded-lg p-2">
+                        <Home className="w-5 h-5 text-primary-600" />
+                      </div>
+                    </div>
                   </div>
-                  <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200")}>
-                    Rent Affordability Calculator
-                  </h3>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-6 leading-relaxed flex-1")}>
-                    Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
-                  </p>
-                  <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
-                    <span>Calculate your rent range</span>
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200")}>
+                      Rent Affordability Calculator
+                    </h3>
+                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
+                      Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
+                    </p>
+                    <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
+                      <span>Calculate your rent range</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
