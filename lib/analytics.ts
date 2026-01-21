@@ -1,7 +1,8 @@
 /**
- * Google Analytics 4 (GA4) Event Tracking Utility
+ * Analytics Event Tracking Utility
+ * Tracks events to both Google Analytics 4 (GA4) and Vercel Analytics
  * 
- * GA4 Event Names:
+ * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click
  * - scrolled_past_how_it_works
@@ -15,6 +16,8 @@
  * Privacy Note: This utility only sends bucketed/non-PII parameters.
  * Never sends raw salary, email addresses, city names, or exact dates.
  */
+
+import { track as vercelTrack } from '@vercel/analytics';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -63,9 +66,9 @@ function waitForGtag(maxWaitMs: number = 3000): Promise<void> {
 }
 
 /**
- * Track a GA4 event
+ * Track an analytics event to both GA4 and Vercel Analytics
  * 
- * @param eventName - The GA4 event name
+ * @param eventName - The event name
  * @param params - Event parameters (must not contain PII)
  * @param waitForGtagLoading - If true, waits for gtag to load before sending (default: false for most events, true for critical page view events)
  */
@@ -80,24 +83,35 @@ export async function track(eventName: string, params?: Record<string, any>, wai
     return;
   }
 
+  // Track to Vercel Analytics (always available, no waiting needed)
+  try {
+    vercelTrack(eventName, params || {});
+  } catch (error) {
+    if (DEBUG_ANALYTICS) {
+      console.error('[Analytics] Error tracking to Vercel Analytics:', eventName, error);
+    }
+    // Continue even if Vercel Analytics fails
+  }
+
+  // Track to GA4
   // For critical events like page views, wait for gtag to load
   if (waitForGtagLoading && typeof window.gtag !== 'function') {
     try {
       await waitForGtag(3000); // Wait up to 3 seconds
     } catch (error) {
       if (DEBUG_ANALYTICS) {
-        console.warn('[Analytics] gtag not available after waiting, event not sent:', eventName);
+        console.warn('[Analytics] gtag not available after waiting, event not sent to GA4:', eventName);
       }
-      return;
+      return; // Still tracked to Vercel Analytics above
     }
   }
 
   // Check if gtag is available
   if (typeof window.gtag !== 'function') {
     if (DEBUG_ANALYTICS) {
-      console.warn('[Analytics] gtag not available, event not sent:', eventName);
+      console.warn('[Analytics] gtag not available, event not sent to GA4:', eventName);
     }
-    return;
+    return; // Still tracked to Vercel Analytics above
   }
 
   try {
@@ -105,8 +119,8 @@ export async function track(eventName: string, params?: Record<string, any>, wai
     window.gtag('event', eventName, params || {});
   } catch (error) {
     if (DEBUG_ANALYTICS) {
-      console.error('[Analytics] Error tracking event:', eventName, error);
+      console.error('[Analytics] Error tracking to GA4:', eventName, error);
     }
-    // Fail silently in production
+    // Fail silently in production (still tracked to Vercel Analytics)
   }
 }
