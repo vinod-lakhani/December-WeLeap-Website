@@ -114,7 +114,7 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-gray-600 mb-4">
-          Create your Day 1 Protocol in 5 minutes. We'll email you a clear plan based on your numbers, so you're not guessing once rent and paychecks start hitting.
+          Create your Day 1 Playbook in 5 minutes. We'll email you a clear, one-page plan you can reference while touring apartments, comparing options, or talking things through — so you're not guessing once rent and paychecks start hitting.
         </p>
         <Dialog>
           <DialogTrigger asChild>
@@ -122,6 +122,9 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
               Create My Day 1 Playbook
             </Button>
           </DialogTrigger>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            You'll want this when touring apartments or comparing leases.
+          </p>
           <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-gray-900">Get your plan by email</DialogTitle>
