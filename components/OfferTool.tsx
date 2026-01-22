@@ -25,6 +25,7 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
+import { getDay0CashVariantReadOnly } from '@/lib/abTest';
 
 interface TaxCalculationResult {
   federalTaxAnnual: number;
@@ -65,9 +66,11 @@ export function OfferTool() {
   const handleFormStart = () => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
-      track('rent_form_start', {
+      const variant = getDay0CashVariantReadOnly() || 'A'; // Default to A if not assigned yet
+      track('rent_form_start_v2', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
+        ab_day0_cash_variant: variant,
       });
     }
   };
@@ -137,13 +140,15 @@ export function OfferTool() {
       const taxData: TaxCalculationResult = await taxResponse.json();
       setResults(taxData);
       
-      // Track form submit with bucketed parameters
+      // Track form submit with bucketed parameters (v2)
       const takeHomeMonthlyAfterTax = taxData.netIncomeAnnual / 12;
       const rentRangeAfterSubmit = calculateRentRange(takeHomeMonthlyAfterTax, debtAmount);
+      const variant = getDay0CashVariantReadOnly() || 'A';
       
-      track('rent_form_submit', {
+      track('rent_form_submit_v2', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
+        ab_day0_cash_variant: variant,
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
         days_until_start_bucket: bucketDaysUntilStart(startDate),
@@ -154,10 +159,11 @@ export function OfferTool() {
         ),
       });
       
-      // Track playbook generated (after successful calculation)
-      track('playbook_generated', {
+      // Track playbook generated (after successful calculation) (v2)
+      track('playbook_generated_v2', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
+        ab_day0_cash_variant: variant,
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
         days_until_start_bucket: bucketDaysUntilStart(startDate),
