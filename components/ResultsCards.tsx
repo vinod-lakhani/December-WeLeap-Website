@@ -515,16 +515,14 @@ export function ResultsCards({
             )}
             
             {/* Day-0 Cash Email Modal (Variant B only) */}
-            {variant === 'B' && upfrontCash && (
-              {planData && (
-                <Day0CashEmailModal
-                  variant={variant}
-                  isOpen={isDay0EmailModalOpen}
-                  onOpenChange={setIsDay0EmailModalOpen}
-                  onEmailSubmitted={handleDay0EmailSubmitted}
-                  planData={planData}
-                />
-              )}
+            {variant === 'B' && upfrontCash && planData && (
+              <Day0CashEmailModal
+                variant={variant}
+                isOpen={isDay0EmailModalOpen}
+                onOpenChange={setIsDay0EmailModalOpen}
+                onEmailSubmitted={handleDay0EmailSubmitted}
+                planData={planData}
+              />
             )}
           </div>
         </CardContent>

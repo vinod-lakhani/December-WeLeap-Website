@@ -16,6 +16,7 @@ import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
+import { getDay0CashVariant } from '@/lib/abTest';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
@@ -478,8 +479,8 @@ export function OfferTool() {
             <AssumptionsAccordion taxSource={results.taxSource} />
           </div>
 
-          {/* Waitlist Form */}
-          <WaitlistForm planData={planData} />
+          {/* Waitlist Form - Only show for Variant A */}
+          {getDay0CashVariant() === 'A' && <WaitlistForm planData={planData} />}
         </div>
       )}
     </div>
