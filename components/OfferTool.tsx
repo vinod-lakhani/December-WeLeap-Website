@@ -89,9 +89,11 @@ export function OfferTool() {
 
   const handleCalculate = async () => {
     // Track hero CTA click (this is the "See my rent reality" button)
-    track('hero_cta_click', {
+    const variant = getDay0CashVariantReadOnly() || 'A'; // Default to A if not assigned yet
+    track('hero_cta_click_v2', {
       page: '/how-much-rent-can-i-afford',
       tool_version: 'rent_tool_v1',
+      ab_day0_cash_variant: variant,
     });
     
     setError(null);

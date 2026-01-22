@@ -40,9 +40,10 @@ export default function HowMuchRentCanIAffordPage() {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !scrollTrackedRef.current) {
             scrollTrackedRef.current = true;
-            track('scrolled_past_how_it_works', {
+            track('scrolled_past_how_it_works_v2', {
               page: '/how-much-rent-can-i-afford',
               tool_version: 'rent_tool_v1',
+              ab_day0_cash_variant: variant,
             });
             observer.disconnect();
           }
@@ -59,7 +60,7 @@ export default function HowMuchRentCanIAffordPage() {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [variant]);
 
 
   return (
