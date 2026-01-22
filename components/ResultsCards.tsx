@@ -43,6 +43,34 @@ interface TaxBreakdown {
   netIncomeAnnual: number;
 }
 
+interface PlanData {
+  salary: string;
+  city: string;
+  startDate: string;
+  debtMonthly?: string;
+  takeHomeMonthly: number;
+  takeHomeAnnual: number;
+  rentRange: string;
+  rentRangeLow: number;
+  rentRangeHigh: number;
+  daysUntilStart: number;
+  upfrontCashLow?: number;
+  upfrontCashHigh?: number;
+  budgetBreakdown?: {
+    needs: number;
+    wants: number;
+    savings: number;
+  };
+  taxBreakdown?: {
+    grossAnnual: number;
+    federalTaxAnnual: number;
+    stateTaxAnnual: number;
+    ficaTaxAnnual: number;
+    totalTaxAnnual: number;
+    netIncomeAnnual: number;
+  };
+}
+
 interface ResultsCardsProps {
   takeHomeMonthly: number;
   takeHomeAnnual: number;
@@ -53,6 +81,7 @@ interface ResultsCardsProps {
   startDate?: string;
   city?: string;
   taxBreakdown?: TaxBreakdown;
+  planData?: PlanData;
 }
 
 export function ResultsCards({
@@ -65,6 +94,7 @@ export function ResultsCards({
   startDate,
   city,
   taxBreakdown,
+  planData,
 }: ResultsCardsProps) {
   // Get HUD rent context if city is available
   const hudRentRange = city ? getHUDRentRange(city) : undefined;
@@ -486,14 +516,15 @@ export function ResultsCards({
             
             {/* Day-0 Cash Email Modal (Variant B only) */}
             {variant === 'B' && upfrontCash && (
-              <Day0CashEmailModal
-                variant={variant}
-                isOpen={isDay0EmailModalOpen}
-                onOpenChange={setIsDay0EmailModalOpen}
-                onEmailSubmitted={handleDay0EmailSubmitted}
-                upfrontCashLow={upfrontCash.totalLow}
-                upfrontCashHigh={upfrontCash.totalHigh}
-              />
+              {planData && (
+                <Day0CashEmailModal
+                  variant={variant}
+                  isOpen={isDay0EmailModalOpen}
+                  onOpenChange={setIsDay0EmailModalOpen}
+                  onEmailSubmitted={handleDay0EmailSubmitted}
+                  planData={planData}
+                />
+              )}
             )}
           </div>
         </CardContent>

@@ -385,6 +385,7 @@ export function OfferTool() {
               totalTaxAnnual: results.totalTaxAnnual,
               netIncomeAnnual: results.netIncomeAnnual,
             } : undefined}
+            planData={planData}
           />
 
           {/* Budget Breakdown Card */}
