@@ -122,9 +122,6 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
               Create My Day 1 Playbook
             </Button>
           </DialogTrigger>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            You'll want this when touring apartments or comparing leases.
-          </p>
           <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-gray-900">Get your plan by email</DialogTitle>
@@ -169,6 +166,9 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
             )}
           </DialogContent>
         </Dialog>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          You'll want this when touring apartments or comparing leases.
+        </p>
       </CardContent>
     </Card>
   );
