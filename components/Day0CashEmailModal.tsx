@@ -66,9 +66,7 @@ export function Day0CashEmailModal({
   const handleOpenChange = (open: boolean) => {
     if (open && isOpen === false) {
       // Modal is opening
-      track('day0_cash_email_modal_open', {
-        ab_day0_cash_variant: variant,
-      });
+      track('day0_cash_email_modal_open', {});
     }
     onOpenChange(open);
   };
@@ -80,9 +78,7 @@ export function Day0CashEmailModal({
 
     try {
       // Track email submission
-      track('day0_cash_email_submit', {
-        ab_day0_cash_variant: variant,
-      });
+      track('day0_cash_email_submit', {});
 
       // Use the same API endpoint as WaitlistForm to send email and save to Google Sheets
       const response = await fetch('/api/email-plan', {

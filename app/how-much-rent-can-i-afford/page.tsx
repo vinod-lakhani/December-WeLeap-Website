@@ -7,26 +7,20 @@ import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { track } from '@/lib/analytics';
-import { getDay0CashVariant } from '@/lib/abTest';
 
 export default function HowMuchRentCanIAffordPage() {
-  // Get A/B test variant (assigns on first load, persists in localStorage)
-  const variant = getDay0CashVariant();
-
   // Track page view on mount - wait for gtag to be available
   useEffect(() => {
     // Use a small delay to ensure GA4 script has loaded
     const timer = setTimeout(() => {
-      // Track v2 page view with A/B test variant
-      track('rent_tool_page_view_v2', {
+      track('rent_tool_page_view', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
-        ab_day0_cash_variant: variant,
       }, true); // true = wait for gtag to load (up to 3 seconds)
     }, 500); // Give GA4 a bit more time to initialize
 
     return () => clearTimeout(timer);
-  }, [variant]);
+  }, []);
 
   // Track scroll past "How it works" section
   const howItWorksSentinelRef = useRef<HTMLDivElement>(null);
@@ -40,10 +34,9 @@ export default function HowMuchRentCanIAffordPage() {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !scrollTrackedRef.current) {
             scrollTrackedRef.current = true;
-            track('scrolled_past_how_it_works_v2', {
+            track('scrolled_past_how_it_works', {
               page: '/how-much-rent-can-i-afford',
               tool_version: 'rent_tool_v1',
-              ab_day0_cash_variant: variant,
             });
             observer.disconnect();
           }
@@ -60,7 +53,7 @@ export default function HowMuchRentCanIAffordPage() {
     return () => {
       observer.disconnect();
     };
-  }, [variant]);
+  }, []);
 
 
   return (

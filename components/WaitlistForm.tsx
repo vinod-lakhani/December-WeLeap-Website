@@ -20,7 +20,6 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
-import { getDay0CashVariantReadOnly } from '@/lib/abTest';
 
 interface PlanData {
   salary: string;
@@ -85,16 +84,14 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
         throw new Error(errorMsg + details);
       }
 
-      // Track playbook email sent after successful send (v2)
+      // Track playbook email sent after successful send
       if (planData) {
         const salaryNum = parseFloat(planData.salary);
         const rentMidpoint = (planData.rentRangeLow + planData.rentRangeHigh) / 2;
-        const variant = getDay0CashVariantReadOnly() || 'A';
         
-        track('playbook_email_sent_v2', {
+        track('playbook_email_sent', {
           page: '/how-much-rent-can-i-afford',
           tool_version: 'rent_tool_v1',
-          ab_day0_cash_variant: variant,
           salary_bucket: bucketSalary(salaryNum),
           city_tier: mapCityToTier(planData.city),
           days_until_start_bucket: bucketDaysUntilStart(planData.startDate),

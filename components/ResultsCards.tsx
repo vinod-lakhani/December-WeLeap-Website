@@ -181,16 +181,10 @@ export function ResultsCards({
         entries.forEach((entry) => {
           if (entry.isIntersecting && !day0ModuleViewedRef.current) {
             day0ModuleViewedRef.current = true;
-            track('day0_cash_module_view', {
-              ab_day0_cash_variant: variant,
-            });
+            track('day0_cash_module_view', {});
             
-            // For Variant A, also fire number_revealed immediately (if number is shown by default)
-            if (variant === 'A') {
-              track('day0_cash_number_revealed', {
-                ab_day0_cash_variant: variant,
-              });
-            }
+            // Fire number_revealed immediately (number is shown by default)
+            track('day0_cash_number_revealed', {});
             
             observer.disconnect();
           }
@@ -206,25 +200,18 @@ export function ResultsCards({
     };
   }, [variant, upfrontCash]);
 
-  // Handle Day-0 email submission (Variant B only)
+  // Handle Day-0 email submission (not used in Variant A, but kept for compatibility)
   const handleDay0EmailSubmitted = () => {
     setDay0NumberRevealed(true);
-    track('day0_cash_number_revealed', {
-      ab_day0_cash_variant: variant,
-    });
+    track('day0_cash_number_revealed', {});
   };
 
   // Handle Day-0 CTA click
   const handleDay0CTAClick = () => {
     track('day0_cash_cta_click', {
-      ab_day0_cash_variant: variant,
-      cta_label: variant === 'A' ? 'View assumptions' : 'Get my Day-0 Cash Plan',
+      cta_label: 'View assumptions',
     });
-    
-    if (variant === 'B') {
-      setIsDay0EmailModalOpen(true);
-    }
-    // Variant A: CTA just opens accordion (existing behavior, no change needed)
+    // CTA opens accordion (Variant A behavior)
   };
 
   // Helper to get preview text for Variant B

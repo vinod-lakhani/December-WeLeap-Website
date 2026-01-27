@@ -16,7 +16,6 @@ import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
-import { getDay0CashVariant } from '@/lib/abTest';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
@@ -26,7 +25,6 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
-import { getDay0CashVariantReadOnly } from '@/lib/abTest';
 
 interface TaxCalculationResult {
   federalTaxAnnual: number;
@@ -67,11 +65,9 @@ export function OfferTool() {
   const handleFormStart = () => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
-      const variant = getDay0CashVariantReadOnly() || 'A'; // Default to A if not assigned yet
-      track('rent_form_start_v2', {
+      track('rent_form_start', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
-        ab_day0_cash_variant: variant,
       });
     }
   };
@@ -89,11 +85,9 @@ export function OfferTool() {
 
   const handleCalculate = async () => {
     // Track hero CTA click (this is the "See my rent reality" button)
-    const variant = getDay0CashVariantReadOnly() || 'A'; // Default to A if not assigned yet
-    track('hero_cta_click_v2', {
+    track('hero_cta_click', {
       page: '/how-much-rent-can-i-afford',
       tool_version: 'rent_tool_v1',
-      ab_day0_cash_variant: variant,
     });
     
     setError(null);
@@ -143,15 +137,13 @@ export function OfferTool() {
       const taxData: TaxCalculationResult = await taxResponse.json();
       setResults(taxData);
       
-      // Track form submit with bucketed parameters (v2)
+      // Track form submit with bucketed parameters
       const takeHomeMonthlyAfterTax = taxData.netIncomeAnnual / 12;
       const rentRangeAfterSubmit = calculateRentRange(takeHomeMonthlyAfterTax, debtAmount);
-      const variant = getDay0CashVariantReadOnly() || 'A';
       
-      track('rent_form_submit_v2', {
+      track('rent_form_submit', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
-        ab_day0_cash_variant: variant,
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
         days_until_start_bucket: bucketDaysUntilStart(startDate),
@@ -162,11 +154,10 @@ export function OfferTool() {
         ),
       });
       
-      // Track playbook generated (after successful calculation) (v2)
-      track('playbook_generated_v2', {
+      // Track playbook generated (after successful calculation)
+      track('playbook_generated', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
-        ab_day0_cash_variant: variant,
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
         days_until_start_bucket: bucketDaysUntilStart(startDate),
@@ -482,7 +473,7 @@ export function OfferTool() {
           </div>
 
           {/* Waitlist Form - Only show for Variant A */}
-          {getDay0CashVariant() === 'A' && <WaitlistForm planData={planData} />}
+          <WaitlistForm planData={planData} />
         </div>
       )}
     </div>
