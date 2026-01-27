@@ -12,10 +12,12 @@ interface ToolFeedbackQuestionnaireProps {
 export function ToolFeedbackQuestionnaire({ onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
 
   const handleFeedbackClick = (feedback: 'yes' | 'no' | 'not_sure') => {
     setSelectedFeedback(feedback);
     setIsSubmitted(true);
+    setShowThankYou(true);
     
     // Track feedback submission
     track('tool_feedback_submitted', {
@@ -23,12 +25,30 @@ export function ToolFeedbackQuestionnaire({ onFeedbackSubmitted }: ToolFeedbackQ
       feedback: feedback,
     });
     
-    // Call callback to show/hide WaitlistForm
-    onFeedbackSubmitted(feedback);
+    // Call callback to show/hide WaitlistForm after showing thank you message
+    setTimeout(() => {
+      onFeedbackSubmitted(feedback);
+      // Hide thank you message after callback (for "No" responses)
+      if (feedback === 'no') {
+        setTimeout(() => setShowThankYou(false), 500);
+      }
+    }, 1500); // Show thank you message for 1.5 seconds
   };
 
-  if (isSubmitted) {
-    return null; // Hide questionnaire after submission
+  if (isSubmitted && showThankYou) {
+    return (
+      <Card className="border-[#D1D5DB] bg-white">
+        <CardContent className="pt-6">
+          <p className="text-center text-gray-700 text-lg">
+            Thank you for your feedback!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isSubmitted && !showThankYou) {
+    return null; // Hide completely after thank you message
   }
 
   return (
