@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
+import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
@@ -54,6 +55,7 @@ export function OfferTool() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [results, setResults] = useState<TaxCalculationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showWaitlistForm, setShowWaitlistForm] = useState(false);
   
   // Track form start (fire once on first interaction)
   const formStartedRef = useRef(false);
@@ -136,6 +138,7 @@ export function OfferTool() {
 
       const taxData: TaxCalculationResult = await taxResponse.json();
       setResults(taxData);
+      setShowWaitlistForm(false); // Reset questionnaire state for new results
       
       // Track form submit with bucketed parameters
       const takeHomeMonthlyAfterTax = taxData.netIncomeAnnual / 12;
@@ -472,8 +475,20 @@ export function OfferTool() {
             <AssumptionsAccordion taxSource={results.taxSource} />
           </div>
 
-          {/* Waitlist Form - Only show for Variant A */}
-          <WaitlistForm planData={planData} />
+          {/* Tool Feedback Questionnaire */}
+          {!showWaitlistForm && (
+            <ToolFeedbackQuestionnaire
+              onFeedbackSubmitted={(feedback) => {
+                // Show WaitlistForm only if feedback is 'yes' or 'not_sure'
+                if (feedback === 'yes' || feedback === 'not_sure') {
+                  setShowWaitlistForm(true);
+                }
+              }}
+            />
+          )}
+
+          {/* Waitlist Form - Only show after positive feedback */}
+          {showWaitlistForm && <WaitlistForm planData={planData} />}
         </div>
       )}
     </div>
