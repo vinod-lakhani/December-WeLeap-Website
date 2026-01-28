@@ -61,6 +61,7 @@ function getSentence(
 
 export function ImpactTool() {
   const [monthlyDelta, setMonthlyDelta] = useState(MONTHLY_DEFAULT);
+  const [monthlyInputStr, setMonthlyInputStr] = useState<string | null>(null); // null = show monthlyDelta, string = user is typing
   const [useCase, setUseCase] = useState<UseCase>('investing');
   const [debtApr, setDebtApr] = useState(APR_DEFAULT);
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
@@ -80,11 +81,36 @@ export function ImpactTool() {
     return Math.max(MONTHLY_MIN, Math.min(MONTHLY_MAX, Math.round(v / MONTHLY_STEP) * MONTHLY_STEP));
   }, []);
 
-  const handleMonthlyFromInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMonthlyInputFocus = useCallback(() => {
     trackToolStart();
-    const parsed = parseInt(e.target.value, 10);
-    if (!Number.isNaN(parsed)) setMonthlyDelta(clampMonthly(parsed));
-  };
+    setMonthlyInputStr(String(monthlyDelta));
+  }, [monthlyDelta]);
+
+  const handleMonthlyInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      setMonthlyInputStr(raw);
+      const parsed = parseInt(raw, 10);
+      if (!Number.isNaN(parsed)) {
+        setMonthlyDelta(clampMonthly(parsed));
+      }
+    },
+    [clampMonthly]
+  );
+
+  const handleMonthlyInputBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      const raw = e.target.value.trim();
+      const parsed = parseInt(raw, 10);
+      if (raw === '' || Number.isNaN(parsed)) {
+        setMonthlyDelta(MONTHLY_DEFAULT);
+      } else {
+        setMonthlyDelta(clampMonthly(parsed));
+      }
+      setMonthlyInputStr(null);
+    },
+    [clampMonthly]
+  );
 
   const inputs: ImpactInputs = useMemo(
     () => ({
@@ -129,13 +155,10 @@ export function ImpactTool() {
                 min={MONTHLY_MIN}
                 max={MONTHLY_MAX}
                 step={MONTHLY_STEP}
-                value={monthlyDelta}
-                onChange={handleMonthlyFromInput}
-                onBlur={(e) => {
-                  const v = parseInt(e.target.value, 10);
-                  if (Number.isNaN(v)) setMonthlyDelta(MONTHLY_DEFAULT);
-                  else setMonthlyDelta(clampMonthly(v));
-                }}
+                value={monthlyInputStr !== null ? monthlyInputStr : String(monthlyDelta)}
+                onFocus={handleMonthlyInputFocus}
+                onChange={handleMonthlyInputChange}
+                onBlur={handleMonthlyInputBlur}
                 className="w-28 shrink-0 border-gray-300"
                 aria-label="Monthly delta dollars"
               />
