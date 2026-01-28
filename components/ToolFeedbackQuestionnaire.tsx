@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { track } from '@/lib/analytics';
 
 interface ToolFeedbackQuestionnaireProps {
+  page: string;
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -21,8 +22,8 @@ export function ToolFeedbackQuestionnaire({ onFeedbackSubmitted }: ToolFeedbackQ
     
     // Track feedback submission
     track('tool_feedback_submitted', {
-      page: '/how-much-rent-can-i-afford',
-      feedback: feedback,
+      page,
+      feedback,
     });
     
     // Call callback to show/hide WaitlistForm after showing thank you message

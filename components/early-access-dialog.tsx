@@ -17,16 +17,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 interface EarlyAccessDialogProps {
-  children: React.ReactNode
-  signupType?: string // Optional: e.g., "button", "cta", "navigation", etc.
+  children?: React.ReactNode
+  signupType?: string // Optional: e.g., "button", "cta", "navigation", "net_worth_tool_feedback", etc.
+  /** When set, dialog is controlled by parent (e.g. open from survey). Omit for trigger-based use. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function EarlyAccessDialog({ children, signupType = "button" }: EarlyAccessDialogProps) {
+export function EarlyAccessDialog({ children, signupType = "button", open: controlledOpen, onOpenChange }: EarlyAccessDialogProps) {
   const [email, setEmail] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const pathname = usePathname()
+  const isControlled = controlledOpen !== undefined && onOpenChange !== undefined
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,10 +67,8 @@ export function EarlyAccessDialog({ children, signupType = "button" }: EarlyAcce
     }
   }
 
-  return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
+  const dialogContent = (
+    <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-gray-900">Join Waitlist</DialogTitle>
           <DialogDescription className="text-gray-600 mt-2">
@@ -117,6 +119,20 @@ export function EarlyAccessDialog({ children, signupType = "button" }: EarlyAcce
           </div>
         )}
       </DialogContent>
+  )
+
+  if (isControlled) {
+    return (
+      <Dialog open={controlledOpen} onOpenChange={onOpenChange}>
+        {dialogContent}
+      </Dialog>
+    )
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      {dialogContent}
     </Dialog>
   )
 }

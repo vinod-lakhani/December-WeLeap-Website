@@ -478,6 +478,7 @@ export function OfferTool() {
           {/* Tool Feedback Questionnaire */}
           {!showWaitlistForm && (
             <ToolFeedbackQuestionnaire
+              page="/how-much-rent-can-i-afford"
               onFeedbackSubmitted={(feedback) => {
                 // Show WaitlistForm only if feedback is 'yes' or 'not_sure'
                 if (feedback === 'yes' || feedback === 'not_sure') {

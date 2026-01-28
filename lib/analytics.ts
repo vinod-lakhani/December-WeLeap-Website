@@ -1,7 +1,7 @@
 /**
  * Analytics Event Tracking Utility
  * Tracks events to both Google Analytics 4 (GA4) and Vercel Analytics
- * 
+ *
  * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click
@@ -12,7 +12,11 @@
  * - playbook_email_sent
  * - playbook_pdf_opened (optional)
  * - playbook_pdf_downloaded (optional)
- * 
+ * - tool_feedback_submitted (page, feedback: yes|no|not_sure)
+ * - waitlist_modal_opened (page, source, feedback)
+ * - net_worth_impact_page_view
+ * - net_worth_impact_tool_start
+ *
  * Privacy Note: This utility only sends bucketed/non-PII parameters.
  * Never sends raw salary, email addresses, city names, or exact dates.
  */
