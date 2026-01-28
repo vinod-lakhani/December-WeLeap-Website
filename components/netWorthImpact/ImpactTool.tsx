@@ -241,6 +241,7 @@ export function ImpactTool() {
       {/* Tool Feedback Questionnaire — Yes / Maybe opens Join Waitlist modal */}
       <ToolFeedbackQuestionnaire
         page={NET_WORTH_IMPACT_PAGE}
+        eventName="networth_tool_feedback_submitted"
         onFeedbackSubmitted={(feedback) => {
           if (feedback === 'yes' || feedback === 'not_sure') {
             track('waitlist_modal_opened', {

@@ -12,7 +12,8 @@
  * - playbook_email_sent
  * - playbook_pdf_opened (optional)
  * - playbook_pdf_downloaded (optional)
- * - tool_feedback_submitted (page, feedback: yes|no|not_sure)
+ * - rent_tool_feedback_submitted (page, feedback: yes|no|not_sure) — rent tool
+ * - networth_tool_feedback_submitted (page, feedback: yes|no|not_sure) — Net Worth Impact tool
  * - waitlist_modal_opened (page, source, feedback)
  * - net_worth_impact_page_view
  * - net_worth_impact_tool_start

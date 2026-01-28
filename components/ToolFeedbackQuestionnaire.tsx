@@ -7,10 +7,12 @@ import { track } from '@/lib/analytics';
 
 interface ToolFeedbackQuestionnaireProps {
   page: string;
+  /** Analytics event name. Defaults to "rent_tool_feedback_submitted" (rent tool). Use "networth_tool_feedback_submitted" for Net Worth Impact. */
+  eventName?: string;
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -21,7 +23,7 @@ export function ToolFeedbackQuestionnaire({ page, onFeedbackSubmitted }: ToolFee
     setShowThankYou(true);
     
     // Track feedback submission
-    track('tool_feedback_submitted', {
+    track(eventName, {
       page,
       feedback,
     });
