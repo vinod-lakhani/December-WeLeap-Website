@@ -47,6 +47,12 @@ interface PlanData {
     totalTaxAnnual: number;
     netIncomeAnnual: number;
   };
+  // Location context for ZORI
+  locationMode?: 'preset' | 'other';
+  presetCity?: string;
+  stateName?: string;
+  regionName?: string;
+  zoriAvailable?: boolean;
 }
 
 interface WaitlistFormProps {

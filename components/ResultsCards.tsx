@@ -33,6 +33,7 @@ import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 import { getDay0CashVariant } from '@/lib/abTest';
 import { track } from '@/lib/analytics';
 import { Day0CashEmailModal } from '@/components/Day0CashEmailModal';
+import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 
 interface TaxBreakdown {
   grossAnnual: number;
@@ -69,6 +70,12 @@ interface PlanData {
     totalTaxAnnual: number;
     netIncomeAnnual: number;
   };
+  // Location context for ZORI
+  locationMode?: 'preset' | 'other';
+  presetCity?: string;
+  stateName?: string;
+  regionName?: string;
+  zoriAvailable?: boolean;
 }
 
 interface ResultsCardsProps {
@@ -80,6 +87,11 @@ interface ResultsCardsProps {
   daysUntilStart: number;
   startDate?: string;
   city?: string;
+  locationMode?: 'preset' | 'other' | null;
+  presetCity?: string | null;
+  stateName?: string | null;
+  regionName?: string | null;
+  zoriAvailable?: boolean;
   taxBreakdown?: TaxBreakdown;
   planData?: PlanData;
 }
@@ -93,11 +105,100 @@ export function ResultsCards({
   daysUntilStart,
   startDate,
   city,
+  locationMode,
+  presetCity,
+  stateName,
+  regionName,
+  zoriAvailable,
   taxBreakdown,
   planData,
 }: ResultsCardsProps) {
-  // Get HUD rent context if city is available
-  const hudRentRange = city ? getHUDRentRange(city) : undefined;
+  // ZORI market rent data
+  const [marketRentData, setMarketRentData] = useState<{
+    medianRent: number;
+    marketLow: number;
+    marketHigh: number;
+    tier: string;
+  } | null>(null);
+  const [loadingMarketRent, setLoadingMarketRent] = useState(false);
+  const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
+
+  // Load ZORI market rent data when location is available
+  useEffect(() => {
+    if (zoriAvailable && stateName && regionName && !loadingMarketRent && !marketRentData) {
+      setLoadingMarketRent(true);
+      const url = `/api/zori?state=${stateName}&region=${encodeURIComponent(regionName)}`;
+      console.log('[ResultsCards] Loading market rent from:', url);
+      fetch(url)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`API error: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('[ResultsCards] Market rent data received:', data);
+          if (data.medianRent) {
+            const marketRange = calculateMarketRentRange(data.medianRent);
+            const comparison = compareMarketToSafe(
+              marketRange.marketLow,
+              marketRange.marketHigh,
+              rentRangeLow,
+              rentRangeHigh
+            );
+            
+            setMarketRentData({
+              medianRent: marketRange.medianRent,
+              marketLow: marketRange.marketLow,
+              marketHigh: marketRange.marketHigh,
+              tier: marketRange.tier,
+            });
+            setMarketRentComparison(comparison);
+            
+            // Track market rent loaded
+            track('market_rent_loaded_v1', {
+              page: '/how-much-rent-can-i-afford',
+              locationMode: locationMode || 'unknown',
+              presetCity: presetCity || null,
+              stateName,
+              regionName,
+              tier: marketRange.tier,
+              medianRent: marketRange.medianRent,
+              marketLow: marketRange.marketLow,
+              marketHigh: marketRange.marketHigh,
+            });
+          } else {
+            track('market_rent_unavailable_v1', {
+              page: '/how-much-rent-can-i-afford',
+              locationMode: locationMode || 'unknown',
+              presetCity: presetCity || null,
+              stateName,
+              regionName,
+            });
+          }
+        })
+        .catch(err => {
+          console.error('Error loading market rent:', err);
+          track('market_rent_unavailable_v1', {
+            page: '/how-much-rent-can-i-afford',
+            locationMode: locationMode || 'unknown',
+            presetCity: presetCity || null,
+            stateName,
+            regionName,
+          });
+        })
+        .finally(() => {
+          setLoadingMarketRent(false);
+        });
+    } else if (!zoriAvailable && marketRentData) {
+      // Reset if ZORI becomes unavailable
+      setMarketRentData(null);
+      setMarketRentComparison(null);
+    }
+  }, [zoriAvailable, stateName, regionName, locationMode, presetCity, rentRangeLow, rentRangeHigh, loadingMarketRent, marketRentData]);
+
+  // Fallback to HUD rent context if ZORI not available (for backward compatibility)
+  const hudRentRange = (!zoriAvailable && city) ? getHUDRentRange(city) : undefined;
   const rentComparison = hudRentRange 
     ? compareRentRanges(rentRangeLow, rentRangeHigh, hudRentRange.low, hudRentRange.high)
     : null;
@@ -320,8 +421,44 @@ export function ResultsCards({
               </p>
             </div>
 
-            {/* Market Reality */}
-            {hudRentRange && rentComparison && (
+            {/* Market Reality - ZORI */}
+            {zoriAvailable && marketRentData && (
+              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
+                <p className="text-xs text-[#111827]/70 mb-2">
+                  Market reality: Typical rents in your area are around {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}/month.
+                </p>
+                <p className="text-xs text-[#111827]/60 mb-2">
+                  Based on recent metro-level listings across unit types. Actual listings vary by neighborhood and unit type.
+                </p>
+                {marketRentComparison === 'above' && (
+                  <p className="text-xs text-[#111827]/80">
+                    Market pressure: Typical rents run higher than your safe range. Many early-career professionals use roommates or trade space for flexibility.
+                  </p>
+                )}
+                {marketRentComparison === 'below' && (
+                  <p className="text-xs text-[#111827]/80">
+                    Market pressure: Typical rents are below your safe range — you may have more flexibility to save.
+                  </p>
+                )}
+                {marketRentComparison === 'overlap' && (
+                  <p className="text-xs text-[#111827]/80">
+                    Market pressure: Typical rents overlap with your safe range — picking tradeoffs intentionally matters.
+                  </p>
+                )}
+              </div>
+            )}
+            
+            {/* Market Reality - Unavailable */}
+            {!zoriAvailable && !hudRentRange && (
+              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
+                <p className="text-xs text-[#111827]/70">
+                  Market reality: Not available for this area yet.
+                </p>
+              </div>
+            )}
+            
+            {/* Market Reality - Fallback to HUD (backward compatibility) */}
+            {!zoriAvailable && hudRentRange && rentComparison && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <p className="text-xs text-[#111827]/70 mb-2">
                   Market reality: Typical 1-bedroom rents are around {formatCurrency(hudRentRange.low)}–{formatCurrency(hudRentRange.high)}/month.

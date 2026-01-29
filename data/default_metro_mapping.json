@@ -1,0 +1,26 @@
+{
+  "Austin": {
+    "regionName": "Austin, TX",
+    "stateName": "TX"
+  },
+  "NYC": {
+    "regionName": "New York, NY",
+    "stateName": "NY"
+  },
+  "SF Bay Area": {
+    "regionName": "San Francisco, CA",
+    "stateName": "CA"
+  },
+  "Seattle": {
+    "regionName": "Seattle, WA",
+    "stateName": "WA"
+  },
+  "Boston": {
+    "regionName": "Boston, MA",
+    "stateName": "MA"
+  },
+  "Chicago": {
+    "regionName": "Chicago, IL",
+    "stateName": "IL"
+  }
+}

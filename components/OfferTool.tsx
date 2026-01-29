@@ -26,6 +26,9 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
+import defaultMetroMappingData from '@/data/default_metro_mapping.json';
+
+const defaultMetroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>;
 
 interface TaxCalculationResult {
   federalTaxAnnual: number;
@@ -45,11 +48,17 @@ const US_STATES = [
   'DC',
 ];
 
+interface MetroOption {
+  label: string;
+  value: string;
+}
+
 export function OfferTool() {
   const [salary, setSalary] = useState('');
   const [city, setCity] = useState('');
   const [startDate, setStartDate] = useState('');
   const [otherState, setOtherState] = useState('');
+  const [otherMetro, setOtherMetro] = useState('');
   const [debtEnabled, setDebtEnabled] = useState(false);
   const [debtMonthly, setDebtMonthly] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
@@ -57,11 +66,103 @@ export function OfferTool() {
   const [error, setError] = useState<string | null>(null);
   const [showWaitlistForm, setShowWaitlistForm] = useState(false);
   
+  // Location tracking
+  const [locationMode, setLocationMode] = useState<'preset' | 'other' | null>(null);
+  const [presetCity, setPresetCity] = useState<string | null>(null);
+  const [stateName, setStateName] = useState<string | null>(null);
+  const [regionName, setRegionName] = useState<string | null>(null);
+  const [zoriAvailable, setZoriAvailable] = useState(false);
+  const [metroOptions, setMetroOptions] = useState<MetroOption[]>([]);
+  const [loadingMetros, setLoadingMetros] = useState(false);
+  
   // Track form start (fire once on first interaction)
   const formStartedRef = useRef(false);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
+
+  // Load metro options when state is selected
+  useEffect(() => {
+    if (showOtherState && otherState && !loadingMetros) {
+      setLoadingMetros(true);
+      const url = `/api/zori?state=${otherState}`;
+      console.log('[OfferTool] Loading metro options from:', url);
+      fetch(url)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`API error: ${res.status} ${res.statusText}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          console.log('[OfferTool] Metro options received:', data);
+          if (data.options && Array.isArray(data.options)) {
+            setMetroOptions(data.options);
+          } else {
+            console.warn('[OfferTool] Invalid options format:', data);
+            setMetroOptions([]);
+          }
+        })
+        .catch(err => {
+          console.error('[OfferTool] Error loading metro options:', err);
+          setMetroOptions([]);
+        })
+        .finally(() => {
+          setLoadingMetros(false);
+        });
+    } else if (!showOtherState) {
+      setMetroOptions([]);
+      setOtherMetro('');
+      setLoadingMetros(false);
+    }
+  }, [showOtherState, otherState]);
+
+  // Update location tracking when city/state/metro changes
+  useEffect(() => {
+    if (city && city !== 'Other') {
+      // Preset city selected
+      setLocationMode('preset');
+      setPresetCity(city);
+      setStateName(null);
+      setRegionName(null);
+      
+      // Get mapping from default_metro_mapping.json
+      const mapping = defaultMetroMapping[city];
+      if (mapping) {
+        setStateName(mapping.stateName);
+        setRegionName(mapping.regionName);
+        setZoriAvailable(true);
+      } else {
+        setZoriAvailable(false);
+      }
+    } else if (city === 'Other' && otherState) {
+      // Other selected with state
+      setLocationMode('other');
+      setPresetCity(null);
+      setStateName(otherState);
+      
+      if (otherMetro && otherMetro !== '__OTHER__') {
+        // Metro selected
+        setRegionName(otherMetro);
+        setZoriAvailable(true);
+      } else if (otherMetro === '__OTHER__') {
+        // "Outside major metros / Not sure" selected
+        setRegionName(null);
+        setZoriAvailable(false);
+      } else {
+        // No metro selected yet
+        setRegionName(null);
+        setZoriAvailable(false);
+      }
+    } else {
+      // Reset
+      setLocationMode(null);
+      setPresetCity(null);
+      setStateName(null);
+      setRegionName(null);
+      setZoriAvailable(false);
+    }
+  }, [city, otherState, otherMetro]);
 
   // Track form start on first focus/input
   const handleFormStart = () => {
@@ -233,6 +334,12 @@ export function OfferTool() {
       totalTaxAnnual: results.totalTaxAnnual,
       netIncomeAnnual: results.netIncomeAnnual,
     } : undefined,
+    // Location context for ZORI
+    locationMode: locationMode || undefined,
+    presetCity: presetCity || undefined,
+    stateName: stateName || undefined,
+    regionName: regionName || undefined,
+    zoriAvailable: zoriAvailable,
   } : undefined;
 
   return (
@@ -262,10 +369,10 @@ export function OfferTool() {
             />
           </div>
 
-          {/* City Select */}
+          {/* Location Select */}
           <div className="space-y-2">
             <Label htmlFor="city" className="text-[#111827]">
-              City <span className="text-red-500">*</span>
+              Where will you be living? <span className="text-red-500">*</span>
             </Label>
             <Select value={city} onValueChange={(value) => {
               setCity(value);
@@ -276,7 +383,7 @@ export function OfferTool() {
                 className="border-[#D1D5DB]"
                 onFocus={handleFormStart}
               >
-                <SelectValue placeholder="Select a city" />
+                <SelectValue placeholder="Select a location" />
               </SelectTrigger>
               <SelectContent className="z-[100]">
                 {availableCities.map((c) => (
@@ -293,11 +400,21 @@ export function OfferTool() {
           {showOtherState && (
             <div className="space-y-2">
               <Label htmlFor="state" className="text-[#111827]">
-                State (2-letter code) <span className="text-red-500">*</span>
+                State <span className="text-red-500">*</span>
               </Label>
-              <Select value={otherState} onValueChange={setOtherState}>
+              <Select 
+                value={otherState} 
+                onValueChange={(value) => {
+                  setOtherState(value);
+                  setOtherMetro(''); // Reset metro when state changes
+                  track('other_state_selected_v1', {
+                    page: '/how-much-rent-can-i-afford',
+                    stateName: value,
+                  });
+                }}
+              >
                 <SelectTrigger id="state" className="border-[#D1D5DB]">
-                  <SelectValue placeholder="Select state" />
+                  <SelectValue placeholder="Select a state" />
                 </SelectTrigger>
                 <SelectContent>
                   {US_STATES.map((state) => (
@@ -307,6 +424,43 @@ export function OfferTool() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Metro Select (if Other selected and state chosen) */}
+          {showOtherState && otherState && (
+            <div className="space-y-2">
+              <Label htmlFor="metro" className="text-[#111827]">
+                Closest metro (optional)
+              </Label>
+              <Select 
+                value={otherMetro} 
+                onValueChange={(value) => {
+                  setOtherMetro(value);
+                  if (value !== '__OTHER__') {
+                    track('other_metro_selected_v1', {
+                      page: '/how-much-rent-can-i-afford',
+                      stateName: otherState,
+                      regionName: value,
+                    });
+                  }
+                }}
+                disabled={loadingMetros || metroOptions.length === 0}
+              >
+                <SelectTrigger id="metro" className="border-[#D1D5DB]">
+                  <SelectValue placeholder={loadingMetros ? "Loading metros..." : "Select a metro"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {metroOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Used to estimate typical rents. You don't need a neighborhood yet.
+              </p>
             </div>
           )}
 
@@ -374,6 +528,11 @@ export function OfferTool() {
             daysUntilStart={daysUntilStart}
             startDate={startDate}
             city={city}
+            locationMode={locationMode}
+            presetCity={presetCity}
+            stateName={stateName}
+            regionName={regionName}
+            zoriAvailable={zoriAvailable}
             taxBreakdown={results ? {
               grossAnnual: parseFloat(salary),
               federalTaxAnnual: results.federalTaxAnnual,
