@@ -77,9 +77,43 @@ export function OfferTool() {
   
   // Track form start (fire once on first interaction)
   const formStartedRef = useRef(false);
+  const prefillAppliedRef = useRef(false);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
+
+  // Pre-populate form from URL query params (e.g. from MVPLeaps sidekick).
+  // Read from window.location.search so params are available on first load (useSearchParams can be stale on hydration).
+  useEffect(() => {
+    if (prefillAppliedRef.current || typeof window === 'undefined') return;
+    prefillAppliedRef.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const salaryParam = params.get('salary');
+    if (salaryParam != null && salaryParam !== '') {
+      const num = parseInt(salaryParam.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(num) && num > 0) {
+        setSalary(String(num));
+      }
+    }
+    let cityParam = params.get('city');
+    if (cityParam != null && cityParam !== '') {
+      cityParam = cityParam.trim();
+      // Map "San Francisco" to dropdown option "SF Bay Area"
+      if (cityParam.toLowerCase() === 'san francisco') {
+        cityParam = 'SF Bay Area';
+      }
+      if (availableCities.includes(cityParam)) {
+        setCity(cityParam);
+      }
+    }
+    const startParam = params.get('startDate');
+    if (startParam != null && startParam !== '') {
+      const trimmed = startParam.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        setStartDate(trimmed);
+      }
+    }
+  }, [availableCities]);
 
   // Load metro options when state is selected
   useEffect(() => {
