@@ -33,6 +33,8 @@ interface SavingsStackSummaryProps {
   impactHsaAtYear30?: number | null;
   /** Cost of delay 12 mo for HSA (optional). */
   costOfDelayHsa12Mo?: number | null;
+  /** When primary is retirement_15, override match card to show this target (aligns with highest-leverage move). */
+  primaryTarget401kPct?: number;
   onUnlockDetailsClick?: () => void;
 }
 
@@ -404,6 +406,7 @@ function formatDollars(n: number): string {
 function PayrollCard({
   leap,
   primaryKind,
+  primaryTarget401kPct,
   impact401kAtYear30,
   costOfDelay12Mo,
   impactHsaAtYear30,
@@ -411,6 +414,7 @@ function PayrollCard({
 }: {
   leap: Leap;
   primaryKind: string;
+  primaryTarget401kPct?: number;
   impact401kAtYear30?: number | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
@@ -418,15 +422,25 @@ function PayrollCard({
 }) {
   if (leap.category === 'match') {
     const currentPct = leap.currentValue ?? 0;
-    const targetPct = leap.targetValue ?? 0;
+    const targetPct = primaryTarget401kPct ?? leap.targetValue ?? 0;
+    const isRetirementPrimary = primaryKind === 'retirement_15';
+    const isMatchComplete = leap.status === 'complete';
     const showImpact = primaryKind === 'match';
+    const title = isMatchComplete && isRetirementPrimary
+      ? 'Increase 401(k) toward 15%'
+      : isMatchComplete
+        ? '401(k) match captured'
+        : 'Capture employer match';
+    const showTarget = isMatchComplete && !isRetirementPrimary ? false : (currentPct !== targetPct || isRetirementPrimary);
     return (
       <Card className="border border-gray-200 bg-white">
         <CardContent className="p-3">
-          <p className="font-medium text-sm text-[#111827]">Capture employer match</p>
-          <p className="text-xs text-gray-700 mt-0.5">
-            {currentPct}% → {targetPct}%
-          </p>
+          <p className="font-medium text-sm text-[#111827]">{title}</p>
+          {showTarget && (
+            <p className="text-xs text-gray-700 mt-0.5">
+              {currentPct}% → {targetPct}%
+            </p>
+          )}
           {showImpact && impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
             <p className="text-xs font-medium text-[#3F6B42] mt-1">Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement</p>
           )}
@@ -488,6 +502,7 @@ export function SavingsStackSummary({
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
   costOfDelayHsa12Mo = null,
+  primaryTarget401kPct,
   onUnlockDetailsClick,
 }: SavingsStackSummaryProps) {
   const hasRouting = routing != null;
@@ -501,7 +516,9 @@ export function SavingsStackSummary({
             Monthly capital available (after essentials): {formatDollars(monthlyCapitalAvailable)}
           </p>
           <p className="text-xs text-gray-600 mt-0.5">
-            This is what we route each month.
+            {preTax401k && preTax401k.currentPct !== preTax401k.targetPct
+              ? 'Reflects take-home after 401(k) increase. This is what we route each month.'
+              : 'This is what we route each month.'}
           </p>
         </div>
       )}
@@ -562,19 +579,20 @@ export function SavingsStackSummary({
             These are automatic paycheck levers. They change your take-home and your post-tax routing.
           </p>
           <div className="space-y-2">
-            {payrollLeaps.map((leap) => (
+            {payrollLeaps.map((leap) =>
               (leap.category === 'hsa' && leap.hsaMaxAnnual == null) ? null : (
                 <PayrollCard
                   key={leap.id}
                   leap={leap}
                   primaryKind={primary.kind}
+                  primaryTarget401kPct={primaryTarget401kPct}
                   impact401kAtYear30={impact401kAtYear30}
                   costOfDelay12Mo={costOfDelay12Mo}
                   impactHsaAtYear30={impactHsaAtYear30}
                   costOfDelayHsa12Mo={costOfDelayHsa12Mo}
                 />
               )
-            ))}
+            )}
           </div>
         </div>
 

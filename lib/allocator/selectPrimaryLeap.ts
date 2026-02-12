@@ -1,9 +1,10 @@
 /**
  * Select exactly ONE primary (highest-leverage) leap for the trajectory plan.
- * Order: 1) Capture match, 2) Increase HSA (if eligible and not maxed), 3) Retirement toward 15%.
+ * Order: 1) Capture match, 2) Increase HSA (if eligible and not maxed), 3) Retirement toward 15% (capped at 401k limit).
  */
 
 import type { Leap } from './leapModel';
+import { K401_EMPLOYEE_CAP_2025 } from './constants';
 
 const TARGET_RETIREMENT_PCT = 15;
 
@@ -13,16 +14,21 @@ export interface PrimaryLeapResult {
   kind: PrimaryKind;
   /** The leap to show as primary (for match, hsa, debt, growth_split). Null for retirement_15. */
   leap: Leap | null;
-  /** For retirement_15: current 401k % and target 15%. */
+  /** For retirement_15: current 401k % and target (capped at 401k employee limit). */
   retirement15?: { currentPct: number; targetPct: number };
 }
 
 export interface SelectPrimaryLeapInputs {
   employerMatchEnabled: boolean;
   current401kPct: number;
-  recommended401kPct: number;
+  /** % needed to capture full employer match (e.g. 7%). */
+  matchCapPct: number;
   /** HSA eligible and current < max. */
   hsaNotMaxed?: boolean;
+  /** 401(k) at employee cap ($23,500) — do not recommend increase. */
+  k401AtCap?: boolean;
+  /** Salary annual — used to cap retirement target at 401k limit. */
+  salaryAnnual?: number;
   unlock: {
     carriesBalance?: boolean;
     debtBalance?: number;
@@ -35,20 +41,20 @@ export interface SelectPrimaryLeapInputs {
  * Returns the single primary leap and kind.
  * 1) Match not captured → match
  * 2) Else HSA eligible and not maxed → hsa
- * 3) Else current 401k < 15% → retirement_15
- * 4) Else debt or growth_split (existing logic)
+ * 3) Else current 401k < 15% AND not at cap → retirement_15
+ * 4) Else debt or growth_split (brokerage when both 401k and HSA maxed)
  */
 export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapResult {
   const {
     employerMatchEnabled,
     current401kPct,
-    recommended401kPct,
+    matchCapPct,
     hsaNotMaxed = false,
+    k401AtCap = false,
     unlock,
     leaps,
   } = inputs;
 
-  const matchCapPct = recommended401kPct;
   const matchNotCaptured = employerMatchEnabled && current401kPct < matchCapPct;
 
   if (matchNotCaptured) {
@@ -61,11 +67,22 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     return { kind: 'hsa', leap: hsaLeap ?? null };
   }
 
+  // 401(k) at cap → skip retirement increase, go to brokerage
+  if (k401AtCap) {
+    const splitLeap = leaps.find((l) => l.category === 'retirement_split');
+    return { kind: 'growth_split', leap: splitLeap ?? null };
+  }
+
   if (current401kPct < TARGET_RETIREMENT_PCT) {
+    let targetPct = TARGET_RETIREMENT_PCT;
+    if ((inputs.salaryAnnual ?? 0) > 0) {
+      const capPct = (K401_EMPLOYEE_CAP_2025 / inputs.salaryAnnual!) * 100;
+      targetPct = Math.min(TARGET_RETIREMENT_PCT, capPct);
+    }
     return {
       kind: 'retirement_15',
       leap: null,
-      retirement15: { currentPct: current401kPct, targetPct: TARGET_RETIREMENT_PCT },
+      retirement15: { currentPct: current401kPct, targetPct },
     };
   }
 

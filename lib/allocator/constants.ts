@@ -1,7 +1,10 @@
 /**
  * Capital Allocation Framework — constants.
- * HSA limits (IRS 2025). Match defaults for UI.
+ * IRS 2025 limits. Match defaults for UI.
  */
+
+/** 401(k) employee deferral cap (2025). */
+export const K401_EMPLOYEE_CAP_2025 = 23500;
 
 /** HSA max contribution, self-only (2025). */
 export const HSA_LIMIT_SINGLE = 4300;

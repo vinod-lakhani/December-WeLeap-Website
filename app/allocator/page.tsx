@@ -16,6 +16,7 @@ import { buildLeaps } from '@/lib/allocator/buildLeaps';
 import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
+import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 
 export interface AllocatorPrefillFromUrl {
@@ -164,6 +165,20 @@ function AllocatorContent() {
     hsaCoverageType: unlockData?.hsaCoverageType ?? prefill.hsaCoverageType,
   } : null, [prefill, unlockData?.hsaEligible, unlockData?.currentHsaAnnual, unlockData?.hsaCoverageType]);
 
+  const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? 5;
+  const current401kPct = prefill?.current401kPct ?? 0;
+
+  // Effective target 401k % for display and routing (same logic as selectPrimaryLeap)
+  const effectiveTarget401kPct = useMemo(() => {
+    if (!prefill?.salaryAnnual) return current401kPct;
+    const matchNotCaptured = prefill?.employerMatchEnabled && current401kPct < matchCapPct;
+    if (matchNotCaptured) return matchCapPct;
+    const current401kAnnual = (prefill.salaryAnnual * current401kPct) / 100;
+    if (current401kAnnual >= K401_EMPLOYEE_CAP_2025) return current401kPct;
+    const capPct = (K401_EMPLOYEE_CAP_2025 / prefill.salaryAnnual) * 100;
+    return Math.min(15, capPct);
+  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, current401kPct, matchCapPct]);
+
   const netTakeHomeMonthly = useMemo(() => {
     if (!prefill?.salaryAnnual || !prefill.state) return 0;
     return computeNetTakeHomeMonthly({
@@ -174,14 +189,30 @@ function AllocatorContent() {
     });
   }, [prefill?.salaryAnnual, prefill?.state, prefill?.current401kPct, prefill?.currentHsaAnnual, unlockData?.currentHsaAnnual]);
 
+  // Monthly capital for routing uses TARGET 401k (after applying recommendation) — increases in 401k reduce take-home
+  const netTakeHomeAtTarget401k = useMemo(() => {
+    if (!prefill?.salaryAnnual || !prefill.state) return 0;
+    return computeNetTakeHomeMonthly({
+      salaryAnnual: prefill.salaryAnnual,
+      employee401kPct: effectiveTarget401kPct,
+      currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual ?? 0,
+      stateCode: prefill.state,
+    });
+  }, [prefill?.salaryAnnual, prefill?.state, effectiveTarget401kPct, prefill?.currentHsaAnnual, unlockData?.currentHsaAnnual]);
+
   const monthlyCapitalAvailable = useMemo(() => {
     const essentials = unlockData?.essentialMonthly ?? 0;
     return Math.max(0, netTakeHomeMonthly - essentials);
   }, [netTakeHomeMonthly, unlockData?.essentialMonthly]);
 
-  const { leaps, nextLeapId, flowSummary, matchCaptured, routing } = useMemo(
-    () => buildLeaps(prefillForLeaps, unlockData, { monthlyCapitalAvailable: prefill ? monthlyCapitalAvailable : undefined }),
-    [prefillForLeaps, unlockData, prefill, monthlyCapitalAvailable]
+  const monthlyCapitalAtTarget401k = useMemo(() => {
+    const essentials = unlockData?.essentialMonthly ?? 0;
+    return Math.max(0, netTakeHomeAtTarget401k - essentials);
+  }, [netTakeHomeAtTarget401k, unlockData?.essentialMonthly]);
+
+  const { leaps, nextLeapId, flowSummary, matchCaptured, k401AtCap, routing } = useMemo(
+    () => buildLeaps(prefillForLeaps, unlockData, { monthlyCapitalAvailable: prefill ? monthlyCapitalAtTarget401k : undefined }),
+    [prefillForLeaps, unlockData, prefill, monthlyCapitalAtTarget401k]
   );
 
   const hasUnlockData = !!(unlockData?.essentialMonthly != null || unlockData?.retirementFocus != null || (unlockData?.carriesBalance === false) || (unlockData?.carriesBalance === true && unlockData?.debtBalance != null && unlockData?.debtAprRange));
@@ -246,12 +277,14 @@ function AllocatorContent() {
       selectPrimaryLeap({
         employerMatchEnabled: prefill?.employerMatchEnabled ?? false,
         current401kPct: prefill?.current401kPct ?? 0,
-        recommended401kPct: prefill?.recommended401kPct ?? 0,
+        matchCapPct,
         hsaNotMaxed,
+        k401AtCap,
+        salaryAnnual: prefill?.salaryAnnual,
         unlock: unlockData,
         leaps,
       }),
-    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.recommended401kPct, hsaNotMaxed, unlockData, leaps]
+    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, matchCapPct, hsaNotMaxed, k401AtCap, unlockData, leaps]
   );
   const supportingLeaps = useMemo(
     () => getSupportingLeaps(leaps, primaryResult.kind),
@@ -685,8 +718,9 @@ function AllocatorContent() {
                       hasUnlockData={hasUnlockData}
                       hasEmployerMatch={prefill?.employerMatchEnabled ?? false}
                       routing={routing}
-                      monthlyCapitalAvailable={prefill ? monthlyCapitalAvailable : null}
-                      preTax401k={prefill ? { currentPct: prefill.current401kPct, targetPct: prefill.recommended401kPct, matchRatePct: prefill.matchRatePct ?? 100, matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct } : null}
+                      monthlyCapitalAvailable={prefill ? monthlyCapitalAtTarget401k : null}
+                      preTax401k={prefill ? { currentPct: prefill.current401kPct, targetPct: effectiveTarget401kPct, matchRatePct: prefill.matchRatePct ?? 100, matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct } : null}
+                      primaryTarget401kPct={primaryResult.kind === 'retirement_15' ? primaryResult.retirement15?.targetPct : primaryResult.kind === 'match' && primaryResult.leap ? (primaryResult.leap.targetValue as number) : undefined}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
                       impactHsaAtYear30={null}

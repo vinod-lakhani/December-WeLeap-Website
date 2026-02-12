@@ -114,8 +114,8 @@ export function LeapImpactTool() {
   }, [current401kPct]);
 
   const leap = useMemo(
-    () => getRecommendedLeap(hasMatch, matchCapPctNum, current401kNum),
-    [hasMatch, matchCapPctNum, current401kNum]
+    () => getRecommendedLeap(hasMatch, matchCapPctNum, current401kNum, salaryNum),
+    [hasMatch, matchCapPctNum, current401kNum, salaryNum]
   );
 
   const trajectoryResult = useMemo(() => {
@@ -511,15 +511,21 @@ export function LeapImpactTool() {
               <p className="text-sm text-gray-600">
                 {leap.type === 'capture_match'
                   ? 'This unlocks more employer match — free money that compounds.'
-                  : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
+                  : leap.type === 'at_cap'
+                    ? 'You’re maxing your 401(k). Excess savings can go to brokerage.'
+                    : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
               </p>
-              <p className="text-lg font-bold text-[#3F6B42]">
-                30-year upside: +{formatCurrency(trajectoryResult.delta30yr)}
-              </p>
-              {costOfDelayAmount > 0 && (
-                <p className="text-sm text-gray-600">
-                  Waiting 12 months costs ~{formatCurrency(costOfDelayAmount)}
-                </p>
+              {leap.type !== 'at_cap' && (
+                <>
+                  <p className="text-lg font-bold text-[#3F6B42]">
+                    30-year upside: +{formatCurrency(trajectoryResult.delta30yr)}
+                  </p>
+                  {costOfDelayAmount > 0 && (
+                    <p className="text-sm text-gray-600">
+                      Waiting 12 months costs ~{formatCurrency(costOfDelayAmount)}
+                    </p>
+                  )}
+                </>
               )}
               <p className="text-[10px] text-gray-400">Assumes 7% real return.</p>
             </CardContent>

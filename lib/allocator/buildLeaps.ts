@@ -5,7 +5,7 @@
 
 import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, CapitalRoutingResult } from './leapModel';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
-import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, K401_EMPLOYEE_CAP_2025, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
 
 const REAL_RETURN = REAL_RETURN_DEFAULT;
@@ -90,7 +90,7 @@ export function buildLeaps(
   prefill: AllocatorPrefillForLeaps | null,
   unlock: AllocatorUnlockData | null,
   options?: BuildLeapsOptions
-): { leaps: Leap[]; nextLeapId: string | null; flowSummary: FlowSummary; matchCaptured: boolean; routing: CapitalRoutingResult | null } {
+): { leaps: Leap[]; nextLeapId: string | null; flowSummary: FlowSummary; matchCaptured: boolean; k401AtCap: boolean; routing: CapitalRoutingResult | null } {
   const leaps: Leap[] = [];
   const hasUnlockData = !!(
     unlock &&
@@ -100,7 +100,12 @@ export function buildLeaps(
   const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? DEFAULT_MATCH_CAP_PCT;
   const matchRatePct = prefill?.matchRatePct ?? DEFAULT_MATCH_RATE_PCT;
   const recommended401k = prefill?.recommended401kPct ?? matchCapPct;
-  const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= recommended401k);
+  // Match captured = contributing at or above employer match cap (not recommended401k, which may be 12% post-match)
+  const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= matchCapPct);
+  // 401(k) at employee cap — don't recommend increase
+  const salaryAnnual = prefill?.salaryAnnual ?? 0;
+  const current401kAnnual = salaryAnnual > 0 ? (salaryAnnual * (prefill?.current401kPct ?? 0) / 100) : 0;
+  const k401AtCap = salaryAnnual > 0 && current401kAnnual >= K401_EMPLOYEE_CAP_2025;
   const netMonthly = prefill?.estimatedNetMonthlyIncome ?? 0;
   const essentialsMonthly = unlock?.essentialMonthly ?? 0;
   const postTaxSavingsMonthly =
@@ -290,5 +295,5 @@ export function buildLeaps(
   const nextLeap = leaps.find((l) => l.status === 'next');
   const nextLeapId = nextLeap?.id ?? null;
 
-  return { leaps, nextLeapId, flowSummary, matchCaptured, routing };
+  return { leaps, nextLeapId, flowSummary, matchCaptured, k401AtCap, routing };
 }
