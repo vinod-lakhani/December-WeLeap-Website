@@ -57,9 +57,13 @@ interface PlanData {
 
 interface WaitlistFormProps {
   planData?: PlanData;
+  /** When provided, show Leap CTA as primary and Rent Plan as secondary */
+  onLeapClick?: () => void;
+  /** Secondary tile: lighter styling, outlined button */
+  variant?: 'default' | 'secondary';
 }
 
-export function WaitlistForm({ planData }: WaitlistFormProps) {
+export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: WaitlistFormProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -113,68 +117,93 @@ export function WaitlistForm({ planData }: WaitlistFormProps) {
     }
   };
 
-  return (
-    <Card className="border-[#D1D5DB] bg-white">
-      <CardHeader>
-        <CardTitle className="text-xl text-[#111827]">You earned the salary. Now protect it.</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-gray-600 mb-4">
-          Create your Day 1 Playbook in 5 minutes. We'll email you a clear, one-page plan you can reference while touring apartments, comparing options, or talking things through — so you're not guessing once rent and paychecks start hitting.
-        </p>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-              Create My Day 1 Playbook
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-gray-900">Get your plan by email</DialogTitle>
-              <DialogDescription className="text-gray-600 mt-2">
-                We'll send you a PDF with your rent calculation and financial plan.
-              </DialogDescription>
-            </DialogHeader>
-            {!isSubmitted ? (
-              <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email" className="text-gray-700">
-                    Email address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                {error && (
-                  <div className="text-red-600 text-sm mt-2">{error}</div>
-                )}
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-[#3F6B42] hover:bg-[#3F6B42]/90 text-white px-6 py-3 rounded-xl font-medium mt-2"
-                >
-                  {isLoading ? 'Sending...' : 'Send my plan'}
-                </Button>
-              </form>
-            ) : (
-              <div className="py-4 text-center">
-                <p className="text-green-600 font-medium mb-2">✓ Plan sent!</p>
-                <p className="text-gray-600 text-sm">
-                  Check your email for your personalized plan PDF.
-                </p>
-              </div>
+  const secondaryButton = (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          variant={onLeapClick || variant === 'secondary' ? 'outline' : 'default'}
+          className={onLeapClick || variant === 'secondary' ? 'border-[#3F6B42] text-[#3F6B42] hover:bg-[#3F6B42]/5' : 'w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90'}
+        >
+          {variant === 'secondary' ? 'Get My Rent Plan (PDF)' : 'Get My Day 1 Rent Plan (PDF)'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-gray-900">Get your plan by email</DialogTitle>
+          <DialogDescription className="text-gray-600 mt-2">
+            Download a clean, one-page plan. We&apos;ll send it to your inbox.
+          </DialogDescription>
+        </DialogHeader>
+        {!isSubmitted ? (
+          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email" className="text-gray-700">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+            {error && (
+              <div className="text-red-600 text-sm mt-2">{error}</div>
             )}
-          </DialogContent>
-        </Dialog>
-        <p className="text-xs text-gray-500 mt-2 text-center">
-          You'll want this when touring apartments or comparing leases.
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="bg-[#3F6B42] hover:bg-[#3F6B42]/90 text-white px-6 py-3 rounded-xl font-medium mt-2"
+            >
+              {isLoading ? 'Sending...' : 'Send my plan'}
+            </Button>
+          </form>
+        ) : (
+          <div className="py-4 text-center">
+            <p className="text-green-600 font-medium mb-2">✓ Plan sent!</p>
+            <p className="text-gray-600 text-sm">
+              Check your email for your personalized plan PDF.
+            </p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
+  const isSecondary = variant === 'secondary';
+
+  return (
+    <Card className={isSecondary ? 'border border-gray-200 bg-gray-50' : 'border-[#D1D5DB] bg-white'}>
+      <CardHeader className={isSecondary ? 'pb-2 pt-4 px-4' : undefined}>
+        <CardTitle className={isSecondary ? 'text-lg text-[#111827]' : 'text-xl text-[#111827]'}>
+          {isSecondary ? 'Get a 1-page rent plan (PDF)' : 'You earned the salary. Now protect it.'}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className={isSecondary ? 'pt-0 pb-4 px-4' : undefined}>
+        <p className="text-sm text-gray-600 mb-4">
+          {isSecondary
+            ? 'Download a simple summary with your safe rent range and upfront cash needed.'
+            : 'Get a one-page plan with your safe rent range, upfront cash needed, and a simple allocation starting point. Download a clean, one-page plan.'}
         </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {onLeapClick && (
+            <Button
+              onClick={onLeapClick}
+              className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+            >
+              Run My Full Allocation Plan (prefilled)
+            </Button>
+          )}
+          {secondaryButton}
+        </div>
+        {onLeapClick && (
+          <p className="text-xs text-gray-500 mt-2">
+            Takes ~2 minutes. No email required.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

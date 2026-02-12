@@ -1,6 +1,6 @@
 # How to Track Variant A vs Variant B in GA4
 
-This guide shows you exactly how to compare Variant A (Control) and Variant B (Test) in Google Analytics 4.
+> **DEPRECATED:** The Day-0 Cash A/B test has been removed. The rent tool now always shows the upfront cash number immediately (no email gate). This guide is kept for historical reference only.
 
 ---
 

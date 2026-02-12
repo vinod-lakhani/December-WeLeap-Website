@@ -7,6 +7,7 @@ import type { Leap } from '@/lib/allocator/leapModel';
 import type { FlowSummary, CapitalRoutingResult } from '@/lib/allocator/leapModel';
 import type { PrimaryLeapResult } from '@/lib/allocator/selectPrimaryLeap';
 import { track } from '@/lib/analytics';
+import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 
 interface SavingsStackSummaryProps {
   /** Exactly one primary (highest-leverage) move. */
@@ -18,10 +19,12 @@ interface SavingsStackSummaryProps {
   flowSummary: FlowSummary;
   hasUnlockData: boolean;
   hasEmployerMatch?: boolean;
-  /** Dollar routing (for "See exact dollar routing" toggle). */
+  /** Dollar routing (for exact dollar breakdown). */
   routing?: CapitalRoutingResult | null;
   /** Estimated monthly capital available (adaptive); shown prominently when set. */
   monthlyCapitalAvailable?: number | null;
+  /** For pre-tax display: 401(k) current %, target %, match rate/cap. */
+  preTax401k?: { currentPct: number; targetPct: number; matchRatePct?: number; matchCapPct?: number } | null;
   /** 401(k) impact at Year 30. Only for primary when kind === 'match'. */
   impact401kAtYear30?: number | null;
   /** Cost of delay if user waits 12 months. Only for primary when kind === 'match'. */
@@ -480,22 +483,54 @@ export function SavingsStackSummary({
   hasEmployerMatch = false,
   routing = null,
   monthlyCapitalAvailable = null,
+  preTax401k = null,
   impact401kAtYear30 = null,
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
   costOfDelayHsa12Mo = null,
   onUnlockDetailsClick,
 }: SavingsStackSummaryProps) {
-  const [showDollarRouting, setShowDollarRouting] = useState(false);
-  const [showAllocationLogic, setShowAllocationLogic] = useState(false);
   const hasRouting = routing != null;
 
   return (
     <div className="space-y-6">
-      {/* One-liner: trajectory, not budgeting */}
-      <p className="text-sm text-gray-600">
-        Right now, one move shifts your wealth trajectory the most. Start there.
-      </p>
+      {/* Monthly capital available — prominent when we have it */}
+      {monthlyCapitalAvailable != null && monthlyCapitalAvailable >= 0 && (
+        <div className="rounded-lg border border-[#3F6B42]/30 bg-[#3F6B42]/5 px-4 py-3">
+          <p className="font-medium text-[#111827]">
+            Monthly capital available (after essentials): {formatDollars(monthlyCapitalAvailable)}
+          </p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            This is what we route each month.
+          </p>
+        </div>
+      )}
+
+      {/* Pre-tax levers (from your paycheck) */}
+      {(preTax401k || payrollLeaps.some((l) => l.category === 'hsa' && l.hsaMaxAnnual != null)) && (
+        <div>
+          <h3 className="text-sm font-semibold text-[#111827] mb-2">Pre-tax setup (from your paycheck)</h3>
+          <div className="space-y-2 text-sm text-gray-700">
+            {preTax401k && (
+              <p>
+                401(k): {preTax401k.currentPct}% → {preTax401k.targetPct}%
+                {hasEmployerMatch && preTax401k.matchRatePct != null && preTax401k.matchCapPct != null && (
+                  <> (match: {preTax401k.matchRatePct}% up to {preTax401k.matchCapPct}%)</>
+                )}
+              </p>
+            )}
+            {payrollLeaps.filter((l) => l.category === 'hsa' && l.hsaMaxAnnual != null).map((leap) => {
+              const current = leap.hsaCurrentAnnual ?? 0;
+              const target = leap.targetValue ?? leap.hsaMaxAnnual ?? 0;
+              return (
+                <p key={leap.id}>
+                  HSA: ${Math.round(current).toLocaleString()}/yr → ${Math.round(target).toLocaleString()}/yr
+                </p>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Primary: single dominant card */}
       <div>
@@ -545,39 +580,18 @@ export function SavingsStackSummary({
 
         {/* POST-TAX ROUTING (MONTHLY) */}
         <div>
-          <h3 className="text-sm font-semibold text-[#111827] mb-1">POST-TAX ROUTING (MONTHLY)</h3>
-          {hasRouting && (
-            <button
-              type="button"
-              onClick={() => setShowDollarRouting((v) => !v)}
-              className="text-xs text-[#3F6B42] hover:underline mb-2"
-            >
-              {showDollarRouting ? 'Hide exact dollar routing' : 'See exact dollar routing'}
-            </button>
-          )}
-          {showDollarRouting && hasRouting && routing && (
-            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-xs text-gray-700 space-y-1">
-              <p className="font-medium">From your {formatDollars(routing.postTaxSavingsMonthly)} monthly capital:</p>
-              <p>• {formatDollars(routing.efAlloc)} → Emergency Fund</p>
-              <p>• {formatDollars(routing.debtAlloc)} → High-APR Debt</p>
-              <p>• {formatDollars(routing.retirementAlloc)} → Retirement</p>
-              <p>• {formatDollars(routing.brokerageAlloc)} → Brokerage</p>
-              <p className="text-gray-500 mt-2">Allocation rule: ~40% stability, ~40% debt reduction, remainder to growth.</p>
-              <p className="text-gray-500 mt-1 text-[10px]">This updates automatically when your income or contribution settings change.</p>
-              <button
-                type="button"
-                onClick={() => setShowAllocationLogic((v) => !v)}
-                className="text-[#3F6B42] hover:underline mt-1"
-              >
-                {showAllocationLogic ? 'Hide allocation logic' : 'See allocation logic'}
-              </button>
-              {showAllocationLogic && (
-                <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
-                  <p>• Emergency fund: 40% of monthly capital (until 3-month target)</p>
-                  <p>• High-APR debt: 40% of remaining (APR ≥ 10%)</p>
-                  <p>• Retirement vs brokerage: split of remaining by your focus (e.g. 80/20)</p>
-                </div>
-              )}
+          <h3 className="text-sm font-semibold text-[#111827] mb-1">Post-tax routing</h3>
+          {hasRouting && routing && routing.postTaxSavingsMonthly > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-sm text-gray-700 space-y-1">
+              <p className="font-medium">Here&apos;s how we&apos;d route your {formatDollars(routing.postTaxSavingsMonthly)}/mo:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>{formatDollars(routing.efAlloc)} → Safety buffer (40%)</li>
+                {routing.debtAlloc > 0 && (
+                  <li>{formatDollars(routing.debtAlloc)} → High-APR debt (40% of remainder)</li>
+                )}
+                <li>{formatDollars(routing.retirementAlloc)} → Retirement</li>
+                <li>{formatDollars(routing.brokerageAlloc)} → Brokerage (flex)</li>
+              </ul>
             </div>
           )}
           <div className="space-y-2">
@@ -585,12 +599,27 @@ export function SavingsStackSummary({
               <SupportingCard
                 key={leap.id}
                 leap={leap}
-                showAllocationBadge={showAllocationLogic}
+                showAllocationBadge={false}
                 showFrameworkLabel={true}
                 onUnlockDetailsClick={onUnlockDetailsClick}
               />
             ))}
           </div>
+        </div>
+
+        {/* Full plan feedback questionnaire */}
+        <div className="mt-6">
+          <ToolFeedbackQuestionnaire
+            page="/allocator"
+            eventName="leap_full_plan_feedback_submitted"
+            question="Does this full plan feel useful?"
+            buttonLabels={{
+              yes: "🔥 Yes — I'd use this",
+              not_sure: "👍 Helpful but needs work",
+              no: "👎 Not useful",
+            }}
+            onFeedbackSubmitted={() => {}}
+          />
         </div>
 
         {/* Allocation drift */}

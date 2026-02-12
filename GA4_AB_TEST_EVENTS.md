@@ -1,8 +1,8 @@
 # GA4 A/B Test Events - Day-0 Cash Reality Experiment
 
-This document lists all GA4 events for the Day-0 Cash Reality A/B test experiment.
+> **DEPRECATED:** The Day-0 Cash A/B test has been removed. Day-0 events (`day0_cash_*`) are no longer fired. This document is kept for historical reference only.
 
-## A/B Test Setup
+## A/B Test Setup (Historical)
 
 - **Experiment**: Day-0 Cash Reality
 - **Variant A (Control)**: Current production behavior - shows exact Day-0 cash number immediately

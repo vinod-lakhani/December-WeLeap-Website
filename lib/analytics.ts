@@ -21,7 +21,6 @@
  * - leap_impact_calculated (salary, state, match_yesno, current_pct, match_pct, recommended_pct, delta_30yr)
  * - leap_impact_email_submitted
  * - leap_impact_continue_to_allocator_clicked
- * - leap_stack_preview_expanded
  * - leap_stack_unlock_clicked
  * - leap_impact_feedback_submitted (page, feedback: yes|no|not_sure)
  * - leap_email_submit_success (intent, salary, state, current401kPct, recommended401kPct, delta30yr)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,6 @@ import {
 } from 'recharts';
 import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
-import { getStackPreviewSteps } from '@/lib/leapImpact/stackPreview';
 import { REAL_RETURN_DEFAULT, DEFAULT_MATCH_PCT, DEFAULT_CURRENT_401K_PCT } from '@/lib/leapImpact/constants';
 import { buildAllocatorUrl, buildAllocatorPrefillUrl, type AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { formatCurrency } from '@/lib/rounding';
@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { TrajectoryPreview } from '@/components/TrajectoryPreview';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 
 const PAGE = '/leap-impact-simulator';
@@ -60,8 +61,10 @@ interface TaxResult {
 }
 
 export function LeapImpactTool() {
+  const searchParams = useSearchParams();
   const [salary, setSalary] = useState('');
   const [state, setState] = useState('');
+  const [prefillFromRent, setPrefillFromRent] = useState(false);
   const [hasMatch, setHasMatch] = useState(true);
   const [matchRatePct, setMatchRatePct] = useState('100');
   const [matchCapPct, setMatchCapPct] = useState(String(DEFAULT_MATCH_PCT));
@@ -73,22 +76,25 @@ export function LeapImpactTool() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSubmitting, setEmailSubmitting] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [stackPreviewExpandedTracked, setStackPreviewExpandedTracked] = useState(false);
-  const [stackAccordionValue, setStackAccordionValue] = useState<string>('');
-  const [showLockPlanSection, setShowLockPlanSection] = useState(false);
   const [emailSuccessIntent, setEmailSuccessIntent] = useState<AllocatorIntent | null>(null);
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rentPrefillAppliedRef = useRef(false);
+
+  // Prefill from rent tool when src=rent
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)');
-    if (mq.matches) {
-      setStackAccordionValue('stack');
-      setStackPreviewExpandedTracked(true);
-      track('leap_stack_preview_expanded', { page: PAGE });
+    if (!searchParams || rentPrefillAppliedRef.current) return;
+    if (searchParams.get('src') !== 'rent') return;
+    rentPrefillAppliedRef.current = true;
+    const salaryAnnual = searchParams.get('salaryAnnual');
+    const stateParam = searchParams.get('state');
+    if (salaryAnnual && parseFloat(salaryAnnual) > 0) {
+      setSalary(String(Math.round(parseFloat(salaryAnnual))));
     }
-    const handler = () => setStackAccordionValue(mq.matches ? 'stack' : '');
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+    if (stateParam) {
+      setState(stateParam);
+    }
+    setPrefillFromRent(true);
+  }, [searchParams]);
 
   const salaryNum = useMemo(() => {
     const n = parseFloat(salary);
@@ -183,6 +189,7 @@ export function LeapImpactTool() {
         realReturn: REAL_RETURN_DEFAULT,
         years: 30,
       });
+      track('landing_cta_click_show_next_move', { page: PAGE });
       track('leap_impact_calculated', {
         page: PAGE,
         salary: salaryNum,
@@ -289,50 +296,72 @@ export function LeapImpactTool() {
     };
   }, []);
 
+  const showResultsRef = useRef(false);
   const netMonthly = taxResult ? taxResult.netIncomeAnnual / 12 : 0;
   const showResults = taxResult && trajectoryResult;
 
-  const stackSteps = useMemo(
-    () => getStackPreviewSteps(hasMatch, current401kNum, matchCapPctNum),
-    [hasMatch, current401kNum, matchCapPctNum]
-  );
-
-  const handleStackAccordionChange = useCallback((value: string) => {
-    setStackAccordionValue(value);
-    if (value === 'stack' && !stackPreviewExpandedTracked) {
-      setStackPreviewExpandedTracked(true);
-      track('leap_stack_preview_expanded', { page: PAGE });
+  useEffect(() => {
+    if (showResults && !showResultsRef.current) {
+      showResultsRef.current = true;
+      track('results_viewed', { page: PAGE });
     }
-  }, [stackPreviewExpandedTracked]);
+  }, [showResults]);
 
   const handleUnlockFullStack = useCallback(() => {
-    track('leap_stack_unlock_clicked', { page: PAGE });
-    track('leap_redirect_to_allocator', { intent: 'unlock_full_stack' });
-    const netMonthlyVal = taxResult ? taxResult.netIncomeAnnual / 12 : undefined;
-    const url = buildAllocatorPrefillUrl({
-      salaryAnnual: salaryNum,
-      state,
-      payFrequency: 'monthly',
-      employerMatchEnabled: hasMatch,
-      employerMatchPct: matchCapPctNum,
-      matchRatePct: matchRatePctNum,
-      matchCapPct: matchCapPctNum,
-      current401kPct: current401kNum,
-      recommended401kPct: leap.optimized401kPct,
-      estimatedNetMonthlyIncome: netMonthlyVal,
-      leapDelta30yr: trajectoryResult?.delta30yr,
-      costOfDelay12Mo: costOfDelayAmount > 0 ? costOfDelayAmount : undefined,
-      intent: 'unlock_full_stack',
-      source: 'leap_impact_tool',
-    });
-    window.location.href = url;
+    try {
+      if (!state?.trim()) {
+        setError('Please select your state before continuing to the allocation plan.');
+        return;
+      }
+      if (salaryNum <= 0) {
+        setError('Please enter a valid salary before continuing.');
+        return;
+      }
+      setError(null);
+      track('full_stack_expand_clicked', { page: PAGE });
+      track('leap_stack_unlock_clicked', { page: PAGE });
+      track('leap_redirect_to_allocator', { intent: 'unlock_full_stack' });
+      const netMonthlyVal = taxResult ? taxResult.netIncomeAnnual / 12 : undefined;
+      const url = buildAllocatorPrefillUrl({
+        salaryAnnual: salaryNum,
+        state: state.trim(),
+        payFrequency: 'monthly',
+        employerMatchEnabled: hasMatch,
+        employerMatchPct: matchCapPctNum,
+        matchRatePct: matchRatePctNum,
+        matchCapPct: matchCapPctNum,
+        current401kPct: current401kNum,
+        recommended401kPct: leap.optimized401kPct,
+        estimatedNetMonthlyIncome: netMonthlyVal,
+        leapDelta30yr: trajectoryResult?.delta30yr,
+        costOfDelay12Mo: costOfDelayAmount > 0 ? costOfDelayAmount : undefined,
+        intent: 'unlock_full_stack',
+        source: 'leap_impact_tool',
+      });
+      window.location.href = url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(message);
+    }
   }, [taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount]);
 
   return (
     <div className="space-y-8">
+      {prefillFromRent && (
+        <div className="rounded-lg border border-[#3F6B42]/30 bg-[#3F6B42]/5 px-4 py-3 text-sm text-[#111827]">
+          Prefilled from your rent results.
+        </div>
+      )}
+      <TrajectoryPreview
+        salary={salary}
+        hasMatch={hasMatch}
+        matchRatePct={matchRatePct}
+        matchCapPct={matchCapPct}
+        current401kPct={current401kPct}
+      />
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
-          <CardTitle className="text-xl text-[#111827]">Your numbers</CardTitle>
+          <CardTitle className="text-xl text-[#111827]">Income & Benefits</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -426,10 +455,10 @@ export function LeapImpactTool() {
           )}
           <div className="space-y-2">
             <Label htmlFor="leap-401k" className="text-[#111827]">
-              Current 401(k) contribution %
+              Your current 401(k) contribution
             </Label>
             <p className="text-xs text-gray-500">
-              Enter your current percentage (from your paystub). We’ll recommend the next best move.
+              We compare this to your employer match and optimal target.
             </p>
             <Input
               id="leap-401k"
@@ -462,43 +491,53 @@ export function LeapImpactTool() {
             disabled={isCalculating}
             className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
           >
-            {isCalculating ? 'Calculating...' : 'Show my trajectory'}
+            {isCalculating ? 'Calculating...' : 'Show my next move'}
           </Button>
+          <p className="text-center text-xs text-gray-500 mt-2">
+            No email required. You&apos;ll see your #1 move immediately.
+          </p>
         </CardContent>
       </Card>
 
       {showResults && trajectoryResult && (
         <div className="space-y-8">
-          {/* Trajectory delta and single-Leap impact use the same value for consistency */}
-          <Card className="border-[#D1D5DB] bg-white">
+          {/* 1. THE HOOK — Your next move */}
+          <Card className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Your trajectory delta</CardTitle>
+              <CardTitle className="text-xl text-[#111827]">Your next move</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl md:text-3xl font-bold text-[#3F6B42] mb-2">
-                +{formatCurrency(trajectoryResult.delta30yr)}
+            <CardContent className="space-y-3">
+              <p className="font-semibold text-[#111827]">Do this: {leap.summary}</p>
+              <p className="text-sm text-gray-600">
+                {leap.type === 'capture_match'
+                  ? 'This unlocks more employer match — free money that compounds.'
+                  : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
               </p>
-              <p className="text-[#111827]">
-                If you apply 1 Leap today, your projected net worth at Year 30 increases by{' '}
-                <strong>{formatCurrency(trajectoryResult.delta30yr)}</strong>.
+              <p className="text-lg font-bold text-[#3F6B42]">
+                30-year upside: +{formatCurrency(trajectoryResult.delta30yr)}
               </p>
+              {costOfDelayAmount > 0 && (
+                <p className="text-sm text-gray-600">
+                  Waiting 12 months costs ~{formatCurrency(costOfDelayAmount)}
+                </p>
+              )}
+              <p className="text-[10px] text-gray-400">Assumes 7% real return.</p>
             </CardContent>
           </Card>
 
+          {/* 2. Chart */}
           <Card className="border-[#D1D5DB] bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Baseline vs optimized</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                     <XAxis
                       dataKey="year"
                       tickFormatter={(v) => (v === 0 ? '0' : v % 10 === 0 ? `${v}` : '')}
                       stroke="#6B7280"
                       fontSize={12}
+                      tickLine={false}
                     />
                     <YAxis
                       tickFormatter={(v) => {
@@ -508,6 +547,8 @@ export function LeapImpactTool() {
                       }}
                       stroke="#6B7280"
                       fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
                     />
                     <Tooltip
                       formatter={(value: number) => [formatCurrency(value), '']}
@@ -523,7 +564,7 @@ export function LeapImpactTool() {
                       stroke="#94A3B8"
                       strokeWidth={2}
                       dot={false}
-                      name="Current setup"
+                      name="Current"
                     />
                     <Line
                       type="monotone"
@@ -531,188 +572,64 @@ export function LeapImpactTool() {
                       stroke="#3F6B42"
                       strokeWidth={2}
                       dot={false}
-                      name="After this Leap"
+                      name="After this move"
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Markers at Year 10 and Year 30. Assumptions: {(REAL_RETURN_DEFAULT * 100).toFixed(0)}% real return, contributions monthly.
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                Same income. Different setup.
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Your highest-impact Leap</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="font-semibold text-[#111827]">{leap.summary}</p>
-              <p className="text-sm text-gray-600">
-                Why now: {leap.type === 'capture_match' ? 'Unlocks employer match (free money).' : 'Accelerates tax-advantaged compounding.'}
-              </p>
-              <p className="text-[#3F6B42] font-medium">
-                Impact: +{formatCurrency(trajectoryResult.delta30yr)} at Year 30
-              </p>
-            </CardContent>
-          </Card>
+          {/* 2.5. Feedback questionnaire */}
+          <ToolFeedbackQuestionnaire
+            page={PAGE}
+            eventName="leap_impact_feedback_submitted"
+            question="Does this next move make sense for you?"
+            buttonLabels={{
+              yes: '✅ Yes — this feels right',
+              not_sure: '🤔 Not sure',
+              no: "❌ Doesn't feel relevant",
+            }}
+            onFeedbackSubmitted={() => {}}
+          />
 
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Cost of delay</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-[#111827]">
-                Waiting 12 months costs roughly{' '}
-                <strong>{formatCurrency(costOfDelayAmount)}</strong> in long-term net worth.
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Next Leaps stack preview — canonical order per Savings Stack spec; HSA omitted */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">What comes next (your Leap stack)</CardTitle>
-              <p className="text-sm text-gray-600 font-normal mt-1">
-                After this Leap, WeLeap always surfaces the next best move — one at a time.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <Accordion
-                type="single"
-                collapsible
-                value={stackAccordionValue}
-                onValueChange={handleStackAccordionChange}
-                className="w-full"
-              >
-                <AccordionItem value="stack" className="border-none">
-                  <AccordionTrigger className="py-2 text-[#111827] hover:no-underline hover:text-[#3F6B42]">
-                    <span className="text-left">Show my next Leaps (5 steps)</span>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-5 pt-2">
-                      {stackSteps.map((step) => (
-                        <div key={step.stepNumber} className="flex gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                            <span className="text-sm font-semibold text-[#111827]">{step.stepNumber}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-medium text-[#111827]">{step.name}</span>
-                              {step.badge && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                                  {step.badge}
-                                </span>
-                              )}
-                              {step.status === 'completed' && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-200">
-                                  Completed
-                                </span>
-                              )}
-                              {step.status === 'in_progress' && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 border border-primary-200">
-                                  In progress
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600 mt-1">{step.why}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-6 pt-4 border-t border-gray-200">
-                      <Button
-                        onClick={handleUnlockFullStack}
-                        className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                      >
-                        Build my full Leap plan
-                      </Button>
-                      <p className="text-xs text-gray-500 mt-2">
-                        Build your ranked plan in ~2 minutes. Save it at the end to get a link by email.
-                      </p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </CardContent>
-          </Card>
-
-          {/* Tool Feedback Questionnaire — same pattern as rent tool; show Lock plan only after yes/not_sure */}
-          {!showLockPlanSection && (
-            <ToolFeedbackQuestionnaire
-              page={PAGE}
-              eventName="leap_impact_feedback_submitted"
-              onFeedbackSubmitted={(feedback) => {
-                if (feedback === 'yes' || feedback === 'not_sure') {
-                  setShowLockPlanSection(true);
-                }
-              }}
-            />
-          )}
-
-          {/* Lock this plan — only show after positive feedback (like rent tool WaitlistForm) */}
-          {showLockPlanSection && (
-            <Card className="border-[#D1D5DB] bg-white border-2 border-[#3F6B42]/30">
-              <CardHeader>
-                <CardTitle className="text-xl text-[#111827]">Lock this plan</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!emailSubmitted ? (
-                  <form onSubmit={(e) => handleLockPlan(e, 'lock_plan')} className="space-y-3">
-                    <Label htmlFor="leap-email" className="text-[#111827]">
-                      Email
-                    </Label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        id="leap-email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="border-[#D1D5DB] flex-1"
-                      />
-                      <Button
-                        type="submit"
-                        disabled={emailSubmitting}
-                        className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                      >
-                        {emailSubmitting ? 'Sending...' : 'Lock this plan (free)'}
-                      </Button>
-                    </div>
-                    {emailError && (
-                      <p className="text-sm text-red-600">{emailError}</p>
-                    )}
-                  </form>
-                ) : emailSuccessIntent ? (
-                  <div className="space-y-3">
-                    <h3 className="text-xl font-semibold text-[#111827]">Plan locked.</h3>
-                    <p className="text-[#111827]">Next: let’s build your full Leap stack.</p>
-                    <Button
-                      onClick={() => {
-                        if (redirectTimeoutRef.current) {
-                          clearTimeout(redirectTimeoutRef.current);
-                          redirectTimeoutRef.current = null;
-                        }
-                        handleContinueToAllocator();
-                      }}
-                      className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-[#111827]">
-                    Plan saved. Check your email for your trajectory summary and link.
-                  </p>
+          {/* 3. Want the full stack? — Collapsed expander */}
+          <Accordion type="single" collapsible defaultValue="full-plan" className="w-full">
+            <AccordionItem value="full-plan" className="border border-gray-200 rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="text-left">
+                  <span className="font-semibold text-[#111827]">Want the full plan?</span>
+                  <span className="text-sm text-gray-600 ml-2">Takes ~2 minutes.</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <p className="text-sm text-gray-600 mb-4">
+                  We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules.
+                </p>
+                <Button
+                  onClick={handleUnlockFullStack}
+                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                >
+                  See my full Leap stack
+                </Button>
+                {error && (
+                  <p className="text-sm text-red-600 mt-2">{error}</p>
                 )}
-                {!emailSuccessIntent && (
-                  <p className="text-xs text-gray-500">
-                    We’ll email you a summary and open your full allocation plan with these numbers prefilled.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                <p className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleUnlockFullStack}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Join MVP for execution updates
+                  </button>
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             <p className="font-medium text-[#111827] mb-1">Assumptions</p>

@@ -97,13 +97,14 @@ export async function POST(request: NextRequest) {
           }).format(costOfDelay12Mo)
         : null;
 
-    const mvpAccessUrl = `${baseUrl}/mvp-access?confirmed=1`;
     const leapToolUrl = `${baseUrl}/leap-impact-simulator`;
 
+    // Filter out redundant items (e.g. "Brokerage (part of split above)")
+    const planTitles = leapTitles.filter((t) => !t.toLowerCase().includes('brokerage (part of split'));
     const planListHtml =
-      leapTitles.length > 0
+      planTitles.length > 0
         ? `<ol style="margin: 0; padding-left: 20px; color: #111827; font-size: 15px; line-height: 1.7;">
-        ${leapTitles.slice(0, 5).map((t, i) => `<li style="margin-bottom: 6px;">${escapeHtml(t)}</li>`).join('')}
+        ${planTitles.slice(0, 6).map((t) => `<li style="margin-bottom: 6px;">${escapeHtml(t)}</li>`).join('')}
       </ol>`
         : '';
 
@@ -111,26 +112,23 @@ export async function POST(request: NextRequest) {
     const { error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: email.trim(),
-      subject: 'Your Next Leap is ready — execution in ~2 weeks',
+      subject: 'Your full Leap stack is ready — execution in ~2 weeks',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
           <p style="color: #111827; font-size: 18px; font-weight: 600; margin-bottom: 24px;">You're on the early access list.</p>
 
-          <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Next Leap</p>
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 8px;"><strong>${escapeHtml(nextLeapTitle)}</strong></p>
-          ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">Impact: +${impactFormatted} at Year 30</p>` : ''}
-          ${costFormatted ? `<p style="color: #6B7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Cost of delay: –${costFormatted} if you wait 12 months</p>` : '<p style="margin-bottom: 20px;"></p>'}
+          <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your next move</p>
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">Do this: <strong>${escapeHtml(nextLeapTitle)}</strong></p>
+          ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">30-year upside: +${impactFormatted}</p>` : ''}
+          ${costFormatted ? `<p style="color: #6B7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Waiting 12 months costs ~${costFormatted}</p>` : '<p style="margin-bottom: 20px;"></p>'}
 
-          ${planListHtml ? `<p style="color: #111827; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px;">Your ranked plan</p>${planListHtml}<p style="margin-bottom: 24px;"></p>` : ''}
+          ${planListHtml ? `<p style="color: #111827; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px;">Your full Leap stack</p><p style="color: #6B7280; font-size: 14px; margin-bottom: 8px;">Parallel routing: 40% safety buffer → 40% of remainder to debt → rest split retirement/brokerage.</p>${planListHtml}<p style="margin-bottom: 24px;"></p>` : ''}
 
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">We'll email you the moment execution is live so you can apply this plan in the MVP.</p>
+          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">We'll email you the moment execution is live so you can apply your plan in the MVP.</p>
 
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${mvpAccessUrl}" style="display: inline-block; background-color: #3F6B42; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Get MVP access</a>
-          </div>
           <p style="color: #6B7280; font-size: 14px; line-height: 1.6; margin-top: 24px;">Want to rerun your numbers? <a href="${leapToolUrl}" style="color: #3F6B42;">Open the Leap tool</a></p>
 
-          <p style="color: #9CA3AF; font-size: 12px; line-height: 1.5; margin-top: 32px;">Assumptions: ${RETURN_ASSUMPTION_PCT}% real return. Planning only today — execution launches soon.</p>
+          <p style="color: #9CA3AF; font-size: 12px; line-height: 1.5; margin-top: 32px;">Assumes ${RETURN_ASSUMPTION_PCT}% real return. Planning only today — execution launches soon.</p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-top: 24px;">— WeLeap</p>
         </div>
       `,

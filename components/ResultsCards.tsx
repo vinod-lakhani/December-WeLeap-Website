@@ -1,27 +1,12 @@
 'use client';
 
 /**
- * ResultsCards Component - A/B Test Implementation
- * 
- * Day-0 Cash Reality A/B Test:
- * - Variant A (Control): Shows exact Day-0 cash number immediately (current behavior)
- * - Variant B (Test): Shows preview/bucket, gates exact number behind email capture
- * 
- * GA4 Events Tracked:
- * - day0_cash_module_view: Fires when module becomes visible (IntersectionObserver)
- * - day0_cash_cta_click: Fires on CTA click (different CTAs for A vs B)
- * - day0_cash_email_modal_open: Fires when email modal opens (Variant B)
- * - day0_cash_email_submit: Fires when email is submitted (Variant B)
- * - day0_cash_number_revealed: Fires when exact number is shown
- *   - Variant A: Fires immediately when module is visible
- *   - Variant B: Fires only after successful email submit
- * 
- * See GA4_AB_TEST_EVENTS.md for full event documentation.
+ * ResultsCards Component
+ * Displays rent tool results: take-home, safe rent range, timing pressure, upfront cash.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -30,9 +15,7 @@ import {
 } from '@/components/ui/accordion';
 import { formatCurrency, formatCurrencyRange, roundToNearest100 } from '@/lib/rounding';
 import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
-import { getDay0CashVariant } from '@/lib/abTest';
 import { track } from '@/lib/analytics';
-import { Day0CashEmailModal } from '@/components/Day0CashEmailModal';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 
 interface TaxBreakdown {
@@ -264,73 +247,6 @@ export function ResultsCards({
   };
 
   const upfrontCash = calculateUpfrontCash();
-  
-  // A/B Test: Get variant for Day-0 Cash module
-  const [variant] = useState(() => getDay0CashVariant());
-  const [isDay0EmailModalOpen, setIsDay0EmailModalOpen] = useState(false);
-  const [day0NumberRevealed, setDay0NumberRevealed] = useState(variant === 'A'); // Variant A shows immediately
-  
-  // Track Day-0 Cash module view (once when visible)
-  const day0ModuleRef = useRef<HTMLDivElement>(null);
-  const day0ModuleViewedRef = useRef(false);
-  
-  useEffect(() => {
-    if (!day0ModuleRef.current || day0ModuleViewedRef.current || !upfrontCash) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !day0ModuleViewedRef.current) {
-            day0ModuleViewedRef.current = true;
-            track('day0_cash_module_view', {});
-            
-            // Fire number_revealed immediately (number is shown by default)
-            track('day0_cash_number_revealed', {});
-            
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(day0ModuleRef.current);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [variant, upfrontCash]);
-
-  // Handle Day-0 email submission (not used in Variant A, but kept for compatibility)
-  const handleDay0EmailSubmitted = () => {
-    setDay0NumberRevealed(true);
-    track('day0_cash_number_revealed', {});
-  };
-
-  // Handle Day-0 CTA click
-  const handleDay0CTAClick = () => {
-    track('day0_cash_cta_click', {
-      cta_label: 'View assumptions',
-    });
-    // CTA opens accordion (Variant A behavior)
-  };
-
-  // Helper to get preview text for Variant B
-  const getDay0PreviewText = () => {
-    if (!upfrontCash) return '';
-    
-    const avg = (upfrontCash.totalLow + upfrontCash.totalHigh) / 2;
-    
-    if (avg < 3000) {
-      return 'Likely $2k–$4k upfront';
-    } else if (avg < 6000) {
-      return 'Likely $4k–$7k upfront';
-    } else if (avg < 10000) {
-      return 'Likely $7k–$10k upfront';
-    } else {
-      return 'Likely several thousand dollars upfront';
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -505,148 +421,54 @@ export function ResultsCards({
               )}
             </div>
 
-            {/* Upfront Cash Needed - A/B Test */}
+            {/* Upfront Cash Needed */}
             {upfrontCash && (
-              <div ref={day0ModuleRef} className="border-t border-[#D1D5DB] pt-4 mt-4">
+              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <h4 className="text-base font-semibold text-[#111827] mb-2">
                   Upfront cash needed before your first paycheck
                 </h4>
-                
-                {/* Variant A: Show exact number immediately (current behavior) */}
-                {variant === 'A' && (
-                  <>
-                    <p className="text-3xl font-bold text-[#111827] mb-1">
-                      {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
-                    </p>
-                    <p className="text-xs text-[#111827]/60 mb-3">
-                      Estimate based on start date and typical move-in timing.
-                    </p>
-                    
-                    {/* Assumptions Disclosure */}
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="assumptions" className="border-none">
-                        <AccordionTrigger 
-                          className="text-xs text-[#111827]/70 hover:no-underline py-2"
-                          onClick={handleDay0CTAClick}
-                        >
-                          View assumptions
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2 space-y-2">
-                          <div className="space-y-2 text-xs text-[#111827]/70">
-                            <div className="flex justify-between items-center">
-                              <span>Security deposit</span>
-                              <span className="font-medium text-[#111827]">
-                                {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span>First month's rent</span>
-                              <span className="font-medium text-[#111827]">
-                                {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span>Gap living costs (food/transport/etc.)</span>
-                              <span className="font-medium text-[#111827]">
-                                {formatCurrency(upfrontCash.gapLivingCosts)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span>Moving/setup costs</span>
-                              <span className="font-medium text-[#111827]">
-                                {formatCurrency(upfrontCash.movingSetup)}
-                              </span>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </>
-                )}
-
-                {/* Variant B: Show preview + explanation, gate exact number behind email */}
-                {variant === 'B' && (
-                  <>
-                    {!day0NumberRevealed ? (
-                      <>
-                        {/* Preview text */}
-                        <p className="text-2xl font-semibold text-[#111827] mb-2">
-                          {getDay0PreviewText()}
-                        </p>
-                        <p className="text-sm text-[#111827]/70 mb-4">
-                          This is what you'll need before your first paycheck: deposit, first month, moving costs, and timing gaps.
-                        </p>
-                        
-                        {/* CTA Button */}
-                        <Button
-                          onClick={handleDay0CTAClick}
-                          className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90 mb-3"
-                        >
-                          Get my Day-0 Cash Plan
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Revealed exact number */}
-                        <p className="text-3xl font-bold text-[#111827] mb-1">
-                          {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
-                        </p>
-                        <p className="text-xs text-[#111827]/60 mb-3">
-                          Estimate based on start date and typical move-in timing.
-                        </p>
-                        
-                        {/* Assumptions Disclosure */}
-                        <Accordion type="single" collapsible className="w-full">
-                          <AccordionItem value="assumptions" className="border-none">
-                            <AccordionTrigger className="text-xs text-[#111827]/70 hover:no-underline py-2">
-                              View assumptions
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 space-y-2">
-                              <div className="space-y-2 text-xs text-[#111827]/70">
-                                <div className="flex justify-between items-center">
-                                  <span>Security deposit</span>
-                                  <span className="font-medium text-[#111827]">
-                                    {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span>First month's rent</span>
-                                  <span className="font-medium text-[#111827]">
-                                    {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span>Gap living costs (food/transport/etc.)</span>
-                                  <span className="font-medium text-[#111827]">
-                                    {formatCurrency(upfrontCash.gapLivingCosts)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span>Moving/setup costs</span>
-                                  <span className="font-medium text-[#111827]">
-                                    {formatCurrency(upfrontCash.movingSetup)}
-                                  </span>
-                                </div>
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      </>
-                    )}
-                  </>
-                )}
+                <p className="text-3xl font-bold text-[#111827] mb-1">
+                  {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
+                </p>
+                <p className="text-xs text-[#111827]/60 mb-3">
+                  Estimate based on start date and typical move-in timing.
+                </p>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="assumptions" className="border-none">
+                    <AccordionTrigger className="text-xs text-[#111827]/70 hover:no-underline py-2">
+                      View assumptions
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2 space-y-2">
+                      <div className="space-y-2 text-xs text-[#111827]/70">
+                        <div className="flex justify-between items-center">
+                          <span>Security deposit</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>First month's rent</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Gap living costs (food/transport/etc.)</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrency(upfrontCash.gapLivingCosts)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Moving/setup costs</span>
+                          <span className="font-medium text-[#111827]">
+                            {formatCurrency(upfrontCash.movingSetup)}
+                          </span>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
-            )}
-            
-            {/* Day-0 Cash Email Modal (Variant B only) */}
-            {variant === 'B' && upfrontCash && planData && (
-              <Day0CashEmailModal
-                variant={variant}
-                isOpen={isDay0EmailModalOpen}
-                onOpenChange={setIsDay0EmailModalOpen}
-                onEmailSubmitted={handleDay0EmailSubmitted}
-                planData={planData}
-              />
             )}
           </div>
         </CardContent>

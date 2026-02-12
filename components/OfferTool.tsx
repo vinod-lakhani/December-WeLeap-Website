@@ -64,7 +64,6 @@ export function OfferTool() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [results, setResults] = useState<TaxCalculationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showWaitlistForm, setShowWaitlistForm] = useState(false);
   
   // Location tracking
   const [locationMode, setLocationMode] = useState<'preset' | 'other' | null>(null);
@@ -273,7 +272,6 @@ export function OfferTool() {
 
       const taxData: TaxCalculationResult = await taxResponse.json();
       setResults(taxData);
-      setShowWaitlistForm(false); // Reset questionnaire state for new results
       
       // Track form submit with bucketed parameters
       const takeHomeMonthlyAfterTax = taxData.netIncomeAnnual / 12;
@@ -578,39 +576,6 @@ export function OfferTool() {
             planData={planData}
           />
 
-          {/* Budget Breakdown Card */}
-          {budgetBreakdown && (
-            <Card className="border-[#D1D5DB] bg-white">
-              <CardHeader>
-                <CardTitle className="text-lg text-[#111827]">
-                  Suggested monthly breakdown (starting point)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#111827]">Needs (50%)</span>
-                    <span className="text-xl font-semibold text-[#111827]">
-                      {formatCurrency(budgetBreakdown.needs)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#111827]">Wants (30%)</span>
-                    <span className="text-xl font-semibold text-[#111827]">
-                      {formatCurrency(budgetBreakdown.wants)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center border-t border-[#D1D5DB] pt-4">
-                    <span className="text-[#111827]">Savings (20%)</span>
-                    <span className="text-xl font-semibold text-[#111827]">
-                      {formatCurrency(budgetBreakdown.savings)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">
             <CardContent className="pt-6">
@@ -663,26 +628,64 @@ export function OfferTool() {
             </CardContent>
           </Card>
 
+          {/* Tool Feedback Questionnaire - above assumptions & tiles */}
+          <ToolFeedbackQuestionnaire
+            page="/how-much-rent-can-i-afford"
+            variant="inline"
+            onFeedbackSubmitted={() => {}}
+          />
+
+          {/* Tile 1: Primary — Allocation Engine */}
+          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl text-[#111827]">
+                See what this rent choice means long-term.
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Rent is your first allocation decision. Run your full plan and see your highest-impact next move.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <Button
+                  onClick={() => {
+                    const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
+                    if (!stateCode || !salary.trim()) return;
+                    const base = typeof window !== 'undefined' ? window.location.origin : '';
+                    const params = new URLSearchParams();
+                    params.set('src', 'rent');
+                    params.set('salaryAnnual', String(Math.round(parseFloat(salary))));
+                    params.set('state', stateCode);
+                    if (takeHomeMonthly > 0) {
+                      params.set('estimatedNetMonthlyIncome', String(Math.round(takeHomeMonthly)));
+                    }
+                    const rentMid = (rentRangeLow + rentRangeHigh) / 2;
+                    if (rentMid > 0) {
+                      params.set('rentEstimateMonthly', String(Math.round(rentMid)));
+                    }
+                    track('rent_tool_leap_cta_clicked', { page: '/how-much-rent-can-i-afford' });
+                    window.location.href = `${base}/leap-impact-simulator?${params.toString()}`;
+                  }}
+                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                >
+                  Run My Full Allocation Plan
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Takes ~2 minutes. No email required.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="mt-8" />
+
+          {/* Tile 2: Secondary — Day 1 Rent Plan (PDF) */}
+          <WaitlistForm planData={planData} variant="secondary" />
+
           {/* Assumptions Accordion */}
           <div onClick={() => track('offer_tool_assumptions_opened')}>
             <AssumptionsAccordion taxSource={results.taxSource} />
           </div>
-
-          {/* Tool Feedback Questionnaire */}
-          {!showWaitlistForm && (
-            <ToolFeedbackQuestionnaire
-              page="/how-much-rent-can-i-afford"
-              onFeedbackSubmitted={(feedback) => {
-                // Show WaitlistForm only if feedback is 'yes' or 'not_sure'
-                if (feedback === 'yes' || feedback === 'not_sure') {
-                  setShowWaitlistForm(true);
-                }
-              }}
-            />
-          )}
-
-          {/* Waitlist Form - Only show after positive feedback */}
-          {showWaitlistForm && <WaitlistForm planData={planData} />}
         </div>
       )}
     </div>

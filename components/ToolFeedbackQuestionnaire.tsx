@@ -7,12 +7,18 @@ import { track } from '@/lib/analytics';
 
 interface ToolFeedbackQuestionnaireProps {
   page: string;
-  /** Analytics event name. Defaults to "rent_tool_feedback_submitted" (rent tool). Use "networth_tool_feedback_submitted" for Net Worth Impact. */
+  /** Analytics event name. Defaults to "rent_tool_feedback_submitted" (rent tool). Use "networth_tool_feedback_submitted" for Net Worth Impact, "leap_impact_feedback_submitted" for Leap Impact. */
   eventName?: string;
+  /** Custom question. Default: "Did you find this tool useful?" */
+  question?: string;
+  /** Custom button labels. Default: { yes: "Yes", not_sure: "Not sure", no: "No" } */
+  buttonLabels?: { yes: string; not_sure: string; no: string };
+  /** "default" = card with full-width buttons; "inline" = single line with small buttons */
+  variant?: 'default' | 'inline';
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Did you find this tool useful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -41,8 +47,8 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
   if (isSubmitted && showThankYou) {
     return (
       <Card className="border-[#D1D5DB] bg-white">
-        <CardContent className="pt-6">
-          <p className="text-center text-gray-700 text-lg">
+        <CardContent className={variant === 'inline' ? 'py-3' : 'pt-6'}>
+          <p className={`text-gray-700 ${variant === 'inline' ? 'text-sm' : 'text-lg text-center'}`}>
             Thank you for your feedback!
           </p>
         </CardContent>
@@ -54,10 +60,60 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
     return null; // Hide completely after thank you message
   }
 
+  if (variant === 'inline') {
+    return (
+      <Card className="border-[#D1D5DB] bg-white">
+        <CardContent className="py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-[#111827] mr-2">{question}</span>
+            <div className="flex gap-2">
+              <Button
+                variant={selectedFeedback === 'yes' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFeedbackClick('yes')}
+                className={`text-xs h-8 ${
+                  selectedFeedback === 'yes'
+                    ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {buttonLabels.yes}
+              </Button>
+              <Button
+                variant={selectedFeedback === 'not_sure' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFeedbackClick('not_sure')}
+                className={`text-xs h-8 ${
+                  selectedFeedback === 'not_sure'
+                    ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {buttonLabels.not_sure}
+              </Button>
+              <Button
+                variant={selectedFeedback === 'no' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFeedbackClick('no')}
+                className={`text-xs h-8 ${
+                  selectedFeedback === 'no'
+                    ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {buttonLabels.no}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-[#D1D5DB] bg-white">
       <CardHeader>
-        <CardTitle className="text-xl text-[#111827]">Did you find this tool useful?</CardTitle>
+        <CardTitle className="text-xl text-[#111827]">{question}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-3 mb-4">
@@ -70,7 +126,7 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Yes
+            {buttonLabels.yes}
           </Button>
           <Button
             variant={selectedFeedback === 'not_sure' ? 'default' : 'outline'}
@@ -81,7 +137,7 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            Not sure
+            {buttonLabels.not_sure}
           </Button>
           <Button
             variant={selectedFeedback === 'no' ? 'default' : 'outline'}
@@ -92,7 +148,7 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            No
+            {buttonLabels.no}
           </Button>
         </div>
       </CardContent>

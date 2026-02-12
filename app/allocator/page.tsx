@@ -73,11 +73,11 @@ function parsePrefillFromSearchParams(params: URLSearchParams): AllocatorPrefill
 }
 
 const STACK_STEPS = [
-  { id: 'ef', name: 'Emergency Fund', title: 'Size your safety buffer' },
-  { id: 'debt', name: 'High-APR debt', title: 'Credit card debt check' },
-  { id: 'retirement_focus', name: 'Retirement focus', title: 'Retirement vs brokerage split' },
-  { id: 'hsa', name: 'HSA', title: 'HSA (optional)' },
-  { id: 'summary', name: 'Summary', title: 'Your trajectory plan' },
+  { id: 'ef', name: 'Safety Buffer', title: 'Safety Buffer' },
+  { id: 'debt', name: 'Debt', title: 'Debt' },
+  { id: 'retirement_focus', name: 'Retirement Split', title: 'Retirement Split' },
+  { id: 'hsa', name: 'HSA', title: 'HSA' },
+  { id: 'summary', name: 'Summary', title: 'Summary' },
 ] as const;
 
 function AllocatorContent() {
@@ -174,15 +174,10 @@ function AllocatorContent() {
     });
   }, [prefill?.salaryAnnual, prefill?.state, prefill?.current401kPct, prefill?.currentHsaAnnual, unlockData?.currentHsaAnnual]);
 
-  const minimumDebtPaymentsMonthly = useMemo(() => {
-    if (!unlockData?.carriesBalance || unlockData.debtBalance == null || unlockData.debtBalance <= 0) return 0;
-    return unlockData.debtBalance * 0.02;
-  }, [unlockData?.carriesBalance, unlockData?.debtBalance]);
-
   const monthlyCapitalAvailable = useMemo(() => {
     const essentials = unlockData?.essentialMonthly ?? 0;
-    return Math.max(0, netTakeHomeMonthly - essentials - minimumDebtPaymentsMonthly);
-  }, [netTakeHomeMonthly, unlockData?.essentialMonthly, minimumDebtPaymentsMonthly]);
+    return Math.max(0, netTakeHomeMonthly - essentials);
+  }, [netTakeHomeMonthly, unlockData?.essentialMonthly]);
 
   const { leaps, nextLeapId, flowSummary, matchCaptured, routing } = useMemo(
     () => buildLeaps(prefillForLeaps, unlockData, { monthlyCapitalAvailable: prefill ? monthlyCapitalAvailable : undefined }),
@@ -209,12 +204,22 @@ function AllocatorContent() {
         hasDebt: unlockData?.carriesBalance === true,
         retirementFocus: unlockData?.retirementFocus ?? undefined,
       });
+      track('summary_viewed', { numLeaps: leaps.length });
       track('leap_stack_summary_viewed', { numLeaps: leaps.length });
     }
   }, [currentStep, leaps.length, hasUnlockData, nextLeapId, unlockData?.carriesBalance, unlockData?.retirementFocus]);
 
+  const stepToSpecName: Record<string, string> = {
+    emergency_fund: 'safety',
+    high_apr_debt: 'debt',
+    retirement_focus: 'retirement',
+    hsa: 'hsa',
+  };
+
   const handleStepComplete = useCallback((stepName: string) => {
+    const specName = stepToSpecName[stepName] ?? stepName;
     track('allocator_stack_step_completed', { stepName });
+    track(`full_stack_step_completed_${specName}`, { stepName });
     track('leap_stack_input_completed', { stepName });
     track('leap_stack_step_completed', { stepName });
     setCurrentStep((s) => Math.min(s + 1, STACK_STEPS.length - 1));
@@ -302,6 +307,7 @@ function AllocatorContent() {
         if (!res.ok) {
           throw new Error(data.error || 'Failed to submit');
         }
+        track('plan_saved_or_waitlist_joined', { source: 'leap_stack' });
         track('early_access_submitted', {
           source: 'leap_stack',
           actionIntent: actionIntent ?? undefined,
@@ -408,19 +414,24 @@ function AllocatorContent() {
           )}
 
           <div className="space-y-6">
-            <div className="flex items-center gap-2 flex-wrap">
-              {STACK_STEPS.map((step, i) => (
-                <span
-                  key={step.id}
-                  className={cn(
-                    'text-sm font-medium',
-                    i === currentStep ? 'text-[#3F6B42]' : i < currentStep ? 'text-gray-500' : 'text-gray-400'
-                  )}
-                >
-                  {i + 1}. {step.name}
-                  {i < STACK_STEPS.length - 1 && <span className="mx-1">→</span>}
-                </span>
-              ))}
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {STACK_STEPS.map((step, i) => (
+                  <span
+                    key={step.id}
+                    className={cn(
+                      'text-sm font-medium',
+                      i === currentStep ? 'text-[#3F6B42]' : i < currentStep ? 'text-gray-500' : 'text-gray-400'
+                    )}
+                  >
+                    {step.name}
+                    {i < STACK_STEPS.length - 1 && <span className="mx-1">·</span>}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                This is a parallel routing system. We ask a few inputs so we can allocate correctly.
+              </p>
             </div>
 
             {currentStep === 0 && (
@@ -444,10 +455,13 @@ function AllocatorContent() {
                     />
                   </div>
                   {efMonthly.trim() && parseFloat(efMonthly) > 0 && (
-                    <p className="text-xs text-gray-500">
-                      1-month buffer: ${Math.round(parseFloat(efMonthly)).toLocaleString()} · 3-month: ${Math.round(parseFloat(efMonthly) * 3).toLocaleString()} · 6-month: ${Math.round(parseFloat(efMonthly) * 6).toLocaleString()}
+                    <p className="text-sm text-gray-600">
+                      1-month: ${Math.round(parseFloat(efMonthly)).toLocaleString()} · 3-month target: ${Math.round(parseFloat(efMonthly) * 3).toLocaleString()} · 6-month: ${Math.round(parseFloat(efMonthly) * 6).toLocaleString()}
                     </p>
                   )}
+                  <p className="text-xs text-gray-500">
+                    We'll route 40% of your monthly savings toward your buffer until you hit the target.
+                  </p>
                   <Button
                     onClick={() => handleStepComplete('emergency_fund')}
                     className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
@@ -466,6 +480,9 @@ function AllocatorContent() {
                 <CardContent className="space-y-4">
                   <p className="text-gray-600">
                     Do you carry a credit card balance month-to-month?
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    We route 40% of what's left (after your buffer allocation) to high-APR debt until it's gone.
                   </p>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -551,9 +568,9 @@ function AllocatorContent() {
                           className="accent-[#3F6B42]"
                         />
                         <span className="text-[#111827]">
-                          {focus === 'high' && 'High — max long-term compounding'}
-                          {focus === 'medium' && 'Medium — balanced'}
-                          {focus === 'low' && 'Low — more flexibility now'}
+                          {focus === 'high' && 'Grow faster (80/20 Retirement/Brokerage)'}
+                          {focus === 'medium' && 'Balanced (60/40 Retirement/Brokerage)'}
+                          {focus === 'low' && 'More flexibility (20/80 Retirement/Brokerage)'}
                         </span>
                       </label>
                     ))}
@@ -572,7 +589,11 @@ function AllocatorContent() {
             {currentStep === 3 && (
               <Card className="border-[#D1D5DB] bg-white">
                 <CardHeader>
-                  <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[3].title}</CardTitle>
+                  <CardTitle className="text-xl text-[#111827]">
+                    {hsaEligible === true && (!currentHsaAnnual.trim() || parseFloat(currentHsaAnnual) === 0)
+                      ? 'HSA (recommended)'
+                      : STACK_STEPS[3].title}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-gray-600">
@@ -602,6 +623,7 @@ function AllocatorContent() {
                   </div>
                   {hsaEligible === true && (
                     <div className="space-y-4">
+                      <p className="text-xs text-gray-500">Pre-tax. Lowers your taxable income.</p>
                       <div className="space-y-2">
                         <Label htmlFor="hsa-annual">Current HSA annual contribution ($)</Label>
                         <Input
@@ -664,6 +686,7 @@ function AllocatorContent() {
                       hasEmployerMatch={prefill?.employerMatchEnabled ?? false}
                       routing={routing}
                       monthlyCapitalAvailable={prefill ? monthlyCapitalAvailable : null}
+                      preTax401k={prefill ? { currentPct: prefill.current401kPct, targetPct: prefill.recommended401kPct, matchRatePct: prefill.matchRatePct ?? 100, matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct } : null}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
                       impactHsaAtYear30={null}
@@ -675,7 +698,7 @@ function AllocatorContent() {
                         onClick={handleMvpApplyClick}
                         className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                       >
-                        Join the MVP
+                        Save my plan + get MVP access
                       </Button>
                       <p className="text-xs text-gray-500">
                         Early access to execution and automatic recalibration as your situation evolves.
