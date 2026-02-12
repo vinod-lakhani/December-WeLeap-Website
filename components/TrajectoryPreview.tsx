@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { runTrajectory } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
+import { cn } from '@/lib/utils';
 
 /** Optimized contribution: match cap OR 15%, whichever is higher. */
 const OPTIMIZED_TARGET_PCT = 15;
@@ -35,6 +36,8 @@ export interface TrajectoryPreviewProps {
   matchRatePct: string;
   matchCapPct: string;
   current401kPct: string;
+  /** Use smaller, supportive styling instead of dominant */
+  compact?: boolean;
 }
 
 export function TrajectoryPreview({
@@ -43,6 +46,7 @@ export function TrajectoryPreview({
   matchRatePct,
   matchCapPct,
   current401kPct,
+  compact = false,
 }: TrajectoryPreviewProps) {
   const [debouncedSalary, setDebouncedSalary] = useState(salary);
   const [debouncedMatchRate, setDebouncedMatchRate] = useState(matchRatePct);
@@ -105,12 +109,17 @@ export function TrajectoryPreview({
   const isUsingFallback = !salary.trim() || parseFloat(salary) <= 0;
 
   return (
-    <div className="w-full mb-8">
-      <p className="text-center text-sm font-medium text-gray-600 mb-3">
-        Example: small change → big gap
-      </p>
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
+    <div className={compact ? 'w-full mb-0' : 'w-full mb-8'}>
+      {!compact && (
+        <p className="text-center text-sm font-medium text-gray-600 mb-3">
+          Example: small change → big gap
+        </p>
+      )}
+      <div className={cn(
+        'rounded-lg border border-gray-200 bg-white overflow-hidden',
+        compact && 'max-w-2xl mx-auto'
+      )}>
+        <div className={compact ? 'px-3 pt-3 pb-1 flex items-center justify-between flex-wrap gap-2' : 'px-4 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2'}>
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             {isUsingFallback ? 'Sample projection' : 'Live projection'}
           </p>
@@ -123,7 +132,7 @@ export function TrajectoryPreview({
             </span>
           </div>
         </div>
-        <div className="h-[300px] w-full px-4">
+        <div className={compact ? 'h-[180px] w-full px-3' : 'h-[300px] w-full px-4'}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
@@ -171,7 +180,7 @@ export function TrajectoryPreview({
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="px-4 pb-4 pt-2 flex flex-wrap gap-6 sm:gap-10 items-baseline">
+        <div className={compact ? 'px-3 pb-3 pt-1 flex flex-wrap gap-4 sm:gap-6 items-baseline' : 'px-4 pb-4 pt-2 flex flex-wrap gap-6 sm:gap-10 items-baseline'}>
           <div>
             <span className="text-xs text-gray-500">Year 5 delta: </span>
             <span className="text-sm font-medium text-[#3F6B42]">+{formatCurrencyShort(delta5)}</span>
@@ -182,8 +191,8 @@ export function TrajectoryPreview({
           </div>
         </div>
       </div>
-      <p className="text-center text-xs text-gray-500 mt-4">
-        Sample only. Your numbers will update when you enter them below.
+      <p className={cn('text-center text-xs text-gray-500', compact ? 'mt-2' : 'mt-4')}>
+        {compact ? 'Sample only. Your numbers update as you enter them above.' : 'Sample only. Your numbers will update when you enter them below.'}
       </p>
     </div>
   );

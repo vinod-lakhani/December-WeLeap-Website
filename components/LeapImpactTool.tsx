@@ -42,7 +42,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { TrajectoryPreview } from '@/components/TrajectoryPreview';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 
 const PAGE = '/leap-impact-simulator';
@@ -352,13 +351,6 @@ export function LeapImpactTool() {
           Prefilled from your rent results.
         </div>
       )}
-      <TrajectoryPreview
-        salary={salary}
-        hasMatch={hasMatch}
-        matchRatePct={matchRatePct}
-        matchCapPct={matchCapPct}
-        current401kPct={current401kPct}
-      />
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
           <CardTitle className="text-xl text-[#111827]">Income & Benefits</CardTitle>
@@ -455,7 +447,7 @@ export function LeapImpactTool() {
           )}
           <div className="space-y-2">
             <Label htmlFor="leap-401k" className="text-[#111827]">
-              Your current 401(k) contribution
+              Your current 401(k) contribution (% of salary)
             </Label>
             <p className="text-xs text-gray-500">
               We compare this to your employer match and optimal target.
@@ -507,7 +499,7 @@ export function LeapImpactTool() {
               <CardTitle className="text-xl text-[#111827]">Your next move</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="font-semibold text-[#111827]">Do this: {leap.summary}</p>
+              <p className="font-semibold text-[#111827]">{leap.summary}</p>
               <p className="text-sm text-gray-600">
                 {leap.type === 'capture_match'
                   ? 'This unlocks more employer match — free money that compounds.'

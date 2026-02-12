@@ -21,34 +21,23 @@ export default function LeapImpactSimulatorPage() {
       <Section variant="brand" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, 'text-white mb-6 md:mb-8')}>
-            Fix your setup before it gets expensive.
+            Is your paycheck set up correctly?
           </h1>
           <p className={cn(TYPOGRAPHY.body, 'text-white/85 leading-relaxed max-w-2xl mx-auto')}>
-            One small change (match, HSA, debt, buffer) can change your 30-year outcome.
+            Enter your salary and benefit setup.
+            We&apos;ll show you the single highest-impact move — and what it&apos;s worth over 30 years.
           </p>
-          <p className={cn('text-sm text-white/70 mt-4')}>
-            No budgeting. No spam. Just your next move + the math.
-          </p>
+          <ul className="flex flex-col sm:flex-row flex-wrap justify-center gap-x-6 gap-y-1 mt-6 text-sm text-white/80">
+            <li>Takes ~2 minutes</li>
+            <li>No email required</li>
+            <li>Based on your actual employer match + tax setup</li>
+          </ul>
         </Container>
       </Section>
 
       <Section variant="muted" className="bg-[#F9FAFB]">
         <Container>
           <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
-            <ul className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mb-8 text-sm text-[#111827]">
-              <li className="flex items-center gap-2">
-                <span className="text-[#3F6B42] font-medium">•</span>
-                Your single best next move
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-[#3F6B42] font-medium">•</span>
-                The 30-year impact + cost of waiting
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-[#3F6B42] font-medium">•</span>
-                Option to build your full Leap stack (2 min)
-              </li>
-            </ul>
             <Suspense fallback={<div className="min-h-[400px] flex items-center justify-center text-gray-500">Loading...</div>}>
               <LeapImpactTool />
             </Suspense>
