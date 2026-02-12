@@ -32,12 +32,17 @@ export function getRecommendedLeap(
   current401kPct: number,
   salaryAnnual: number = 0
 ): RecommendedLeap {
-  // Rule 1: Not capturing full match → recommend capturing match
+  // Rule 1: Not capturing full match → recommend capturing match (capped at IRS limit)
   if (hasEmployerMatch && current401kPct < matchPct) {
+    let optimizedPct = matchPct;
+    if (salaryAnnual > 0) {
+      const capPct = (K401_EMPLOYEE_CAP_2025 / salaryAnnual) * 100;
+      optimizedPct = Math.min(matchPct, capPct);
+    }
     return {
       label: 'Capture your full employer match',
-      summary: `Increase 401(k) from ${current401kPct}% → ${matchPct}%`,
-      optimized401kPct: matchPct,
+      summary: `Increase 401(k) from ${current401kPct}% → ${Math.round(optimizedPct * 10) / 10}%`,
+      optimized401kPct: optimizedPct,
       type: 'capture_match',
     };
   }

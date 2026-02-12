@@ -3,9 +3,11 @@
  *
  * Model: invested assets only (401k + match). No debt for MVP.
  * - Monthly contribution = (gross * pct / 100) / 12 for employee; match on same cap.
+ * - Employee contributions capped at IRS limit ($23,500).
  * - Growth: compound at monthly real return.
- * Same formula as networthImpact/math computeInvestingImpact (FV of monthly contributions).
  */
+
+import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
 
 const MONTHS_PER_YEAR = 12;
 
@@ -51,9 +53,11 @@ function runPath(
   years: number
 ): number[] {
   const monthlyRate = realReturn / MONTHS_PER_YEAR;
-  const employeeMonthly = (grossAnnual * (contributionPct / 100)) / MONTHS_PER_YEAR;
+  const employeeAnnual = Math.min((grossAnnual * contributionPct) / 100, K401_EMPLOYEE_CAP_2025);
+  const employeeMonthly = employeeAnnual / MONTHS_PER_YEAR;
+  const effectivePctForMatch = grossAnnual > 0 ? (employeeAnnual / grossAnnual) * 100 : 0;
   const matchMonthly = hasMatch
-    ? employerMatchMonthly(grossAnnual, contributionPct, matchRatePct, matchCapPct)
+    ? employerMatchMonthly(grossAnnual, effectivePctForMatch, matchRatePct, matchCapPct)
     : 0;
   const totalMonthly = employeeMonthly + matchMonthly;
 
@@ -153,15 +157,25 @@ export function costOfDelay(
   const monthlyRate = realReturn / MONTHS_PER_YEAR;
 
   const matchRatePct = inputs.matchRatePct ?? 100;
-  const employeeBaseline = (inputs.grossAnnual * (inputs.current401kPct / 100)) / MONTHS_PER_YEAR;
+  const employeeBaselineAnnual = Math.min(
+    (inputs.grossAnnual * inputs.current401kPct) / 100,
+    K401_EMPLOYEE_CAP_2025
+  );
+  const employeeBaseline = employeeBaselineAnnual / MONTHS_PER_YEAR;
+  const baselinePctForMatch = inputs.grossAnnual > 0 ? (employeeBaselineAnnual / inputs.grossAnnual) * 100 : 0;
   const matchBaseline = inputs.hasEmployerMatch
-    ? employerMatchMonthly(inputs.grossAnnual, inputs.current401kPct, matchRatePct, inputs.matchPct)
+    ? employerMatchMonthly(inputs.grossAnnual, baselinePctForMatch, matchRatePct, inputs.matchPct)
     : 0;
   const totalBaseline = employeeBaseline + matchBaseline;
 
-  const employeeOpt = (inputs.grossAnnual * (inputs.optimized401kPct / 100)) / MONTHS_PER_YEAR;
+  const employeeOptAnnual = Math.min(
+    (inputs.grossAnnual * inputs.optimized401kPct) / 100,
+    K401_EMPLOYEE_CAP_2025
+  );
+  const employeeOpt = employeeOptAnnual / MONTHS_PER_YEAR;
+  const optPctForMatch = inputs.grossAnnual > 0 ? (employeeOptAnnual / inputs.grossAnnual) * 100 : 0;
   const matchOpt = inputs.hasEmployerMatch
-    ? employerMatchMonthly(inputs.grossAnnual, inputs.optimized401kPct, matchRatePct, inputs.matchPct)
+    ? employerMatchMonthly(inputs.grossAnnual, optPctForMatch, matchRatePct, inputs.matchPct)
     : 0;
   const totalOpt = employeeOpt + matchOpt;
 
