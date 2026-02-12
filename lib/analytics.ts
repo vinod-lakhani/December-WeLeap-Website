@@ -17,6 +17,39 @@
  * - waitlist_modal_opened (page, source, feedback)
  * - net_worth_impact_page_view
  * - net_worth_impact_tool_start
+ * - leap_impact_viewed (page load)
+ * - leap_impact_calculated (salary, state, match_yesno, current_pct, match_pct, recommended_pct, delta_30yr)
+ * - leap_impact_email_submitted
+ * - leap_impact_continue_to_allocator_clicked
+ * - leap_stack_preview_expanded
+ * - leap_stack_unlock_clicked
+ * - leap_impact_feedback_submitted (page, feedback: yes|no|not_sure)
+ * - leap_email_submit_success (intent, salary, state, current401kPct, recommended401kPct, delta30yr)
+ * - leap_redirect_to_allocator (intent)
+ * - allocator_prefill_loaded (source, intent)
+ * - allocator_stack_step_completed (stepName)
+ * - allocator_stack_completed
+ * - leap_stack_rendered (hasUnlockData, numLeaps, nextLeapId)
+ * - leap_stack_plan_viewed (numLeaps, hasDebt, retirementFocus)
+ * - leap_stack_summary_viewed (numLeaps)
+ * - leap_stack_started (source)
+ * - leap_stack_step_completed (stepName)
+ * - leap_stack_item_clicked (leapId, action)
+ * - leap_stack_input_completed (stepName)
+ * - leap_stack_next_leap_changed (fromLeapId, toLeapId)
+ * - leap_stack_save_clicked
+ * - leap_plan_save_clicked
+ * - leap_plan_save_success
+ * - leap_plan_save_fail (error)
+ * - leap_stack_email_submit_success
+ * - leap_stack_email_submit_failed (error)
+ * - mvp_apply_clicked
+ * - early_access_modal_viewed
+ * - early_access_submitted (source, actionIntent, nextLeapTitle, impactAtYear30)
+ * - early_access_email_send_success
+ * - early_access_email_send_failed (error)
+ * - mvp_access_page_viewed
+ * - leap_tool_rerun_clicked (source)
  *
  * Privacy Note: This utility only sends bucketed/non-PII parameters.
  * Never sends raw salary, email addresses, city names, or exact dates.

@@ -1,0 +1,75 @@
+/**
+ * Leap data model for "Your Next Leaps" ranked capital allocation plan.
+ * Stack order: match → emergency_fund → debt → retirement_split → brokerage.
+ * No HSA.
+ */
+
+export type LeapStatus = 'next' | 'queued' | 'complete' | 'locked';
+
+export type LeapCategory =
+  | 'match'
+  | 'emergency_fund'
+  | 'debt'
+  | 'retirement_split'
+  | 'brokerage';
+
+export type LeapCtaAction = 'unlock' | 'edit' | 'apply' | 'learn_more';
+
+export interface Leap {
+  id: string;
+  title: string;
+  subtitle?: string;
+  status: LeapStatus;
+  category: LeapCategory;
+  targetValue?: number;
+  currentValue?: number;
+  deltaValue?: number;
+  timelineText?: string;
+  impactText?: string;
+  whyNowText?: string;
+  requiresUnlock?: boolean;
+  cta?: { label: string; action: LeapCtaAction };
+  /** Parallel allocation stack: e.g. "40%", "40% of remaining", "80/20 of remaining", "0% (inactive)" */
+  allocationBadge?: string;
+  /** True for payroll (401k match); false for post-tax stack items */
+  isPayroll?: boolean;
+  /** For retirement_split: retirement share of remaining (e.g. 80) */
+  splitRetirementPct?: number;
+  /** For retirement_split: brokerage share of remaining (e.g. 20) */
+  splitBrokeragePct?: number;
+  /** For debt (active): APR used for display */
+  debtAprPct?: number;
+}
+
+/** Flow summary for post-tax stack (percent or dollar version). */
+export interface FlowSummary {
+  percentOnly: string;
+  /** When we have monthly post-tax savings amount */
+  withDollars?: string;
+}
+
+/** Inputs collected after email unlock (3 steps). */
+export interface AllocatorUnlockData {
+  /** Essential monthly spend (rent + bills + groceries, etc.) */
+  essentialMonthly?: number;
+  /** Carries credit card balance month-to-month */
+  carriesBalance?: boolean;
+  /** APR range: "10-14" | "15-19" | "20+" */
+  debtAprRange?: string;
+  /** Approx credit card (or high-APR) balance in dollars */
+  debtBalance?: number;
+  /** Retirement vs brokerage priority */
+  retirementFocus?: 'high' | 'medium' | 'low';
+}
+
+/** Prefill from Leap Impact tool (URL or state). */
+export interface AllocatorPrefillForLeaps {
+  salaryAnnual: number;
+  state: string;
+  employerMatchEnabled: boolean;
+  employerMatchPct: number;
+  current401kPct: number;
+  recommended401kPct: number;
+  estimatedNetMonthlyIncome?: number;
+  leapDelta30yr?: number;
+}
