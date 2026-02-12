@@ -17,6 +17,7 @@ import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
 import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
+import { formatPct } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 
 export interface AllocatorPrefillFromUrl {
@@ -437,7 +438,7 @@ function AllocatorContent() {
                 </div>
                 <div className="pt-2 border-t border-gray-200">
                   <Label className="text-[#111827]">401(k) contribution (target)</Label>
-                  <p className="text-lg font-medium text-[#3F6B42]">{prefill.recommended401kPct}%</p>
+                  <p className="text-lg font-medium text-[#3F6B42]">{formatPct(prefill.recommended401kPct)}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     We prefilled your 401(k) target based on your Leap Impact result.
                   </p>
@@ -771,7 +772,7 @@ function AllocatorContent() {
                               className="mt-1 accent-[#3F6B42]"
                             />
                             <span className="text-sm text-[#111827]">
-                              I would increase my 401(k) to {prefill.recommended401kPct}% if this were automated.
+                              I would increase my 401(k) to {formatPct(prefill.recommended401kPct)} if this were automated.
                             </span>
                           </label>
                         )}

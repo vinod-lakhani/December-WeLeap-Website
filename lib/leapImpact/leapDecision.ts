@@ -11,6 +11,10 @@
 
 import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
 
+function formatPct(value: number): string {
+  return `${Number(value.toFixed(2))}%`;
+}
+
 export interface RecommendedLeap {
   /** Short label for the Leap, e.g. "Capture your full employer match" */
   label: string;
@@ -41,7 +45,7 @@ export function getRecommendedLeap(
     }
     return {
       label: 'Capture your full employer match',
-      summary: `Increase 401(k) from ${current401kPct}% → ${Math.round(optimizedPct * 10) / 10}%`,
+      summary: `Increase 401(k) from ${formatPct(current401kPct)} → ${formatPct(optimizedPct)}`,
       optimized401kPct: optimizedPct,
       type: 'capture_match',
     };
@@ -73,7 +77,7 @@ export function getRecommendedLeap(
 
   return {
     label: 'Increase retirement contribution',
-    summary: `Increase 401(k) from ${current401kPct}% → ${Math.round(targetPct * 10) / 10}%`,
+    summary: `Increase 401(k) from ${formatPct(current401kPct)} → ${formatPct(targetPct)}`,
     optimized401kPct: targetPct,
     type: 'increase_contribution',
   };

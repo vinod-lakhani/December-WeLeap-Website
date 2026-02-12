@@ -7,6 +7,7 @@ import type { Leap } from '@/lib/allocator/leapModel';
 import type { FlowSummary, CapitalRoutingResult } from '@/lib/allocator/leapModel';
 import type { PrimaryLeapResult } from '@/lib/allocator/selectPrimaryLeap';
 import { track } from '@/lib/analytics';
+import { formatPct } from '@/lib/format';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 
 interface SavingsStackSummaryProps {
@@ -71,7 +72,7 @@ function PrimaryCard({
             Capture free money from your employer
           </p>
           <p className="mt-1 text-[#111827]">
-            Increase 401(k) from {leap.currentValue}% → {leap.targetValue}%
+            Increase 401(k) from {formatPct(leap.currentValue)} → {formatPct(leap.targetValue)}
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Unlocks employer match — free money that compounds for decades.
@@ -136,7 +137,7 @@ function PrimaryCard({
             Boost long-term compounding
           </p>
           <p className="mt-1 text-[#111827]">
-            Increase 401(k) from {currentPct}% → {targetPct}%
+            Increase 401(k) from {formatPct(currentPct)} → {formatPct(targetPct)}
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Getting to 15% of pay into retirement dramatically improves your trajectory.
@@ -151,7 +152,7 @@ function PrimaryCard({
   }
 
   if (kind === 'debt' && leap) {
-    const aprStr = leap.debtAprPct != null ? `${leap.debtAprPct}%` : '';
+    const aprStr = leap.debtAprPct != null ? formatPct(leap.debtAprPct) : '';
     const balanceStr = leap.currentValue != null
       ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(leap.currentValue)
       : '';
@@ -196,7 +197,7 @@ function PrimaryCard({
             Invest surplus for growth
           </p>
           <p className="mt-1 text-[#111827]">
-            Your split: {ret}% retirement / {bro}% brokerage
+            Your split: {formatPct(ret)} retirement / {formatPct(bro)} brokerage
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Balances tax-advantaged growth with flexibility.
@@ -334,7 +335,7 @@ function SupportingCard({
     const balanceStr = leap.currentValue != null
       ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(leap.currentValue)
       : '';
-    const aprStr = leap.debtAprPct != null ? `${leap.debtAprPct}%` : '';
+    const aprStr = leap.debtAprPct != null ? formatPct(leap.debtAprPct) : '';
     return (
       <Card className="border border-gray-200 bg-white">
         <CardContent className="p-3">
@@ -375,7 +376,7 @@ function SupportingCard({
             )}
             <span className="font-medium text-sm text-[#111827]">Grow long-term wealth (retirement + flexibility)</span>
           </div>
-          <p className="text-xs text-gray-700 mt-0.5">Your split: {ret}% retirement / {bro}% brokerage</p>
+          <p className="text-xs text-gray-700 mt-0.5">Your split: {formatPct(ret)} retirement / {formatPct(bro)} brokerage</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Improves tax-advantaged compounding.</p>
           {leap.cta?.action === 'unlock' && (
             <Button
@@ -438,7 +439,7 @@ function PayrollCard({
           <p className="font-medium text-sm text-[#111827]">{title}</p>
           {showTarget && (
             <p className="text-xs text-gray-700 mt-0.5">
-              {currentPct}% → {targetPct}%
+              {formatPct(currentPct)} → {formatPct(targetPct)}
             </p>
           )}
           {showImpact && impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
@@ -530,9 +531,9 @@ export function SavingsStackSummary({
           <div className="space-y-2 text-sm text-gray-700">
             {preTax401k && (
               <p>
-                401(k): {preTax401k.currentPct}% → {preTax401k.targetPct}%
+                401(k): {formatPct(preTax401k.currentPct)} → {formatPct(preTax401k.targetPct)}
                 {hasEmployerMatch && preTax401k.matchRatePct != null && preTax401k.matchCapPct != null && (
-                  <> (match: {preTax401k.matchRatePct}% up to {preTax401k.matchCapPct}%)</>
+                  <> (match: {formatPct(preTax401k.matchRatePct)} up to {formatPct(preTax401k.matchCapPct)})</>
                 )}
               </p>
             )}

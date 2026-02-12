@@ -28,3 +28,8 @@ export function formatCurrencySigned(value: number): string {
 export function formatPercent(value: number, decimals: number = 0): string {
   return `${value.toFixed(decimals)}%`;
 }
+
+/** Format contribution/target percentage for display (2 decimals). */
+export function formatPct(value: number): string {
+  return `${Number(value.toFixed(2))}%`;
+}

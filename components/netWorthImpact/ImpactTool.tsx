@@ -216,7 +216,7 @@ export function ImpactTool() {
                   }}
                   className="flex-1 max-w-xs h-2 rounded-full bg-gray-200 appearance-none cursor-pointer accent-[#3F6B42]"
                 />
-                <span className="text-sm font-medium tabular-nums w-10">{debtApr}%</span>
+                <span className="text-sm font-medium tabular-nums w-10">{formatPercent(debtApr, 2)}</span>
               </div>
             </div>
           )}

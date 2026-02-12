@@ -7,6 +7,7 @@ import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, 
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, K401_EMPLOYEE_CAP_2025, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
+import { formatPct } from '@/lib/format';
 
 const REAL_RETURN = REAL_RETURN_DEFAULT;
 const MONTHS_30 = 30 * 12;
@@ -132,7 +133,7 @@ export function buildLeaps(
       id: 'match',
       title: matchCaptured
         ? '401(k) match captured'
-        : `Increase 401(k) from ${prefill.current401kPct}% → ${recommended401k}%`,
+        : `Increase 401(k) from ${formatPct(prefill.current401kPct)} → ${formatPct(recommended401k)}`,
       subtitle: matchCaptured ? undefined : 'Unlocks employer match (free money).',
       status: matchCaptured ? 'complete' : 'next',
       category: 'match',
@@ -225,7 +226,7 @@ export function buildLeaps(
     const saved = interestSaved12mo(unlock.debtBalance, aprPct, extraDefault);
     leaps.push({
       id: 'debt',
-      title: `High-APR debt — $${Math.round(unlock.debtBalance).toLocaleString()} at ${aprPct}% APR`,
+      title: `High-APR debt — $${Math.round(unlock.debtBalance).toLocaleString()} at ${formatPct(aprPct)} APR`,
       status: 'queued',
       category: 'debt',
       targetValue: 0,
@@ -261,7 +262,7 @@ export function buildLeaps(
   leaps.push({
     id: 'retirement_split',
     title: focus != null
-      ? `Retirement vs Brokerage — ${split.retirementPct}% retirement / ${split.brokeragePct}% brokerage`
+      ? `Retirement vs Brokerage — ${formatPct(split.retirementPct)} retirement / ${formatPct(split.brokeragePct)} brokerage`
       : 'Retirement vs Brokerage (split of remaining)',
     subtitle: focus != null ? undefined : 'Set your retirement focus to see your split.',
     status: 'queued',

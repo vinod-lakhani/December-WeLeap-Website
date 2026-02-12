@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Leap } from '@/lib/allocator/leapModel';
 import { track } from '@/lib/analytics';
+import { formatPct } from '@/lib/format';
 
 interface NextLeapsListProps {
   leaps: Leap[];
@@ -17,7 +18,7 @@ interface NextLeapsListProps {
 
 function formatDelta(leap: Leap): string | null {
   if (leap.deltaValue == null) return null;
-  if (leap.category === 'match' && leap.deltaValue > 0) return `Gap: +${leap.deltaValue}%`;
+  if (leap.category === 'match' && leap.deltaValue > 0) return `Gap: +${formatPct(leap.deltaValue)}`;
   if (leap.category === 'emergency_fund' && leap.targetValue != null) return `Gap: $${Math.round(leap.targetValue).toLocaleString()}`;
   if (leap.category === 'debt' && leap.currentValue != null) return `Balance: $${Math.round(leap.currentValue).toLocaleString()}`;
   return null;
