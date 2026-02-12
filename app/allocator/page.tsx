@@ -23,11 +23,16 @@ export interface AllocatorPrefillFromUrl {
   payFrequency?: string;
   employerMatchEnabled: boolean;
   employerMatchPct: number;
+  matchRatePct?: number;
+  matchCapPct?: number;
   current401kPct: number;
   recommended401kPct: number;
   estimatedNetMonthlyIncome?: number;
   leapDelta30yr?: number;
   costOfDelay12Mo?: number;
+  hsaEligible?: boolean;
+  currentHsaAnnual?: number;
+  hsaCoverageType?: 'single' | 'family';
   intent: AllocatorIntent;
   source: string;
 }
@@ -42,17 +47,25 @@ function parsePrefillFromSearchParams(params: URLSearchParams): AllocatorPrefill
   }
   const salaryNum = parseFloat(salaryAnnual);
   if (Number.isNaN(salaryNum) || salaryNum <= 0) return null;
+  const employerMatchPct = Math.max(0, parseFloat(params.get('employerMatchPct') ?? '0') || 0);
+  const matchCapPct = params.has('matchCapPct') ? Math.max(0, parseFloat(params.get('matchCapPct')!) || 0) : employerMatchPct || 5;
+  const matchRatePct = params.has('matchRatePct') ? Math.max(0, parseFloat(params.get('matchRatePct')!) || 0) : 100;
   return {
     salaryAnnual: salaryNum,
     state,
     payFrequency: params.get('payFrequency') ?? 'monthly',
     employerMatchEnabled: params.get('employerMatchEnabled') === '1',
-    employerMatchPct: Math.max(0, parseFloat(params.get('employerMatchPct') ?? '0') || 0),
+    employerMatchPct,
+    matchRatePct,
+    matchCapPct,
     current401kPct: Math.max(0, parseFloat(params.get('current401kPct') ?? '0') || 0),
-    recommended401kPct: Math.max(0, parseFloat(params.get('recommended401kPct') ?? '0') || 0),
+    recommended401kPct: Math.max(0, parseFloat(params.get('recommended401kPct') ?? '0') || 0) || matchCapPct,
     estimatedNetMonthlyIncome: params.has('estimatedNetMonthlyIncome') ? parseFloat(params.get('estimatedNetMonthlyIncome')!) : undefined,
     leapDelta30yr: params.has('leapDelta30yr') ? parseFloat(params.get('leapDelta30yr')!) : undefined,
     costOfDelay12Mo: params.has('costOfDelay12Mo') ? parseFloat(params.get('costOfDelay12Mo')!) : undefined,
+    hsaEligible: params.get('hsaEligible') === '1',
+    currentHsaAnnual: params.has('currentHsaAnnual') ? parseFloat(params.get('currentHsaAnnual')!) : undefined,
+    hsaCoverageType: (params.get('hsaCoverageType') === 'family' ? 'family' : 'single') as 'single' | 'family',
     intent,
     source: source ?? 'leap_impact_tool',
   };
@@ -62,7 +75,8 @@ const STACK_STEPS = [
   { id: 'ef', name: 'Emergency Fund', title: 'Size your safety buffer' },
   { id: 'debt', name: 'High-APR debt', title: 'Credit card debt check' },
   { id: 'retirement_focus', name: 'Retirement focus', title: 'Retirement vs brokerage split' },
-  { id: 'summary', name: 'Summary', title: 'Your plan' },
+  { id: 'hsa', name: 'HSA', title: 'HSA (optional)' },
+  { id: 'summary', name: 'Summary', title: 'Your trajectory plan' },
 ] as const;
 
 function AllocatorContent() {
@@ -75,6 +89,9 @@ function AllocatorContent() {
   const [debtAprRange, setDebtAprRange] = useState<string>('');
   const [debtBalance, setDebtBalance] = useState<string>('');
   const [retirementFocus, setRetirementFocus] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [hsaEligible, setHsaEligible] = useState<boolean | null>(null);
+  const [currentHsaAnnual, setCurrentHsaAnnual] = useState('');
+  const [hsaCoverageType, setHsaCoverageType] = useState<'single' | 'family'>('single');
   const prevNextLeapIdRef = useRef<string | null>(null);
   const leapStackRenderedTrackedRef = useRef(false);
   const [earlyAccessModalOpen, setEarlyAccessModalOpen] = useState(false);
@@ -93,6 +110,18 @@ function AllocatorContent() {
   }, [prefillFromUrl, prefill]);
 
   useEffect(() => {
+    if (prefill?.hsaEligible != null && hsaEligible === null) {
+      setHsaEligible(prefill.hsaEligible);
+    }
+    if (prefill?.currentHsaAnnual != null && !currentHsaAnnual.trim()) {
+      setCurrentHsaAnnual(String(Math.round(prefill.currentHsaAnnual)));
+    }
+    if (prefill?.hsaCoverageType && prefill.hsaCoverageType === 'family') {
+      setHsaCoverageType('family');
+    }
+  }, [prefill?.hsaEligible, prefill?.currentHsaAnnual, prefill?.hsaCoverageType, hsaEligible, currentHsaAnnual]);
+
+  useEffect(() => {
     if (prefill && prefill.source && !prefillLoadedTracked) {
       setPrefillLoadedTracked(true);
       track('allocator_prefill_loaded', { source: prefill.source, intent: prefill.intent });
@@ -103,28 +132,38 @@ function AllocatorContent() {
   const unlockData: AllocatorUnlockData | null = useMemo(() => {
     const essentialNum = efMonthly.trim() ? parseFloat(efMonthly) : undefined;
     const balanceNum = debtBalance.trim() ? parseFloat(debtBalance) : undefined;
-    if (essentialNum == null && hasHighAprDebt == null && !retirementFocus) return null;
+    const hsaNum = currentHsaAnnual.trim() ? parseFloat(currentHsaAnnual) : undefined;
+    const hasAny = essentialNum != null || hasHighAprDebt != null || retirementFocus != null || hsaEligible != null;
+    if (!hasAny) return null;
     return {
       essentialMonthly: essentialNum != null && !Number.isNaN(essentialNum) && essentialNum > 0 ? essentialNum : undefined,
       carriesBalance: hasHighAprDebt ?? undefined,
       debtAprRange: debtAprRange || undefined,
       debtBalance: balanceNum != null && !Number.isNaN(balanceNum) && balanceNum > 0 ? balanceNum : undefined,
       retirementFocus: retirementFocus ?? undefined,
+      hsaEligible: hsaEligible ?? undefined,
+      currentHsaAnnual: hsaNum != null && !Number.isNaN(hsaNum) && hsaNum >= 0 ? hsaNum : undefined,
+      hsaCoverageType: hsaCoverageType,
     };
-  }, [efMonthly, hasHighAprDebt, debtAprRange, debtBalance, retirementFocus]);
+  }, [efMonthly, hasHighAprDebt, debtAprRange, debtBalance, retirementFocus, hsaEligible, currentHsaAnnual, hsaCoverageType]);
 
   const prefillForLeaps = useMemo(() => prefill ? {
     salaryAnnual: prefill.salaryAnnual,
     state: prefill.state,
     employerMatchEnabled: prefill.employerMatchEnabled,
-    employerMatchPct: prefill.employerMatchPct,
+    matchRatePct: prefill.matchRatePct ?? 100,
+    matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct ?? 5,
+    employerMatchPct: prefill.matchCapPct ?? prefill.employerMatchPct,
     current401kPct: prefill.current401kPct,
     recommended401kPct: prefill.recommended401kPct,
     estimatedNetMonthlyIncome: prefill.estimatedNetMonthlyIncome,
     leapDelta30yr: prefill.leapDelta30yr,
-  } : null, [prefill]);
+    hsaEligible: unlockData?.hsaEligible ?? prefill.hsaEligible,
+    currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual,
+    hsaCoverageType: unlockData?.hsaCoverageType ?? prefill.hsaCoverageType,
+  } : null, [prefill, unlockData?.hsaEligible, unlockData?.currentHsaAnnual, unlockData?.hsaCoverageType]);
 
-  const { leaps, nextLeapId, flowSummary, matchCaptured } = useMemo(
+  const { leaps, nextLeapId, flowSummary, matchCaptured, routing } = useMemo(
     () => buildLeaps(prefillForLeaps, unlockData),
     [prefillForLeaps, unlockData]
   );
@@ -141,7 +180,7 @@ function AllocatorContent() {
   }, [leaps.length, nextLeapId]);
 
   useEffect(() => {
-    if (currentStep === 3 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
+    if (currentStep === 4 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
       leapStackRenderedTrackedRef.current = true;
       track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' });
       track('leap_stack_plan_viewed', {
@@ -172,16 +211,21 @@ function AllocatorContent() {
   const impact401kAtYear30 = prefill?.leapDelta30yr ?? null;
   const costOfDelay12Mo = prefill?.costOfDelay12Mo ?? null;
 
+  const hsaNotMaxed = useMemo(
+    () => leaps.some((l) => l.category === 'hsa' && l.hsaCurrentAnnual != null && l.hsaMaxAnnual != null && l.hsaCurrentAnnual < l.hsaMaxAnnual),
+    [leaps]
+  );
   const primaryResult = useMemo(
     () =>
       selectPrimaryLeap({
         employerMatchEnabled: prefill?.employerMatchEnabled ?? false,
         current401kPct: prefill?.current401kPct ?? 0,
         recommended401kPct: prefill?.recommended401kPct ?? 0,
+        hsaNotMaxed,
         unlock: unlockData,
         leaps,
       }),
-    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.recommended401kPct, unlockData, leaps]
+    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.recommended401kPct, hsaNotMaxed, unlockData, leaps]
   );
   const supportingLeaps = useMemo(
     () => getSupportingLeaps(leaps, primaryResult.kind),
@@ -494,10 +538,89 @@ function AllocatorContent() {
             )}
 
             {currentStep === 3 && (
+              <Card className="border-[#D1D5DB] bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[3].title}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-gray-600">
+                    Do you have an HSA-eligible health plan? (HSA = triple tax advantage for long-term investing.)
+                  </p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hsaEligible"
+                        checked={hsaEligible === true}
+                        onChange={() => setHsaEligible(true)}
+                        className="accent-[#3F6B42]"
+                      />
+                      <span>Yes</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hsaEligible"
+                        checked={hsaEligible === false}
+                        onChange={() => setHsaEligible(false)}
+                        className="accent-[#3F6B42]"
+                      />
+                      <span>No</span>
+                    </label>
+                  </div>
+                  {hsaEligible === true && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="hsa-annual">Current HSA annual contribution ($)</Label>
+                        <Input
+                          id="hsa-annual"
+                          type="number"
+                          placeholder="e.g. 2000"
+                          value={currentHsaAnnual}
+                          onChange={(e) => setCurrentHsaAnnual(e.target.value)}
+                          className="border-[#D1D5DB] max-w-xs"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Coverage type</Label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={hsaCoverageType === 'single' ? 'default' : 'outline'}
+                            size="sm"
+                            className={hsaCoverageType === 'single' ? 'bg-[#3F6B42] hover:bg-[#3F6B42]/90' : ''}
+                            onClick={() => setHsaCoverageType('single')}
+                          >
+                            Single ($4,300 limit)
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={hsaCoverageType === 'family' ? 'default' : 'outline'}
+                            size="sm"
+                            className={hsaCoverageType === 'family' ? 'bg-[#3F6B42] hover:bg-[#3F6B42]/90' : ''}
+                            onClick={() => setHsaCoverageType('family')}
+                          >
+                            Family ($8,550 limit)
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    onClick={() => handleStepComplete('hsa')}
+                    className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                  >
+                    Next
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {currentStep === 4 && (
               <>
                 <Card className="border-[#D1D5DB] bg-white">
                   <CardHeader>
-                    <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[3].title}</CardTitle>
+                    <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[4].title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <SavingsStackSummary
@@ -506,6 +629,7 @@ function AllocatorContent() {
                       flowSummary={flowSummary}
                       hasUnlockData={hasUnlockData}
                       hasEmployerMatch={prefill?.employerMatchEnabled ?? false}
+                      routing={routing}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
                       onUnlockDetailsClick={() => setCurrentStep(0)}

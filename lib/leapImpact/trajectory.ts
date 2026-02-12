@@ -25,24 +25,35 @@ function fvMonthlyContributions(
 }
 
 /**
+ * Employer match: X% match up to Y% of salary.
+ * employerPctOfSalary = min(contributionPct * matchRatePct/100, matchCapPct).
+ */
+function employerMatchMonthly(
+  grossAnnual: number,
+  contributionPct: number,
+  matchRatePct: number,
+  matchCapPct: number
+): number {
+  const employerPctOfSalary = Math.min((contributionPct * matchRatePct) / 100, matchCapPct);
+  return (grossAnnual * (employerPctOfSalary / 100)) / MONTHS_PER_YEAR;
+}
+
+/**
  * Net worth at end of each year for a given contribution path.
- * Each year we add 12 months of contributions and compound from start of year to end of year.
- * Simplified: we treat each year's contributions as a single FV from that year (equivalent to
- * monthly contributions at monthly rate).
  */
 function runPath(
   grossAnnual: number,
   contributionPct: number,
-  matchPct: number,
+  matchCapPct: number,
+  matchRatePct: number,
   hasMatch: boolean,
   realReturn: number,
   years: number
 ): number[] {
   const monthlyRate = realReturn / MONTHS_PER_YEAR;
   const employeeMonthly = (grossAnnual * (contributionPct / 100)) / MONTHS_PER_YEAR;
-  // Employer match: only on employee contribution, capped at matchPct of salary
   const matchMonthly = hasMatch
-    ? (grossAnnual * (Math.min(contributionPct, matchPct) / 100)) / MONTHS_PER_YEAR
+    ? employerMatchMonthly(grossAnnual, contributionPct, matchRatePct, matchCapPct)
     : 0;
   const totalMonthly = employeeMonthly + matchMonthly;
 
@@ -62,7 +73,10 @@ export interface TrajectoryInputs {
   grossAnnual: number;
   current401kPct: number;
   optimized401kPct: number;
+  /** Match cap (Y): up to Y% of salary. */
   matchPct: number;
+  /** Match rate (X): e.g. 100 = 100% match, 50 = 50% match. Default 100. */
+  matchRatePct?: number;
   hasEmployerMatch: boolean;
   realReturn?: number;
   years?: number;
@@ -90,10 +104,12 @@ export interface TrajectoryResult {
 export function runTrajectory(inputs: TrajectoryInputs): TrajectoryResult {
   const realReturn = inputs.realReturn ?? 0.07;
   const years = inputs.years ?? 30;
+  const matchRatePct = inputs.matchRatePct ?? 100;
   const baselineByYear = runPath(
     inputs.grossAnnual,
     inputs.current401kPct,
     inputs.matchPct,
+    matchRatePct,
     inputs.hasEmployerMatch,
     realReturn,
     years
@@ -102,6 +118,7 @@ export function runTrajectory(inputs: TrajectoryInputs): TrajectoryResult {
     inputs.grossAnnual,
     inputs.optimized401kPct,
     inputs.matchPct,
+    matchRatePct,
     inputs.hasEmployerMatch,
     realReturn,
     years
@@ -135,16 +152,16 @@ export function costOfDelay(
   const years = inputs.years ?? 30;
   const monthlyRate = realReturn / MONTHS_PER_YEAR;
 
-  // Baseline path: current % for delayMonths, then optimized for rest
+  const matchRatePct = inputs.matchRatePct ?? 100;
   const employeeBaseline = (inputs.grossAnnual * (inputs.current401kPct / 100)) / MONTHS_PER_YEAR;
   const matchBaseline = inputs.hasEmployerMatch
-    ? (inputs.grossAnnual * (Math.min(inputs.current401kPct, inputs.matchPct) / 100)) / MONTHS_PER_YEAR
+    ? employerMatchMonthly(inputs.grossAnnual, inputs.current401kPct, matchRatePct, inputs.matchPct)
     : 0;
   const totalBaseline = employeeBaseline + matchBaseline;
 
   const employeeOpt = (inputs.grossAnnual * (inputs.optimized401kPct / 100)) / MONTHS_PER_YEAR;
   const matchOpt = inputs.hasEmployerMatch
-    ? (inputs.grossAnnual * (Math.min(inputs.optimized401kPct, inputs.matchPct) / 100)) / MONTHS_PER_YEAR
+    ? employerMatchMonthly(inputs.grossAnnual, inputs.optimized401kPct, matchRatePct, inputs.matchPct)
     : 0;
   const totalOpt = employeeOpt + matchOpt;
 

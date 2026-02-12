@@ -20,11 +20,16 @@ export interface AllocatorPrefillPayload {
   payFrequency?: string;
   employerMatchEnabled: boolean;
   employerMatchPct: number;
+  matchRatePct?: number;
+  matchCapPct?: number;
   current401kPct: number;
   recommended401kPct: number;
   estimatedNetMonthlyIncome?: number;
   leapDelta30yr?: number;
   costOfDelay12Mo?: number;
+  hsaEligible?: boolean;
+  currentHsaAnnual?: number;
+  hsaCoverageType?: 'single' | 'family';
   intent: AllocatorIntent;
   source: string;
 }
@@ -70,6 +75,8 @@ export function buildAllocatorPrefillUrl(payload: AllocatorPrefillPayload): stri
   if (payload.payFrequency) u.searchParams.set('payFrequency', payload.payFrequency);
   u.searchParams.set('employerMatchEnabled', payload.employerMatchEnabled ? '1' : '0');
   u.searchParams.set('employerMatchPct', String(payload.employerMatchPct));
+  if (payload.matchRatePct != null) u.searchParams.set('matchRatePct', String(payload.matchRatePct));
+  if (payload.matchCapPct != null) u.searchParams.set('matchCapPct', String(payload.matchCapPct));
   u.searchParams.set('current401kPct', String(payload.current401kPct));
   u.searchParams.set('recommended401kPct', String(payload.recommended401kPct));
   if (payload.estimatedNetMonthlyIncome != null) {
@@ -81,6 +88,9 @@ export function buildAllocatorPrefillUrl(payload: AllocatorPrefillPayload): stri
   if (payload.costOfDelay12Mo != null) {
     u.searchParams.set('costOfDelay12Mo', String(Math.round(payload.costOfDelay12Mo)));
   }
+  if (payload.hsaEligible != null) u.searchParams.set('hsaEligible', payload.hsaEligible ? '1' : '0');
+  if (payload.currentHsaAnnual != null) u.searchParams.set('currentHsaAnnual', String(Math.round(payload.currentHsaAnnual)));
+  if (payload.hsaCoverageType) u.searchParams.set('hsaCoverageType', payload.hsaCoverageType);
   u.searchParams.set('intent', payload.intent);
   u.searchParams.set('source', payload.source);
   return u.toString();

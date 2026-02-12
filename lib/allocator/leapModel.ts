@@ -1,13 +1,13 @@
 /**
- * Leap data model for "Your Next Leaps" ranked capital allocation plan.
- * Stack order: match → emergency_fund → debt → retirement_split → brokerage.
- * No HSA.
+ * Leap data model for Wealth Trajectory Correction + Capital Allocation Framework.
+ * Pre-tax: match → HSA. Post-tax routing: EF (40%) → debt (40% of remaining) → retirement/brokerage split.
  */
 
 export type LeapStatus = 'next' | 'queued' | 'complete' | 'locked';
 
 export type LeapCategory =
   | 'match'
+  | 'hsa'
   | 'emergency_fund'
   | 'debt'
   | 'retirement_split'
@@ -39,6 +39,11 @@ export interface Leap {
   splitBrokeragePct?: number;
   /** For debt (active): APR used for display */
   debtAprPct?: number;
+  /** True for payroll (HSA). */
+  isPreTax?: boolean;
+  /** HSA: current annual contribution; HSA max for coverage type. */
+  hsaCurrentAnnual?: number;
+  hsaMaxAnnual?: number;
 }
 
 /** Flow summary for post-tax stack (percent or dollar version). */
@@ -48,7 +53,19 @@ export interface FlowSummary {
   withDollars?: string;
 }
 
-/** Inputs collected after email unlock (3 steps). */
+/** Result of capital allocation routing (40% EF, 40% remaining to debt, split rest). */
+export interface CapitalRoutingResult {
+  postTaxSavingsMonthly: number;
+  efAlloc: number;
+  debtAlloc: number;
+  retirementAlloc: number;
+  brokerageAlloc: number;
+  efTarget: number;
+  /** Months to reach EF target at current efAlloc (undefined if already at target or no target). */
+  monthsToEfTarget?: number;
+}
+
+/** Inputs collected after email unlock (steps). */
 export interface AllocatorUnlockData {
   /** Essential monthly spend (rent + bills + groceries, etc.) */
   essentialMonthly?: number;
@@ -60,6 +77,12 @@ export interface AllocatorUnlockData {
   debtBalance?: number;
   /** Retirement vs brokerage priority */
   retirementFocus?: 'high' | 'medium' | 'low';
+  /** HSA-eligible health plan? */
+  hsaEligible?: boolean;
+  /** Current HSA annual contribution ($). */
+  currentHsaAnnual?: number;
+  /** HSA coverage type for limit (default single). */
+  hsaCoverageType?: 'single' | 'family';
 }
 
 /** Prefill from Leap Impact tool (URL or state). */
@@ -67,9 +90,19 @@ export interface AllocatorPrefillForLeaps {
   salaryAnnual: number;
   state: string;
   employerMatchEnabled: boolean;
-  employerMatchPct: number;
+  /** Employer match rate (X): e.g. 100 = 100% match, 50 = 50% match. */
+  matchRatePct?: number;
+  /** Employer match cap (Y): e.g. 5 = up to 5% of salary. */
+  matchCapPct?: number;
+  /** Legacy: employer match cap (same as matchCapPct). */
+  employerMatchPct?: number;
   current401kPct: number;
+  /** Recommended 401k % to capture full match = matchCapPct when match enabled. */
   recommended401kPct: number;
   estimatedNetMonthlyIncome?: number;
   leapDelta30yr?: number;
+  /** HSA eligible (from allocator step or URL). */
+  hsaEligible?: boolean;
+  currentHsaAnnual?: number;
+  hsaCoverageType?: 'single' | 'family';
 }

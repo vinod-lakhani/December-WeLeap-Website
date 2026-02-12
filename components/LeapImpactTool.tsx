@@ -63,7 +63,8 @@ export function LeapImpactTool() {
   const [salary, setSalary] = useState('');
   const [state, setState] = useState('');
   const [hasMatch, setHasMatch] = useState(true);
-  const [matchPct, setMatchPct] = useState(String(DEFAULT_MATCH_PCT));
+  const [matchRatePct, setMatchRatePct] = useState('100');
+  const [matchCapPct, setMatchCapPct] = useState(String(DEFAULT_MATCH_PCT));
   const [current401kPct, setCurrent401kPct] = useState(String(DEFAULT_CURRENT_401K_PCT));
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,18 +94,22 @@ export function LeapImpactTool() {
     const n = parseFloat(salary);
     return Number.isNaN(n) || n <= 0 ? 0 : n;
   }, [salary]);
-  const matchPctNum = useMemo(() => {
-    const n = parseFloat(matchPct);
+  const matchRatePctNum = useMemo(() => {
+    const n = parseFloat(matchRatePct);
     return Number.isNaN(n) || n < 0 ? 0 : n;
-  }, [matchPct]);
+  }, [matchRatePct]);
+  const matchCapPctNum = useMemo(() => {
+    const n = parseFloat(matchCapPct);
+    return Number.isNaN(n) || n < 0 ? 0 : n;
+  }, [matchCapPct]);
   const current401kNum = useMemo(() => {
     const n = parseFloat(current401kPct);
     return Number.isNaN(n) || n < 0 ? 0 : n;
   }, [current401kPct]);
 
   const leap = useMemo(
-    () => getRecommendedLeap(hasMatch, matchPctNum, current401kNum),
-    [hasMatch, matchPctNum, current401kNum]
+    () => getRecommendedLeap(hasMatch, matchCapPctNum, current401kNum),
+    [hasMatch, matchCapPctNum, current401kNum]
   );
 
   const trajectoryResult = useMemo(() => {
@@ -113,12 +118,13 @@ export function LeapImpactTool() {
       grossAnnual: salaryNum,
       current401kPct: current401kNum,
       optimized401kPct: leap.optimized401kPct,
-      matchPct: matchPctNum,
+      matchPct: matchCapPctNum,
+      matchRatePct: matchRatePctNum,
       hasEmployerMatch: hasMatch,
       realReturn: REAL_RETURN_DEFAULT,
       years: 30,
     });
-  }, [taxResult, salaryNum, current401kNum, leap.optimized401kPct, matchPctNum, hasMatch]);
+  }, [taxResult, salaryNum, current401kNum, leap.optimized401kPct, matchCapPctNum, matchRatePctNum, hasMatch]);
 
   const costOfDelayAmount = useMemo(() => {
     if (!trajectoryResult || trajectoryResult.delta30yr <= 0) return 0;
@@ -126,12 +132,13 @@ export function LeapImpactTool() {
       grossAnnual: salaryNum,
       current401kPct: current401kNum,
       optimized401kPct: leap.optimized401kPct,
-      matchPct: matchPctNum,
+      matchPct: matchCapPctNum,
+      matchRatePct: matchRatePctNum,
       hasEmployerMatch: hasMatch,
       realReturn: REAL_RETURN_DEFAULT,
       years: 30,
     });
-  }, [trajectoryResult, salaryNum, current401kNum, leap.optimized401kPct, matchPctNum, hasMatch]);
+  }, [trajectoryResult, salaryNum, current401kNum, leap.optimized401kPct, matchCapPctNum, matchRatePctNum, hasMatch]);
 
   const chartData = useMemo(() => {
     if (!trajectoryResult) return [];
@@ -170,7 +177,8 @@ export function LeapImpactTool() {
         grossAnnual: salaryNum,
         current401kPct: current401kNum,
         optimized401kPct: leap.optimized401kPct,
-        matchPct: matchPctNum,
+        matchPct: matchCapPctNum,
+        matchRatePct: matchRatePctNum,
         hasEmployerMatch: hasMatch,
         realReturn: REAL_RETURN_DEFAULT,
         years: 30,
@@ -181,7 +189,8 @@ export function LeapImpactTool() {
         state,
         match_yesno: hasMatch,
         current_pct: current401kNum,
-        match_pct: matchPctNum,
+        match_cap_pct: matchCapPctNum,
+        match_rate_pct: matchRatePctNum,
         recommended_pct: leap.optimized401kPct,
         delta_30yr: traj.delta30yr,
       });
@@ -190,7 +199,7 @@ export function LeapImpactTool() {
     } finally {
       setIsCalculating(false);
     }
-  }, [salary, salaryNum, state, hasMatch, matchPctNum, current401kNum, leap.optimized401kPct]);
+  }, [salary, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct]);
 
   const handleContinueToAllocator = useCallback(() => {
     const intent = emailSuccessIntent ?? 'lock_plan';
@@ -201,7 +210,9 @@ export function LeapImpactTool() {
       state,
       payFrequency: 'monthly',
       employerMatchEnabled: hasMatch,
-      employerMatchPct: matchPctNum,
+      employerMatchPct: matchCapPctNum,
+      matchRatePct: matchRatePctNum,
+      matchCapPct: matchCapPctNum,
       current401kPct: current401kNum,
       recommended401kPct: leap.optimized401kPct,
       estimatedNetMonthlyIncome: netMonthlyVal,
@@ -210,7 +221,7 @@ export function LeapImpactTool() {
       source: 'leap_impact_tool',
     });
     window.location.href = url;
-  }, [emailSuccessIntent, taxResult, salaryNum, state, hasMatch, matchPctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr]);
+  }, [emailSuccessIntent, taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr]);
 
   const handleLockPlan = useCallback(async (e: React.FormEvent, intent: AllocatorIntent) => {
     e.preventDefault();
@@ -270,7 +281,7 @@ export function LeapImpactTool() {
     } finally {
       setEmailSubmitting(false);
     }
-  }, [email, taxResult, salaryNum, state, hasMatch, matchPctNum, current401kNum, leap.optimized401kPct, leap.summary, trajectoryResult?.delta30yr]);
+  }, [email, taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, leap.summary, trajectoryResult?.delta30yr]);
 
   useEffect(() => {
     return () => {
@@ -282,8 +293,8 @@ export function LeapImpactTool() {
   const showResults = taxResult && trajectoryResult;
 
   const stackSteps = useMemo(
-    () => getStackPreviewSteps(hasMatch, current401kNum, matchPctNum),
-    [hasMatch, current401kNum, matchPctNum]
+    () => getStackPreviewSteps(hasMatch, current401kNum, matchCapPctNum),
+    [hasMatch, current401kNum, matchCapPctNum]
   );
 
   const handleStackAccordionChange = useCallback((value: string) => {
@@ -303,7 +314,9 @@ export function LeapImpactTool() {
       state,
       payFrequency: 'monthly',
       employerMatchEnabled: hasMatch,
-      employerMatchPct: matchPctNum,
+      employerMatchPct: matchCapPctNum,
+      matchRatePct: matchRatePctNum,
+      matchCapPct: matchCapPctNum,
       current401kPct: current401kNum,
       recommended401kPct: leap.optimized401kPct,
       estimatedNetMonthlyIncome: netMonthlyVal,
@@ -313,7 +326,7 @@ export function LeapImpactTool() {
       source: 'leap_impact_tool',
     });
     window.location.href = url;
-  }, [taxResult, salaryNum, state, hasMatch, matchPctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount]);
+  }, [taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount]);
 
   return (
     <div className="space-y-8">
@@ -378,20 +391,37 @@ export function LeapImpactTool() {
             </div>
           </div>
           {hasMatch && (
-            <div className="space-y-2">
-              <Label htmlFor="leap-match-pct" className="text-[#111827]">
-                Match cap %
-              </Label>
-              <Input
-                id="leap-match-pct"
-                type="number"
-                min={0}
-                max={100}
-                placeholder="5"
-                value={matchPct}
-                onChange={(e) => setMatchPct(e.target.value)}
-                className="border-[#D1D5DB] w-24"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="leap-match-rate" className="text-[#111827]">
+                  Employer matches (% of your contributions)
+                </Label>
+                <Input
+                  id="leap-match-rate"
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="100"
+                  value={matchRatePct}
+                  onChange={(e) => setMatchRatePct(e.target.value)}
+                  className="border-[#D1D5DB] w-24"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="leap-match-cap" className="text-[#111827]">
+                  Up to (% of salary)
+                </Label>
+                <Input
+                  id="leap-match-cap"
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="5"
+                  value={matchCapPct}
+                  onChange={(e) => setMatchCapPct(e.target.value)}
+                  className="border-[#D1D5DB] w-24"
+                />
+              </div>
             </div>
           )}
           <div className="space-y-2">

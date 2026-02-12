@@ -1,11 +1,12 @@
 /**
  * Build ranked Leap list from prefill + optional unlock data.
- * Stack order: match → emergency_fund → debt → retirement_split → brokerage.
- * No HSA.
+ * Pre-tax: match → HSA. Post-tax: EF (40%) → debt (40% remaining) → retirement/brokerage split.
  */
 
-import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary } from './leapModel';
+import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, CapitalRoutingResult } from './leapModel';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS } from './constants';
+import { computeCapitalRouting } from './capitalRouting';
 
 const REAL_RETURN = REAL_RETURN_DEFAULT;
 const MONTHS_30 = 30 * 12;
@@ -15,19 +16,27 @@ function fvMonthly(monthlyP: number, monthlyRate: number, numMonths: number): nu
   return monthlyP * (Math.pow(1 + monthlyRate, numMonths) - 1) / monthlyRate;
 }
 
+/** Employer match $ = salary * min(empPct, matchCapPct)/100 * (matchRatePct/100). */
+function employerMatchMonthly(salaryAnnual: number, employeePct: number, matchRatePct: number, matchCapPct: number): number {
+  const empPctCapped = Math.min(employeePct, matchCapPct);
+  const employerPctOfSalary = (empPctCapped * matchRatePct) / 100;
+  return (salaryAnnual * (employerPctOfSalary / 100)) / 12;
+}
+
 /** Estimate 30-year impact of extra monthly retirement contribution (employee + match). */
 function estimateMatchImpact30yr(
   salaryAnnual: number,
   currentPct: number,
   recommendedPct: number,
-  matchPct: number,
+  matchRatePct: number,
+  matchCapPct: number,
   hasMatch: boolean
 ): number {
   const monthlyRate = REAL_RETURN / 12;
   const empCur = (salaryAnnual * (currentPct / 100)) / 12;
   const empRec = (salaryAnnual * (recommendedPct / 100)) / 12;
-  const matchCur = hasMatch ? (salaryAnnual * (Math.min(currentPct, matchPct) / 100)) / 12 : 0;
-  const matchRec = hasMatch ? (salaryAnnual * (Math.min(recommendedPct, matchPct) / 100)) / 12 : 0;
+  const matchCur = hasMatch ? employerMatchMonthly(salaryAnnual, currentPct, matchRatePct, matchCapPct) : 0;
+  const matchRec = hasMatch ? employerMatchMonthly(salaryAnnual, recommendedPct, matchRatePct, matchCapPct) : 0;
   const deltaMonthly = (empRec - empCur) + (matchRec - matchCur);
   if (deltaMonthly <= 0) return 0;
   return Math.round(fvMonthly(deltaMonthly, monthlyRate, MONTHS_30));
@@ -75,40 +84,48 @@ function formatCurrency(n: number): string {
 export function buildLeaps(
   prefill: AllocatorPrefillForLeaps | null,
   unlock: AllocatorUnlockData | null
-): { leaps: Leap[]; nextLeapId: string | null; flowSummary: FlowSummary; matchCaptured: boolean } {
+): { leaps: Leap[]; nextLeapId: string | null; flowSummary: FlowSummary; matchCaptured: boolean; routing: CapitalRoutingResult | null } {
   const leaps: Leap[] = [];
   const hasUnlockData = !!(
     unlock &&
     (unlock.essentialMonthly != null || unlock.retirementFocus != null) &&
     (unlock.carriesBalance === false || (unlock.carriesBalance === true && unlock.debtAprRange && unlock.debtBalance != null))
   );
-  const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= prefill.recommended401kPct);
+  const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? DEFAULT_MATCH_CAP_PCT;
+  const matchRatePct = prefill?.matchRatePct ?? DEFAULT_MATCH_RATE_PCT;
+  const recommended401k = prefill?.recommended401kPct ?? matchCapPct;
+  const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= recommended401k);
   const netMonthly = prefill?.estimatedNetMonthlyIncome ?? 0;
+  const essentialsMonthly = unlock?.essentialMonthly ?? 0;
+  const postTaxSavingsMonthly = Math.max(0, netMonthly - essentialsMonthly);
 
-  // 1) 401(k) Match (payroll — not part of post-tax stack)
+  const routing: CapitalRoutingResult | null = (netMonthly > 0 || essentialsMonthly > 0)
+    ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: 0, unlock })
+    : null;
+
+  // 1) 401(k) Match (payroll)
   if (prefill?.employerMatchEnabled) {
-    const status: Leap['status'] = matchCaptured ? 'complete' : 'next';
     const impact30 = matchCaptured ? 0 : (prefill.leapDelta30yr ?? estimateMatchImpact30yr(
       prefill.salaryAnnual,
       prefill.current401kPct,
-      prefill.recommended401kPct,
-      prefill.employerMatchPct,
+      recommended401k,
+      matchRatePct,
+      matchCapPct,
       true
     ));
     leaps.push({
       id: 'match',
       title: matchCaptured
         ? '401(k) match captured'
-        : `Increase 401(k) from ${prefill.current401kPct}% → ${prefill.recommended401kPct}%`,
+        : `Increase 401(k) from ${prefill.current401kPct}% → ${recommended401k}%`,
       subtitle: matchCaptured ? undefined : 'Unlocks employer match (free money).',
-      status,
+      status: matchCaptured ? 'complete' : 'next',
       category: 'match',
-      targetValue: prefill.recommended401kPct,
+      targetValue: recommended401k,
       currentValue: prefill.current401kPct,
-      deltaValue: matchCaptured ? 0 : prefill.recommended401kPct - prefill.current401kPct,
+      deltaValue: matchCaptured ? 0 : recommended401k - prefill.current401kPct,
       timelineText: matchCaptured ? undefined : 'Start next paycheck',
       impactText: matchCaptured ? undefined : `Adds ${formatCurrency(impact30)} over 30 years`,
-      whyNowText: undefined,
       requiresUnlock: false,
       cta: undefined,
       isPayroll: true,
@@ -119,32 +136,63 @@ export function buildLeaps(
       title: 'No employer match',
       status: 'complete',
       category: 'match',
-      whyNowText: 'N/A',
       isPayroll: true,
     });
   }
 
-  // 2) Emergency Fund (1-month buffer first)
-  const efTarget1mo = unlock?.essentialMonthly != null ? unlock.essentialMonthly : undefined;
-  const efTarget3mo = efTarget1mo != null ? efTarget1mo * 3 : undefined;
-  const efTarget6mo = efTarget1mo != null ? efTarget1mo * 6 : undefined;
-  const defaultEfMonthly = netMonthly > 0 ? Math.round(netMonthly * 0.05) : 200;
-  const monthsTo1mo = efTarget1mo != null && efTarget1mo > 0 && defaultEfMonthly > 0
-    ? Math.ceil(efTarget1mo / defaultEfMonthly)
-    : undefined;
+  // 2) HSA (payroll lever — after match)
+  const hsaEligible = unlock?.hsaEligible ?? prefill?.hsaEligible ?? false;
+  const currentHsa = unlock?.currentHsaAnnual ?? prefill?.currentHsaAnnual ?? 0;
+  const hsaCoverage = unlock?.hsaCoverageType ?? prefill?.hsaCoverageType ?? 'single';
+  const hsaMax = hsaCoverage === 'family' ? HSA_LIMIT_FAMILY : HSA_LIMIT_SINGLE;
+  const hsaGap = hsaEligible && currentHsa < hsaMax ? hsaMax - currentHsa : 0;
+  if (hsaEligible) {
+    const hsaMaxed = currentHsa >= hsaMax;
+    leaps.push({
+      id: 'hsa',
+      title: hsaMaxed ? 'HSA maxed' : 'Use HSA for triple tax advantage',
+      subtitle: hsaMaxed ? undefined : `Increase HSA toward $${hsaMax.toLocaleString()} (${hsaCoverage})`,
+      status: hsaMaxed ? 'complete' : 'queued',
+      category: 'hsa',
+      targetValue: hsaMax,
+      currentValue: currentHsa,
+      deltaValue: hsaMaxed ? 0 : hsaGap,
+      impactText: hsaMaxed ? undefined : 'Tax-free in, tax-free growth, tax-free out for health.',
+      requiresUnlock: false,
+      isPayroll: true,
+      isPreTax: true,
+      hsaCurrentAnnual: currentHsa,
+      hsaMaxAnnual: hsaMax,
+    });
+  } else {
+    leaps.push({
+      id: 'hsa',
+      title: 'HSA',
+      subtitle: 'No HSA-eligible plan.',
+      status: 'complete',
+      category: 'hsa',
+      requiresUnlock: false,
+      isPayroll: true,
+      isPreTax: true,
+    });
+  }
+
+  // 3) Emergency Fund — 3-month target, 40% of post-tax savings until target
+  const efTarget = essentialsMonthly > 0 ? essentialsMonthly * EF_TARGET_MONTHS : 0;
+  const monthsToEf = routing?.monthsToEfTarget;
   leaps.push({
     id: 'emergency_fund',
-    title: efTarget1mo != null
-      ? `Emergency Fund — $${Math.round(efTarget1mo).toLocaleString()} target (1 month essentials)`
-      : 'Emergency Fund (1 month essentials)',
-    subtitle: efTarget1mo != null ? 'Then we\'ll extend toward 3–6 months.' : 'Unlock to see your target.',
-    status: matchCaptured ? (efTarget1mo != null ? 'next' : 'queued') : 'queued',
+    title: efTarget > 0
+      ? `Build a 3-month safety cushion — $${Math.round(efTarget).toLocaleString()} target`
+      : 'Build a 3-month safety cushion',
+    subtitle: efTarget > 0 ? 'Milestone: 1 month → 3 months.' : 'Unlock to see your target.',
+    status: 'queued',
     category: 'emergency_fund',
-    targetValue: efTarget1mo ?? undefined,
+    targetValue: efTarget || undefined,
     currentValue: 0,
-    deltaValue: efTarget1mo ?? undefined,
-    timelineText: monthsTo1mo != null ? `~${monthsTo1mo} months to 1-month buffer` : (hasUnlockData ? undefined : 'Unlock for estimate'),
-    impactText: 'Reduces risk of credit card debt during surprises.',
+    deltaValue: efTarget || undefined,
+    timelineText: monthsToEf != null ? `~${monthsToEf} months to 3-month buffer` : (hasUnlockData ? undefined : 'Unlock for estimate'),
+    impactText: 'Lowers the chance you need high-interest credit.',
     requiresUnlock: !unlock?.essentialMonthly,
     cta: !unlock?.essentialMonthly ? { label: 'Unlock details', action: 'unlock' } : undefined,
     allocationBadge: '40%',
@@ -231,5 +279,5 @@ export function buildLeaps(
   const nextLeap = leaps.find((l) => l.status === 'next');
   const nextLeapId = nextLeap?.id ?? null;
 
-  return { leaps, nextLeapId, flowSummary, matchCaptured };
+  return { leaps, nextLeapId, flowSummary, matchCaptured, routing };
 }
