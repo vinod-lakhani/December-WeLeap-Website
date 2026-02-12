@@ -21,17 +21,15 @@ export default function LeapImpactSimulatorPage() {
       <Section variant="brand" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, 'text-white mb-6 md:mb-8')}>
-            Is your paycheck set up correctly?
+            Find Your Highest-Impact Financial Move.
           </h1>
           <p className={cn(TYPOGRAPHY.body, 'text-white/85 leading-relaxed max-w-2xl mx-auto')}>
-            Enter your salary and benefit setup.
-            We&apos;ll show you the single highest-impact move — and what it&apos;s worth over 30 years.
+            Enter your salary and benefits.
+            We&apos;ll show the one change that increases your long-term wealth the most.
           </p>
-          <ul className="flex flex-col sm:flex-row flex-wrap justify-center gap-x-6 gap-y-1 mt-6 text-sm text-white/80">
-            <li>Takes ~2 minutes</li>
-            <li>No email required</li>
-            <li>Based on your actual employer match + tax setup</li>
-          </ul>
+          <p className={cn('text-sm text-white/70 mt-4')}>
+            No budgeting. No spam. Just your next move + the math.
+          </p>
         </Container>
       </Section>
 
