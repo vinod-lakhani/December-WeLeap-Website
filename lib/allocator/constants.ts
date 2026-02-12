@@ -23,3 +23,6 @@ export const EF_ALLOC_PCT = 0.4;
 
 /** Share of remaining (after EF) routed to high-APR debt. */
 export const DEBT_ALLOC_PCT = 0.4;
+
+/** Recommended HSA annual target when current = 0 (Builder-friendly starting point). */
+export const HSA_RECOMMENDED_START = 2500;

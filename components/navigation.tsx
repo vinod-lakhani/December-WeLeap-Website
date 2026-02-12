@@ -60,14 +60,6 @@ export function Navigation() {
             >
               Resources
             </Link>
-            <Link
-              href="/leap-impact-simulator"
-              className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/leap-impact-simulator" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Leap Simulator
-            </Link>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -143,15 +135,6 @@ export function Navigation() {
                 }`}
               >
                 Resources
-              </Link>
-              <Link
-                href="/leap-impact-simulator"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/leap-impact-simulator" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                Leap Simulator
               </Link>
 
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200">

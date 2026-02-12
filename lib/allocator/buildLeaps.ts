@@ -5,7 +5,7 @@
 
 import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, CapitalRoutingResult } from './leapModel';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
-import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS } from './constants';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
 
 const REAL_RETURN = REAL_RETURN_DEFAULT;
@@ -150,21 +150,22 @@ export function buildLeaps(
     });
   }
 
-  // 2) HSA (payroll lever — after match)
+  // 2) HSA (payroll lever — after match; recommend min(max, $2500) when current = 0)
   const hsaEligible = unlock?.hsaEligible ?? prefill?.hsaEligible ?? false;
   const currentHsa = unlock?.currentHsaAnnual ?? prefill?.currentHsaAnnual ?? 0;
   const hsaCoverage = unlock?.hsaCoverageType ?? prefill?.hsaCoverageType ?? 'single';
   const hsaMax = hsaCoverage === 'family' ? HSA_LIMIT_FAMILY : HSA_LIMIT_SINGLE;
-  const hsaGap = hsaEligible && currentHsa < hsaMax ? hsaMax - currentHsa : 0;
+  const hsaRecommendedTarget = currentHsa === 0 ? Math.min(hsaMax, HSA_RECOMMENDED_START) : hsaMax;
+  const hsaMaxed = currentHsa >= hsaMax;
+  const hsaGap = hsaEligible && !hsaMaxed ? hsaRecommendedTarget - currentHsa : 0;
   if (hsaEligible) {
-    const hsaMaxed = currentHsa >= hsaMax;
     leaps.push({
       id: 'hsa',
-      title: hsaMaxed ? 'HSA maxed' : 'Use HSA for triple tax advantage',
-      subtitle: hsaMaxed ? undefined : `Increase HSA toward $${hsaMax.toLocaleString()} (${hsaCoverage})`,
+      title: hsaMaxed ? 'HSA maxed' : 'Contribute to HSA',
+      subtitle: hsaMaxed ? undefined : (currentHsa === 0 ? `Start HSA toward $${hsaRecommendedTarget.toLocaleString()}/year` : `Increase HSA toward $${hsaMax.toLocaleString()} (${hsaCoverage})`),
       status: hsaMaxed ? 'complete' : 'queued',
       category: 'hsa',
-      targetValue: hsaMax,
+      targetValue: hsaRecommendedTarget,
       currentValue: currentHsa,
       deltaValue: hsaMaxed ? 0 : hsaGap,
       impactText: hsaMaxed ? undefined : 'Tax-free in, tax-free growth, tax-free out for health.',

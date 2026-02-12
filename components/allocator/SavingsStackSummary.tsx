@@ -11,6 +11,8 @@ import { track } from '@/lib/analytics';
 interface SavingsStackSummaryProps {
   /** Exactly one primary (highest-leverage) move. */
   primary: PrimaryLeapResult;
+  /** Match + HSA leaps for PAYROLL (PRE-TAX) section. */
+  payrollLeaps: Leap[];
   /** EF, debt, split — excluding the one that is primary. */
   supportingLeaps: Leap[];
   flowSummary: FlowSummary;
@@ -26,6 +28,8 @@ interface SavingsStackSummaryProps {
   costOfDelay12Mo?: number | null;
   /** HSA long-term impact (by retirement). Only for primary when kind === 'hsa'. */
   impactHsaAtYear30?: number | null;
+  /** Cost of delay 12 mo for HSA (optional). */
+  costOfDelayHsa12Mo?: number | null;
   onUnlockDetailsClick?: () => void;
 }
 
@@ -84,8 +88,11 @@ function PrimaryCard({
   }
 
   if (kind === 'hsa' && leap) {
-    const currentStr = leap.hsaCurrentAnnual != null ? Math.round(leap.hsaCurrentAnnual).toLocaleString() : '0';
-    const maxStr = leap.hsaMaxAnnual != null ? leap.hsaMaxAnnual.toLocaleString() : '';
+    const current = leap.hsaCurrentAnnual ?? 0;
+    const target = leap.targetValue ?? leap.hsaMaxAnnual ?? 0;
+    const currentStr = Math.round(current).toLocaleString();
+    const targetStr = Math.round(target).toLocaleString();
+    const isStart = current === 0;
     return (
       <Card className="border-2 border-[#3F6B42] bg-white shadow-md">
         <CardContent className="p-5">
@@ -93,10 +100,10 @@ function PrimaryCard({
             Your highest-leverage move
           </p>
           <p className="mt-2 text-lg font-semibold text-[#111827]">
-            Use HSA for triple tax advantage
+            {isStart ? 'Start HSA for triple tax advantage' : 'Use HSA for triple tax advantage'}
           </p>
           <p className="mt-1 text-[#111827]">
-            Increase HSA from ${currentStr}/yr → ${maxStr}/yr
+            {isStart ? `Start HSA: $0 → $${targetStr}/year (recommendation)` : `Increase HSA: $${currentStr} → $${targetStr}/year`}
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Tax-free in, tax-free growth, tax-free out for health. Long-term investing vehicle.
@@ -390,8 +397,83 @@ function formatDollars(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+/** Compact payroll lever card for PAYROLL (PRE-TAX) section. */
+function PayrollCard({
+  leap,
+  primaryKind,
+  impact401kAtYear30,
+  costOfDelay12Mo,
+  impactHsaAtYear30,
+  costOfDelayHsa12Mo,
+}: {
+  leap: Leap;
+  primaryKind: string;
+  impact401kAtYear30?: number | null;
+  costOfDelay12Mo?: number | null;
+  impactHsaAtYear30?: number | null;
+  costOfDelayHsa12Mo?: number | null;
+}) {
+  if (leap.category === 'match') {
+    const currentPct = leap.currentValue ?? 0;
+    const targetPct = leap.targetValue ?? 0;
+    const showImpact = primaryKind === 'match';
+    return (
+      <Card className="border border-gray-200 bg-white">
+        <CardContent className="p-3">
+          <p className="font-medium text-sm text-[#111827]">Capture employer match</p>
+          <p className="text-xs text-gray-700 mt-0.5">
+            {currentPct}% → {targetPct}%
+          </p>
+          {showImpact && impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
+            <p className="text-xs font-medium text-[#3F6B42] mt-1">Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement</p>
+          )}
+          {showImpact && costOfDelay12Mo != null && costOfDelay12Mo > 0 && (
+            <p className="text-[10px] text-gray-600 mt-0.5">If you wait 12 months: –{formatCurrencyShort(costOfDelay12Mo)}</p>
+          )}
+          <p className="text-[10px] text-gray-400 mt-0.5">Assumes 7% real return.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (leap.category === 'hsa' && leap.hsaMaxAnnual != null) {
+    const current = leap.hsaCurrentAnnual ?? 0;
+    const target = leap.targetValue ?? leap.hsaMaxAnnual;
+    const maxed = leap.status === 'complete';
+    let title = 'Contribute to HSA';
+    let subtitle = '';
+    if (maxed) {
+      title = 'HSA maxed';
+      subtitle = 'Complete';
+    } else if (current === 0) {
+      subtitle = `Start HSA: $0 → $${Math.round(target).toLocaleString()}/year (recommendation)`;
+    } else {
+      subtitle = `Increase HSA: $${Math.round(current).toLocaleString()} → $${Math.round(target).toLocaleString()}`;
+    }
+    const showImpact = primaryKind === 'hsa';
+    return (
+      <Card className="border border-gray-200 bg-white">
+        <CardContent className="p-3">
+          <p className="font-medium text-sm text-[#111827]">{title}</p>
+          {subtitle && <p className="text-xs text-gray-700 mt-0.5">{subtitle}</p>}
+          {!maxed && showImpact && impactHsaAtYear30 != null && impactHsaAtYear30 > 0 && (
+            <p className="text-xs font-medium text-[#3F6B42] mt-1">Impact: +{formatCurrencyShort(impactHsaAtYear30)} by retirement</p>
+          )}
+          {!maxed && showImpact && costOfDelayHsa12Mo != null && costOfDelayHsa12Mo > 0 && (
+            <p className="text-[10px] text-gray-600 mt-0.5">If you wait 12 months: –{formatCurrencyShort(costOfDelayHsa12Mo)}</p>
+          )}
+          {!maxed && <p className="text-[10px] text-gray-400 mt-0.5">Assumes 7% real return.</p>}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return null;
+}
+
 export function SavingsStackSummary({
   primary,
+  payrollLeaps,
   supportingLeaps,
   flowSummary,
   hasUnlockData,
@@ -401,6 +483,7 @@ export function SavingsStackSummary({
   impact401kAtYear30 = null,
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
+  costOfDelayHsa12Mo = null,
   onUnlockDetailsClick,
 }: SavingsStackSummaryProps) {
   const [showDollarRouting, setShowDollarRouting] = useState(false);
@@ -428,57 +511,98 @@ export function SavingsStackSummary({
         />
       </div>
 
-      {/* Capital Allocation Framework */}
+      {/* Active Allocation System */}
       <div>
         <h2 className="text-base font-semibold text-[#111827] mb-1">
-          Capital Allocation Framework
+          Active Allocation System
         </h2>
         <p className="text-sm text-gray-600 mb-3">
-          We route your capital to protect stability and accelerate long-term compounding.
+          This structure routes your capital to protect stability and accelerate long-term compounding.
         </p>
-        {hasRouting && (
-          <button
-            type="button"
-            onClick={() => setShowDollarRouting((v) => !v)}
-            className="text-xs text-[#3F6B42] hover:underline mb-2"
-          >
-            {showDollarRouting ? 'Hide exact dollar routing' : 'See exact dollar routing'}
-          </button>
-        )}
-        {showDollarRouting && hasRouting && routing && (
-          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-xs text-gray-700 space-y-1">
-            <p className="font-medium">From your {formatDollars(routing.postTaxSavingsMonthly)} monthly capital:</p>
-            <p>• {formatDollars(routing.efAlloc)} → Emergency Fund</p>
-            <p>• {formatDollars(routing.debtAlloc)} → High-APR Debt</p>
-            <p>• {formatDollars(routing.retirementAlloc)} → Retirement</p>
-            <p>• {formatDollars(routing.brokerageAlloc)} → Brokerage</p>
-            <p className="text-gray-500 mt-2">Allocation rule: ~40% stability, ~40% debt reduction, remainder to growth.</p>
+
+        {/* PAYROLL (PRE-TAX) */}
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-[#111827] mb-1">PAYROLL (PRE-TAX)</h3>
+          <p className="text-xs text-gray-600 mb-2">
+            These are automatic paycheck levers. They change your take-home and your post-tax routing.
+          </p>
+          <div className="space-y-2">
+            {payrollLeaps.map((leap) => (
+              (leap.category === 'hsa' && leap.hsaMaxAnnual == null) ? null : (
+                <PayrollCard
+                  key={leap.id}
+                  leap={leap}
+                  primaryKind={primary.kind}
+                  impact401kAtYear30={impact401kAtYear30}
+                  costOfDelay12Mo={costOfDelay12Mo}
+                  impactHsaAtYear30={impactHsaAtYear30}
+                  costOfDelayHsa12Mo={costOfDelayHsa12Mo}
+                />
+              )
+            ))}
+          </div>
+        </div>
+
+        {/* POST-TAX ROUTING (MONTHLY) */}
+        <div>
+          <h3 className="text-sm font-semibold text-[#111827] mb-1">POST-TAX ROUTING (MONTHLY)</h3>
+          {hasRouting && (
             <button
               type="button"
-              onClick={() => setShowAllocationLogic((v) => !v)}
-              className="text-[#3F6B42] hover:underline mt-1"
+              onClick={() => setShowDollarRouting((v) => !v)}
+              className="text-xs text-[#3F6B42] hover:underline mb-2"
             >
-              {showAllocationLogic ? 'Hide allocation logic' : 'See allocation logic'}
+              {showDollarRouting ? 'Hide exact dollar routing' : 'See exact dollar routing'}
             </button>
-            {showAllocationLogic && (
-              <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
-                <p>• Emergency fund: 40% of monthly capital (until 3-month target)</p>
-                <p>• High-APR debt: 40% of remaining (APR ≥ 10%)</p>
-                <p>• Retirement vs brokerage: split of remaining by your focus (e.g. 80/20)</p>
-              </div>
-            )}
+          )}
+          {showDollarRouting && hasRouting && routing && (
+            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-xs text-gray-700 space-y-1">
+              <p className="font-medium">From your {formatDollars(routing.postTaxSavingsMonthly)} monthly capital:</p>
+              <p>• {formatDollars(routing.efAlloc)} → Emergency Fund</p>
+              <p>• {formatDollars(routing.debtAlloc)} → High-APR Debt</p>
+              <p>• {formatDollars(routing.retirementAlloc)} → Retirement</p>
+              <p>• {formatDollars(routing.brokerageAlloc)} → Brokerage</p>
+              <p className="text-gray-500 mt-2">Allocation rule: ~40% stability, ~40% debt reduction, remainder to growth.</p>
+              <p className="text-gray-500 mt-1 text-[10px]">This updates automatically when your income or contribution settings change.</p>
+              <button
+                type="button"
+                onClick={() => setShowAllocationLogic((v) => !v)}
+                className="text-[#3F6B42] hover:underline mt-1"
+              >
+                {showAllocationLogic ? 'Hide allocation logic' : 'See allocation logic'}
+              </button>
+              {showAllocationLogic && (
+                <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+                  <p>• Emergency fund: 40% of monthly capital (until 3-month target)</p>
+                  <p>• High-APR debt: 40% of remaining (APR ≥ 10%)</p>
+                  <p>• Retirement vs brokerage: split of remaining by your focus (e.g. 80/20)</p>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="space-y-2">
+            {supportingLeaps.map((leap) => (
+              <SupportingCard
+                key={leap.id}
+                leap={leap}
+                showAllocationBadge={showAllocationLogic}
+                showFrameworkLabel={true}
+                onUnlockDetailsClick={onUnlockDetailsClick}
+              />
+            ))}
           </div>
-        )}
-        <div className="space-y-2">
-          {supportingLeaps.map((leap) => (
-            <SupportingCard
-              key={leap.id}
-              leap={leap}
-              showAllocationBadge={showAllocationLogic}
-              showFrameworkLabel={true}
-              onUnlockDetailsClick={onUnlockDetailsClick}
-            />
-          ))}
+        </div>
+
+        {/* Allocation drift */}
+        <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3">
+          <h3 className="text-sm font-semibold text-[#111827] mb-2">Allocation drift happens</h3>
+          <p className="text-xs text-gray-700 leading-relaxed">
+            This structure only works if it&apos;s maintained.
+            <br />
+            Income changes. Bonuses happen. Debt disappears. Expenses shift.
+            <br />
+            Most people don&apos;t revisit their allocation after life changes. That&apos;s where long-term trajectory slips.
+          </p>
         </div>
       </div>
     </div>

@@ -252,6 +252,10 @@ function AllocatorContent() {
     () => getSupportingLeaps(leaps, primaryResult.kind),
     [leaps, primaryResult.kind]
   );
+  const payrollLeaps = useMemo(
+    () => leaps.filter((l) => l.category === 'match' || l.category === 'hsa'),
+    [leaps]
+  );
 
   const handleMvpApplyClick = useCallback(() => {
     track('mvp_apply_clicked', {});
@@ -653,6 +657,7 @@ function AllocatorContent() {
                   <CardContent className="space-y-4">
                     <SavingsStackSummary
                       primary={primaryResult}
+                      payrollLeaps={payrollLeaps}
                       supportingLeaps={supportingLeaps}
                       flowSummary={flowSummary}
                       hasUnlockData={hasUnlockData}
@@ -661,6 +666,8 @@ function AllocatorContent() {
                       monthlyCapitalAvailable={prefill ? monthlyCapitalAvailable : null}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
+                      impactHsaAtYear30={null}
+                      costOfDelayHsa12Mo={null}
                       onUnlockDetailsClick={() => setCurrentStep(0)}
                     />
                     <div className="pt-4 border-t border-gray-200 space-y-3">
@@ -668,10 +675,10 @@ function AllocatorContent() {
                         onClick={handleMvpApplyClick}
                         className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                       >
-                        Apply this in the MVP
+                        Join the MVP
                       </Button>
                       <p className="text-xs text-gray-500">
-                        Launching execution in ~2 weeks. Get first access.
+                        Early access to execution and automatic recalibration as your situation evolves.
                       </p>
                     </div>
                   </CardContent>
