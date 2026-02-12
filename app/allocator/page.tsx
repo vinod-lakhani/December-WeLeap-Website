@@ -15,6 +15,7 @@ import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { buildLeaps } from '@/lib/allocator/buildLeaps';
 import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
+import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 
 export interface AllocatorPrefillFromUrl {
@@ -163,9 +164,29 @@ function AllocatorContent() {
     hsaCoverageType: unlockData?.hsaCoverageType ?? prefill.hsaCoverageType,
   } : null, [prefill, unlockData?.hsaEligible, unlockData?.currentHsaAnnual, unlockData?.hsaCoverageType]);
 
+  const netTakeHomeMonthly = useMemo(() => {
+    if (!prefill?.salaryAnnual || !prefill.state) return 0;
+    return computeNetTakeHomeMonthly({
+      salaryAnnual: prefill.salaryAnnual,
+      employee401kPct: prefill.current401kPct,
+      currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual ?? 0,
+      stateCode: prefill.state,
+    });
+  }, [prefill?.salaryAnnual, prefill?.state, prefill?.current401kPct, prefill?.currentHsaAnnual, unlockData?.currentHsaAnnual]);
+
+  const minimumDebtPaymentsMonthly = useMemo(() => {
+    if (!unlockData?.carriesBalance || unlockData.debtBalance == null || unlockData.debtBalance <= 0) return 0;
+    return unlockData.debtBalance * 0.02;
+  }, [unlockData?.carriesBalance, unlockData?.debtBalance]);
+
+  const monthlyCapitalAvailable = useMemo(() => {
+    const essentials = unlockData?.essentialMonthly ?? 0;
+    return Math.max(0, netTakeHomeMonthly - essentials - minimumDebtPaymentsMonthly);
+  }, [netTakeHomeMonthly, unlockData?.essentialMonthly, minimumDebtPaymentsMonthly]);
+
   const { leaps, nextLeapId, flowSummary, matchCaptured, routing } = useMemo(
-    () => buildLeaps(prefillForLeaps, unlockData),
-    [prefillForLeaps, unlockData]
+    () => buildLeaps(prefillForLeaps, unlockData, { monthlyCapitalAvailable: prefill ? monthlyCapitalAvailable : undefined }),
+    [prefillForLeaps, unlockData, prefill, monthlyCapitalAvailable]
   );
 
   const hasUnlockData = !!(unlockData?.essentialMonthly != null || unlockData?.retirementFocus != null || (unlockData?.carriesBalance === false) || (unlockData?.carriesBalance === true && unlockData?.debtBalance != null && unlockData?.debtAprRange));
@@ -358,10 +379,17 @@ function AllocatorContent() {
                   <div>
                     <Label className="text-[#111827]">Estimated take-home (monthly)</Label>
                     <p className="text-lg font-medium text-[#111827]">
-                      {prefill.estimatedNetMonthlyIncome != null
-                        ? `$${Math.round(prefill.estimatedNetMonthlyIncome).toLocaleString()}`
-                        : '—'}
+                      {netTakeHomeMonthly > 0
+                        ? `$${Math.round(netTakeHomeMonthly).toLocaleString()}`
+                        : prefill.estimatedNetMonthlyIncome != null
+                          ? `$${Math.round(prefill.estimatedNetMonthlyIncome).toLocaleString()}`
+                          : '—'}
                     </p>
+                    {netTakeHomeMonthly > 0 && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Recalculated from your 401(k) and HSA. Updates when you change contributions.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="pt-2 border-t border-gray-200">
@@ -630,6 +658,7 @@ function AllocatorContent() {
                       hasUnlockData={hasUnlockData}
                       hasEmployerMatch={prefill?.employerMatchEnabled ?? false}
                       routing={routing}
+                      monthlyCapitalAvailable={prefill ? monthlyCapitalAvailable : null}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
                       onUnlockDetailsClick={() => setCurrentStep(0)}

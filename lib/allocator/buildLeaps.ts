@@ -81,9 +81,15 @@ function formatCurrency(n: number): string {
   return `~$${Math.round(n).toLocaleString()}`;
 }
 
+export interface BuildLeapsOptions {
+  /** When set, use this as the post-tax capital pool for routing (adaptive take-home model). */
+  monthlyCapitalAvailable?: number;
+}
+
 export function buildLeaps(
   prefill: AllocatorPrefillForLeaps | null,
-  unlock: AllocatorUnlockData | null
+  unlock: AllocatorUnlockData | null,
+  options?: BuildLeapsOptions
 ): { leaps: Leap[]; nextLeapId: string | null; flowSummary: FlowSummary; matchCaptured: boolean; routing: CapitalRoutingResult | null } {
   const leaps: Leap[] = [];
   const hasUnlockData = !!(
@@ -97,11 +103,15 @@ export function buildLeaps(
   const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= recommended401k);
   const netMonthly = prefill?.estimatedNetMonthlyIncome ?? 0;
   const essentialsMonthly = unlock?.essentialMonthly ?? 0;
-  const postTaxSavingsMonthly = Math.max(0, netMonthly - essentialsMonthly);
+  const postTaxSavingsMonthly =
+    options?.monthlyCapitalAvailable != null
+      ? Math.max(0, options.monthlyCapitalAvailable)
+      : Math.max(0, netMonthly - essentialsMonthly);
 
-  const routing: CapitalRoutingResult | null = (netMonthly > 0 || essentialsMonthly > 0)
-    ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: 0, unlock })
-    : null;
+  const routing: CapitalRoutingResult | null =
+    postTaxSavingsMonthly > 0 || essentialsMonthly > 0 || (options?.monthlyCapitalAvailable != null && options.monthlyCapitalAvailable >= 0)
+      ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: 0, unlock })
+      : null;
 
   // 1) 401(k) Match (payroll)
   if (prefill?.employerMatchEnabled) {

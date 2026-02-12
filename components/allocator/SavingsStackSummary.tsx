@@ -18,6 +18,8 @@ interface SavingsStackSummaryProps {
   hasEmployerMatch?: boolean;
   /** Dollar routing (for "See exact dollar routing" toggle). */
   routing?: CapitalRoutingResult | null;
+  /** Estimated monthly capital available (adaptive); shown prominently when set. */
+  monthlyCapitalAvailable?: number | null;
   /** 401(k) impact at Year 30. Only for primary when kind === 'match'. */
   impact401kAtYear30?: number | null;
   /** Cost of delay if user waits 12 months. Only for primary when kind === 'match'. */
@@ -395,6 +397,7 @@ export function SavingsStackSummary({
   hasUnlockData,
   hasEmployerMatch = false,
   routing = null,
+  monthlyCapitalAvailable = null,
   impact401kAtYear30 = null,
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
@@ -402,7 +405,7 @@ export function SavingsStackSummary({
 }: SavingsStackSummaryProps) {
   const [showDollarRouting, setShowDollarRouting] = useState(false);
   const [showAllocationLogic, setShowAllocationLogic] = useState(false);
-  const hasRouting = routing != null && routing.postTaxSavingsMonthly > 0;
+  const hasRouting = routing != null;
 
   return (
     <div className="space-y-6">
@@ -431,7 +434,7 @@ export function SavingsStackSummary({
           Capital Allocation Framework
         </h2>
         <p className="text-sm text-gray-600 mb-3">
-          We route your monthly savings so you stay stable while compounding long-term.
+          We route your capital to protect stability and accelerate long-term compounding.
         </p>
         {hasRouting && (
           <button
@@ -444,8 +447,12 @@ export function SavingsStackSummary({
         )}
         {showDollarRouting && hasRouting && routing && (
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-xs text-gray-700 space-y-1">
-            <p className="font-medium">From your {formatDollars(routing.postTaxSavingsMonthly)} monthly savings:</p>
-            <p>{formatDollars(routing.efAlloc)} → EF · {formatDollars(routing.debtAlloc)} → debt · {formatDollars(routing.retirementAlloc)} → retirement · {formatDollars(routing.brokerageAlloc)} → brokerage</p>
+            <p className="font-medium">From your {formatDollars(routing.postTaxSavingsMonthly)} monthly capital:</p>
+            <p>• {formatDollars(routing.efAlloc)} → Emergency Fund</p>
+            <p>• {formatDollars(routing.debtAlloc)} → High-APR Debt</p>
+            <p>• {formatDollars(routing.retirementAlloc)} → Retirement</p>
+            <p>• {formatDollars(routing.brokerageAlloc)} → Brokerage</p>
+            <p className="text-gray-500 mt-2">Allocation rule: ~40% stability, ~40% debt reduction, remainder to growth.</p>
             <button
               type="button"
               onClick={() => setShowAllocationLogic((v) => !v)}
@@ -455,7 +462,7 @@ export function SavingsStackSummary({
             </button>
             {showAllocationLogic && (
               <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
-                <p>• Emergency fund: 40% of monthly savings (until 3-month target)</p>
+                <p>• Emergency fund: 40% of monthly capital (until 3-month target)</p>
                 <p>• High-APR debt: 40% of remaining (APR ≥ 10%)</p>
                 <p>• Retirement vs brokerage: split of remaining by your focus (e.g. 80/20)</p>
               </div>
