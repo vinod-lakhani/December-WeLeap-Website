@@ -36,13 +36,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { EarlyAccessDialog } from '@/components/early-access-dialog';
 
 const PAGE = '/leap-impact-simulator';
 
@@ -483,7 +478,7 @@ export function LeapImpactTool() {
             disabled={isCalculating}
             className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
           >
-            {isCalculating ? 'Calculating...' : 'Show my next move'}
+            {isCalculating ? 'Calculating...' : 'Show my highest-impact move'}
           </Button>
           <p className="text-center text-xs text-gray-500 mt-2">
             No email required. You&apos;ll see your #1 move immediately.
@@ -594,40 +589,51 @@ export function LeapImpactTool() {
             onFeedbackSubmitted={() => {}}
           />
 
-          {/* 3. Want the full stack? — Collapsed expander */}
-          <Accordion type="single" collapsible defaultValue="full-plan" className="w-full">
-            <AccordionItem value="full-plan" className="border border-gray-200 rounded-lg px-4">
-              <AccordionTrigger className="hover:no-underline py-4">
-                <div className="text-left">
-                  <span className="font-semibold text-[#111827]">Want the full plan?</span>
-                  <span className="text-sm text-gray-600 ml-2">Takes ~2 minutes.</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules.
-                </p>
-                <Button
-                  onClick={handleUnlockFullStack}
-                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                >
-                  See my full Leap stack
-                </Button>
-                {error && (
-                  <p className="text-sm text-red-600 mt-2">{error}</p>
-                )}
-                <p className="mt-3">
-                  <button
-                    type="button"
-                    onClick={handleUnlockFullStack}
-                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+          {/* 3. Primary CTA — Activate allocation (Join MVP) */}
+          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl text-[#111827]">
+                Want this engine to keep optimizing automatically?
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Automated allocation. Ongoing recalibration. Full access to the engine.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <EarlyAccessDialog signupType="leap_impact_activate">
+                  <Button
+                    onClick={() => track('mvp_apply_clicked', { source: 'leap_impact' })}
+                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                   >
-                    Join MVP for execution updates
-                  </button>
+                    Activate My Allocation (Join MVP)
+                  </Button>
+                </EarlyAccessDialog>
+                <p className="text-xs text-gray-500 mt-2">
+                  Get early access when the full engine launches.
                 </p>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 4. Secondary CTA — See full Leap stack */}
+          <Card className="border-[#D1D5DB] bg-white">
+            <CardContent className="pt-6">
+              <p className="text-sm text-gray-600 mb-4">
+                We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules. Takes ~2 minutes.
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleUnlockFullStack}
+                className="w-full sm:w-auto border-[#3F6B42] text-[#3F6B42] hover:bg-[#3F6B42]/5"
+              >
+                See my full Leap stack
+              </Button>
+              {error && (
+                <p className="text-sm text-red-600 mt-2">{error}</p>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             <p className="font-medium text-[#111827] mb-1">Assumptions</p>
