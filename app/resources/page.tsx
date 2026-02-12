@@ -300,7 +300,7 @@ export default function ResourcesPage() {
                 <CardContent className="p-0 flex flex-col flex-1">
                   <div className="relative overflow-hidden">
                     <img
-                      src="/images/income-allocation-resources.png"
+                      src="/images/Leap_tool.png"
                       alt="Set your wealth trajectory — Leap Impact Simulator"
                       className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
                     />
