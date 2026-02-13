@@ -48,7 +48,7 @@ function hasActionableHsa(leaps: Leap[]): boolean {
  * Returns the single primary leap and kind.
  * 1) Match not captured → match
  * 2) Else HSA actionable (eligible, not maxed) → hsa
- * 3) Else current 401k < 15% AND not at cap → retirement_15
+ * 3) Else current 401k < cap % (to hit $23,500) AND not at cap → retirement_15
  * 4) Else debt or growth_split
  */
 export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapResult {
@@ -79,16 +79,16 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     return { kind: 'growth_split', leap: splitLeap ?? null };
   }
 
-  if (current401kPct < TARGET_RETIREMENT_PCT) {
-    let targetPct = TARGET_RETIREMENT_PCT;
-    if ((inputs.salaryAnnual ?? 0) > 0) {
-      const capPct = (K401_EMPLOYEE_CAP_2025 / inputs.salaryAnnual!) * 100;
-      targetPct = Math.min(TARGET_RETIREMENT_PCT, capPct);
-    }
+  // Target = whatever % gets to IRS cap ($23,500), not fixed 15%
+  const capPct =
+    (inputs.salaryAnnual ?? 0) > 0
+      ? Math.min((K401_EMPLOYEE_CAP_2025 / inputs.salaryAnnual!) * 100, 100)
+      : TARGET_RETIREMENT_PCT;
+  if (current401kPct < capPct) {
     return {
       kind: 'retirement_15',
       leap: null,
-      retirement15: { currentPct: current401kPct, targetPct },
+      retirement15: { currentPct: current401kPct, targetPct: capPct },
     };
   }
 

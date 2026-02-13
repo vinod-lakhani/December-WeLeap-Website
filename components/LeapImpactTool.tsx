@@ -293,15 +293,27 @@ export function LeapImpactTool() {
   const showResultsRef = useRef(false);
   const netMonthly = taxResult ? taxResult.netIncomeAnnual / 12 : 0;
   const showResults = taxResult && trajectoryResult;
+  const is401kMaxed = leap.type === 'at_cap';
 
   useEffect(() => {
     if (showResults && !showResultsRef.current) {
       showResultsRef.current = true;
       track('results_viewed', { page: PAGE });
+      if (is401kMaxed) {
+        const current401kAnnual = salaryNum > 0 ? (salaryNum * current401kNum) / 100 : 0;
+        track('leap_401k_maxed_shown', {
+          page: PAGE,
+          salary: salaryNum,
+          current401kPct: current401kNum,
+          current401kAnnual: Math.round(current401kAnnual),
+          hasMatch,
+          matchCapPct: matchCapPctNum,
+        });
+      }
     }
-  }, [showResults]);
+  }, [showResults, is401kMaxed, salaryNum, current401kNum, hasMatch, matchCapPctNum]);
 
-  const handleUnlockFullStack = useCallback(() => {
+  const handleUnlockFullStack = useCallback((fromMaxed401k = false) => {
     try {
       if (!state?.trim()) {
         setError('Please select your state before continuing to the allocation plan.');
@@ -312,6 +324,13 @@ export function LeapImpactTool() {
         return;
       }
       setError(null);
+      if (fromMaxed401k) {
+        track('leap_401k_maxed_continue_to_fullstack_clicked', {
+          page: PAGE,
+          salary: salaryNum,
+          current401kPct: current401kNum,
+        });
+      }
       track('full_stack_expand_clicked', { page: PAGE });
       track('leap_stack_unlock_clicked', { page: PAGE });
       track('leap_redirect_to_allocator', { intent: 'unlock_full_stack' });
@@ -337,7 +356,7 @@ export function LeapImpactTool() {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
     }
-  }, [taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount]);
+  }, [salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount, taxResult]);
 
   return (
     <div className="space-y-8">
@@ -491,7 +510,9 @@ export function LeapImpactTool() {
           {/* 1. THE HOOK — Your next move */}
           <Card className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Your next move</CardTitle>
+              <CardTitle className="text-xl text-[#111827]">
+                {is401kMaxed ? '401(k) is maxed ✅' : 'Your next move'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="font-semibold text-[#111827]">{leap.summary}</p>
@@ -499,10 +520,10 @@ export function LeapImpactTool() {
                 {leap.type === 'capture_match'
                   ? 'This unlocks more employer match — free money that compounds.'
                   : leap.type === 'at_cap'
-                    ? 'You’re maxing your 401(k). Excess savings can go to brokerage.'
+                    ? "Nice — you're already hitting the annual 401(k) limit. Let's optimize the next lever."
                     : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
               </p>
-              {leap.type !== 'at_cap' && (
+              {!is401kMaxed && (
                 <>
                   <p className="text-lg font-bold text-[#3F6B42]">
                     30-year upside: +{formatCurrency(trajectoryResult.delta30yr)}
@@ -514,7 +535,19 @@ export function LeapImpactTool() {
                   )}
                 </>
               )}
-              <p className="text-[10px] text-gray-400">Assumes 7% real return.</p>
+              {is401kMaxed ? (
+                <div className="pt-2">
+                  <Button
+                    onClick={() => handleUnlockFullStack(true)}
+                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                  >
+                    See my next best move
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2">Takes ~2 minutes. No email required.</p>
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-400">Assumes 7% real return.</p>
+              )}
             </CardContent>
           </Card>
 
@@ -616,24 +649,26 @@ export function LeapImpactTool() {
             </CardContent>
           </Card>
 
-          {/* 4. Secondary CTA — See full Leap stack */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardContent className="pt-6">
-              <p className="text-sm text-gray-600 mb-4">
-                We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules. Takes ~2 minutes.
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleUnlockFullStack}
-                className="w-full sm:w-auto border-[#3F6B42] text-[#3F6B42] hover:bg-[#3F6B42]/5"
-              >
-                See my full Leap stack
-              </Button>
-              {error && (
-                <p className="text-sm text-red-600 mt-2">{error}</p>
-              )}
-            </CardContent>
-          </Card>
+          {/* 4. Secondary CTA — See full Leap stack (hidden when 401k maxed; primary CTA in card) */}
+          {!is401kMaxed && (
+            <Card className="border-[#D1D5DB] bg-white">
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules. Takes ~2 minutes.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => handleUnlockFullStack(false)}
+                  className="w-full sm:w-auto border-[#3F6B42] text-[#3F6B42] hover:bg-[#3F6B42]/5"
+                >
+                  See my full Leap stack
+                </Button>
+                {error && (
+                  <p className="text-sm text-red-600 mt-2">{error}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             <p className="font-medium text-[#111827] mb-1">Assumptions</p>

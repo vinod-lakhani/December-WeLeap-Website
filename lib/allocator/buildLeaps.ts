@@ -5,7 +5,8 @@
 
 import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, CapitalRoutingResult } from './leapModel';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
-import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, K401_EMPLOYEE_CAP_2025, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
+import { compute401kStatus } from '@/lib/leapImpact/leverPriority';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
 import { formatPct } from '@/lib/format';
 
@@ -101,12 +102,13 @@ export function buildLeaps(
   const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? DEFAULT_MATCH_CAP_PCT;
   const matchRatePct = prefill?.matchRatePct ?? DEFAULT_MATCH_RATE_PCT;
   const recommended401k = prefill?.recommended401kPct ?? matchCapPct;
-  // Match captured = contributing at or above employer match cap (not recommended401k, which may be 12% post-match)
-  const matchCaptured = !prefill?.employerMatchEnabled || (prefill.current401kPct >= matchCapPct);
-  // 401(k) at employee cap — don't recommend increase
   const salaryAnnual = prefill?.salaryAnnual ?? 0;
-  const current401kAnnual = salaryAnnual > 0 ? (salaryAnnual * (prefill?.current401kPct ?? 0) / 100) : 0;
-  const k401AtCap = salaryAnnual > 0 && current401kAnnual >= K401_EMPLOYEE_CAP_2025;
+  const { matchCaptured, k401AtCap } = compute401kStatus({
+    salaryAnnual,
+    current401kPct: prefill?.current401kPct ?? 0,
+    hasEmployerMatch: !!prefill?.employerMatchEnabled,
+    matchCapPct,
+  });
   const netMonthly = prefill?.estimatedNetMonthlyIncome ?? 0;
   const essentialsMonthly = unlock?.essentialMonthly ?? 0;
   const postTaxSavingsMonthly =
@@ -121,7 +123,7 @@ export function buildLeaps(
 
   // 1) 401(k) Match (payroll)
   if (prefill?.employerMatchEnabled) {
-    const impact30 = matchCaptured ? 0 : (prefill.leapDelta30yr ?? estimateMatchImpact30yr(
+    const impact30 = matchCaptured || k401AtCap ? 0 : (prefill.leapDelta30yr ?? estimateMatchImpact30yr(
       prefill.salaryAnnual,
       prefill.current401kPct,
       recommended401k,
@@ -131,17 +133,19 @@ export function buildLeaps(
     ));
     leaps.push({
       id: 'match',
-      title: matchCaptured
-        ? '401(k) match captured'
-        : `Increase 401(k) from ${formatPct(prefill.current401kPct)} → ${formatPct(recommended401k)}`,
-      subtitle: matchCaptured ? undefined : 'Unlocks employer match (free money).',
-      status: matchCaptured ? 'complete' : 'next',
+      title: k401AtCap
+        ? '401(k) at cap'
+        : matchCaptured
+          ? '401(k) match captured'
+          : `Increase 401(k) from ${formatPct(prefill.current401kPct)} → ${formatPct(recommended401k)}`,
+      subtitle: matchCaptured || k401AtCap ? undefined : 'Unlocks employer match (free money).',
+      status: matchCaptured || k401AtCap ? 'complete' : 'next',
       category: 'match',
       targetValue: recommended401k,
       currentValue: prefill.current401kPct,
-      deltaValue: matchCaptured ? 0 : recommended401k - prefill.current401kPct,
-      timelineText: matchCaptured ? undefined : 'Start next paycheck',
-      impactText: matchCaptured ? undefined : `Adds ${formatCurrency(impact30)} over 30 years`,
+      deltaValue: matchCaptured || k401AtCap ? 0 : recommended401k - prefill.current401kPct,
+      timelineText: matchCaptured || k401AtCap ? undefined : 'Start next paycheck',
+      impactText: matchCaptured || k401AtCap ? undefined : `Adds ${formatCurrency(impact30)} over 30 years`,
       requiresUnlock: false,
       cta: undefined,
       isPayroll: true,

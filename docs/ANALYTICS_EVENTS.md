@@ -18,6 +18,8 @@ This document describes all analytics events tracked in the December-WeLeap-Webs
 | `landing_cta_click_show_next_move` | User clicks "Show my next move" CTA | `page` |
 | `leap_impact_calculated` | User runs the 401(k) impact calculation | `salary`, `state`, match flags, `current_pct`, `match_pct`, `recommended_pct`, `delta_30yr` (bucketed) |
 | `results_viewed` | User sees results after calculation | `page` |
+| `leap_401k_maxed_shown` | User sees "401(k) is maxed ✅" state (already at IRS cap) | `page`, `salary`, `current401kPct`, `current401kAnnual`, `hasMatch`, `matchCapPct` |
+| `leap_401k_maxed_continue_to_fullstack_clicked` | User clicks "See my next best move" from maxed 401k state | `page`, `salary`, `current401kPct` |
 | `leap_impact_feedback_submitted` | User submits feedback on results ("Does this next move make sense?") | `page`, `feedback` (yes/not_sure/no) |
 | `full_stack_expand_clicked` | User clicks "See my full Leap stack" | `page` |
 | `leap_impact_email_submitted` | User submits email on simulator | `page` |
