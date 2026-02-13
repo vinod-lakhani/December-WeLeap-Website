@@ -291,6 +291,23 @@ function AllocatorContent() {
     [leaps]
   );
 
+  /** Next move for email: prefer 401k rec when from Leap Impact, else nextLeap title, else primary. */
+  const nextMoveForEmail = useMemo(() => {
+    if (nextLeapTitle) return nextLeapTitle;
+    if (prefill?.current401kPct != null && prefill?.recommended401kPct != null && prefill.current401kPct < prefill.recommended401kPct) {
+      return `Increase 401(k) from ${formatPct(prefill.current401kPct)} → ${formatPct(prefill.recommended401kPct)}`;
+    }
+    const primary = primaryResult;
+    if (primary.kind === 'retirement_15' && primary.retirement15) {
+      return `Increase 401(k) from ${formatPct(primary.retirement15.currentPct)} → ${formatPct(primary.retirement15.targetPct)}`;
+    }
+    if (primary.kind === 'match' && primary.leap?.title) return primary.leap.title;
+    if (primary.kind === 'hsa' && primary.leap?.title) return primary.leap.title;
+    if (primary.kind === 'debt' && primary.leap?.title) return primary.leap.title;
+    if (primary.kind === 'growth_split' && primary.leap?.title) return primary.leap.title;
+    return '';
+  }, [nextLeapTitle, prefill?.current401kPct, prefill?.recommended401kPct, primaryResult]);
+
   const handleMvpApplyClick = useCallback(() => {
     track('mvp_apply_clicked', {});
     track('early_access_modal_viewed', {});
@@ -325,14 +342,19 @@ function AllocatorContent() {
             debtAprRange: unlockData?.debtAprRange,
             debtBalance: unlockData?.debtBalance,
             retirementFocus: unlockData?.retirementFocus,
-            nextLeapTitle: nextLeapTitle ?? '',
+            nextLeapTitle: nextMoveForEmail,
             impactAtYear30: impact401kAtYear30 ?? undefined,
             costOfDelay12Mo: costOfDelay12Mo ?? undefined,
             actionIntent: actionIntent ?? undefined,
             leapTitles: leaps.map((l) => l.title),
           }),
         });
-        const data = await res.json();
+        let data: { error?: string };
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(res.ok ? 'Invalid response' : 'Something went wrong. Please try again.');
+        }
         if (!res.ok) {
           throw new Error(data.error || 'Failed to submit');
         }
@@ -340,13 +362,17 @@ function AllocatorContent() {
         track('early_access_submitted', {
           source: 'leap_stack',
           actionIntent: actionIntent ?? undefined,
-          nextLeapTitle: nextLeapTitle ?? '',
+          nextLeapTitle: nextMoveForEmail,
           impactAtYear30: impact401kAtYear30 ?? undefined,
         });
         track('early_access_email_send_success', {});
         setEarlyAccessSuccess(true);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Something went wrong';
+        const raw = err instanceof Error ? err.message : 'Something went wrong';
+        const message =
+          raw.toLowerCase().includes('fetch failed') || raw.toLowerCase().includes('network')
+            ? 'Network error. Please check your connection and try again.'
+            : raw;
         setEarlyAccessError(message);
         track('early_access_email_send_failed', { error: message });
       } finally {
@@ -359,7 +385,7 @@ function AllocatorContent() {
       prefill,
       unlockData,
       leaps,
-      nextLeapTitle,
+      nextMoveForEmail,
       impact401kAtYear30,
       costOfDelay12Mo,
     ]

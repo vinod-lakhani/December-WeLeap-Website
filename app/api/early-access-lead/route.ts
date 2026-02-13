@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
+import { submitToWaitlist } from '@/lib/waitlist';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -28,7 +29,13 @@ export interface EarlyAccessLeadBody {
   leapTitles: string[];
 }
 
-function getBaseUrl(): string {
+function getBaseUrl(request: NextRequest): string {
+  try {
+    const url = new URL(request.url);
+    if (url.origin) return url.origin;
+  } catch {
+    // fallback
+  }
   return process.env.NEXT_PUBLIC_SITE_URL || `http://localhost:${process.env.PORT || 3000}`;
 }
 
@@ -55,22 +62,13 @@ export async function POST(request: NextRequest) {
     }
 
     const createdAt = new Date().toISOString();
-    const baseUrl = getBaseUrl();
 
-    // 1) Lead capture via waitlist (existing pattern)
-    const waitlistRes = await fetch(`${baseUrl}/api/waitlist`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: email.trim(),
-        signupType: 'early_access_leap_stack',
-        page: '/allocator',
-      }),
+    // 1) Lead capture via waitlist (direct call – no internal HTTP fetch)
+    await submitToWaitlist({
+      email: email.trim(),
+      signupType: 'early_access_leap_stack',
+      page: '/allocator',
     });
-    if (!waitlistRes.ok) {
-      const data = await waitlistRes.json();
-      console.error('[Early Access Lead] Waitlist error:', data);
-    }
 
     // 2) Send early access confirmation email
     if (!process.env.RESEND_API_KEY) {
@@ -97,6 +95,7 @@ export async function POST(request: NextRequest) {
           }).format(costOfDelay12Mo)
         : null;
 
+    const baseUrl = getBaseUrl(request);
     const leapToolUrl = `${baseUrl}/leap-impact-simulator`;
 
     // Filter out redundant items (e.g. "Brokerage (part of split above)")
@@ -118,7 +117,7 @@ export async function POST(request: NextRequest) {
           <p style="color: #111827; font-size: 18px; font-weight: 600; margin-bottom: 24px;">You're on the early access list.</p>
 
           <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your next move</p>
-          <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">Do this: <strong>${escapeHtml(nextLeapTitle)}</strong></p>
+          ${nextLeapTitle ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">Do this: <strong>${escapeHtml(nextLeapTitle)}</strong></p>` : ''}
           ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">30-year upside: +${impactFormatted}</p>` : ''}
           ${costFormatted ? `<p style="color: #6B7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Waiting 12 months costs ~${costFormatted}</p>` : '<p style="margin-bottom: 20px;"></p>'}
 
