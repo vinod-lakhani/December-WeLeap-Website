@@ -1,6 +1,7 @@
 /**
  * Select exactly ONE primary (highest-leverage) leap for the trajectory plan.
- * Order: 1) Capture match, 2) Increase HSA (if eligible and not maxed), 3) Retirement toward 15% (capped at 401k limit).
+ * Follows stack allocation order: 1) Match, 2) HSA (if eligible & not maxed), 3) Retirement 15%,
+ * 4) Debt, 5) Growth split. Skips non-actionable items (e.g. no HSA → go to next).
  */
 
 import type { Leap } from './leapModel';
@@ -23,8 +24,6 @@ export interface SelectPrimaryLeapInputs {
   current401kPct: number;
   /** % needed to capture full employer match (e.g. 7%). */
   matchCapPct: number;
-  /** HSA eligible and current < max. */
-  hsaNotMaxed?: boolean;
   /** 401(k) at employee cap ($23,500) — do not recommend increase. */
   k401AtCap?: boolean;
   /** Salary annual — used to cap retirement target at 401k limit. */
@@ -37,19 +36,26 @@ export interface SelectPrimaryLeapInputs {
   leaps: Leap[];
 }
 
+/** HSA leap is actionable when eligible, not maxed, and has current < max. */
+function hasActionableHsa(leaps: Leap[]): boolean {
+  const hsaLeap = leaps.find((l) => l.category === 'hsa');
+  if (!hsaLeap || hsaLeap.status === 'complete') return false;
+  if (hsaLeap.hsaCurrentAnnual == null || hsaLeap.hsaMaxAnnual == null) return false;
+  return hsaLeap.hsaCurrentAnnual < hsaLeap.hsaMaxAnnual;
+}
+
 /**
  * Returns the single primary leap and kind.
  * 1) Match not captured → match
- * 2) Else HSA eligible and not maxed → hsa
+ * 2) Else HSA actionable (eligible, not maxed) → hsa
  * 3) Else current 401k < 15% AND not at cap → retirement_15
- * 4) Else debt or growth_split (brokerage when both 401k and HSA maxed)
+ * 4) Else debt or growth_split
  */
 export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapResult {
   const {
     employerMatchEnabled,
     current401kPct,
     matchCapPct,
-    hsaNotMaxed = false,
     k401AtCap = false,
     unlock,
     leaps,
@@ -62,7 +68,7 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     return { kind: 'match', leap: matchLeap ?? null };
   }
 
-  if (hsaNotMaxed) {
+  if (hasActionableHsa(leaps)) {
     const hsaLeap = leaps.find((l) => l.category === 'hsa');
     return { kind: 'hsa', leap: hsaLeap ?? null };
   }

@@ -269,23 +269,18 @@ function AllocatorContent() {
   const impact401kAtYear30 = prefill?.leapDelta30yr ?? null;
   const costOfDelay12Mo = prefill?.costOfDelay12Mo ?? null;
 
-  const hsaNotMaxed = useMemo(
-    () => leaps.some((l) => l.category === 'hsa' && l.hsaCurrentAnnual != null && l.hsaMaxAnnual != null && l.hsaCurrentAnnual < l.hsaMaxAnnual),
-    [leaps]
-  );
   const primaryResult = useMemo(
     () =>
       selectPrimaryLeap({
         employerMatchEnabled: prefill?.employerMatchEnabled ?? false,
         current401kPct: prefill?.current401kPct ?? 0,
         matchCapPct,
-        hsaNotMaxed,
         k401AtCap,
         salaryAnnual: prefill?.salaryAnnual,
         unlock: unlockData,
         leaps,
       }),
-    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, matchCapPct, hsaNotMaxed, k401AtCap, unlockData, leaps]
+    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, matchCapPct, k401AtCap, unlockData, leaps]
   );
   const supportingLeaps = useMemo(
     () => getSupportingLeaps(leaps, primaryResult.kind),
@@ -722,6 +717,7 @@ function AllocatorContent() {
                       monthlyCapitalAvailable={prefill ? monthlyCapitalAtTarget401k : null}
                       preTax401k={prefill ? { currentPct: prefill.current401kPct, targetPct: effectiveTarget401kPct, matchRatePct: prefill.matchRatePct ?? 100, matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct } : null}
                       primaryTarget401kPct={primaryResult.kind === 'retirement_15' ? primaryResult.retirement15?.targetPct : primaryResult.kind === 'match' && primaryResult.leap ? (primaryResult.leap.targetValue as number) : undefined}
+                      acknowledge401kFirst={primaryResult.kind === 'hsa' && prefill?.current401kPct != null && prefill?.recommended401kPct != null && prefill.current401kPct < prefill.recommended401kPct}
                       impact401kAtYear30={impact401kAtYear30}
                       costOfDelay12Mo={costOfDelay12Mo}
                       impactHsaAtYear30={null}

@@ -36,6 +36,8 @@ interface SavingsStackSummaryProps {
   costOfDelayHsa12Mo?: number | null;
   /** When primary is retirement_15, override match card to show this target (aligns with highest-leverage move). */
   primaryTarget401kPct?: number;
+  /** When true and primary is HSA: acknowledge 401(k) as #1 move, HSA as #2. */
+  acknowledge401kFirst?: boolean;
   onUnlockDetailsClick?: () => void;
 }
 
@@ -45,21 +47,99 @@ function formatCurrencyShort(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+/** Step 1 (Locked) + Step 2 layout when user came from Leap Impact with 401k rec. */
+function StepwisePrimaryCard({
+  preTax401k,
+  impact401kAtYear30,
+  hsaLeap,
+  impactHsaAtYear30,
+}: {
+  preTax401k: { currentPct: number; targetPct: number };
+  impact401kAtYear30?: number | null;
+  hsaLeap: Leap;
+  impactHsaAtYear30?: number | null;
+}) {
+  const current = hsaLeap.hsaCurrentAnnual ?? 0;
+  const target = hsaLeap.targetValue ?? hsaLeap.hsaMaxAnnual ?? 0;
+  const targetStr = Math.round(target).toLocaleString();
+  const isStart = current === 0;
+  return (
+    <Card className="border-2 border-[#3F6B42] bg-white shadow-md">
+      <CardContent className="p-5 space-y-6">
+        {/* Step 1 (Locked) — Phase 1 move, do not replace */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3F6B42]">
+            Step 1 (Locked)
+          </p>
+          <p className="mt-1 text-base font-semibold text-[#111827]">
+            Increase 401(k) from {formatPct(preTax401k.currentPct)} → {formatPct(preTax401k.targetPct)}
+          </p>
+          <p className="mt-0.5 text-sm text-gray-600">
+            Your #1 move from Leap Impact — apply this first.
+          </p>
+          {impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
+            <p className="mt-1 text-xs text-[#3F6B42]">
+              Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement
+            </p>
+          )}
+        </div>
+
+        {/* Step 2 — Next move after applying Step 1 */}
+        <div className="pt-4 border-t border-gray-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3F6B42]">
+            Step 2
+          </p>
+          <p className="mt-1 text-lg font-semibold text-[#111827]">
+            {isStart ? 'Start HSA for triple tax advantage' : 'Use HSA for triple tax advantage'}
+          </p>
+          <p className="mt-1 text-[#111827]">
+            {isStart ? `Start HSA: $0 → $${targetStr}/year (recommendation)` : `Increase HSA: $${Math.round(current).toLocaleString()} → $${targetStr}/year`}
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
+            Tax-free in, tax-free growth, tax-free out for health. Long-term investing vehicle.
+          </p>
+          {impactHsaAtYear30 != null && impactHsaAtYear30 > 0 && (
+            <p className="mt-2 text-sm font-medium text-[#3F6B42]">
+              Impact: +{formatCurrencyShort(impactHsaAtYear30)} by retirement
+            </p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">Assumes 7% real return.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Dominant primary card: one highest-leverage move. */
 function PrimaryCard({
   primary,
   impact401kAtYear30,
   costOfDelay12Mo,
   impactHsaAtYear30,
+  acknowledge401kFirst,
+  preTax401k,
   onUnlockDetailsClick,
 }: {
   primary: PrimaryLeapResult;
   impact401kAtYear30?: number | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
+  acknowledge401kFirst?: boolean;
+  preTax401k?: { currentPct: number; targetPct: number } | null;
   onUnlockDetailsClick?: () => void;
 }) {
   const { kind, leap, retirement15 } = primary;
+
+  if (kind === 'hsa' && leap && acknowledge401kFirst && preTax401k) {
+    return (
+      <StepwisePrimaryCard
+        preTax401k={preTax401k}
+        impact401kAtYear30={impact401kAtYear30}
+        hsaLeap={leap}
+        impactHsaAtYear30={impactHsaAtYear30}
+      />
+    );
+  }
 
   if (kind === 'match' && leap) {
     return (
@@ -504,6 +584,7 @@ export function SavingsStackSummary({
   impactHsaAtYear30 = null,
   costOfDelayHsa12Mo = null,
   primaryTarget401kPct,
+  acknowledge401kFirst = false,
   onUnlockDetailsClick,
 }: SavingsStackSummaryProps) {
   const hasRouting = routing != null;
@@ -550,16 +631,18 @@ export function SavingsStackSummary({
         </div>
       )}
 
-      {/* Primary: single dominant card */}
+      {/* Primary: single dominant card (or Step 1 + Step 2 when from Leap Impact) */}
       <div>
         <h2 className="text-base font-semibold text-[#111827] mb-3">
-          Highest-leverage move
+          {acknowledge401kFirst ? 'Your ranked moves' : 'Highest-leverage move'}
         </h2>
         <PrimaryCard
           primary={primary}
           impact401kAtYear30={impact401kAtYear30}
           costOfDelay12Mo={costOfDelay12Mo}
           impactHsaAtYear30={impactHsaAtYear30}
+          acknowledge401kFirst={acknowledge401kFirst}
+          preTax401k={preTax401k}
           onUnlockDetailsClick={onUnlockDetailsClick}
         />
       </div>
