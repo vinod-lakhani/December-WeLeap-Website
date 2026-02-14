@@ -14,9 +14,11 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { formatCurrency, formatCurrencyRange, roundToNearest100 } from '@/lib/rounding';
+import { rentNetWorthProtection30yr } from '@/lib/rent';
 import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 import { track } from '@/lib/analytics';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
+import { RentShareCard } from '@/components/RentShareCard';
 
 interface TaxBreakdown {
   grossAnnual: number;
@@ -247,6 +249,7 @@ export function ResultsCards({
   };
 
   const upfrontCash = calculateUpfrontCash();
+  const netWorthProtection = rentNetWorthProtection30yr(takeHomeMonthly);
 
   return (
     <div className="space-y-6">
@@ -332,19 +335,65 @@ export function ResultsCards({
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
-              <p className="text-sm text-[#111827]/70">
-                Based on your take-home pay and early-career flexibility.
+              <p className="text-sm text-[#111827]/80">
+                Staying in this range protects your future.
               </p>
+              {netWorthProtection > 0 && (
+                <div className="space-y-0.5">
+                  <p className="text-sm text-[#3F6B42] font-medium">
+                    Over 30 years, staying in this range protects ~{formatCurrency(netWorthProtection)}{' '}
+                    of net worth.
+                  </p>
+                  <p className="text-xs text-[#6B7280]">
+                    Overspending by ~{formatCurrency(Math.round(takeHomeMonthly * 0.05))}/month on rent above this range could cost you that much.
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* Upfront cash — prominent */}
+            {upfrontCash && (
+              <div className="rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-4">
+                <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide mb-1">
+                  📦 Upfront cash required
+                </p>
+                <p className="text-2xl font-bold text-[#111827]">
+                  {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
+                </p>
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Before your first paycheck — deposit, first month, moving costs.
+                </p>
+              </div>
+            )}
+
+            {/* Share button — ghost style */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
+              <RentShareCard
+                rentRange={rentRange}
+                rentRangeLow={rentRangeLow}
+                rentRangeHigh={rentRangeHigh}
+                upfrontCashLow={upfrontCash?.totalLow}
+                upfrontCashHigh={upfrontCash?.totalHigh}
+                netWorthProtection={netWorthProtection}
+                trigger={
+                  <button
+                    type="button"
+                    className="text-sm text-[#6B7280] hover:text-[#111827] underline underline-offset-2"
+                  >
+                    Save This Range
+                  </button>
+                }
+              />
+            </div>
+            <p className="text-xs text-[#9CA3AF]">
+              Planning with someone? Share this range.
+            </p>
 
             {/* Market Reality - ZORI */}
             {zoriAvailable && marketRentData && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <p className="text-xs text-[#111827]/70 mb-2">
                   Market reality: Typical rents in your area are around {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}/month.
-                </p>
-                <p className="text-xs text-[#111827]/60 mb-2">
-                  Based on recent metro-level listings across unit types. Actual listings vary by neighborhood and unit type.
                 </p>
                 {marketRentComparison === 'above' && (
                   <p className="text-xs text-[#111827]/80">

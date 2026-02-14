@@ -4,6 +4,21 @@
  */
 
 import { roundToNearest25, formatCurrencyRange } from './rounding';
+import { computeInvestingImpact } from '@/lib/networthImpact/math';
+
+/** Real return assumption (7%) — aligned with Net Worth Impact tool */
+const REAL_RETURN = 0.07;
+
+/**
+ * Estimate net worth protection over 30 years from staying in safe rent range.
+ * Assumes overspend = 5% of take-home (going from 35% to 40% rent).
+ * Protection = FV of that monthly savings invested at 7% for 30 years.
+ */
+export function rentNetWorthProtection30yr(takeHomeMonthly: number): number {
+  if (takeHomeMonthly <= 0) return 0;
+  const monthlyOverspendAvoided = takeHomeMonthly * 0.05;
+  return Math.round(computeInvestingImpact(monthlyOverspendAvoided, REAL_RETURN, 30));
+}
 
 export interface RentRange {
   low: number;

@@ -63,6 +63,7 @@ Reference for all analytics events tracked in the Rent Tool (`/how-much-rent-can
 | Event | When | Params | Location |
 |-------|------|--------|----------|
 | `rent_tool_feedback_submitted` | User submits feedback ("Did you find this tool useful?") | `page`, `feedback` (yes/not_sure/no) | `components/ToolFeedbackQuestionnaire.tsx` |
+| `rent_share_card_downloaded` | User downloads Rent Share Card as PNG | `page` | `components/RentShareCard.tsx` |
 
 ---
 
