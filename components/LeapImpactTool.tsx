@@ -291,9 +291,19 @@ export function LeapImpactTool() {
   }, []);
 
   const showResultsRef = useRef(false);
+  const [chartExpanded, setChartExpanded] = useState(false);
+  const fullStackSectionRef = useRef<HTMLDivElement>(null);
+  const nextMoveCardRef = useRef<HTMLDivElement>(null);
+
   const netMonthly = taxResult ? taxResult.netIncomeAnnual / 12 : 0;
   const showResults = taxResult && trajectoryResult;
   const is401kMaxed = leap.type === 'at_cap';
+
+  const scrollToFullStackCTA = useCallback(() => {
+    const target = is401kMaxed ? nextMoveCardRef.current : fullStackSectionRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [is401kMaxed]);
+
 
   useEffect(() => {
     if (showResults && !showResultsRef.current) {
@@ -334,6 +344,9 @@ export function LeapImpactTool() {
       track('full_stack_expand_clicked', { page: PAGE });
       track('leap_stack_unlock_clicked', { page: PAGE });
       track('leap_redirect_to_allocator', { intent: 'unlock_full_stack' });
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('leap_clicked_build_full_stack', 'true');
+      }
       const netMonthlyVal = taxResult ? taxResult.netIncomeAnnual / 12 : undefined;
       const url = buildAllocatorPrefillUrl({
         salaryAnnual: salaryNum,
@@ -508,13 +521,16 @@ export function LeapImpactTool() {
       {showResults && trajectoryResult && (
         <div className="space-y-8">
           {/* 1. THE HOOK — Your next move */}
-          <Card className="border-2 border-[#3F6B42] bg-white">
+          <Card ref={nextMoveCardRef} className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
               <CardTitle className="text-xl text-[#111827]">
                 {is401kMaxed ? '401(k) is maxed ✅' : 'Your next move'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <p className="text-sm font-medium text-[#6B7280]">
+                Step 1: Your highest-impact move
+              </p>
               <p className="font-semibold text-[#111827]">{leap.summary}</p>
               <p className="text-sm text-gray-600">
                 {leap.type === 'capture_match'
@@ -522,6 +538,12 @@ export function LeapImpactTool() {
                   : leap.type === 'at_cap'
                     ? "Nice — you're already hitting the annual 401(k) limit. Let's optimize the next lever."
                     : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
+              </p>
+              <p className="text-sm text-gray-600">
+                Next: we&apos;ll structure your Emergency Fund + HSA + Debt + Investing.
+              </p>
+              <p className="text-sm text-gray-600">
+                Most people stop here. The real optimization happens across the full stack.
               </p>
               {!is401kMaxed && (
                 <>
@@ -551,65 +573,101 @@ export function LeapImpactTool() {
             </CardContent>
           </Card>
 
-          {/* 2. Chart */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardContent className="pt-6">
-              <div className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                    <XAxis
-                      dataKey="year"
-                      tickFormatter={(v) => (v === 0 ? '0' : v % 10 === 0 ? `${v}` : '')}
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => {
-                        if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
-                        if (v >= 1000) return `$${(v / 1000).toFixed(0)}k`;
-                        return `$${v}`;
-                      }}
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => [formatCurrency(value), '']}
-                      labelFormatter={(label) => `Year ${label}`}
-                      contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB' }}
-                    />
-                    <ReferenceLine x={10} stroke="#9CA3AF" strokeDasharray="2 2" />
-                    <ReferenceLine x={30} stroke="#9CA3AF" strokeDasharray="2 2" />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="Baseline"
-                      stroke="#94A3B8"
-                      strokeWidth={2}
-                      dot={false}
-                      name="Current"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Optimized"
-                      stroke="#3F6B42"
-                      strokeWidth={2}
-                      dot={false}
-                      name="After this move"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <p className="text-xs text-gray-500 mt-3 text-center">
-                Same income. Different setup.
-              </p>
-            </CardContent>
-          </Card>
+          {/* 2. Chart — collapsed by default, expand to see curve */}
+          {!is401kMaxed && (
+            <Card className="border-[#D1D5DB] bg-white">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setChartExpanded((v) => !v)}
+                    className="text-sm text-[#3F6B42] hover:underline font-medium flex items-center gap-1"
+                  >
+                    See the 30-year curve
+                    <span className="text-gray-500">{chartExpanded ? '▼' : '→'}</span>
+                  </button>
+                  <span className="text-sm text-gray-500">{chartExpanded ? 'collapse' : 'expand'}</span>
+                </div>
+                {chartExpanded && (
+                  <>
+                    <div className="h-[280px] w-full mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                          <XAxis
+                            dataKey="year"
+                            tickFormatter={(v) => (v === 0 ? '0' : v % 10 === 0 ? `${v}` : '')}
+                            stroke="#6B7280"
+                            fontSize={12}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tickFormatter={(v) => {
+                              if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+                              if (v >= 1000) return `$${(v / 1000).toFixed(0)}k`;
+                              return `$${v}`;
+                            }}
+                            stroke="#6B7280"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <Tooltip
+                            formatter={(value: number) => [formatCurrency(value), '']}
+                            labelFormatter={(label) => `Year ${label}`}
+                            contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB' }}
+                          />
+                          <ReferenceLine x={10} stroke="#9CA3AF" strokeDasharray="2 2" />
+                          <ReferenceLine x={30} stroke="#9CA3AF" strokeDasharray="2 2" />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="Baseline"
+                            stroke="#94A3B8"
+                            strokeWidth={2}
+                            dot={false}
+                            name="Current"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="Optimized"
+                            stroke="#3F6B42"
+                            strokeWidth={2}
+                            dot={false}
+                            name="After this move"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3 text-center">
+                      Same income. Different setup.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* 2.5. Feedback questionnaire */}
+          {/* 2.5. Build full stack CTA — moved up, primary action */}
+          {!is401kMaxed && (
+            <div ref={fullStackSectionRef}>
+              <Card className="border-2 border-[#3F6B42] bg-white">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-gray-600 mb-4">
+                    We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules.
+                  </p>
+                  <Button
+                    onClick={() => handleUnlockFullStack(false)}
+                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                  >
+                    Build my full stack → (2 min)
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* 2.6. Feedback questionnaire */}
           <ToolFeedbackQuestionnaire
             page={PAGE}
             eventName="leap_impact_feedback_submitted"
@@ -619,56 +677,13 @@ export function LeapImpactTool() {
               not_sure: '🤔 Not sure',
               no: "❌ Doesn't feel relevant",
             }}
-            onFeedbackSubmitted={() => {}}
+            feedbackResponseMessages={{
+              yes: "Great — let's build the rest of your stack.",
+              not_sure: 'No worries — the full stack will show tradeoffs and alternatives.',
+              no: "Got it — the full stack will surface the best alternative lever.",
+            }}
+            onFeedbackSubmitted={scrollToFullStackCTA}
           />
-
-          {/* 3. Primary CTA — Activate allocation (Join MVP) */}
-          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">
-                Want this engine to keep optimizing automatically?
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Automated allocation. Ongoing recalibration. Full access to the engine.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <EarlyAccessDialog signupType="leap_impact_activate">
-                  <Button
-                    onClick={() => track('mvp_apply_clicked', { source: 'leap_impact' })}
-                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                  >
-                    Activate My Allocation (Join MVP)
-                  </Button>
-                </EarlyAccessDialog>
-                <p className="text-xs text-gray-500 mt-2">
-                  Get early access when the full engine launches.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 4. Secondary CTA — See full Leap stack (hidden when 401k maxed; primary CTA in card) */}
-          {!is401kMaxed && (
-            <Card className="border-[#D1D5DB] bg-white">
-              <CardContent className="pt-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules. Takes ~2 minutes.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => handleUnlockFullStack(false)}
-                  className="w-full sm:w-auto border-[#3F6B42] text-[#3F6B42] hover:bg-[#3F6B42]/5"
-                >
-                  See my full Leap stack
-                </Button>
-                {error && (
-                  <p className="text-sm text-red-600 mt-2">{error}</p>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             <p className="font-medium text-[#111827] mb-1">Assumptions</p>

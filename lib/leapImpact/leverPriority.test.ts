@@ -62,7 +62,6 @@ describe('getRecommendedLeap', () => {
     // 15% of 100k = 15k, below 23,500 cap. Cap % = 23.5%. Should recommend increase.
     expect(leap.type).toBe('increase_contribution');
     expect(leap.optimized401kPct).toBe(23.5);
-    expect(leap.summary).toContain('15%');
     expect(leap.summary).toContain('23.5%');
   });
 
@@ -73,22 +72,9 @@ describe('getRecommendedLeap', () => {
     expect(leap.summary).not.toContain('from 15% → 15%');
   });
 
-  it('never returns "Increase 401(k) from X → X" (from==to)', () => {
-    // Various combinations that could produce from==to
-    const cases = [
-      { salary: 100_000, current: 15, match: 5 },
-      { salary: 100_000, current: 15, match: 15 },
-      { salary: 100_000, current: 12, match: 5 },
-      { salary: 200_000, current: 15, match: 5 },
-    ];
-    for (const c of cases) {
-      const leap = getRecommendedLeap(true, c.match, c.current, c.salary);
-      if (leap.type === 'increase_contribution' || leap.type === 'capture_match') {
-        const match = leap.summary.match(/from ([\d.]+)% → ([\d.]+)%/);
-        if (match) {
-          expect(parseFloat(match[1])).not.toBe(parseFloat(match[2]));
-        }
-      }
-    }
+  it('summary uses new format (no from X → Y)', () => {
+    const leap = getRecommendedLeap(true, 5, 15, 100_000);
+    expect(leap.summary).not.toMatch(/from .+% → .+%/);
+    expect(leap.summary).toMatch(/Move toward/);
   });
 });

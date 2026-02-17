@@ -104,6 +104,9 @@ function StepwisePrimaryCard({
             </p>
           )}
           <p className="text-xs text-gray-400 mt-1">Assumes 7% real return.</p>
+          <p className="text-xs text-gray-500 mt-3">
+            Additional optimizations unlock as your buffer fills.
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -649,12 +652,9 @@ export function SavingsStackSummary({
 
       {/* Active Allocation System */}
       <div>
-        <h2 className="text-base font-semibold text-[#111827] mb-1">
-          Active Allocation System
+        <h2 className="text-base font-semibold text-[#111827] mb-3">
+          How your money should flow each month
         </h2>
-        <p className="text-sm text-gray-600 mb-3">
-          This structure routes your capital to protect stability and accelerate long-term compounding.
-        </p>
 
         {/* PAYROLL (PRE-TAX) */}
         <div className="mb-4">
@@ -714,11 +714,11 @@ export function SavingsStackSummary({
           <ToolFeedbackQuestionnaire
             page="/allocator"
             eventName="leap_full_plan_feedback_submitted"
-            question="Does this full plan feel useful?"
+            question="Would you actually follow this structure?"
             buttonLabels={{
               yes: "🔥 Yes — I'd use this",
-              not_sure: "👍 Helpful but needs work",
-              no: "👎 Not useful",
+              not_sure: "🤔 Helpful but needs tweaks",
+              no: "❌ Not for me",
             }}
             onFeedbackSubmitted={() => {}}
           />
@@ -726,13 +726,18 @@ export function SavingsStackSummary({
 
         {/* Allocation drift */}
         <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3">
-          <h3 className="text-sm font-semibold text-[#111827] mb-2">Allocation drift happens</h3>
+          <h3 className="text-sm font-semibold text-[#111827] mb-2">Your plan will drift without recalibration.</h3>
           <p className="text-xs text-gray-700 leading-relaxed">
-            This structure only works if it&apos;s maintained.
+            Income changes.
             <br />
-            Income changes. Bonuses happen. Debt disappears. Expenses shift.
+            Expenses creep up.
             <br />
-            Most people don&apos;t revisit their allocation after life changes. That&apos;s where long-term trajectory slips.
+            Debt disappears.
+            <br />
+            Contributions stall.
+            <br />
+            <br />
+            Most people build a plan once and never adjust it — that&apos;s where compounding leaks.
           </p>
         </div>
       </div>

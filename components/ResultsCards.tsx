@@ -336,18 +336,12 @@ export function ResultsCards({
             <div className="space-y-2">
               <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
               <p className="text-sm text-[#111827]/80">
-                Staying in this range protects your future.
+                Staying in this range protects your margin and flexibility.
               </p>
               {netWorthProtection > 0 && (
-                <div className="space-y-0.5">
-                  <p className="text-sm text-[#3F6B42] font-medium">
-                    Over 30 years, staying in this range protects ~{formatCurrency(netWorthProtection)}{' '}
-                    of net worth.
-                  </p>
-                  <p className="text-xs text-[#6B7280]">
-                    Overspending by ~{formatCurrency(Math.round(takeHomeMonthly * 0.05))}/month on rent above this range could cost you that much.
-                  </p>
-                </div>
+                <p className="text-sm text-[#3F6B42] font-medium">
+                  Choosing rent above this range could cost ~{formatCurrency(netWorthProtection)} over time.
+                </p>
               )}
             </div>
 
@@ -361,6 +355,9 @@ export function ResultsCards({
                   {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
                 </p>
                 <p className="text-xs text-[#6B7280] mt-1">
+                  Most people underestimate this number.
+                </p>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Before your first paycheck — deposit, first month, moving costs.
                 </p>
               </div>
@@ -468,6 +465,9 @@ export function ResultsCards({
                   Start date: {formattedStartDate}
                 </p>
               )}
+              <p className="text-sm font-semibold text-[#111827] mt-2">
+                This is where many new grads get squeezed.
+              </p>
             </div>
 
             {/* Upfront Cash Needed */}
@@ -478,6 +478,9 @@ export function ResultsCards({
                 </h4>
                 <p className="text-3xl font-bold text-[#111827] mb-1">
                   {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
+                </p>
+                <p className="text-xs text-[#111827]/60 mb-1">
+                  Most people underestimate this number.
                 </p>
                 <p className="text-xs text-[#111827]/60 mb-3">
                   Estimate based on start date and typical move-in timing.

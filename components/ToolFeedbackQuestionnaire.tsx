@@ -13,12 +13,14 @@ interface ToolFeedbackQuestionnaireProps {
   question?: string;
   /** Custom button labels. Default: { yes: "Yes", not_sure: "Not sure", no: "No" } */
   buttonLabels?: { yes: string; not_sure: string; no: string };
+  /** Custom response messages per feedback type. When provided, shown instead of "Thank you for your feedback!" */
+  feedbackResponseMessages?: { yes?: string; not_sure?: string; no?: string };
   /** "default" = card with full-width buttons; "inline" = single line with small buttons */
   variant?: 'default' | 'inline';
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Did you find this tool useful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Did you find this tool useful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -34,22 +36,23 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
       feedback,
     });
     
-    // Call callback to show/hide WaitlistForm after showing thank you message
+    // Call callback (e.g. to scroll to CTA) after showing thank you message
     setTimeout(() => {
       onFeedbackSubmitted(feedback);
-      // Hide thank you message after callback (for "No" responses)
-      if (feedback === 'no') {
+      // Hide thank you message after callback (for "No" responses) — skip when using custom progression messages
+      if (feedback === 'no' && !feedbackResponseMessages) {
         setTimeout(() => setShowThankYou(false), 500);
       }
     }, 1500); // Show thank you message for 1.5 seconds
   };
 
-  if (isSubmitted && showThankYou) {
+  if (isSubmitted && showThankYou && selectedFeedback) {
+    const message = feedbackResponseMessages?.[selectedFeedback] ?? 'Thank you for your feedback!';
     return (
       <Card className="border-[#D1D5DB] bg-white">
         <CardContent className={variant === 'inline' ? 'py-3' : 'pt-6'}>
           <p className={`text-gray-700 ${variant === 'inline' ? 'text-sm' : 'text-lg text-center'}`}>
-            Thank you for your feedback!
+            {message}
           </p>
         </CardContent>
       </Card>

@@ -17,7 +17,7 @@ import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
 import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
-import { formatPct } from '@/lib/format';
+import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 
 export interface AllocatorPrefillFromUrl {
@@ -170,6 +170,7 @@ function AllocatorContent() {
   const current401kPct = prefill?.current401kPct ?? 0;
 
   // Effective target 401k % for display and routing (same logic as selectPrimaryLeap)
+  // Use prefill.recommended401kPct when from Leap Impact; otherwise compute toward IRS cap
   const effectiveTarget401kPct = useMemo(() => {
     if (!prefill?.salaryAnnual) return current401kPct;
     const matchNotCaptured = prefill?.employerMatchEnabled && current401kPct < matchCapPct;
@@ -177,8 +178,12 @@ function AllocatorContent() {
     const current401kAnnual = (prefill.salaryAnnual * current401kPct) / 100;
     if (current401kAnnual >= K401_EMPLOYEE_CAP_2025) return current401kPct;
     const capPct = (K401_EMPLOYEE_CAP_2025 / prefill.salaryAnnual) * 100;
-    return Math.min(15, capPct);
-  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, current401kPct, matchCapPct]);
+    // Prefill from Leap Impact has recommended401kPct (e.g. 23.5%); use it instead of capping at 15%
+    if (prefill?.recommended401kPct != null && prefill.recommended401kPct > current401kPct) {
+      return Math.min(prefill.recommended401kPct, capPct);
+    }
+    return capPct;
+  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, prefill?.recommended401kPct, current401kPct, matchCapPct]);
 
   const netTakeHomeMonthly = useMemo(() => {
     if (!prefill?.salaryAnnual || !prefill.state) return 0;
@@ -751,14 +756,20 @@ function AllocatorContent() {
                       onUnlockDetailsClick={() => setCurrentStep(0)}
                     />
                     <div className="pt-4 border-t border-gray-200 space-y-3">
+                      {monthlyCapitalAtTarget401k > 0 && (
+                        <p className="text-sm text-gray-700">
+                          Based on your inputs, this stack reallocates ~{formatCurrency(monthlyCapitalAtTarget401k)}/month.
+                          Automation ensures it stays aligned.
+                        </p>
+                      )}
                       <Button
                         onClick={handleMvpApplyClick}
                         className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                       >
-                        Save my plan + get MVP access
+                        Keep this plan optimized automatically →
                       </Button>
                       <p className="text-xs text-gray-500">
-                        Early access to execution and automatic recalibration as your situation evolves.
+                        We&apos;ll recalculate when income or expenses change.
                       </p>
                     </div>
                   </CardContent>

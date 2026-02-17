@@ -47,7 +47,7 @@ export function getRecommendedLeap(
     }
     return {
       label: 'Capture your full employer match',
-      summary: `Increase 401(k) from ${formatPct(current401kPct)} → ${formatPct(optimizedPct)}`,
+      summary: `Move toward ${formatPct(optimizedPct)} 401(k) contribution`,
       optimized401kPct: optimizedPct,
       type: 'capture_match',
     };
@@ -91,7 +91,7 @@ export function getRecommendedLeap(
 
   return {
     label: 'Increase retirement contribution',
-    summary: `Increase 401(k) from ${formatPct(current401kPct)} → ${formatPct(targetPct)}`,
+    summary: `Move toward max 401(k) contribution (${formatPct(targetPct)})`,
     optimized401kPct: targetPct,
     type: 'increase_contribution',
   };

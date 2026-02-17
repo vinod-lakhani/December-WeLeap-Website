@@ -576,6 +576,51 @@ export function OfferTool() {
             planData={planData}
           />
 
+          {/* Full Allocation CTA — directly under Timing Pressure for momentum */}
+          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl text-[#111827]">
+                Your rent is your first allocation decision.
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Your full plan adjusts savings, debt, and investing around this number.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-700 mb-4">
+                Most people only optimize rent. The real leverage is how the rest of your money flows around it.
+              </p>
+              <div>
+                <Button
+                  onClick={() => {
+                    const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
+                    if (!stateCode || !salary.trim()) return;
+                    const base = typeof window !== 'undefined' ? window.location.origin : '';
+                    const params = new URLSearchParams();
+                    params.set('src', 'rent');
+                    params.set('salaryAnnual', String(Math.round(parseFloat(salary))));
+                    params.set('state', stateCode);
+                    if (takeHomeMonthly > 0) {
+                      params.set('estimatedNetMonthlyIncome', String(Math.round(takeHomeMonthly)));
+                    }
+                    const rentMid = (rentRangeLow + rentRangeHigh) / 2;
+                    if (rentMid > 0) {
+                      params.set('rentEstimateMonthly', String(Math.round(rentMid)));
+                    }
+                    track('rent_tool_leap_cta_clicked', { page: '/how-much-rent-can-i-afford' });
+                    window.location.href = `${base}/leap-impact-simulator?${params.toString()}`;
+                  }}
+                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                >
+                  Build my full financial plan → (2 min)
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Takes ~2 minutes. No email required.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">
             <CardContent className="pt-6">
@@ -628,54 +673,12 @@ export function OfferTool() {
             </CardContent>
           </Card>
 
-          {/* Tool Feedback Questionnaire - above assumptions & tiles */}
+          {/* Tool Feedback Questionnaire */}
           <ToolFeedbackQuestionnaire
             page="/how-much-rent-can-i-afford"
             variant="inline"
             onFeedbackSubmitted={() => {}}
           />
-
-          {/* Tile 1: Primary — Allocation Engine */}
-          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">
-                See what this rent choice means long-term.
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Rent is your first allocation decision. Run your full plan and see your highest-impact next move.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Button
-                  onClick={() => {
-                    const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
-                    if (!stateCode || !salary.trim()) return;
-                    const base = typeof window !== 'undefined' ? window.location.origin : '';
-                    const params = new URLSearchParams();
-                    params.set('src', 'rent');
-                    params.set('salaryAnnual', String(Math.round(parseFloat(salary))));
-                    params.set('state', stateCode);
-                    if (takeHomeMonthly > 0) {
-                      params.set('estimatedNetMonthlyIncome', String(Math.round(takeHomeMonthly)));
-                    }
-                    const rentMid = (rentRangeLow + rentRangeHigh) / 2;
-                    if (rentMid > 0) {
-                      params.set('rentEstimateMonthly', String(Math.round(rentMid)));
-                    }
-                    track('rent_tool_leap_cta_clicked', { page: '/how-much-rent-can-i-afford' });
-                    window.location.href = `${base}/leap-impact-simulator?${params.toString()}`;
-                  }}
-                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                >
-                  Run My Full Allocation Plan
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  Takes ~2 minutes. No email required.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="mt-8" />
 
