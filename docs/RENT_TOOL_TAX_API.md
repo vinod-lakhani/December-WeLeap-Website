@@ -108,6 +108,8 @@ The Rent Tool calls our own route, which then calls API Ninjas:
 
 **POST** `/api/tax`
 
+### Forward: Gross → Take-home
+
 **Request body:**
 ```json
 {
@@ -127,6 +129,33 @@ The Rent Tool calls our own route, which then calls API Ninjas:
   "taxSource": "api_ninjas"
 }
 ```
+
+### Reverse: Take-home → Gross
+
+Given a desired take-home, solve for the required gross salary. Uses our fallback calculator (API Ninjas does not support reverse).
+
+**Request body:**
+```json
+{
+  "takeHomeAnnual": 50000,
+  "state": "CA"
+}
+```
+
+**Response:**
+```json
+{
+  "salaryAnnual": 68200,
+  "federalTaxAnnual": 8500,
+  "stateTaxAnnual": 6138,
+  "ficaTaxAnnual": 5214,
+  "totalTaxAnnual": 19852,
+  "netIncomeAnnual": 48348,
+  "taxSource": "fallback"
+}
+```
+
+Note: Reverse mode always uses the fallback calculator (binary search). API Ninjas only supports gross → take-home.
 
 ---
 

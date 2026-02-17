@@ -65,15 +65,61 @@ function calculateFallbackTax(annualIncome: number, stateCode: string): TaxCalcu
   };
 }
 
+/**
+ * Reverse: given desired take-home, solve for required gross salary.
+ * Uses binary search with fallback tax (API Ninjas doesn't support reverse).
+ */
+function solveGrossFromTakeHome(takeHomeAnnual: number, stateCode: string): TaxCalculationResponse {
+  let low = takeHomeAnnual;
+  let high = takeHomeAnnual * 2; // gross is at least take-home, typically 1.3–1.5x
+  const tolerance = 1;
+
+  for (let i = 0; i < 50; i++) {
+    const guess = Math.round((low + high) / 2);
+    const result = calculateFallbackTax(guess, stateCode);
+    const diff = result.netIncomeAnnual - takeHomeAnnual;
+
+    if (Math.abs(diff) <= tolerance) {
+      return result;
+    }
+    if (diff < 0) {
+      low = guess; // need higher gross
+    } else {
+      high = guess; // need lower gross
+    }
+  }
+
+  const finalGuess = Math.round((low + high) / 2);
+  return calculateFallbackTax(finalGuess, stateCode);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { salaryAnnual, state } = body;
+    const { salaryAnnual, takeHomeAnnual, state } = body;
 
     // Validate required fields
-    if (!salaryAnnual || !state) {
+    if (!state) {
       return NextResponse.json(
-        { error: 'Missing required fields: salaryAnnual and state are required' },
+        { error: 'Missing required field: state is required' },
+        { status: 400 }
+      );
+    }
+
+    // Reverse mode: take-home → gross
+    if (takeHomeAnnual != null && takeHomeAnnual > 0 && (salaryAnnual == null || salaryAnnual === 0)) {
+      const result = solveGrossFromTakeHome(takeHomeAnnual, state);
+      const solvedGross = result.netIncomeAnnual + result.totalTaxAnnual;
+      return NextResponse.json({
+        ...result,
+        salaryAnnual: Math.round(solvedGross), // required gross to achieve target take-home
+      });
+    }
+
+    // Forward mode: gross → take-home
+    if (!salaryAnnual || salaryAnnual <= 0) {
+      return NextResponse.json(
+        { error: 'Missing required field: salaryAnnual (or takeHomeAnnual for reverse) is required' },
         { status: 400 }
       );
     }
