@@ -127,8 +127,9 @@ function AllocatorContent() {
   useEffect(() => {
     if (prefill && prefill.source && !prefillLoadedTracked) {
       setPrefillLoadedTracked(true);
-      track('allocator_prefill_loaded', { source: prefill.source, intent: prefill.intent });
-      track('leap_stack_started', { source: prefill.source });
+      // Wait for gtag on page load so events reach GA4 (allocator loads after redirect)
+      track('allocator_prefill_loaded', { source: prefill.source, intent: prefill.intent }, true);
+      track('leap_stack_started', { source: prefill.source }, true);
     }
   }, [prefill, prefillLoadedTracked]);
 
@@ -235,14 +236,15 @@ function AllocatorContent() {
   useEffect(() => {
     if (currentStep === 4 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
       leapStackRenderedTrackedRef.current = true;
-      track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' });
+      // Wait for gtag so Summary view events reach GA4
+      track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' }, true);
       track('leap_stack_plan_viewed', {
         numLeaps: leaps.length,
         hasDebt: unlockData?.carriesBalance === true,
         retirementFocus: unlockData?.retirementFocus ?? undefined,
-      });
-      track('summary_viewed', { numLeaps: leaps.length });
-      track('leap_stack_summary_viewed', { numLeaps: leaps.length });
+      }, true);
+      track('summary_viewed', { numLeaps: leaps.length }, true);
+      track('leap_stack_summary_viewed', { numLeaps: leaps.length }, true);
     }
   }, [currentStep, leaps.length, hasUnlockData, nextLeapId, unlockData?.carriesBalance, unlockData?.retirementFocus]);
 
