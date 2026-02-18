@@ -185,8 +185,8 @@ export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: Wai
       <CardContent className={isSecondary ? 'pt-0 pb-4 px-4' : undefined}>
         <p className="text-sm text-gray-600 mb-4">
           {isSecondary
-            ? 'Download a simple summary with your safe rent range and upfront cash needed.'
-            : 'Get a one-page plan with your safe rent range, upfront cash needed, and a simple allocation starting point. Download a clean, one-page plan.'}
+            ? 'Download a simple summary with your rent range and cash you need upfront.'
+            : 'Get a one-page plan with your rent range, cash you need upfront, and a simple money plan starting point. Download a clean, one-page plan.'}
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           {onLeapClick && (
@@ -194,7 +194,7 @@ export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: Wai
               onClick={onLeapClick}
               className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
             >
-              Run My Full Allocation Plan (prefilled)
+              Build my full money plan (prefilled)
             </Button>
           )}
           {secondaryButton}

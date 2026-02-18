@@ -256,7 +256,7 @@ export function ResultsCards({
       {/* Card A: Monthly Take-Home */}
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">Your Real Monthly Take-Home</CardTitle>
+          <CardTitle className="text-lg text-[#111827]">Your actual monthly take-home</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -329,14 +329,14 @@ export function ResultsCards({
       {/* Card B: Safe Rent Range */}
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">Safe Rent Range</CardTitle>
+          <CardTitle className="text-lg text-[#111827]">Rent range you can afford</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
               <p className="text-sm text-[#111827]/80">
-                Staying in this range protects your margin and flexibility.
+                Staying in this range gives you breathing room.
               </p>
               {netWorthProtection > 0 && (
                 <p className="text-sm text-[#3F6B42] font-medium">
@@ -349,7 +349,7 @@ export function ResultsCards({
             {upfrontCash && (
               <div className="rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-4">
                 <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide mb-1">
-                  📦 Upfront cash required
+                  📦 Cash you need upfront
                 </p>
                 <p className="text-2xl font-bold text-[#111827]">
                   {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
@@ -390,21 +390,21 @@ export function ResultsCards({
             {zoriAvailable && marketRentData && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <p className="text-xs text-[#111827]/70 mb-2">
-                  Market reality: Typical rents in your area are around {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}/month.
+                  What's out there: Typical rents in your area are around {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}/month.
                 </p>
                 {marketRentComparison === 'above' && (
                   <p className="text-xs text-[#111827]/80">
-                    Market pressure: Typical rents run higher than your safe range. Many early-career professionals use roommates or trade space for flexibility.
+                    Reality check: Typical rents run higher than what you can afford. Many people just starting out get roommates or trade space for flexibility.
                   </p>
                 )}
                 {marketRentComparison === 'below' && (
                   <p className="text-xs text-[#111827]/80">
-                    Market pressure: Typical rents are below your safe range — you may have more flexibility to save.
+                    Reality check: Typical rents are below your range — you may have more room to save.
                   </p>
                 )}
                 {marketRentComparison === 'overlap' && (
                   <p className="text-xs text-[#111827]/80">
-                    Market pressure: Typical rents overlap with your safe range — picking tradeoffs intentionally matters.
+                    Reality check: Typical rents overlap with your range — being intentional about tradeoffs matters.
                   </p>
                 )}
               </div>
@@ -427,7 +427,7 @@ export function ResultsCards({
                 </p>
                 {hudRentRange.low > rentRangeHigh && (
                   <p className="text-xs text-[#111827]/80">
-                    What this means: Many early-career professionals use roommates or trade space for flexibility.
+                    What this means: Many people just starting out get roommates or trade space for flexibility.
                   </p>
                 )}
                 {hudRentRange.high < rentRangeLow && (
@@ -446,10 +446,10 @@ export function ResultsCards({
         </CardContent>
       </Card>
 
-      {/* Card C: Timing Pressure */}
+      {/* Card C: When your first paycheck hits */}
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">Timing Pressure</CardTitle>
+          <CardTitle className="text-lg text-[#111827]">When your first paycheck hits</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -474,7 +474,7 @@ export function ResultsCards({
             {upfrontCash && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
                 <h4 className="text-base font-semibold text-[#111827] mb-2">
-                  Upfront cash needed before your first paycheck
+                  Cash you need before your first paycheck
                 </h4>
                 <p className="text-3xl font-bold text-[#111827] mb-1">
                   {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
@@ -488,7 +488,7 @@ export function ResultsCards({
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="assumptions" className="border-none">
                     <AccordionTrigger className="text-xs text-[#111827]/70 hover:no-underline py-2">
-                      View assumptions
+                      How we figure it
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 space-y-2">
                       <div className="space-y-2 text-xs text-[#111827]/70">

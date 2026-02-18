@@ -116,7 +116,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       }
       
       // Center: Title
-      doc.fontSize(20).font('Times-Bold').fillColor('#111827').text('Your Day 1 Playbook', { align: 'center', y: 48 });
+      doc.fontSize(20).font('Times-Bold').fillColor('#111827').text('Your Day 1 guide', { align: 'center', y: 48 });
       doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text('Built from your salary, rent, and start date', { align: 'center', y: 66 });
       
       // Meta (right side)
@@ -127,7 +127,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       let yPos = 85;
       
       // ========== SECTION A: YOUR REAL MONTHLY TAKE-HOME ==========
-      doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('Your Real Monthly Take-Home', 50, yPos);
+      doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('Your actual monthly take-home', 50, yPos);
       yPos += 18;
       
       // BIG NUMBER (largest on page)
@@ -191,7 +191,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       const highlightBoxWidth = 190;
       const highlightBoxHeight = 60;
       doc.rect(50, yPos, highlightBoxWidth, highlightBoxHeight).fillAndStroke('#f9fafb', '#D1D5DB');
-      doc.fontSize(9).font('Times-Roman').fillColor('#6b7280').text('Comfortable Rent Range', 55, yPos + 5);
+      doc.fontSize(9).font('Times-Roman').fillColor('#6b7280').text('Rent range you can afford', 55, yPos + 5);
       doc.fontSize(18).font('Times-Bold').fillColor('#111827').text(`${formatCurrency(planData.rentRangeLow)}–${formatCurrency(planData.rentRangeHigh)}`, 55, yPos + 20);
       doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text(`~${rentPctLow}–${rentPctHigh}% of take-home`, 55, yPos + 45);
       
@@ -212,7 +212,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       // Labels
       doc.fontSize(8).font('Times-Roman').fillColor('#111827').text('Take-home = 100%', barX, barY - 12);
       doc.fontSize(7).font('Times-Roman').fillColor('#6b7280').text('Rent band: 28–35% of take-home', barX, barY + barHeight + 5);
-      doc.fontSize(6).font('Times-Roman').fillColor('#6b7280').text('The shaded band shows where rent stays manageable early in your career.', barX, barY + barHeight + 12);
+      doc.fontSize(6).font('Times-Roman').fillColor('#6b7280').text('The shaded band shows where rent stays manageable when you\'re just starting out.', barX, barY + barHeight + 12);
       
       yPos += highlightBoxHeight + 8;
       doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text('If your rent is above this range, you\'ll likely feel tighter on savings and flexibility.', 50, yPos);
@@ -225,7 +225,7 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
         const panelHeight = 110;
         
         doc.rect(50, panelY, pageWidth, panelHeight).fillAndStroke('#fef3c7', '#d97706');
-        doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('Cash Needed Before Your First Paycheck', 55, panelY + 8);
+        doc.fontSize(14).font('Times-Bold').fillColor('#111827').text('Cash you need upfront (before your first paycheck)', 55, panelY + 8);
         
         // BIG NUMBER
         doc.fontSize(28).font('Times-Bold').fillColor('#111827').text(`${formatCurrency(planData.upfrontCashLow)}–${formatCurrency(planData.upfrontCashHigh)}`, 55, panelY + 28);

@@ -9,7 +9,7 @@ interface ToolFeedbackQuestionnaireProps {
   page: string;
   /** Analytics event name. Defaults to "rent_tool_feedback_submitted" (rent tool). Use "networth_tool_feedback_submitted" for Net Worth Impact, "leap_impact_feedback_submitted" for Leap Impact. */
   eventName?: string;
-  /** Custom question. Default: "Did you find this tool useful?" */
+  /** Custom question. Default: "Was this helpful?" */
   question?: string;
   /** Custom button labels. Default: { yes: "Yes", not_sure: "Not sure", no: "No" } */
   buttonLabels?: { yes: string; not_sure: string; no: string };
@@ -20,7 +20,7 @@ interface ToolFeedbackQuestionnaireProps {
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Did you find this tool useful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Was this helpful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);

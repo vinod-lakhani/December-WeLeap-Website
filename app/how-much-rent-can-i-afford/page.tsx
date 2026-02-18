@@ -65,13 +65,13 @@ export default function HowMuchRentCanIAffordPage() {
             Don't let rent break your first paycheck.
           </h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto mb-5 md:mb-6")}>
-            Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
+            Turn your job offer into a rent range you can afford — and see what life actually looks like before you sign a lease.
           </p>
           <p className={cn("text-xs md:text-sm text-white/60 mt-4 max-w-2xl mx-auto")}>
-            Most people overcommit on rent before they understand their real cash flow.
+            Most people stretch too thin on rent before they see what they actually take home.
           </p>
           <p className={cn("text-xs md:text-sm text-white/60 mt-6 md:mt-8 max-w-2xl mx-auto")}>
-            Built for early-career decisions. Estimates only.
+            Built for when you're just starting out. Estimates only.
           </p>
         </Container>
       </Section>
@@ -114,7 +114,7 @@ export default function HowMuchRentCanIAffordPage() {
                     See what rent actually costs you
                   </h3>
                   <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                    We translate that take-home pay into a safe rent range, upfront cash needs, and where things may get tight once bills hit.
+                    We turn that take-home into a rent range you can afford, what you need upfront, and where things might get tight once bills hit.
                   </p>
                 </div>
               </div>
@@ -128,10 +128,10 @@ export default function HowMuchRentCanIAffordPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg md:text-xl font-semibold text-[#111827] mb-2">
-                    Get your Day 1 Playbook
+                    Get your Day 1 guide
                   </h3>
                   <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                    We generate a simple, one-page plan you can save — and we email it to you so it's there when life starts moving fast.
+                    We create a simple, one-page plan you can save — and we email it to you so it's there when life starts moving fast.
                   </p>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function HowMuchRentCanIAffordPage() {
                     Decide with confidence
                   </h3>
                   <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                    Use the playbook to sanity-check apartments and avoid overcommitting before you sign a lease.
+                    Use the guide to double-check apartments and avoid stretching too thin before you sign.
                   </p>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function HowMuchRentCanIAffordPage() {
         <Container>
           <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
             <p className="text-center text-base md:text-lg text-gray-700 mb-6 md:mb-8 font-medium">
-              Enter your details to generate your Day 1 Playbook
+              Enter your details to get your Day 1 guide
             </p>
             <OfferTool />
           </div>

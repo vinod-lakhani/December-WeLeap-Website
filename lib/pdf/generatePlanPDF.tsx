@@ -135,7 +135,7 @@ export function PlanPDF({ planData }: { planData: PlanData }) {
 
         {/* Take-Home Pay */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Real Monthly Take-Home</Text>
+          <Text style={styles.sectionTitle}>Your actual monthly take-home</Text>
           <Text style={styles.largeValue}>{formatCurrency(planData.takeHomeMonthly)}</Text>
           <Text style={styles.helperText}>{formatCurrency(planData.takeHomeAnnual)} annually</Text>
           <View style={styles.row}>
@@ -146,16 +146,16 @@ export function PlanPDF({ planData }: { planData: PlanData }) {
 
         {/* Safe Rent Range */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Safe Rent Range</Text>
+          <Text style={styles.sectionTitle}>Rent range you can afford</Text>
           <Text style={styles.rangeValue}>{planData.rentRange}</Text>
-          <Text style={styles.helperText}>Based on your take-home pay and early-career flexibility.</Text>
+          <Text style={styles.helperText}>Based on your take-home pay and flexibility when you're just starting out.</Text>
           <Text style={styles.helperText}>Calculated as 28–35% of take-home pay{planData.debtMonthly ? ` (adjusted for $${planData.debtMonthly}/mo debt)` : ''}.</Text>
         </View>
 
         {/* Upfront Cash Needed */}
         {planData.upfrontCashLow && planData.upfrontCashHigh && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Upfront Cash Needed Before Your First Paycheck</Text>
+            <Text style={styles.sectionTitle}>Cash you need upfront (before your first paycheck)</Text>
             <Text style={styles.rangeValue}>{formatCurrencyRange(planData.upfrontCashLow, planData.upfrontCashHigh)}</Text>
             <Text style={styles.helperText}>Estimate based on start date and typical move-in timing.</Text>
             <View style={[styles.row, { marginTop: 8 }]}>

@@ -16,7 +16,7 @@ export function AssumptionsAccordion({ taxSource }: AssumptionsAccordionProps) {
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="assumptions" className="border-[#D1D5DB]">
         <AccordionTrigger className="text-[#111827] hover:no-underline">
-          Assumptions
+          How we figure it
         </AccordionTrigger>
         <AccordionContent className="text-sm text-[#111827]/80 space-y-4">
           <div>
@@ -33,20 +33,18 @@ export function AssumptionsAccordion({ taxSource }: AssumptionsAccordionProps) {
           </div>
 
           <div className="border-t border-[#D1D5DB] pt-4">
-            <h4 className="font-semibold mb-2">Rent Range Rule</h4>
+            <h4 className="font-semibold mb-2">How we get your rent range</h4>
             <p>
-              The safe rent range is calculated as 28–35% of your monthly take-home pay (after
-              taxes and debt payments). This follows the common budgeting guideline that housing
-              costs should not exceed one-third of your income.
+              Your rent range is a rule of thumb: 28–35% of your monthly take-home (after taxes and
+              debt). Housing usually shouldn't eat more than about one-third of what you bring home.
             </p>
           </div>
 
           <div className="border-t border-[#D1D5DB] pt-4">
-            <h4 className="font-semibold mb-2">Debt Adjustment</h4>
+            <h4 className="font-semibold mb-2">Factoring in debt</h4>
             <p>
-              If you provide monthly debt payments, these are subtracted from your take-home pay
-              before calculating the rent range. This ensures your rent budget accounts for existing
-              financial obligations.
+              If you add monthly debt payments, we subtract those from your take-home before we get
+              your rent range. That way your rent budget already accounts for what you owe.
             </p>
           </div>
 

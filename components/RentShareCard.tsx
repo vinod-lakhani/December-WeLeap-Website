@@ -76,14 +76,14 @@ export function RentShareCard({
           <div ref={cardRef} className="min-w-[320px] max-w-[400px] p-6">
             {/* Card content — matches Builder spec */}
             <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1">
-              Safe Rent Range
+              Rent range you can afford
             </p>
             <p className="text-2xl font-bold text-[#111827] mb-4">{rentRange}</p>
 
             {upfrontRange && (
               <>
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1">
-                  Upfront cash needed
+                  Cash you need upfront
                 </p>
                 <p className="text-lg font-semibold text-[#111827] mb-4">{upfrontRange}</p>
               </>
@@ -92,7 +92,7 @@ export function RentShareCard({
             {netWorthProtection > 0 && (
               <p className="text-sm text-[#111827]/90 mb-4">
                 Choosing within this range protects ~{formatCurrency(netWorthProtection)} of future
-                net worth.
+                money.
               </p>
             )}
 

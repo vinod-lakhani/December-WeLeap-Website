@@ -379,7 +379,7 @@ export function OfferTool() {
       {/* Input Form */}
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
-          <CardTitle className="text-xl text-[#111827]">Calculate Your Rent Range</CardTitle>
+          <CardTitle className="text-xl text-[#111827]">Find your rent range</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Salary Input */}
@@ -525,7 +525,7 @@ export function OfferTool() {
               </div>
             </div>
             <p className="text-xs text-[#111827]/60 mt-1">
-              Used to understand timing before your first paycheck.
+              Shows the gap before your first paycheck.
             </p>
           </div>
 
@@ -540,7 +540,7 @@ export function OfferTool() {
             disabled={isCalculating}
             className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
           >
-            {isCalculating ? 'Calculating...' : 'See my rent reality'}
+            {isCalculating ? 'Calculating...' : 'See my numbers'}
           </Button>
           <p className="text-xs text-gray-500 text-center mt-2">
             Takes about 2 minutes. We'll email your plan.
@@ -580,15 +580,15 @@ export function OfferTool() {
           <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-xl text-[#111827]">
-                Your rent is your first allocation decision.
+                Your rent is your first big money decision.
               </CardTitle>
               <p className="text-sm text-gray-600 mt-1">
-                Your full plan adjusts savings, debt, and investing around this number.
+                Your full plan adjusts savings, debt, and investing around this.
               </p>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-700 mb-4">
-                Most people only optimize rent. The real leverage is how the rest of your money flows around it.
+                Most people only focus on rent. The real gains come from how the rest of your money flows.
               </p>
               <div>
                 <Button
@@ -612,7 +612,7 @@ export function OfferTool() {
                   }}
                   className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                 >
-                  Build my full financial plan → (2 min)
+                  Build my full money plan → (2 min)
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
                   Takes ~2 minutes. No email required.
@@ -627,7 +627,7 @@ export function OfferTool() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="debt-toggle" className="text-[#111827] cursor-pointer">
-                    Adjust for debt payments (minimums only, optional)
+                    Factor in debt (minimums only, optional)
                   </Label>
                   <button
                     type="button"
