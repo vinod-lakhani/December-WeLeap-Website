@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
         apiUrl.searchParams.set('country', 'US');
         apiUrl.searchParams.set('region', state);
         apiUrl.searchParams.set('income', salaryAnnual.toString());
+        apiUrl.searchParams.set('filing_status', 'single'); // Required for US; default to single
 
         const response = await fetch(apiUrl.toString(), {
           method: 'GET',

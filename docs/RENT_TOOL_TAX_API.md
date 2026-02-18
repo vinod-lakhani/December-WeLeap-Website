@@ -37,7 +37,7 @@ GET https://api.api-ninjas.com/v1/incometaxcalculator
 ### Optional Parameters (not currently used)
 
 - `tax_year` — Tax year (YYYY). Defaults to latest if omitted.
-- `filing_status` — `single`, `married`, `married_separate`, `head_of_household`. API defaults if omitted.
+- `filing_status` — `single`, `married`, `married_separate`, `head_of_household`. Required for US; we default to `single`.
 - `deductions` — Total tax deductions.
 - `credits` — Total tax credits.
 
