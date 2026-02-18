@@ -28,10 +28,14 @@ interface SavingsStackSummaryProps {
   preTax401k?: { currentPct: number; targetPct: number; matchRatePct?: number; matchCapPct?: number } | null;
   /** 401(k) impact at Year 30. Only for primary when kind === 'match'. */
   impact401kAtYear30?: number | null;
+  /** Annual contribution increase (employee + match) for 401k. Used for transparent framing. */
+  annualContributionIncrease401k?: number | null;
   /** Cost of delay if user waits 12 months. Only for primary when kind === 'match'. */
   costOfDelay12Mo?: number | null;
   /** HSA long-term impact (by retirement). Only for primary when kind === 'hsa'. */
   impactHsaAtYear30?: number | null;
+  /** HSA annual contribution increase (target - current). Used for transparent framing. */
+  annualContributionIncreaseHsa?: number | null;
   /** Cost of delay 12 mo for HSA (optional). */
   costOfDelayHsa12Mo?: number | null;
   /** When primary is retirement_15, override match card to show this target (aligns with highest-leverage move). */
@@ -51,13 +55,17 @@ function formatCurrencyShort(n: number): string {
 function StepwisePrimaryCard({
   preTax401k,
   impact401kAtYear30,
+  annualContributionIncrease401k,
   hsaLeap,
   impactHsaAtYear30,
+  annualContributionIncreaseHsa,
 }: {
   preTax401k: { currentPct: number; targetPct: number };
   impact401kAtYear30?: number | null;
+  annualContributionIncrease401k?: number | null;
   hsaLeap: Leap;
   impactHsaAtYear30?: number | null;
+  annualContributionIncreaseHsa?: number | null;
 }) {
   const current = hsaLeap.hsaCurrentAnnual ?? 0;
   const target = hsaLeap.targetValue ?? hsaLeap.hsaMaxAnnual ?? 0;
@@ -77,10 +85,13 @@ function StepwisePrimaryCard({
           <p className="mt-0.5 text-sm text-gray-600">
             Your #1 move from Leap Impact — apply this first.
           </p>
-          {impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
-            <p className="mt-1 text-xs text-[#3F6B42]">
-              Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement
-            </p>
+          {(impact401kAtYear30 != null && impact401kAtYear30 > 0) && (
+            <div className="mt-1 text-xs text-[#3F6B42]">
+              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+            </div>
           )}
         </div>
 
@@ -98,10 +109,13 @@ function StepwisePrimaryCard({
           <p className="mt-1 text-sm text-gray-600">
             Tax-free in, tax-free growth, tax-free out for health. Long-term investing vehicle.
           </p>
-          {impactHsaAtYear30 != null && impactHsaAtYear30 > 0 && (
-            <p className="mt-2 text-sm font-medium text-[#3F6B42]">
-              Impact: +{formatCurrencyShort(impactHsaAtYear30)} by retirement
-            </p>
+          {(impactHsaAtYear30 != null && impactHsaAtYear30 > 0) && (
+            <div className="mt-2 text-sm font-medium text-[#3F6B42]">
+              {annualContributionIncreaseHsa != null && annualContributionIncreaseHsa > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncreaseHsa)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impactHsaAtYear30)}</p>
+            </div>
           )}
           <p className="text-xs text-gray-400 mt-1">Assumes 7% real return.</p>
           <p className="text-xs text-gray-500 mt-3">
@@ -117,16 +131,20 @@ function StepwisePrimaryCard({
 function PrimaryCard({
   primary,
   impact401kAtYear30,
+  annualContributionIncrease401k,
   costOfDelay12Mo,
   impactHsaAtYear30,
+  annualContributionIncreaseHsa,
   acknowledge401kFirst,
   preTax401k,
   onUnlockDetailsClick,
 }: {
   primary: PrimaryLeapResult;
   impact401kAtYear30?: number | null;
+  annualContributionIncrease401k?: number | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
+  annualContributionIncreaseHsa?: number | null;
   acknowledge401kFirst?: boolean;
   preTax401k?: { currentPct: number; targetPct: number } | null;
   onUnlockDetailsClick?: () => void;
@@ -138,8 +156,10 @@ function PrimaryCard({
       <StepwisePrimaryCard
         preTax401k={preTax401k}
         impact401kAtYear30={impact401kAtYear30}
+        annualContributionIncrease401k={annualContributionIncrease401k}
         hsaLeap={leap}
         impactHsaAtYear30={impactHsaAtYear30}
+        annualContributionIncreaseHsa={annualContributionIncreaseHsa}
       />
     );
   }
@@ -160,10 +180,13 @@ function PrimaryCard({
           <p className="mt-1 text-sm text-gray-600">
             Unlocks employer match — free money that compounds for decades.
           </p>
-          {impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
-            <p className="mt-2 text-sm font-medium text-[#3F6B42]">
-              Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement
-            </p>
+          {(impact401kAtYear30 != null && impact401kAtYear30 > 0) && (
+            <div className="mt-2 text-sm font-medium text-[#3F6B42]">
+              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+            </div>
           )}
           {costOfDelay12Mo != null && costOfDelay12Mo > 0 && (
             <p className="text-xs text-gray-600 mt-0.5">
@@ -197,10 +220,13 @@ function PrimaryCard({
           <p className="mt-1 text-sm text-gray-600">
             Tax-free in, tax-free growth, tax-free out for health. Long-term investing vehicle.
           </p>
-          {impactHsaAtYear30 != null && impactHsaAtYear30 > 0 && (
-            <p className="mt-2 text-sm font-medium text-[#3F6B42]">
-              Impact: +{formatCurrencyShort(impactHsaAtYear30)} by retirement
-            </p>
+          {(impactHsaAtYear30 != null && impactHsaAtYear30 > 0) && (
+            <div className="mt-2 text-sm font-medium text-[#3F6B42]">
+              {annualContributionIncreaseHsa != null && annualContributionIncreaseHsa > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncreaseHsa)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impactHsaAtYear30)}</p>
+            </div>
           )}
           <p className="text-xs text-gray-400 mt-1">Assumes 7% real return.</p>
         </CardContent>
@@ -492,16 +518,20 @@ function PayrollCard({
   primaryKind,
   primaryTarget401kPct,
   impact401kAtYear30,
+  annualContributionIncrease401k,
   costOfDelay12Mo,
   impactHsaAtYear30,
+  annualContributionIncreaseHsa,
   costOfDelayHsa12Mo,
 }: {
   leap: Leap;
   primaryKind: string;
   primaryTarget401kPct?: number;
   impact401kAtYear30?: number | null;
+  annualContributionIncrease401k?: number | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
+  annualContributionIncreaseHsa?: number | null;
   costOfDelayHsa12Mo?: number | null;
 }) {
   if (leap.category === 'match') {
@@ -526,7 +556,12 @@ function PayrollCard({
             </p>
           )}
           {showImpact && impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
-            <p className="text-xs font-medium text-[#3F6B42] mt-1">Impact: +{formatCurrencyShort(impact401kAtYear30)} by retirement</p>
+            <div className="text-xs font-medium text-[#3F6B42] mt-1">
+              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+            </div>
           )}
           {showImpact && costOfDelay12Mo != null && costOfDelay12Mo > 0 && (
             <p className="text-[10px] text-gray-600 mt-0.5">If you wait 12 months: –{formatCurrencyShort(costOfDelay12Mo)}</p>
@@ -558,7 +593,12 @@ function PayrollCard({
           <p className="font-medium text-sm text-[#111827]">{title}</p>
           {subtitle && <p className="text-xs text-gray-700 mt-0.5">{subtitle}</p>}
           {!maxed && showImpact && impactHsaAtYear30 != null && impactHsaAtYear30 > 0 && (
-            <p className="text-xs font-medium text-[#3F6B42] mt-1">Impact: +{formatCurrencyShort(impactHsaAtYear30)} by retirement</p>
+            <div className="text-xs font-medium text-[#3F6B42] mt-1">
+              {annualContributionIncreaseHsa != null && annualContributionIncreaseHsa > 0 && (
+                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncreaseHsa)}</p>
+              )}
+              <p>30-year compounded value: ~{formatCurrencyShort(impactHsaAtYear30)}</p>
+            </div>
           )}
           {!maxed && showImpact && costOfDelayHsa12Mo != null && costOfDelayHsa12Mo > 0 && (
             <p className="text-[10px] text-gray-600 mt-0.5">If you wait 12 months: –{formatCurrencyShort(costOfDelayHsa12Mo)}</p>
@@ -583,8 +623,10 @@ export function SavingsStackSummary({
   monthlyCapitalAvailable = null,
   preTax401k = null,
   impact401kAtYear30 = null,
+  annualContributionIncrease401k = null,
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
+  annualContributionIncreaseHsa = null,
   costOfDelayHsa12Mo = null,
   primaryTarget401kPct,
   acknowledge401kFirst = false,
@@ -642,8 +684,10 @@ export function SavingsStackSummary({
         <PrimaryCard
           primary={primary}
           impact401kAtYear30={impact401kAtYear30}
+          annualContributionIncrease401k={annualContributionIncrease401k}
           costOfDelay12Mo={costOfDelay12Mo}
           impactHsaAtYear30={impactHsaAtYear30}
+          annualContributionIncreaseHsa={annualContributionIncreaseHsa}
           acknowledge401kFirst={acknowledge401kFirst}
           preTax401k={preTax401k}
           onUnlockDetailsClick={onUnlockDetailsClick}
@@ -671,8 +715,10 @@ export function SavingsStackSummary({
                   primaryKind={primary.kind}
                   primaryTarget401kPct={primaryTarget401kPct}
                   impact401kAtYear30={impact401kAtYear30}
+                  annualContributionIncrease401k={annualContributionIncrease401k}
                   costOfDelay12Mo={costOfDelay12Mo}
                   impactHsaAtYear30={impactHsaAtYear30}
+                  annualContributionIncreaseHsa={annualContributionIncreaseHsa}
                   costOfDelayHsa12Mo={costOfDelayHsa12Mo}
                 />
               )

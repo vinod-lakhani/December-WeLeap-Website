@@ -21,6 +21,7 @@ export interface LeapStackSaveBody {
   retirementFocus?: 'high' | 'medium' | 'low';
   computedLeaps?: Array<{ id: string; title: string; status: string; impactText?: string }>;
   delta30yr?: number;
+  annualContributionIncrease?: number | null;
   nextLeapTitle?: string;
 }
 
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       recommended401kPct,
       nextLeapTitle,
       delta30yr,
+      annualContributionIncrease,
     } = body;
 
     if (!email || !email.includes('@')) {
@@ -97,6 +99,14 @@ export async function POST(request: NextRequest) {
             maximumFractionDigits: 0,
           }).format(delta30yr)
         : null;
+    const annualFormatted =
+      annualContributionIncrease != null && annualContributionIncrease > 0
+        ? new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+          }).format(annualContributionIncrease)
+        : null;
 
     const fromEmail = 'WeLeap <vinod@weleap.ai>';
     const { error: emailError } = await resend.emails.send({
@@ -110,7 +120,8 @@ export async function POST(request: NextRequest) {
             Here’s your saved <strong>Leap stack plan</strong>.
           </p>
           ${nextLeapTitle ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 12px;"><strong>Next Leap:</strong> ${nextLeapTitle}</p>` : ''}
-          ${deltaFormatted ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">30-year impact: <strong>${deltaFormatted}</strong></p>` : ''}
+          ${annualFormatted ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">Annual contribution increase: ${annualFormatted}</p>` : ''}
+          ${deltaFormatted ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">30-year compounded value: ~${deltaFormatted}</p>` : ''}
           <div style="text-align: center; margin: 32px 0;">
             <a href="${allocatorUrl}" style="display: inline-block; background-color: #3F6B42; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
               Open your plan

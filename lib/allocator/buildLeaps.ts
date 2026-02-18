@@ -5,6 +5,7 @@
 
 import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, CapitalRoutingResult } from './leapModel';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
+import { computeAnnualContributionIncrease401k } from '@/lib/leapImpact/trajectory';
 import { compute401kStatus } from '@/lib/leapImpact/leverPriority';
 import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
@@ -131,6 +132,14 @@ export function buildLeaps(
       matchCapPct,
       true
     ));
+    const annualIncrease = matchCaptured || k401AtCap ? 0 : computeAnnualContributionIncrease401k({
+      grossAnnual: prefill.salaryAnnual,
+      current401kPct: prefill.current401kPct,
+      optimized401kPct: recommended401k,
+      matchPct: matchCapPct,
+      matchRatePct,
+      hasEmployerMatch: true,
+    });
     leaps.push({
       id: 'match',
       title: k401AtCap
@@ -145,7 +154,8 @@ export function buildLeaps(
       currentValue: prefill.current401kPct,
       deltaValue: matchCaptured || k401AtCap ? 0 : recommended401k - prefill.current401kPct,
       timelineText: matchCaptured || k401AtCap ? undefined : 'Start next paycheck',
-      impactText: matchCaptured || k401AtCap ? undefined : `Adds ${formatCurrency(impact30)} over 30 years`,
+      impactText: matchCaptured || k401AtCap ? undefined : `Annual contribution increase: ${formatCurrency(annualIncrease)}. 30-year compounded value: ${formatCurrency(impact30)}`,
+      annualContributionIncrease: matchCaptured || k401AtCap ? undefined : annualIncrease,
       requiresUnlock: false,
       cta: undefined,
       isPayroll: true,
@@ -179,6 +189,7 @@ export function buildLeaps(
       currentValue: currentHsa,
       deltaValue: hsaMaxed ? 0 : hsaGap,
       impactText: hsaMaxed ? undefined : 'Tax-free in, tax-free growth, tax-free out for health.',
+      annualContributionIncrease: hsaMaxed ? undefined : hsaGap,
       requiresUnlock: false,
       isPayroll: true,
       isPreTax: true,

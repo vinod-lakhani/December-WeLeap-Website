@@ -191,3 +191,38 @@ export function costOfDelay(
 
   return Math.round(nw30OptimizedFromStart - nw30IfDelayed);
 }
+
+/**
+ * Annual contribution increase (employee + employer match) when moving from current to optimized 401k %.
+ * Used for transparent display: "Annual contribution increase: $X / 30-year compounded value: ~$Y"
+ */
+export function computeAnnualContributionIncrease401k(inputs: TrajectoryInputs): number {
+  const matchRatePct = inputs.matchRatePct ?? 100;
+  const empCurAnnual = Math.min((inputs.grossAnnual * inputs.current401kPct) / 100, K401_EMPLOYEE_CAP_2025);
+  const empOptAnnual = Math.min((inputs.grossAnnual * inputs.optimized401kPct) / 100, K401_EMPLOYEE_CAP_2025);
+  const curPctForMatch = inputs.grossAnnual > 0 ? (empCurAnnual / inputs.grossAnnual) * 100 : 0;
+  const optPctForMatch = inputs.grossAnnual > 0 ? (empOptAnnual / inputs.grossAnnual) * 100 : 0;
+  const matchCur = inputs.hasEmployerMatch
+    ? (inputs.grossAnnual * Math.min((curPctForMatch * matchRatePct) / 100, inputs.matchPct) / 100)
+    : 0;
+  const matchOpt = inputs.hasEmployerMatch
+    ? (inputs.grossAnnual * Math.min((optPctForMatch * matchRatePct) / 100, inputs.matchPct) / 100)
+    : 0;
+  const employeeDelta = empOptAnnual - empCurAnnual;
+  const matchDelta = matchOpt - matchCur;
+  return Math.round(employeeDelta + matchDelta);
+}
+
+/**
+ * Estimate 30-year compounded value of HSA annual contribution increase.
+ * FV of monthly contributions (annualIncrease/12) at 7% real return over 30 years.
+ */
+export function estimateHsaImpact30yr(annualIncrease: number, realReturn?: number): number {
+  if (annualIncrease <= 0) return 0;
+  const r = realReturn ?? 0.07;
+  const monthlyRate = r / MONTHS_PER_YEAR;
+  const monthlyP = annualIncrease / MONTHS_PER_YEAR;
+  const nMonths = 30 * MONTHS_PER_YEAR;
+  if (monthlyRate === 0) return Math.round(monthlyP * nMonths);
+  return Math.round(monthlyP * (Math.pow(1 + monthlyRate, nMonths) - 1) / monthlyRate);
+}

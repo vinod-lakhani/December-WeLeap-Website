@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { buildLeaps } from '@/lib/allocator/buildLeaps';
+import { computeAnnualContributionIncrease401k, estimateHsaImpact30yr } from '@/lib/leapImpact/trajectory';
 import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
@@ -275,6 +276,17 @@ function AllocatorContent() {
   const nextLeapTitle = nextLeap?.title ?? null;
   const impact401kAtYear30 = prefill?.leapDelta30yr ?? null;
   const costOfDelay12Mo = prefill?.costOfDelay12Mo ?? null;
+  const annualContributionIncrease401k = useMemo(() => {
+    if (!prefill?.salaryAnnual || prefill.current401kPct >= effectiveTarget401kPct) return null;
+    return computeAnnualContributionIncrease401k({
+      grossAnnual: prefill.salaryAnnual,
+      current401kPct: prefill.current401kPct,
+      optimized401kPct: effectiveTarget401kPct,
+      matchPct: prefill.matchCapPct ?? prefill.employerMatchPct ?? 5,
+      matchRatePct: prefill.matchRatePct ?? 100,
+      hasEmployerMatch: prefill.employerMatchEnabled ?? false,
+    });
+  }, [prefill?.salaryAnnual, prefill?.current401kPct, prefill?.employerMatchEnabled, prefill?.matchCapPct, prefill?.employerMatchPct, prefill?.matchRatePct, effectiveTarget401kPct]);
 
   const primaryResult = useMemo(
     () =>
@@ -297,6 +309,14 @@ function AllocatorContent() {
     () => leaps.filter((l) => l.category === 'match' || l.category === 'hsa'),
     [leaps]
   );
+
+  const hsaLeap = leaps.find((l) => l.category === 'hsa');
+  const annualContributionIncreaseHsa = hsaLeap?.deltaValue ?? null;
+  const impactHsaAtYear30 = useMemo(() => {
+    const annual = annualContributionIncreaseHsa;
+    if (annual == null || annual <= 0) return null;
+    return estimateHsaImpact30yr(annual);
+  }, [annualContributionIncreaseHsa]);
 
   /** Next move for email: prefer 401k rec when from Leap Impact, else nextLeap title, else primary. */
   const nextMoveForEmail = useMemo(() => {
@@ -351,6 +371,7 @@ function AllocatorContent() {
             retirementFocus: unlockData?.retirementFocus,
             nextLeapTitle: nextMoveForEmail,
             impactAtYear30: impact401kAtYear30 ?? undefined,
+            annualContributionIncrease: annualContributionIncrease401k ?? undefined,
             costOfDelay12Mo: costOfDelay12Mo ?? undefined,
             actionIntent: actionIntent ?? undefined,
             leapTitles: leaps.map((l) => l.title),
@@ -752,8 +773,10 @@ function AllocatorContent() {
                       primaryTarget401kPct={primaryResult.kind === 'retirement_15' ? primaryResult.retirement15?.targetPct : primaryResult.kind === 'match' && primaryResult.leap ? (primaryResult.leap.targetValue as number) : undefined}
                       acknowledge401kFirst={primaryResult.kind === 'hsa' && prefill?.current401kPct != null && prefill?.recommended401kPct != null && prefill.current401kPct < prefill.recommended401kPct}
                       impact401kAtYear30={impact401kAtYear30}
+                      annualContributionIncrease401k={annualContributionIncrease401k}
                       costOfDelay12Mo={costOfDelay12Mo}
-                      impactHsaAtYear30={null}
+                      impactHsaAtYear30={impactHsaAtYear30}
+                      annualContributionIncreaseHsa={payrollLeaps.find((l) => l.category === 'hsa')?.deltaValue ?? null}
                       costOfDelayHsa12Mo={null}
                       onUnlockDetailsClick={() => setCurrentStep(0)}
                     />

@@ -23,6 +23,7 @@ export interface EarlyAccessLeadBody {
   retirementFocus?: 'high' | 'medium' | 'low';
   nextLeapTitle: string;
   impactAtYear30: number | null;
+  annualContributionIncrease?: number | null;
   costOfDelay12Mo: number | null;
   actionIntent?: boolean | null;
   /** Ordered list of leap titles for email preview (3–5 items) */
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
       source = 'leap_stack',
       nextLeapTitle,
       impactAtYear30,
+      annualContributionIncrease,
       costOfDelay12Mo,
       actionIntent,
       leapTitles = [],
@@ -86,6 +88,14 @@ export async function POST(request: NextRequest) {
             maximumFractionDigits: 0,
           }).format(impactAtYear30)
         : null;
+    const annualFormatted =
+      annualContributionIncrease != null && annualContributionIncrease > 0
+        ? new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+          }).format(annualContributionIncrease)
+        : null;
     const costFormatted =
       costOfDelay12Mo != null && costOfDelay12Mo > 0
         ? new Intl.NumberFormat('en-US', {
@@ -118,7 +128,8 @@ export async function POST(request: NextRequest) {
 
           <p style="color: #111827; font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your next move</p>
           ${nextLeapTitle ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 8px;">Do this: <strong>${escapeHtml(nextLeapTitle)}</strong></p>` : ''}
-          ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">30-year upside: +${impactFormatted}</p>` : ''}
+          ${annualFormatted ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">Annual contribution increase: ${annualFormatted}</p>` : ''}
+          ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">30-year compounded value: ~${impactFormatted}</p>` : ''}
           ${costFormatted ? `<p style="color: #6B7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Waiting 12 months costs ~${costFormatted}</p>` : '<p style="margin-bottom: 20px;"></p>'}
 
           ${planListHtml ? `<p style="color: #111827; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px;">Your full Leap stack</p><p style="color: #6B7280; font-size: 14px; margin-bottom: 8px;">Parallel routing: 40% safety buffer → 40% of remainder to debt → rest split retirement/brokerage.</p>${planListHtml}<p style="margin-bottom: 24px;"></p>` : ''}

@@ -26,6 +26,8 @@ export interface Leap {
   deltaValue?: number;
   timelineText?: string;
   impactText?: string;
+  /** Annual contribution increase (employee + match) for 401k; HSA gap for HSA. Used for transparent framing. */
+  annualContributionIncrease?: number;
   whyNowText?: string;
   requiresUnlock?: boolean;
   cta?: { label: string; action: LeapCtaAction };

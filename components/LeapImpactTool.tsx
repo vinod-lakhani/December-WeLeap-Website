@@ -25,7 +25,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
-import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
+import { runTrajectory, costOfDelay, computeAnnualContributionIncrease401k } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT, DEFAULT_MATCH_PCT, DEFAULT_CURRENT_401K_PCT } from '@/lib/leapImpact/constants';
 import { buildAllocatorUrl, buildAllocatorPrefillUrl, type AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { formatCurrency } from '@/lib/rounding';
@@ -115,6 +115,20 @@ export function LeapImpactTool() {
   const trajectoryResult = useMemo(() => {
     if (!taxResult || salaryNum <= 0) return null;
     return runTrajectory({
+      grossAnnual: salaryNum,
+      current401kPct: current401kNum,
+      optimized401kPct: leap.optimized401kPct,
+      matchPct: matchCapPctNum,
+      matchRatePct: matchRatePctNum,
+      hasEmployerMatch: hasMatch,
+      realReturn: REAL_RETURN_DEFAULT,
+      years: 30,
+    });
+  }, [taxResult, salaryNum, current401kNum, leap.optimized401kPct, matchCapPctNum, matchRatePctNum, hasMatch]);
+
+  const annualContributionIncrease = useMemo(() => {
+    if (!taxResult || salaryNum <= 0) return 0;
+    return computeAnnualContributionIncrease401k({
       grossAnnual: salaryNum,
       current401kPct: current401kNum,
       optimized401kPct: leap.optimized401kPct,
@@ -253,6 +267,7 @@ export function LeapImpactTool() {
         netMonthly: netMonthlyVal,
         recommended401kPct: leap.optimized401kPct,
         delta30yr: trajectoryResult?.delta30yr,
+        annualContributionIncrease: annualContributionIncrease ?? undefined,
         leapSummary: leap.summary,
       };
       const emailRes = await fetch('/api/email-leap-plan', {
@@ -547,8 +562,11 @@ export function LeapImpactTool() {
               </p>
               {!is401kMaxed && (
                 <>
+                  <p className="text-sm font-medium text-[#111827]">
+                    Annual contribution increase: {formatCurrency(annualContributionIncrease)}
+                  </p>
                   <p className="text-lg font-bold text-[#3F6B42]">
-                    30-year upside: +{formatCurrency(trajectoryResult.delta30yr)}
+                    30-year compounded value: ~{formatCurrency(trajectoryResult.delta30yr)}
                   </p>
                   {costOfDelayAmount > 0 && (
                     <p className="text-sm text-gray-600">

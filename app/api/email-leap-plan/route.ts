@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
         netMonthly?: number;
         recommended401kPct?: number;
         delta30yr?: number;
+        annualContributionIncrease?: number | null;
         leapSummary?: string;
       };
     };
@@ -62,6 +63,10 @@ export async function POST(request: NextRequest) {
       planData?.delta30yr != null
         ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(planData.delta30yr)
         : null;
+    const annualFormatted =
+      planData?.annualContributionIncrease != null && planData.annualContributionIncrease > 0
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(planData.annualContributionIncrease)
+        : null;
     const leapSummary = planData?.leapSummary ?? 'Your single highest-impact Leap';
 
     const { error: emailError } = await resend.emails.send({
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
             Here’s your <strong>trajectory summary</strong> from the Leap Impact Simulator.
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            ${leapSummary}.${deltaFormatted ? ` Over 30 years, that move is worth about <strong>${deltaFormatted}</strong> in projected net worth.` : ''}
+            ${leapSummary}. ${annualFormatted ? `Annual contribution increase: ${annualFormatted}. ` : ''}${deltaFormatted ? `30-year compounded value: ~${deltaFormatted} in projected net worth.` : ''}
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
             Unlock your full Leap stack — emergency fund target, high-APR debt, and retirement vs brokerage split — in one place.
