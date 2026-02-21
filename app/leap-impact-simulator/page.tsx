@@ -7,25 +7,29 @@ import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { track } from '@/lib/analytics';
+import { useLeapVariant } from '@/lib/leapAbTest';
 
 export default function LeapImpactSimulatorPage() {
+  const variant = useLeapVariant();
+
   useEffect(() => {
+    if (!variant) return;
     const timer = setTimeout(() => {
-      track('leap_impact_viewed', { page: '/leap-impact-simulator' }, true);
+      track('leap_impact_viewed', { page: '/leap-impact-simulator', variant }, true);
     }, 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [variant]);
 
   return (
     <PageShell>
       <Section variant="brand" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn(TYPOGRAPHY.h1, 'text-white mb-6 md:mb-8')}>
-            Find Your Highest-Impact Financial Move.
+            Find your biggest money win.
           </h1>
           <p className={cn(TYPOGRAPHY.body, 'text-white/85 leading-relaxed max-w-2xl mx-auto')}>
             Enter your salary and benefits.
-            We&apos;ll show the one change that increases your long-term wealth the most.
+            We&apos;ll show the one change that grows your money the most.
           </p>
           <p className={cn('text-sm text-white/70 mt-4')}>
             No budgeting. No spam. Just your next move + the math.
@@ -37,7 +41,11 @@ export default function LeapImpactSimulatorPage() {
         <Container>
           <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
             <Suspense fallback={<div className="min-h-[400px] flex items-center justify-center text-gray-500">Loading...</div>}>
-              <LeapImpactTool />
+              {variant ? (
+                <LeapImpactTool variant={variant} />
+              ) : (
+                <div className="min-h-[400px] flex items-center justify-center text-gray-500">Loading...</div>
+              )}
             </Suspense>
           </div>
         </Container>

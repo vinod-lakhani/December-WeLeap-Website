@@ -17,10 +17,12 @@ interface ToolFeedbackQuestionnaireProps {
   feedbackResponseMessages?: { yes?: string; not_sure?: string; no?: string };
   /** "default" = card with full-width buttons; "inline" = single line with small buttons */
   variant?: 'default' | 'inline';
+  /** Extra params merged into track() for A/B tests (e.g. { variant: 'A' }) */
+  extraTrackParams?: Record<string, string | number | boolean>;
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Was this helpful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Was this helpful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', extraTrackParams, onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -34,6 +36,7 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
     track(eventName, {
       page,
       feedback,
+      ...extraTrackParams,
     });
     
     // Call callback (e.g. to scroll to CTA) after showing thank you message
