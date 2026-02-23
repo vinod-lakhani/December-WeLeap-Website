@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     const { error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: email.trim(),
-      subject: 'Your full Leap stack is ready — execution in ~2 weeks',
+      subject: 'Your full money plan is ready — execution in ~2 weeks',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
           <p style="color: #111827; font-size: 18px; font-weight: 600; margin-bottom: 24px;">You're on the early access list.</p>
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
           ${impactFormatted ? `<p style="color: #3F6B42; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">30-year compounded value: ~${impactFormatted}</p>` : ''}
           ${costFormatted ? `<p style="color: #6B7280; font-size: 15px; line-height: 1.6; margin-bottom: 20px;">Waiting 12 months costs ~${costFormatted}</p>` : '<p style="margin-bottom: 20px;"></p>'}
 
-          ${planListHtml ? `<p style="color: #111827; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px;">Your full Leap stack</p><p style="color: #6B7280; font-size: 14px; margin-bottom: 8px;">Parallel routing: 40% safety buffer → 40% of remainder to debt → rest split retirement/brokerage.</p>${planListHtml}<p style="margin-bottom: 24px;"></p>` : ''}
+          ${planListHtml ? `<p style="color: #111827; font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px;">Your full money plan</p><p style="color: #6B7280; font-size: 14px; margin-bottom: 8px;">How it flows: 40% safety buffer → 40% of remainder to debt → rest split retirement/brokerage.</p>${planListHtml}<p style="margin-bottom: 24px;"></p>` : ''}
 
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">We'll email you the moment execution is live so you can apply your plan in the MVP.</p>
 

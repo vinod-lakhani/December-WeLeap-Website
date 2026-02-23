@@ -26,7 +26,7 @@ import {
 } from 'recharts';
 import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay, computeAnnualContributionIncrease401k } from '@/lib/leapImpact/trajectory';
-import { REAL_RETURN_DEFAULT, DEFAULT_MATCH_PCT, DEFAULT_CURRENT_401K_PCT } from '@/lib/leapImpact/constants';
+import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { buildAllocatorUrl, buildAllocatorPrefillUrl, type AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
@@ -38,7 +38,6 @@ import {
 } from '@/components/ui/accordion';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { EarlyAccessDialog } from '@/components/early-access-dialog';
-import type { LeapVariant } from '@/lib/leapAbTest';
 
 const PAGE = '/leap-impact-simulator';
 
@@ -55,20 +54,16 @@ interface TaxResult {
   netIncomeAnnual: number;
 }
 
-interface LeapImpactToolProps {
-  variant?: LeapVariant;
-}
-
-export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
+export function LeapImpactTool() {
   const searchParams = useSearchParams();
-  const [wedgeStep, setWedgeStep] = useState<0 | 1 | 2>(0); // B only: 0=CTA, 1=salary, 2=full form
+  const [wedgeStep, setWedgeStep] = useState<0 | 1 | 2>(0); // 0=CTA, 1=salary, 2=full form
   const [salary, setSalary] = useState('');
   const [state, setState] = useState('');
   const [prefillFromRent, setPrefillFromRent] = useState(false);
-  const [hasMatch, setHasMatch] = useState(true);
+  const [matchType, setMatchType] = useState<'yes' | 'no'>('yes');
   const [matchRatePct, setMatchRatePct] = useState('100');
-  const [matchCapPct, setMatchCapPct] = useState(String(DEFAULT_MATCH_PCT));
-  const [current401kPct, setCurrent401kPct] = useState(String(DEFAULT_CURRENT_401K_PCT));
+  const [matchCapPct, setMatchCapPct] = useState('5');
+  const [current401kPct, setCurrent401kPct] = useState('0');
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [taxResult, setTaxResult] = useState<TaxResult | null>(null);
@@ -94,10 +89,8 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
       setState(stateParam);
     }
     setPrefillFromRent(true);
-    if (variant === 'B') {
-      setWedgeStep(2);
-    }
-  }, [searchParams, variant]);
+    setWedgeStep(2);
+  }, [searchParams]);
 
   const salaryNum = useMemo(() => {
     const n = parseFloat(salary);
@@ -105,12 +98,14 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
   }, [salary]);
   const matchRatePctNum = useMemo(() => {
     const n = parseFloat(matchRatePct);
-    return Number.isNaN(n) || n < 0 ? 0 : n;
+    return Number.isNaN(n) || n < 0 ? 100 : n;
   }, [matchRatePct]);
+  const hasMatch = matchType === 'yes';
   const matchCapPctNum = useMemo(() => {
+    if (matchType !== 'yes') return 0;
     const n = parseFloat(matchCapPct);
-    return Number.isNaN(n) || n < 0 ? 0 : n;
-  }, [matchCapPct]);
+    return Number.isNaN(n) || n < 0 ? 5 : n;
+  }, [matchType, matchCapPct]);
   const current401kNum = useMemo(() => {
     const n = parseFloat(current401kPct);
     return Number.isNaN(n) || n < 0 ? 0 : n;
@@ -172,12 +167,10 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
     }));
   }, [trajectoryResult]);
 
-  const trackParams = useMemo(() => ({ page: PAGE, variant }), [variant]);
-
   const handleWedgeCtaClick = useCallback(() => {
     setWedgeStep(1);
-    track('landing_cta_click_show_next_move', { ...trackParams });
-  }, [trackParams]);
+    track('landing_cta_click_show_next_move', { page: PAGE });
+  }, []);
 
   const handleCalculate = useCallback(async () => {
     setError(null);
@@ -213,11 +206,8 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
         realReturn: REAL_RETURN_DEFAULT,
         years: 30,
       });
-      if (variant === 'A') {
-        track('landing_cta_click_show_next_move', { ...trackParams });
-      }
       track('leap_impact_calculated', {
-        ...trackParams,
+        page: PAGE,
         salary: salaryNum,
         state,
         match_yesno: hasMatch,
@@ -232,11 +222,11 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
     } finally {
       setIsCalculating(false);
     }
-  }, [salary, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, variant, trackParams]);
+  }, [salary, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct]);
 
   const handleContinueToAllocator = useCallback(() => {
     const intent = emailSuccessIntent ?? 'lock_plan';
-    track('leap_redirect_to_allocator', { intent, ...trackParams });
+    track('leap_redirect_to_allocator', { intent, page: PAGE });
     const netMonthlyVal = taxResult ? taxResult.netIncomeAnnual / 12 : undefined;
     const url = buildAllocatorPrefillUrl({
       salaryAnnual: salaryNum,
@@ -297,10 +287,10 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
         const data = await emailRes.json();
         throw new Error(data.error || 'Failed to send email');
       }
-      track('leap_impact_email_submitted', { ...trackParams });
+      track('leap_impact_email_submitted', { page: PAGE });
       track('leap_email_submit_success', {
         intent,
-        ...trackParams,
+        page: PAGE,
         salary: salaryNum,
         state,
         current401kPct: current401kNum,
@@ -316,7 +306,7 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
     } finally {
       setEmailSubmitting(false);
     }
-  }, [email, taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, leap.summary, trajectoryResult?.delta30yr, trackParams]);
+  }, [email, taxResult, salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, leap.summary, trajectoryResult?.delta30yr]);
 
   useEffect(() => {
     return () => {
@@ -342,11 +332,11 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
   useEffect(() => {
     if (showResults && !showResultsRef.current) {
       showResultsRef.current = true;
-      track('results_viewed', { ...trackParams });
+      track('results_viewed', { page: PAGE });
       if (is401kMaxed) {
         const current401kAnnual = salaryNum > 0 ? (salaryNum * current401kNum) / 100 : 0;
         track('leap_401k_maxed_shown', {
-          ...trackParams,
+          page: PAGE,
           salary: salaryNum,
           current401kPct: current401kNum,
           current401kAnnual: Math.round(current401kAnnual),
@@ -370,14 +360,14 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
       setError(null);
       if (fromMaxed401k) {
         track('leap_401k_maxed_continue_to_fullstack_clicked', {
-          ...trackParams,
+          page: PAGE,
           salary: salaryNum,
           current401kPct: current401kNum,
         });
       }
-      track('full_stack_expand_clicked', { ...trackParams });
-      track('leap_stack_unlock_clicked', { ...trackParams });
-      track('leap_redirect_to_allocator', { intent: 'unlock_full_stack', ...trackParams });
+      track('full_stack_expand_clicked', { page: PAGE });
+      track('leap_stack_unlock_clicked', { page: PAGE });
+      track('leap_redirect_to_allocator', { intent: 'unlock_full_stack', page: PAGE });
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('leap_clicked_build_full_stack', 'true');
       }
@@ -403,10 +393,10 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
     }
-  }, [salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount, taxResult, trackParams]);
+  }, [salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount, taxResult]);
 
-  const showWedgeCta = variant === 'B' && wedgeStep === 0;
-  const showSalaryOnly = variant === 'B' && wedgeStep === 1;
+  const showWedgeCta = wedgeStep === 0;
+  const showSalaryOnly = wedgeStep === 1;
 
   return (
     <div className="space-y-8">
@@ -424,10 +414,10 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
               onClick={handleWedgeCtaClick}
               className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90 text-lg py-6"
             >
-              Find my top move
+              Check my setup →
             </Button>
             <p className="text-center text-sm text-gray-500 mt-3">
-              One question. One answer. No spam.
+              No signup. No spam. Just your highest-leverage move.
             </p>
           </CardContent>
         </Card>
@@ -461,12 +451,10 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
       )}
 
       {/* Full form: A always, B step 2 */}
-      {(variant === 'A' || wedgeStep >= 2) && (
+      {wedgeStep >= 2 && (
         <Card className="border-[#D1D5DB] bg-white">
           <CardHeader>
-            <CardTitle className="text-xl text-[#111827]">
-              {variant === 'B' ? 'Step 2 of 2 — Job details' : 'Income & Benefits'}
-            </CardTitle>
+            <CardTitle className="text-xl text-[#111827]">Step 2 of 2</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
@@ -499,15 +487,17 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[#111827]">Employer 401(k) match?</Label>
-              <div className="flex gap-4">
+            <div className="space-y-3">
+              <Label className="text-[#111827] font-medium">
+                Employer 401(k) match?
+              </Label>
+              <div className="flex flex-wrap gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="match"
-                    checked={hasMatch}
-                    onChange={() => setHasMatch(true)}
+                    checked={matchType === 'yes'}
+                    onChange={() => setMatchType('yes')}
                     className="accent-[#3F6B42]"
                   />
                   <span className="text-[#111827]">Yes</span>
@@ -516,8 +506,8 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
                   <input
                     type="radio"
                     name="match"
-                    checked={!hasMatch}
-                    onChange={() => setHasMatch(false)}
+                    checked={matchType === 'no'}
+                    onChange={() => setMatchType('no')}
                     className="accent-[#3F6B42]"
                   />
                   <span className="text-[#111827]">No</span>
@@ -538,7 +528,7 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
                     placeholder="100"
                     value={matchRatePct}
                     onChange={(e) => setMatchRatePct(e.target.value)}
-                    className="border-[#D1D5DB] w-24"
+                    className="border-[#D1D5DB]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -553,7 +543,7 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
                     placeholder="5"
                     value={matchCapPct}
                     onChange={(e) => setMatchCapPct(e.target.value)}
-                    className="border-[#D1D5DB] w-24"
+                    className="border-[#D1D5DB]"
                   />
                 </div>
               </div>
@@ -570,7 +560,7 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
                 type="number"
                 min={0}
                 max={100}
-                placeholder="5"
+                placeholder="0"
                 value={current401kPct}
                 onChange={(e) => setCurrent401kPct(e.target.value)}
                 className="border-[#D1D5DB] w-24"
@@ -596,7 +586,7 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
               disabled={isCalculating}
               className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
             >
-              {isCalculating ? 'Calculating...' : 'Show my best move'}
+              {isCalculating ? 'Calculating...' : 'Show my result →'}
             </Button>
             <p className="text-center text-xs text-gray-500 mt-2">
               No email required. You&apos;ll see your #1 move immediately.
@@ -611,41 +601,42 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
           <Card ref={nextMoveCardRef} className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
               <CardTitle className="text-xl text-[#111827]">
-                {is401kMaxed ? '401(k) is maxed ✅' : 'Your next move'}
+                {is401kMaxed ? '401(k) is maxed ✅' : 'Your biggest money move right now'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm font-medium text-[#6B7280]">
-                Step 1: Your biggest win
-              </p>
-              <p className="font-semibold text-[#111827]">{leap.summary}</p>
-              <p className="text-sm text-gray-600">
-                {leap.type === 'capture_match'
-                  ? 'This unlocks more employer match — free money that compounds.'
-                  : leap.type === 'at_cap'
-                    ? "Nice — you're already hitting the annual 401(k) limit. Let's tackle the next one."
-                    : 'Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.'}
-              </p>
-              <p className="text-sm text-gray-600">
-                Next: we&apos;ll structure your Emergency Fund + HSA + Debt + Investing.
-              </p>
-              <p className="text-sm text-gray-600">
-                Most people stop here. The real gains come from your full plan.
-              </p>
               {!is401kMaxed && (
                 <>
-                  <p className="text-sm font-medium text-[#111827]">
-                    Annual contribution increase: {formatCurrency(annualContributionIncrease)}
+                  <p className="font-semibold text-[#111827]">
+                    Move from {current401kNum}% → {leap.optimized401kPct}% in your 401(k)
                   </p>
-                  <p className="text-lg font-bold text-[#3F6B42]">
-                    30-year compounded value: ~{formatCurrency(trajectoryResult.delta30yr)}
+                  {leap.type === 'capture_match' && (
+                    <p className="text-sm text-gray-600">
+                      That unlocks your full employer match.
+                    </p>
+                  )}
+                  {leap.type === 'increase_contribution' && (
+                    <p className="text-sm text-gray-600">
+                      Tax-advantaged compounding. Same 7% assumption; benefit is taxes + discipline.
+                    </p>
+                  )}
+                  <p className="text-2xl font-bold text-[#3F6B42]">
+                    +{formatCurrency(annualContributionIncrease)} per year
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    If invested consistently: ~{formatCurrency(trajectoryResult.delta30yr)} over 30 years
                   </p>
                   {costOfDelayAmount > 0 && (
-                    <p className="text-sm text-gray-600">
-                      Waiting 12 months costs ~{formatCurrency(costOfDelayAmount)}
+                    <p className="text-sm text-red-600/90">
+                      Waiting 12 months could cost ~{formatCurrency(costOfDelayAmount)}
                     </p>
                   )}
                 </>
+              )}
+              {is401kMaxed && (
+                <p className="text-sm text-gray-600">
+                  Nice — you&apos;re already hitting the annual 401(k) limit. Let&apos;s tackle the next one.
+                </p>
               )}
               {is401kMaxed ? (
                 <div className="pt-2">
@@ -743,8 +734,11 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
             <div ref={fullStackSectionRef}>
               <Card className="border-2 border-[#3F6B42] bg-white">
                 <CardContent className="pt-6">
+                  <p className="text-sm text-gray-600 mb-2">
+                    There&apos;s more we can improve in your setup.
+                  </p>
                   <p className="text-sm text-gray-600 mb-4">
-                    We&apos;ll size your safety buffer, check debt, add HSA, and set your routing rules.
+                    Most people stop here. The real gains come from finishing your plan.
                   </p>
                   <Button
                     onClick={() => handleUnlockFullStack(false)}
@@ -761,7 +755,6 @@ export function LeapImpactTool({ variant = 'A' }: LeapImpactToolProps) {
           <ToolFeedbackQuestionnaire
             page={PAGE}
             eventName="leap_impact_feedback_submitted"
-            extraTrackParams={trackParams}
             question="Does this next move make sense for you?"
             buttonLabels={{
               yes: '✅ Yes — this feels right',

@@ -43,11 +43,16 @@ interface SavingsStackSummaryProps {
   /** When true and primary is HSA: acknowledge 401(k) as #1 move, HSA as #2. */
   acknowledge401kFirst?: boolean;
   onUnlockDetailsClick?: () => void;
+  /** CTA to show in collapsed view (e.g. "Keep this plan on autopilot"). */
+  ctaSlot?: React.ReactNode;
 }
 
 function formatCurrencyShort(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}K`;
+  if (n >= 1000) {
+    const k = n / 1000;
+    return `$${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`;
+  }
   return `$${Math.round(n).toLocaleString()}`;
 }
 
@@ -172,7 +177,7 @@ function PrimaryCard({
             Your highest-leverage move
           </p>
           <p className="mt-2 text-lg font-semibold text-[#111827]">
-            Capture free money from your employer
+            Unlock your full employer match
           </p>
           <p className="mt-1 text-[#111827]">
             Increase 401(k) from {formatPct(leap.currentValue)} → {formatPct(leap.targetValue)}
@@ -249,7 +254,7 @@ function PrimaryCard({
             Increase 401(k) from {formatPct(currentPct)} → {formatPct(targetPct)}
           </p>
           <p className="mt-1 text-sm text-gray-600">
-            Getting to 15% of pay into retirement dramatically improves your trajectory.
+            Getting to 15% of pay into retirement dramatically improves your path.
           </p>
           <p className="mt-2 text-sm text-[#3F6B42]">
             Impact: improves long-term compounding.
@@ -343,7 +348,7 @@ function PrimaryCard({
           Start with your next best move
         </p>
         <p className="mt-1 text-sm text-gray-600">
-          Unlock your details above to see your personalized trajectory plan.
+          Add your details above to see your personalized plan.
         </p>
       </CardContent>
     </Card>
@@ -512,6 +517,227 @@ function formatDollars(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+/** Compressed summary tile + expandable full breakdown. */
+function MoneyStructureSummary({
+  preTax401k,
+  payrollLeaps,
+  hasEmployerMatch,
+  primary,
+  annualContributionIncrease401k,
+  annualContributionIncreaseHsa,
+  routing,
+  hasRouting,
+  supportingLeaps,
+  primaryTarget401kPct,
+  impact401kAtYear30,
+  costOfDelay12Mo,
+  impactHsaAtYear30,
+  costOfDelayHsa12Mo,
+  onUnlockDetailsClick,
+  ctaSlot,
+}: {
+  preTax401k: SavingsStackSummaryProps['preTax401k'];
+  payrollLeaps: Leap[];
+  hasEmployerMatch: boolean;
+  primary: PrimaryLeapResult;
+  annualContributionIncrease401k: number | null | undefined;
+  annualContributionIncreaseHsa: number | null | undefined;
+  routing: CapitalRoutingResult | null | undefined;
+  hasRouting: boolean;
+  supportingLeaps: Leap[];
+  primaryTarget401kPct?: number;
+  impact401kAtYear30: number | null | undefined;
+  costOfDelay12Mo: number | null | undefined;
+  impactHsaAtYear30: number | null | undefined;
+  costOfDelayHsa12Mo: number | null | undefined;
+  onUnlockDetailsClick?: () => void;
+  ctaSlot?: React.ReactNode;
+}) {
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+
+  const hasPreTax = preTax401k || payrollLeaps.some((l) => l.category === 'match' || (l.category === 'hsa' && l.hsaMaxAnnual != null));
+  const matchLeap = payrollLeaps.find((l) => l.category === 'match');
+  const matchComplete = matchLeap?.status === 'complete';
+
+  return (
+    <div>
+      {/* Compressed summary tile */}
+      <div className="rounded-xl border-2 border-[#3F6B42]/20 bg-white px-5 py-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-[#111827] mb-4">
+          Your monthly money structure
+        </h2>
+
+        {/* Pre-tax — one clean line */}
+        {hasPreTax && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-600 mb-1">Pre-tax</p>
+            <div className="space-y-1">
+              {hasEmployerMatch && (primary.kind === 'match' || matchLeap) && (
+                <p className="text-base font-semibold text-[#111827]">
+                  {matchComplete
+                    ? '✔ Capture full match'
+                    : `✔ Capture full match${annualContributionIncrease401k != null && annualContributionIncrease401k > 0 ? ` (+${formatCurrencyShort(annualContributionIncrease401k)}/yr)` : ''}`}
+                </p>
+              )}
+              {!hasEmployerMatch && preTax401k && preTax401k.currentPct !== preTax401k.targetPct && (
+                <p className="text-base font-semibold text-[#111827]">
+                  Increase 401(k) to {formatPct(preTax401k.targetPct)}
+                </p>
+              )}
+              {payrollLeaps.filter((l) => l.category === 'hsa' && l.hsaMaxAnnual != null).map((leap) => {
+                const maxed = leap.status === 'complete';
+                return (
+                  <p key={leap.id} className="text-base font-semibold text-[#111827]">
+                    {maxed ? '✔ Fund HSA' : `✔ Fund HSA${annualContributionIncreaseHsa != null && annualContributionIncreaseHsa > 0 ? ` (+${formatCurrencyShort(annualContributionIncreaseHsa)}/yr)` : ''}`}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* After-tax — big numbers, clear flow */}
+        {hasRouting && routing && routing.postTaxSavingsMonthly > 0 && (
+          <div>
+            <p className="text-sm font-medium text-gray-600 mb-2">After-tax</p>
+            <ul className="space-y-1.5 text-base font-semibold text-[#111827]">
+              {routing.efAlloc > 0 && (
+                <li>{formatDollars(routing.efAlloc)} → Safety</li>
+              )}
+              {routing.debtAlloc > 0 && (
+                <li>{formatDollars(routing.debtAlloc)} → Debt</li>
+              )}
+              {routing.retirementAlloc > 0 && (
+                <li>{formatDollars(routing.retirementAlloc)} → Retirement</li>
+              )}
+              {routing.brokerageAlloc > 0 && (
+                <li>{formatDollars(routing.brokerageAlloc)} → Flex investing</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        {/* View full breakdown — below flex investing */}
+        <button
+          type="button"
+          onClick={() => {
+            setBreakdownExpanded((v) => !v);
+            track('leap_full_breakdown_toggled', { expanded: !breakdownExpanded });
+          }}
+          className="mt-4 text-sm font-medium text-[#3F6B42] hover:underline flex items-center gap-1"
+        >
+          {breakdownExpanded ? 'Hide detailed breakdown' : 'View detailed breakdown →'}
+        </button>
+
+        {/* CTA — always visible in collapsed view */}
+        {ctaSlot && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            {ctaSlot}
+          </div>
+        )}
+
+        {/* Survey — in collapsed view, at bottom below CTA */}
+        {!breakdownExpanded && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-500 mb-2">Optional</p>
+            <ToolFeedbackQuestionnaire
+              page="/allocator"
+              eventName="leap_full_plan_feedback_submitted"
+              question="How does this feel?"
+              buttonLabels={{
+                yes: "This makes sense",
+                not_sure: "I'd tweak it",
+                no: "Not for me",
+              }}
+              variant="inline"
+              onFeedbackSubmitted={() => {}}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Full breakdown — shown when expanded */}
+      {breakdownExpanded && (
+        <div className="mt-6 space-y-6">
+          {/* PAYROLL (PRE-TAX) */}
+          {(preTax401k || payrollLeaps.some((l) => l.category === 'hsa' && l.hsaMaxAnnual != null)) && (
+            <div>
+              <h3 className="text-sm font-semibold text-[#111827] mb-1">PAYROLL (PRE-TAX)</h3>
+              <p className="text-xs text-gray-600 mb-2">
+                These come straight from your paycheck. They change your take-home and where the rest goes.
+              </p>
+              <div className="space-y-2">
+                {payrollLeaps.map((leap) =>
+                  (leap.category === 'hsa' && leap.hsaMaxAnnual == null) ? null : (
+                    <PayrollCard
+                      key={leap.id}
+                      leap={leap}
+                      primaryKind={primary.kind}
+                      primaryTarget401kPct={primaryTarget401kPct}
+                      impact401kAtYear30={impact401kAtYear30}
+                      annualContributionIncrease401k={annualContributionIncrease401k}
+                      costOfDelay12Mo={costOfDelay12Mo}
+                      impactHsaAtYear30={impactHsaAtYear30}
+                      annualContributionIncreaseHsa={annualContributionIncreaseHsa}
+                      costOfDelayHsa12Mo={costOfDelayHsa12Mo}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* POST-TAX ROUTING (MONTHLY) */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#111827] mb-1">After-tax: where it goes</h3>
+            {hasRouting && routing && routing.postTaxSavingsMonthly > 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-sm text-gray-700 space-y-1">
+                <p className="font-medium">Here&apos;s where your {formatDollars(routing.postTaxSavingsMonthly)}/mo goes:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>{formatDollars(routing.efAlloc)} → Safety buffer (40%)</li>
+                  {routing.debtAlloc > 0 && (
+                    <li>{formatDollars(routing.debtAlloc)} → High-APR debt (40% of remainder)</li>
+                  )}
+                  <li>{formatDollars(routing.retirementAlloc)} → Retirement</li>
+                  <li>{formatDollars(routing.brokerageAlloc)} → Brokerage (flex)</li>
+                </ul>
+              </div>
+            )}
+            <div className="space-y-2">
+              {supportingLeaps.map((leap) => (
+                <SupportingCard
+                  key={leap.id}
+                  leap={leap}
+                  showAllocationBadge={false}
+                  showFrameworkLabel={true}
+                  onUnlockDetailsClick={onUnlockDetailsClick}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Survey — below breakdown in its own tile when expanded (secondary) */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50/50 px-5 py-4">
+            <p className="text-xs text-gray-500 mb-2">Optional</p>
+            <ToolFeedbackQuestionnaire
+              page="/allocator"
+              eventName="leap_full_plan_feedback_submitted"
+              question="How does this feel?"
+              buttonLabels={{
+                yes: "This makes sense",
+                not_sure: "I'd tweak it",
+                no: "Not for me",
+              }}
+              variant="inline"
+              onFeedbackSubmitted={() => {}}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Compact payroll lever card for PAYROLL (PRE-TAX) section. */
 function PayrollCard({
   leap,
@@ -631,6 +857,7 @@ export function SavingsStackSummary({
   primaryTarget401kPct,
   acknowledge401kFirst = false,
   onUnlockDetailsClick,
+  ctaSlot,
 }: SavingsStackSummaryProps) {
   const hasRouting = routing != null;
 
@@ -650,36 +877,10 @@ export function SavingsStackSummary({
         </div>
       )}
 
-      {/* Pre-tax levers (from your paycheck) */}
-      {(preTax401k || payrollLeaps.some((l) => l.category === 'hsa' && l.hsaMaxAnnual != null)) && (
-        <div>
-          <h3 className="text-sm font-semibold text-[#111827] mb-2">Pre-tax setup (from your paycheck)</h3>
-          <div className="space-y-2 text-sm text-gray-700">
-            {preTax401k && (
-              <p>
-                401(k): {formatPct(preTax401k.currentPct)} → {formatPct(preTax401k.targetPct)}
-                {hasEmployerMatch && preTax401k.matchRatePct != null && preTax401k.matchCapPct != null && (
-                  <> (match: {formatPct(preTax401k.matchRatePct)} up to {formatPct(preTax401k.matchCapPct)})</>
-                )}
-              </p>
-            )}
-            {payrollLeaps.filter((l) => l.category === 'hsa' && l.hsaMaxAnnual != null).map((leap) => {
-              const current = leap.hsaCurrentAnnual ?? 0;
-              const target = leap.targetValue ?? leap.hsaMaxAnnual ?? 0;
-              return (
-                <p key={leap.id}>
-                  HSA: ${Math.round(current).toLocaleString()}/yr → ${Math.round(target).toLocaleString()}/yr
-                </p>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Primary: single dominant card (or Step 1 + Step 2 when from Leap Impact) */}
       <div>
         <h2 className="text-base font-semibold text-[#111827] mb-3">
-          {acknowledge401kFirst ? 'Your ranked moves' : 'Highest-leverage move'}
+          {acknowledge401kFirst ? 'Your moves (in order)' : 'Your biggest win'}
         </h2>
         <PrimaryCard
           primary={primary}
@@ -694,99 +895,25 @@ export function SavingsStackSummary({
         />
       </div>
 
-      {/* Active Allocation System */}
-      <div>
-        <h2 className="text-base font-semibold text-[#111827] mb-3">
-          How your money should flow each month
-        </h2>
-
-        {/* PAYROLL (PRE-TAX) */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-[#111827] mb-1">PAYROLL (PRE-TAX)</h3>
-          <p className="text-xs text-gray-600 mb-2">
-            These are automatic paycheck levers. They change your take-home and your post-tax routing.
-          </p>
-          <div className="space-y-2">
-            {payrollLeaps.map((leap) =>
-              (leap.category === 'hsa' && leap.hsaMaxAnnual == null) ? null : (
-                <PayrollCard
-                  key={leap.id}
-                  leap={leap}
-                  primaryKind={primary.kind}
-                  primaryTarget401kPct={primaryTarget401kPct}
-                  impact401kAtYear30={impact401kAtYear30}
-                  annualContributionIncrease401k={annualContributionIncrease401k}
-                  costOfDelay12Mo={costOfDelay12Mo}
-                  impactHsaAtYear30={impactHsaAtYear30}
-                  annualContributionIncreaseHsa={annualContributionIncreaseHsa}
-                  costOfDelayHsa12Mo={costOfDelayHsa12Mo}
-                />
-              )
-            )}
-          </div>
-        </div>
-
-        {/* POST-TAX ROUTING (MONTHLY) */}
-        <div>
-          <h3 className="text-sm font-semibold text-[#111827] mb-1">Post-tax routing</h3>
-          {hasRouting && routing && routing.postTaxSavingsMonthly > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-sm text-gray-700 space-y-1">
-              <p className="font-medium">Here&apos;s how we&apos;d route your {formatDollars(routing.postTaxSavingsMonthly)}/mo:</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                <li>{formatDollars(routing.efAlloc)} → Safety buffer (40%)</li>
-                {routing.debtAlloc > 0 && (
-                  <li>{formatDollars(routing.debtAlloc)} → High-APR debt (40% of remainder)</li>
-                )}
-                <li>{formatDollars(routing.retirementAlloc)} → Retirement</li>
-                <li>{formatDollars(routing.brokerageAlloc)} → Brokerage (flex)</li>
-              </ul>
-            </div>
-          )}
-          <div className="space-y-2">
-            {supportingLeaps.map((leap) => (
-              <SupportingCard
-                key={leap.id}
-                leap={leap}
-                showAllocationBadge={false}
-                showFrameworkLabel={true}
-                onUnlockDetailsClick={onUnlockDetailsClick}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Full plan feedback questionnaire */}
-        <div className="mt-6">
-          <ToolFeedbackQuestionnaire
-            page="/allocator"
-            eventName="leap_full_plan_feedback_submitted"
-            question="Would you actually follow this structure?"
-            buttonLabels={{
-              yes: "🔥 Yes — I'd use this",
-              not_sure: "🤔 Helpful but needs tweaks",
-              no: "❌ Not for me",
-            }}
-            onFeedbackSubmitted={() => {}}
-          />
-        </div>
-
-        {/* Allocation drift */}
-        <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3">
-          <h3 className="text-sm font-semibold text-[#111827] mb-2">Your plan will drift without recalibration.</h3>
-          <p className="text-xs text-gray-700 leading-relaxed">
-            Income changes.
-            <br />
-            Expenses creep up.
-            <br />
-            Debt disappears.
-            <br />
-            Contributions stall.
-            <br />
-            <br />
-            Most people build a plan once and never adjust it — that&apos;s where compounding leaks.
-          </p>
-        </div>
-      </div>
+      {/* Your monthly money structure — compressed first, expand for full breakdown */}
+      <MoneyStructureSummary
+        preTax401k={preTax401k}
+        payrollLeaps={payrollLeaps}
+        hasEmployerMatch={hasEmployerMatch}
+        primary={primary}
+        annualContributionIncrease401k={annualContributionIncrease401k}
+        annualContributionIncreaseHsa={annualContributionIncreaseHsa}
+        routing={routing}
+        hasRouting={hasRouting}
+        supportingLeaps={supportingLeaps}
+        primaryTarget401kPct={primaryTarget401kPct}
+        impact401kAtYear30={impact401kAtYear30}
+        costOfDelay12Mo={costOfDelay12Mo}
+        impactHsaAtYear30={impactHsaAtYear30}
+        costOfDelayHsa12Mo={costOfDelayHsa12Mo}
+        onUnlockDetailsClick={onUnlockDetailsClick}
+        ctaSlot={ctaSlot}
+      />
     </div>
   );
 }

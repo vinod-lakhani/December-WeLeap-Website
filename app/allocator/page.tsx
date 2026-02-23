@@ -438,22 +438,22 @@ function AllocatorContent() {
               {intent === 'lock_plan' ? (
                 <>
                   <p className="font-semibold text-[#111827]">Your first Leap is locked: 401(k) match update</p>
-                  <p className="text-gray-600 mt-1">Now let’s complete your stack.</p>
+                  <p className="text-gray-600 mt-1">Now let’s finish your plan.</p>
                 </>
               ) : (
                 <>
-                  <p className="font-semibold text-[#111827]">Let’s complete your full Leap stack.</p>
+                  <p className="font-semibold text-[#111827]">Let’s finish your full plan.</p>
                   <p className="text-gray-600 mt-1">Takes ~2 minutes.</p>
                 </>
               )}
             </div>
           )}
 
-          <h1 className={cn(TYPOGRAPHY.h1, 'text-[#111827] mb-2')}>Full Leap stack</h1>
+          <h1 className={cn(TYPOGRAPHY.h1, 'text-[#111827] mb-2')}>Here&apos;s how your money should flow</h1>
           <p className={cn(TYPOGRAPHY.body, 'text-gray-600 mb-8')}>
             {prefill
-              ? 'Complete your allocation plan. We’ve prefilled what we know from your Leap Impact result.'
-              : 'Complete your allocation plan. Enter your details below.'}
+              ? 'Complete your money plan. We’ve prefilled what we know from your Leap Impact result.'
+              : 'Complete your money plan. Enter your details below.'}
           </p>
 
           {prefill && (
@@ -513,7 +513,7 @@ function AllocatorContent() {
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                This is a parallel routing system. We ask a few inputs so we can allocate correctly.
+                We'll ask a few questions so we can split your money the right way.
               </p>
             </div>
 
@@ -543,7 +543,7 @@ function AllocatorContent() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500">
-                    We'll route 40% of your monthly savings toward your buffer until you hit the target.
+                    We'll put 40% of what you save each month toward your buffer until you hit the target.
                   </p>
                   <Button
                     onClick={() => handleStepComplete('emergency_fund')}
@@ -565,7 +565,7 @@ function AllocatorContent() {
                     Do you carry a credit card balance month-to-month?
                   </p>
                   <p className="text-xs text-gray-500">
-                    We route 40% of what's left (after your buffer allocation) to high-APR debt until it's gone.
+                    We'll send 40% of what's left (after your safety buffer) to high-APR debt until it's gone.
                   </p>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -779,24 +779,36 @@ function AllocatorContent() {
                       annualContributionIncreaseHsa={payrollLeaps.find((l) => l.category === 'hsa')?.deltaValue ?? null}
                       costOfDelayHsa12Mo={null}
                       onUnlockDetailsClick={() => setCurrentStep(0)}
+                      ctaSlot={
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm text-gray-700">
+                              Your income changes. Expenses shift. Contributions stall.
+                            </p>
+                            <p className="text-sm font-medium text-[#111827] mt-1">
+                              Without automation, this drifts.
+                            </p>
+                          </div>
+                          {monthlyCapitalAtTarget401k > 0 && (
+                            <p className="text-sm text-gray-700">
+                              Based on your inputs, this stack reallocates ~{formatCurrency(monthlyCapitalAtTarget401k)}/month. Automation ensures it stays aligned.
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-600">
+                            Right now, this is just a recommendation. We can turn it into execution.
+                          </p>
+                          <Button
+                            onClick={handleMvpApplyClick}
+                            className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                          >
+                            Put this on autopilot →
+                          </Button>
+                          <p className="text-xs text-gray-500">
+                            We&apos;ll recalculate when income or expenses change.
+                          </p>
+                        </div>
+                      }
                     />
-                    <div className="pt-4 border-t border-gray-200 space-y-3">
-                      {monthlyCapitalAtTarget401k > 0 && (
-                        <p className="text-sm text-gray-700">
-                          Based on your inputs, this stack reallocates ~{formatCurrency(monthlyCapitalAtTarget401k)}/month.
-                          Automation ensures it stays aligned.
-                        </p>
-                      )}
-                      <Button
-                        onClick={handleMvpApplyClick}
-                        className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                      >
-                        Keep this plan optimized automatically →
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        We&apos;ll recalculate when income or expenses change.
-                      </p>
-                    </div>
                   </CardContent>
                 </Card>
 

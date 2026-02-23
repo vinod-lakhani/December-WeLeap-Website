@@ -12,9 +12,9 @@ interface PageShellProps {
 // The first section (usually hero) will handle its own top padding to account for this offset
 export function PageShell({ children, className }: PageShellProps) {
   return (
-    <div className={cn("min-h-screen bg-white overflow-x-hidden", className)}>
+    <div className={cn("min-h-screen flex flex-col bg-white overflow-x-hidden", className)}>
       <Navigation />
-      <main>{children}</main>
+      <main className="flex-1 flex flex-col">{children}</main>
     </div>
   )
 }

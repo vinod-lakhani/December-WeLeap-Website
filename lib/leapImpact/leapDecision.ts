@@ -63,7 +63,7 @@ export function getRecommendedLeap(
   if (is401kMaxed) {
     return {
       label: '401(k) is maxed',
-      summary: "Nice — you're already hitting the annual 401(k) limit. Let's optimize the next lever.",
+      summary: "Nice — you're already hitting the annual 401(k) limit. Let's tackle the next one.",
       optimized401kPct: current401kPct,
       type: 'at_cap',
     };
@@ -83,7 +83,7 @@ export function getRecommendedLeap(
   if (targetPct <= current401kPct) {
     return {
       label: '401(k) is maxed',
-      summary: "Nice — you're already hitting the annual 401(k) limit. Let's optimize the next lever.",
+      summary: "Nice — you're already hitting the annual 401(k) limit. Let's tackle the next one.",
       optimized401kPct: current401kPct,
       type: 'at_cap',
     };

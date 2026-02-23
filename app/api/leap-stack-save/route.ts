@@ -112,12 +112,12 @@ export async function POST(request: NextRequest) {
     const { error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: email.trim(),
-      subject: 'Your Leap stack plan from WeLeap',
+      subject: 'Your money plan from WeLeap',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">Hey,</p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Here’s your saved <strong>Leap stack plan</strong>.
+            Here’s your saved <strong>money plan</strong>.
           </p>
           ${nextLeapTitle ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 12px;"><strong>Next Leap:</strong> ${nextLeapTitle}</p>` : ''}
           ${annualFormatted ? `<p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 4px;">Annual contribution increase: ${annualFormatted}</p>` : ''}
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
             </a>
           </div>
           <p style="color: #6B7280; font-size: 14px; line-height: 1.6; margin-top: 32px;">
-            This link opens your allocation plan with your numbers. You can return anytime.
+            This link opens your money plan with your numbers. You can return anytime.
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-top: 24px;">— WeLeap</p>
         </div>

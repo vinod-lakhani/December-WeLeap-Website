@@ -72,28 +72,28 @@ export async function POST(request: NextRequest) {
     const { error: emailError } = await resend.emails.send({
       from: fromEmail,
       to: email,
-      subject: 'Your trajectory summary from WeLeap',
+      subject: 'Your money summary from WeLeap',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #374151;">
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
             Hey,
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
-            Here’s your <strong>trajectory summary</strong> from the Leap Impact Simulator.
+            Here’s your <strong>money summary</strong> from the Leap Impact Simulator.
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
             ${leapSummary}. ${annualFormatted ? `Annual contribution increase: ${annualFormatted}. ` : ''}${deltaFormatted ? `30-year compounded value: ~${deltaFormatted} in projected net worth.` : ''}
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
-            Unlock your full Leap stack — emergency fund target, high-APR debt, and retirement vs brokerage split — in one place.
+            Unlock your full money plan — emergency fund target, high-APR debt, and retirement vs brokerage split — in one place.
           </p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${allocatorUrl}" style="display: inline-block; background-color: #3F6B42; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-              Unlock my full Leap stack
+              Unlock my full money plan
             </a>
           </div>
           <p style="color: #6B7280; font-size: 14px; line-height: 1.6; margin-top: 32px;">
-            This link opens your allocation plan with the numbers you entered prefilled. Takes about 2 minutes to complete.
+            This link opens your money plan with the numbers you entered prefilled. Takes about 2 minutes to complete.
           </p>
           <p style="color: #111827; font-size: 16px; line-height: 1.6; margin-top: 24px;">
             — WeLeap

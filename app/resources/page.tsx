@@ -301,7 +301,7 @@ export default function ResourcesPage() {
                   <div className="relative overflow-hidden">
                     <img
                       src="/images/leap_generator.png"
-                      alt="Set your wealth trajectory — Leap Impact Simulator"
+                      alt="See your money growth — Leap Impact Simulator"
                       className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-4 left-4">
@@ -315,10 +315,10 @@ export default function ResourcesPage() {
                       Leap Impact Simulator
                     </h3>
                     <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      One Leap, one chart. See how your single highest-impact move changes your net worth over 30 years — and lock your plan.
+                      One Leap, one chart. See how your single best move changes your net worth over 30 years — and lock your plan.
                     </p>
                     <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
-                      <span>Show my trajectory</span>
+                      <span>See my growth</span>
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                     </div>
                   </div>

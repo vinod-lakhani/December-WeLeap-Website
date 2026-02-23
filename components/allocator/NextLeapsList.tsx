@@ -28,7 +28,7 @@ export function NextLeapsList({ leaps, nextLeapId, hasUnlockData, onLeapClick, o
   return (
     <div className="space-y-3">
       <p className="text-gray-600 text-sm">
-        Ranked capital allocation plan. First item is your <strong>Next</strong> move.
+        Your moves, in order. First one is up next.
       </p>
       {leaps.map((leap) => {
         const isNext = leap.status === 'next';
