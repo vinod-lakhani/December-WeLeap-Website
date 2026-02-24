@@ -92,7 +92,7 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     };
   }
 
-  const hasHighAprDebt = unlock?.carriesBalance === true && (unlock.debtBalance ?? 0) > 0 && !!unlock.debtAprRange;
+  const hasHighAprDebt = unlock?.carriesBalance === true && (unlock.debtBalance ?? 0) > 0;
   if (hasHighAprDebt) {
     const debtLeap = leaps.find((l) => l.category === 'debt' && l.allocationBadge !== '0% (inactive)');
     return { kind: 'debt', leap: debtLeap ?? null };

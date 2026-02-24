@@ -98,7 +98,7 @@ export function buildLeaps(
   const hasUnlockData = !!(
     unlock &&
     (unlock.essentialMonthly != null || unlock.retirementFocus != null) &&
-    (unlock.carriesBalance === false || (unlock.carriesBalance === true && unlock.debtAprRange && unlock.debtBalance != null))
+    (unlock.carriesBalance === false || (unlock.carriesBalance === true && unlock.debtBalance != null))
   );
   const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? DEFAULT_MATCH_CAP_PCT;
   const matchRatePct = prefill?.matchRatePct ?? DEFAULT_MATCH_RATE_PCT;
@@ -231,9 +231,9 @@ export function buildLeaps(
     isPayroll: false,
   });
 
-  // 3) High-APR Debt
+  // 3) High-APR Debt (default 17% APR when not specified)
   const hasDebt = unlock?.carriesBalance === true && unlock.debtBalance != null && unlock.debtBalance > 0;
-  const aprPct = unlock?.debtAprRange ? aprRangeToPercent(unlock.debtAprRange) : null;
+  const aprPct = unlock?.debtAprRange ? aprRangeToPercent(unlock.debtAprRange) : (hasDebt ? 17 : null);
   const isHighApr = aprPct != null && aprPct >= 10;
   const debtActive = hasDebt && isHighApr;
   if (debtActive && unlock.debtBalance != null && aprPct != null) {
@@ -257,7 +257,7 @@ export function buildLeaps(
     });
   } else {
     const noHighAprDebt = unlock?.carriesBalance === false || (hasDebt && !isHighApr);
-    const needsUnlock = unlock?.carriesBalance === undefined || (unlock?.carriesBalance === true && !debtActive && (unlock.debtBalance == null || !unlock.debtAprRange));
+    const needsUnlock = unlock?.carriesBalance === undefined || (unlock?.carriesBalance === true && !debtActive && unlock.debtBalance == null);
     leaps.push({
       id: 'debt',
       title: noHighAprDebt ? 'High-APR debt' : needsUnlock ? 'High-APR debt (≥10% APR)' : 'High-APR debt',

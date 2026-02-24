@@ -78,7 +78,6 @@ function parsePrefillFromSearchParams(params: URLSearchParams): AllocatorPrefill
 const STACK_STEPS = [
   { id: 'ef', name: 'Safety Buffer', title: 'Safety Buffer' },
   { id: 'debt', name: 'Debt', title: 'Debt' },
-  { id: 'retirement_focus', name: 'Retirement Split', title: 'Retirement Split' },
   { id: 'hsa', name: 'HSA', title: 'HSA' },
   { id: 'summary', name: 'Summary', title: 'Summary' },
 ] as const;
@@ -90,9 +89,8 @@ function AllocatorContent() {
   const [currentStep, setCurrentStep] = useState(0);
   const [efMonthly, setEfMonthly] = useState('');
   const [hasHighAprDebt, setHasHighAprDebt] = useState<boolean | null>(null);
-  const [debtAprRange, setDebtAprRange] = useState<string>('');
   const [debtBalance, setDebtBalance] = useState<string>('');
-  const [retirementFocus, setRetirementFocus] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [retirementFocus] = useState<'high' | 'medium' | 'low'>('medium');
   const [hsaEligible, setHsaEligible] = useState<boolean | null>(null);
   const [currentHsaAnnual, setCurrentHsaAnnual] = useState('');
   const [hsaCoverageType, setHsaCoverageType] = useState<'single' | 'family'>('single');
@@ -143,14 +141,14 @@ function AllocatorContent() {
     return {
       essentialMonthly: essentialNum != null && !Number.isNaN(essentialNum) && essentialNum > 0 ? essentialNum : undefined,
       carriesBalance: hasHighAprDebt ?? undefined,
-      debtAprRange: debtAprRange || undefined,
+      debtAprRange: undefined,
       debtBalance: balanceNum != null && !Number.isNaN(balanceNum) && balanceNum > 0 ? balanceNum : undefined,
       retirementFocus: retirementFocus ?? undefined,
       hsaEligible: hsaEligible ?? undefined,
       currentHsaAnnual: hsaNum != null && !Number.isNaN(hsaNum) && hsaNum >= 0 ? hsaNum : undefined,
       hsaCoverageType: hsaCoverageType,
     };
-  }, [efMonthly, hasHighAprDebt, debtAprRange, debtBalance, retirementFocus, hsaEligible, currentHsaAnnual, hsaCoverageType]);
+  }, [efMonthly, hasHighAprDebt, debtBalance, retirementFocus, hsaEligible, currentHsaAnnual, hsaCoverageType]);
 
   const prefillForLeaps = useMemo(() => prefill ? {
     salaryAnnual: prefill.salaryAnnual,
@@ -223,7 +221,7 @@ function AllocatorContent() {
     [prefillForLeaps, unlockData, prefill, monthlyCapitalAtTarget401k]
   );
 
-  const hasUnlockData = !!(unlockData?.essentialMonthly != null || unlockData?.retirementFocus != null || (unlockData?.carriesBalance === false) || (unlockData?.carriesBalance === true && unlockData?.debtBalance != null && unlockData?.debtAprRange));
+  const hasUnlockData = !!(unlockData?.essentialMonthly != null || unlockData?.retirementFocus != null || (unlockData?.carriesBalance === false) || (unlockData?.carriesBalance === true && unlockData?.debtBalance != null));
 
   useEffect(() => {
     if (leaps.length > 0 && nextLeapId !== prevNextLeapIdRef.current) {
@@ -590,35 +588,16 @@ function AllocatorContent() {
                     </label>
                   </div>
                   {hasHighAprDebt === true && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Approx APR</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {(['10-14', '15-19', '20+'] as const).map((range) => (
-                            <Button
-                              key={range}
-                              type="button"
-                              variant={debtAprRange === range ? 'default' : 'outline'}
-                              size="sm"
-                              className={debtAprRange === range ? 'bg-[#3F6B42] hover:bg-[#3F6B42]/90' : ''}
-                              onClick={() => setDebtAprRange(range)}
-                            >
-                              {range === '10-14' ? '10–14%' : range === '15-19' ? '15–19%' : '20%+'}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="debt-balance">Approx balance ($)</Label>
-                        <Input
-                          id="debt-balance"
-                          type="number"
-                          placeholder="e.g. 5000"
-                          value={debtBalance}
-                          onChange={(e) => setDebtBalance(e.target.value)}
-                          className="border-[#D1D5DB] max-w-xs"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="debt-balance">Approx balance ($)</Label>
+                      <Input
+                        id="debt-balance"
+                        type="number"
+                        placeholder="e.g. 5000"
+                        value={debtBalance}
+                        onChange={(e) => setDebtBalance(e.target.value)}
+                        className="border-[#D1D5DB] max-w-xs"
+                      />
                     </div>
                   )}
                   <Button
@@ -634,48 +613,10 @@ function AllocatorContent() {
             {currentStep === 2 && (
               <Card className="border-[#D1D5DB] bg-white">
                 <CardHeader>
-                  <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[2].title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-gray-600">
-                    How much do you want to prioritize retirement accounts vs flexible (brokerage) investing?
-                  </p>
-                  <div className="space-y-2">
-                    {(['high', 'medium', 'low'] as const).map((focus) => (
-                      <label key={focus} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="retirementFocus"
-                          checked={retirementFocus === focus}
-                          onChange={() => setRetirementFocus(focus)}
-                          className="accent-[#3F6B42]"
-                        />
-                        <span className="text-[#111827]">
-                          {focus === 'high' && 'Grow faster (80/20 Retirement/Brokerage)'}
-                          {focus === 'medium' && 'Balanced (60/40 Retirement/Brokerage)'}
-                          {focus === 'low' && 'More flexibility (20/80 Retirement/Brokerage)'}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <Button
-                    onClick={() => handleStepComplete('retirement_focus')}
-                    disabled={!retirementFocus}
-                    className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                  >
-                    Next
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {currentStep === 3 && (
-              <Card className="border-[#D1D5DB] bg-white">
-                <CardHeader>
                   <CardTitle className="text-xl text-[#111827]">
                     {hsaEligible === true && (!currentHsaAnnual.trim() || parseFloat(currentHsaAnnual) === 0)
                       ? 'HSA (recommended)'
-                      : STACK_STEPS[3].title}
+                      : STACK_STEPS[2].title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -753,11 +694,11 @@ function AllocatorContent() {
               </Card>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 3 && (
               <>
                 <Card className="border-[#D1D5DB] bg-white">
                   <CardHeader>
-                    <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[4].title}</CardTitle>
+                    <CardTitle className="text-xl text-[#111827]">{STACK_STEPS[3].title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <SavingsStackSummary

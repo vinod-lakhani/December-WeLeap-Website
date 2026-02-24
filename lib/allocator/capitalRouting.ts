@@ -45,7 +45,7 @@ export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRout
   const remaining1 = Math.max(0, postTaxSavingsMonthly - efAlloc);
 
   const hasDebt = unlock?.carriesBalance === true && (unlock.debtBalance ?? 0) > 0;
-  const aprPct = unlock?.debtAprRange ? aprRangeToPercent(unlock.debtAprRange) : null;
+  const aprPct = unlock?.debtAprRange ? aprRangeToPercent(unlock.debtAprRange) : (hasDebt ? 17 : null);
   const highAprDebtActive = hasDebt && aprPct != null && aprPct >= 10;
 
   let debtAlloc = 0;
