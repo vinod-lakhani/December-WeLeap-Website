@@ -386,14 +386,14 @@ export function LeapImpactTool() {
         leapDelta30yr: trajectoryResult?.delta30yr,
         costOfDelay12Mo: costOfDelayAmount > 0 ? costOfDelayAmount : undefined,
         intent: 'unlock_full_stack',
-        source: 'leap_impact_tool',
+        source: prefillFromRent ? 'rent' : 'leap_impact_tool',
       });
       window.location.href = url;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setError(message);
     }
-  }, [salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount, taxResult]);
+  }, [salaryNum, state, hasMatch, matchCapPctNum, matchRatePctNum, current401kNum, leap.optimized401kPct, trajectoryResult?.delta30yr, costOfDelayAmount, taxResult, prefillFromRent]);
 
   const showWedgeCta = wedgeStep === 0;
   const showSalaryOnly = wedgeStep === 1;
