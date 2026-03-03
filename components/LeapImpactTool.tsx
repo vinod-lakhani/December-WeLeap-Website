@@ -169,7 +169,7 @@ export function LeapImpactTool() {
 
   const handleWedgeCtaClick = useCallback(() => {
     setWedgeStep(1);
-    track('landing_cta_click_show_next_move', { page: PAGE });
+    track('landing_cta_click_show_next_move', { page: PAGE }, true);
   }, []);
 
   const handleCalculate = useCallback(async () => {
@@ -216,7 +216,7 @@ export function LeapImpactTool() {
         match_rate_pct: matchRatePctNum,
         recommended_pct: leap.optimized401kPct,
         delta_30yr: traj.delta30yr,
-      });
+      }, true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
@@ -226,7 +226,7 @@ export function LeapImpactTool() {
 
   const handleContinueToAllocator = useCallback(() => {
     const intent = emailSuccessIntent ?? 'lock_plan';
-    track('leap_redirect_to_allocator', { intent, page: PAGE });
+    track('leap_redirect_to_allocator', { intent, page: PAGE }, true);
     const netMonthlyVal = taxResult ? taxResult.netIncomeAnnual / 12 : undefined;
     const url = buildAllocatorPrefillUrl({
       salaryAnnual: salaryNum,
@@ -287,7 +287,7 @@ export function LeapImpactTool() {
         const data = await emailRes.json();
         throw new Error(data.error || 'Failed to send email');
       }
-      track('leap_impact_email_submitted', { page: PAGE });
+      track('leap_impact_email_submitted', { page: PAGE }, true);
       track('leap_email_submit_success', {
         intent,
         page: PAGE,
@@ -296,7 +296,7 @@ export function LeapImpactTool() {
         current401kPct: current401kNum,
         recommended401kPct: leap.optimized401kPct,
         delta30yr: trajectoryResult?.delta30yr ?? undefined,
-      });
+      }, true);
       setEmailSubmitted(true);
       setEmailSuccessIntent(intent);
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
@@ -332,7 +332,7 @@ export function LeapImpactTool() {
   useEffect(() => {
     if (showResults && !showResultsRef.current) {
       showResultsRef.current = true;
-      track('results_viewed', { page: PAGE });
+      track('results_viewed', { page: PAGE }, true);
       if (is401kMaxed) {
         const current401kAnnual = salaryNum > 0 ? (salaryNum * current401kNum) / 100 : 0;
         track('leap_401k_maxed_shown', {
@@ -342,7 +342,7 @@ export function LeapImpactTool() {
           current401kAnnual: Math.round(current401kAnnual),
           hasMatch,
           matchCapPct: matchCapPctNum,
-        });
+        }, true);
       }
     }
   }, [showResults, is401kMaxed, salaryNum, current401kNum, hasMatch, matchCapPctNum]);
@@ -363,11 +363,11 @@ export function LeapImpactTool() {
           page: PAGE,
           salary: salaryNum,
           current401kPct: current401kNum,
-        });
+        }, true);
       }
-      track('full_stack_expand_clicked', { page: PAGE });
-      track('leap_stack_unlock_clicked', { page: PAGE });
-      track('leap_redirect_to_allocator', { intent: 'unlock_full_stack', page: PAGE });
+      track('full_stack_expand_clicked', { page: PAGE }, true);
+      track('leap_stack_unlock_clicked', { page: PAGE }, true);
+      track('leap_redirect_to_allocator', { intent: 'unlock_full_stack', page: PAGE }, true);
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('leap_clicked_build_full_stack', 'true');
       }
