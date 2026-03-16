@@ -95,6 +95,7 @@ export function EmergencyFundTool() {
 
   const displayMonths = scenarioMonths ?? result?.targetMonths ?? 3;
   const displayTarget = expensesNum * displayMonths;
+  const hasMetTarget = savingsNum >= displayTarget && displayTarget > 0;
   const milestones = useMemo(
     () => getMilestones(expensesNum, displayMonths),
     [expensesNum, displayMonths]
@@ -342,6 +343,16 @@ export function EmergencyFundTool() {
               <p className="text-sm text-gray-600">Recommended buffer</p>
             </CardHeader>
             <CardContent className="space-y-6">
+              {hasMetTarget && (
+                <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                  <p className="text-sm font-semibold text-green-800 mb-1">
+                    Congratulations — you&apos;ve hit your target.
+                  </p>
+                  <p className="text-sm text-green-700">
+                    Keep it up. Your emergency fund is in good shape.
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-6">
                 <div>
                   <p className="text-sm text-gray-500">Target months</p>
@@ -399,51 +410,73 @@ export function EmergencyFundTool() {
           {/* The Leap */}
           <Card className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">Your next Leap</CardTitle>
+              <CardTitle className="text-xl text-[#111827]">
+                {hasMetTarget ? "You're on track" : 'Your next Leap'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-base text-gray-700">
-                Save <strong>{formatCurrency(effectiveMonthlySavings)}/month</strong> toward your
-                emergency fund.
-              </p>
-              {monthsToTarget !== null && monthsToTarget > 0 && (
-                <p className="text-base text-gray-700">
-                  At this pace you will reach your target in{' '}
-                  <strong>
-                    {monthsToTarget >= 12
-                      ? `${Math.round(monthsToTarget / 12)} years`
-                      : `${monthsToTarget} ${monthsToTarget === 1 ? 'month' : 'months'}`}
-                  </strong>
-                  .
-                </p>
+              {hasMetTarget ? (
+                <>
+                  <p className="text-base text-gray-700">
+                    You&apos;ve reached your emergency fund target. Keep it up — maintaining this
+                    buffer is just as important as building it.
+                  </p>
+                  <div className="rounded-lg bg-gray-50 p-4 space-y-2">
+                    <p className="text-sm text-gray-700">
+                      <strong>Your current fund:</strong> {formatCurrency(savingsNum)}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Your target:</strong> {formatCurrency(displayTarget)} ({displayMonths}{' '}
+                      {displayMonths === 1 ? 'month' : 'months'} of expenses)
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-base text-gray-700">
+                    Save <strong>{formatCurrency(effectiveMonthlySavings)}/month</strong> toward your
+                    emergency fund.
+                  </p>
+                  {monthsToTarget !== null && monthsToTarget > 0 && (
+                    <p className="text-base text-gray-700">
+                      At this pace you will reach your target in{' '}
+                      <strong>
+                        {monthsToTarget >= 12
+                          ? `${Math.round(monthsToTarget / 12)} years`
+                          : `${monthsToTarget} ${monthsToTarget === 1 ? 'month' : 'months'}`}
+                      </strong>
+                      .
+                    </p>
+                  )}
+                  {firstMilestone && monthsToFirstMilestone !== null && monthsToFirstMilestone > 0 && (
+                    <p className="text-sm text-gray-600">
+                      But your first milestone is{' '}
+                      <strong>
+                        1 month of expenses ({formatCurrency(firstMilestone.targetDollars)})
+                      </strong>{' '}
+                      — which you could reach in{' '}
+                      <strong>
+                        {monthsToFirstMilestone >= 12
+                          ? `${Math.round(monthsToFirstMilestone / 12)} year${Math.round(monthsToFirstMilestone / 12) > 1 ? 's' : ''}`
+                          : `${monthsToFirstMilestone} ${monthsToFirstMilestone === 1 ? 'month' : 'months'}`}
+                      </strong>
+                      .
+                    </p>
+                  )}
+                  <div className="pt-2">
+                    <Label className="text-sm text-gray-600">
+                      Enter how much you can save per month toward your emergency fund
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder={`e.g. ${suggestedSavings}`}
+                      value={monthlySavings}
+                      onChange={(e) => setMonthlySavings(e.target.value)}
+                      className="mt-1 w-32 border-[#D1D5DB] placeholder:text-gray-400"
+                    />
+                  </div>
+                </>
               )}
-              {firstMilestone && monthsToFirstMilestone !== null && monthsToFirstMilestone > 0 && (
-                <p className="text-sm text-gray-600">
-                  But your first milestone is{' '}
-                  <strong>
-                    1 month of expenses ({formatCurrency(firstMilestone.targetDollars)})
-                  </strong>{' '}
-                  — which you could reach in{' '}
-                  <strong>
-                    {monthsToFirstMilestone >= 12
-                      ? `${Math.round(monthsToFirstMilestone / 12)} year${Math.round(monthsToFirstMilestone / 12) > 1 ? 's' : ''}`
-                      : `${monthsToFirstMilestone} ${monthsToFirstMilestone === 1 ? 'month' : 'months'}`}
-                  </strong>
-                  .
-                </p>
-              )}
-              <div className="pt-2">
-                <Label className="text-sm text-gray-600">
-                  Enter how much you can save per month toward your emergency fund
-                </Label>
-                <Input
-                  type="number"
-                  placeholder={`e.g. ${suggestedSavings}`}
-                  value={monthlySavings}
-                  onChange={(e) => setMonthlySavings(e.target.value)}
-                  className="mt-1 w-32 border-[#D1D5DB] placeholder:text-gray-400"
-                />
-              </div>
             </CardContent>
           </Card>
 
