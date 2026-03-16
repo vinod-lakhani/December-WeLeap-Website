@@ -349,7 +349,15 @@ export function EmergencyFundTool() {
                     Congratulations — you&apos;ve hit your target.
                   </p>
                   <p className="text-sm text-green-700">
-                    Keep it up. Your emergency fund is in good shape.
+                    You have{' '}
+                    <strong>
+                      {expensesNum > 0
+                        ? (savingsNum / expensesNum).toFixed(1) === '1.0'
+                          ? '1 month'
+                          : `${(savingsNum / expensesNum).toFixed(1)} months`
+                        : 'a solid buffer'}
+                    </strong>{' '}
+                    of expenses saved. Keep it up — your emergency fund is in good shape.
                   </p>
                 </div>
               )}
@@ -423,7 +431,13 @@ export function EmergencyFundTool() {
                   </p>
                   <div className="rounded-lg bg-gray-50 p-4 space-y-2">
                     <p className="text-sm text-gray-700">
-                      <strong>Your current fund:</strong> {formatCurrency(savingsNum)}
+                      <strong>Your current fund:</strong> {formatCurrency(savingsNum)} (
+                      {expensesNum > 0
+                        ? (savingsNum / expensesNum).toFixed(1) === '1.0'
+                          ? '1 month'
+                          : `${(savingsNum / expensesNum).toFixed(1)} months`
+                        : '—'}
+                      {' '}of expenses)
                     </p>
                     <p className="text-sm text-gray-700">
                       <strong>Your target:</strong> {formatCurrency(displayTarget)} ({displayMonths}{' '}
