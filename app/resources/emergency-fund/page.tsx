@@ -259,8 +259,11 @@ export default function EmergencyFundPage() {
               </div>
 
               <p className="font-semibold">
-                👉 Ready to build your financial safety net? Join the WeLeap waitlist at www.weleap.ai and start securing
-                your future today.
+                👉 Ready to build your financial safety net?{' '}
+                <Link href="/emergency-fund-target" className="text-primary-600 hover:text-primary-700 underline">
+                  Find your personalized emergency fund target
+                </Link>
+                {' '}— or join the WeLeap waitlist at www.weleap.ai to start securing your future today.
               </p>
             </div>
           </article>

@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home, Shield } from "lucide-react"
 import { PageShell, Section, Container } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
@@ -319,6 +319,37 @@ export default function ResourcesPage() {
                     </p>
                     <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
                       <span>See my growth</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/emergency-fund-target" className="h-full">
+              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
+                <CardContent className="p-0 flex flex-col flex-1">
+                  <div className="relative overflow-hidden">
+                    <img
+                      src="/images/emergency-fund-illustration.png"
+                      alt="Emergency fund — financial protection against unexpected expenses"
+                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <div className="bg-primary-100 rounded-lg p-2">
+                        <Shield className="w-5 h-5 text-primary-600" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200")}>
+                      Emergency Fund Target
+                    </h3>
+                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
+                      Not everyone needs 6 months. Find your personalized safety buffer and your next step to build it.
+                    </p>
+                    <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
+                      <span>Find my target</span>
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                     </div>
                   </div>
