@@ -11,7 +11,10 @@ import { track } from '@/lib/analytics';
 export default function EmergencyFundTargetPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
-      track('emergency_fund_page_view', { page: '/emergency-fund-target' }, true);
+      track('emergency_fund_page_view', {
+        page: '/emergency-fund-target',
+        tool_version: 'emergency_fund_v1',
+      }, true);
     }, 500);
     return () => clearTimeout(timer);
   }, []);

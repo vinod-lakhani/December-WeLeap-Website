@@ -49,6 +49,14 @@
  * - early_access_email_send_failed (error)
  * - mvp_access_page_viewed
  * - leap_tool_rerun_clicked (source)
+ * - emergency_fund_page_view (page, tool_version)
+ * - emergency_fund_cta_click (page, tool_version)
+ * - emergency_fund_form_start (page, tool_version)
+ * - emergency_fund_calculated (page, tool_version, target_months, target_dollars, progress_pct)
+ * - emergency_fund_results_viewed (page, tool_version, target_months, target_dollars, progress_pct)
+ * - emergency_fund_scenario_slider_changed (page, tool_version, scenario_months, target_dollars)
+ * - emergency_fund_recalculate_clicked (page, tool_version)
+ * - emergency_fund_feedback_submitted (page, feedback: yes|no|not_sure)
  *
  * Privacy Note: This utility only sends bucketed/non-PII parameters.
  * Never sends raw salary, email addresses, city names, or exact dates.

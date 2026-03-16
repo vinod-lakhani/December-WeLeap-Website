@@ -8,6 +8,7 @@
 |------|--------------|
 | **Rent** | 14 event types (no Day-0 events) |
 | **Leap** | 9 event types |
+| **Emergency Fund** | 8 event types |
 
 ---
 
@@ -46,6 +47,21 @@
 | `leap_stack_unlock_clicked` | `components/LeapImpactTool.tsx` |
 | `leap_redirect_to_allocator` | `components/LeapImpactTool.tsx` |
 | `leap_impact_feedback_submitted` | `components/ToolFeedbackQuestionnaire.tsx` |
+
+---
+
+## Emergency Fund Tool (`/emergency-fund-target`)
+
+| Event | Location |
+|-------|----------|
+| `emergency_fund_page_view` | `app/emergency-fund-target/page.tsx` |
+| `emergency_fund_cta_click` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_form_start` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_calculated` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_results_viewed` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_scenario_slider_changed` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_recalculate_clicked` | `components/EmergencyFundTool.tsx` |
+| `emergency_fund_feedback_submitted` | `components/ToolFeedbackQuestionnaire.tsx` |
 
 ---
 

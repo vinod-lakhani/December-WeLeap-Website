@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +64,7 @@ export function EmergencyFundTool() {
   const [scenarioMonths, setScenarioMonths] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const formStartedRef = useRef(false);
+  const resultsViewedRef = useRef(false);
 
   const incomeNum = useMemo(() => parseFloat(monthlyIncome) || 0, [monthlyIncome]);
   const expensesNum = useMemo(() => parseFloat(monthlyExpenses) || 0, [monthlyExpenses]);
@@ -114,14 +115,28 @@ export function EmergencyFundTool() {
   const handleFormStart = useCallback(() => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
-      track('emergency_fund_form_start', { page: PAGE });
+      track('emergency_fund_form_start', { page: PAGE, tool_version: 'emergency_fund_v1' });
     }
   }, []);
 
   const handleFindTarget = useCallback(() => {
-    track('emergency_fund_cta_click', { page: PAGE });
+    track('emergency_fund_cta_click', { page: PAGE, tool_version: 'emergency_fund_v1' });
     setStep('form');
   }, []);
+
+  // Track results viewed (once when user first sees results)
+  useEffect(() => {
+    if (step === 'results' && result && !resultsViewedRef.current) {
+      resultsViewedRef.current = true;
+      track('emergency_fund_results_viewed', {
+        page: PAGE,
+        tool_version: 'emergency_fund_v1',
+        target_months: result.targetMonths,
+        target_dollars: result.targetDollars,
+        progress_pct: Math.round(result.progressPct),
+      });
+    }
+  }, [step, result]);
 
   const handleCalculate = useCallback(() => {
     setError(null);
@@ -136,9 +151,10 @@ export function EmergencyFundTool() {
 
     track('emergency_fund_calculated', {
       page: PAGE,
+      tool_version: 'emergency_fund_v1',
       target_months: result?.targetMonths ?? 0,
       target_dollars: result?.targetDollars ?? 0,
-      progress_pct: result?.progressPct ?? 0,
+      progress_pct: Math.round(result?.progressPct ?? 0),
     });
     setStep('results');
   }, [monthlyIncome, monthlyExpenses, incomeNum, expensesNum, result]);
@@ -492,6 +508,12 @@ export function EmergencyFundTool() {
                   onChange={(e) => {
                     const v = parseFloat(e.target.value);
                     setScenarioMonths(v);
+                    track('emergency_fund_scenario_slider_changed', {
+                      page: PAGE,
+                      tool_version: 'emergency_fund_v1',
+                      scenario_months: v,
+                      target_dollars: expensesNum * v,
+                    });
                   }}
                   className="w-full h-2 rounded-full bg-gray-200 appearance-none cursor-pointer accent-[#3F6B42]"
                 />
@@ -521,6 +543,10 @@ export function EmergencyFundTool() {
             <Button
               variant="outline"
               onClick={() => {
+                track('emergency_fund_recalculate_clicked', {
+                  page: PAGE,
+                  tool_version: 'emergency_fund_v1',
+                });
                 setStep('form');
                 setScenarioMonths(null);
               }}
