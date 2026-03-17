@@ -24,6 +24,7 @@ import {
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { EarlyAccessDialog } from '@/components/early-access-dialog';
 
 const PAGE = '/emergency-fund-target';
 
@@ -491,6 +492,23 @@ export function EmergencyFundTool() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* WeLeap Waitlist CTA */}
+          <Card className="border-[#D1D5DB] bg-white">
+            <CardContent className="py-8 space-y-4">
+              <h3 className="text-xl font-bold text-[#111827]">
+                Want help actually getting there?
+              </h3>
+              <p className="text-base text-gray-600">
+                WeLeap tracks your money and tells you exactly what to do next — automatically.
+              </p>
+              <EarlyAccessDialog signupType="emergency_fund_tool">
+                <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
+                  Join the waitlist →
+                </Button>
+              </EarlyAccessDialog>
             </CardContent>
           </Card>
 
