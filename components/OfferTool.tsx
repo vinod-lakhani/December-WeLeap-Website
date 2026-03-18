@@ -694,7 +694,18 @@ export function OfferTool() {
           {/* Tool Feedback Questionnaire */}
           <ToolFeedbackQuestionnaire
             page="/how-much-rent-can-i-afford"
-            variant="default"
+            eventName="rent_tool_feedback_submitted"
+            question="Does this rent range make sense for you?"
+            buttonLabels={{
+              yes: '✅ Yes — this feels right',
+              not_sure: '🤔 Not sure',
+              no: "❌ Doesn't feel relevant",
+            }}
+            feedbackResponseMessages={{
+              yes: "Great — let's build the rest of your plan.",
+              not_sure: 'No worries — your full plan will show the tradeoffs and alternatives.',
+              no: "Got it — your full plan will show the next best move.",
+            }}
             onFeedbackSubmitted={() => {}}
           />
 

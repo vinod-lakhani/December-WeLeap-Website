@@ -624,7 +624,17 @@ export function EmergencyFundTool() {
           <ToolFeedbackQuestionnaire
             page={PAGE}
             eventName="emergency_fund_feedback_submitted"
-            variant="default"
+            question="Does this target make sense for you?"
+            buttonLabels={{
+              yes: '✅ Yes — this feels right',
+              not_sure: '🤔 Not sure',
+              no: "❌ Doesn't feel relevant",
+            }}
+            feedbackResponseMessages={{
+              yes: "Great — let's build the rest of your plan.",
+              not_sure: 'No worries — your full plan will show the tradeoffs and alternatives.',
+              no: "Got it — your full plan will show the next best move.",
+            }}
             onFeedbackSubmitted={() => {}}
           />
         </div>
