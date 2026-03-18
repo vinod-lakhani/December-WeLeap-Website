@@ -16,6 +16,7 @@ import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { EarlyAccessDialog } from '@/components/early-access-dialog';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
@@ -621,6 +622,23 @@ export function OfferTool() {
             </CardContent>
           </Card>
 
+          {/* WeLeap Waitlist CTA */}
+          <Card className="border-[#D1D5DB] bg-white">
+            <CardContent className="py-8 space-y-4">
+              <h3 className="text-xl font-bold text-[#111827]">
+                Want help actually getting there?
+              </h3>
+              <p className="text-base text-gray-600">
+                WeLeap tracks your money and tells you exactly what to do next — automatically.
+              </p>
+              <EarlyAccessDialog signupType="rent_tool">
+                <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
+                  Join the waitlist →
+                </Button>
+              </EarlyAccessDialog>
+            </CardContent>
+          </Card>
+
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">
             <CardContent className="pt-6">
@@ -676,7 +694,7 @@ export function OfferTool() {
           {/* Tool Feedback Questionnaire */}
           <ToolFeedbackQuestionnaire
             page="/how-much-rent-can-i-afford"
-            variant="inline"
+            variant="default"
             onFeedbackSubmitted={() => {}}
           />
 

@@ -624,7 +624,7 @@ export function EmergencyFundTool() {
           <ToolFeedbackQuestionnaire
             page={PAGE}
             eventName="emergency_fund_feedback_submitted"
-            variant="inline"
+            variant="default"
             onFeedbackSubmitted={() => {}}
           />
         </div>
