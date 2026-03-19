@@ -6,12 +6,15 @@ export interface WaitlistPayload {
   email: string;
   signupType: string;
   page: string;
+  ref?: string;
 }
 
 export async function submitToWaitlist(payload: WaitlistPayload): Promise<void> {
-  const { email, signupType, page } = payload;
+  const { email, signupType, page, ref } = payload;
   const timestamp = new Date().toISOString();
-  const sheetData = { email, signupType, page, timestamp };
+  // Append ref to page so it appears in the existing Page column (no new sheet column needed)
+  const pageWithRef = ref ? `${page}?ref=${ref}` : page;
+  const sheetData = { email, signupType, page: pageWithRef, timestamp };
 
   const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 

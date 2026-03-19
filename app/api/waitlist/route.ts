@@ -4,7 +4,7 @@ import { submitToWaitlist } from "@/lib/waitlist"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, signupType, page } = body
+    const { email, signupType, page, ref } = body
 
     // Validate required fields
     if (!email || !signupType || !page) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await submitToWaitlist({ email, signupType, page })
+    await submitToWaitlist({ email, signupType, page, ref })
 
     return NextResponse.json(
       { success: true, message: "Successfully joined waitlist" },
