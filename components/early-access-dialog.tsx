@@ -36,6 +36,20 @@ export function EarlyAccessDialog({ children, signupType = "button", referralSou
   const pathname = usePathname()
   const isControlled = controlledOpen !== undefined && onOpenChange !== undefined
 
+  const buildPageWithTracking = () => {
+    const base = pathname || "/"
+    if (typeof window === "undefined") return base
+    const params = new URLSearchParams(window.location.search)
+    const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const
+    const tracking = new URLSearchParams()
+    utmKeys.forEach((key) => {
+      const val = params.get(key)
+      if (val) tracking.set(key, val)
+    })
+    const qs = tracking.toString()
+    return qs ? `${base}?${qs}` : base
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -50,7 +64,7 @@ export function EarlyAccessDialog({ children, signupType = "button", referralSou
         body: JSON.stringify({
           email,
           signupType,
-          page: pathname || "/",
+          page: buildPageWithTracking(),
           ...(referralSource && { ref: referralSource }),
         }),
       })
