@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getUtmParams } from "@/lib/utm-storage"
 
 interface EarlyAccessDialogProps {
   children?: React.ReactNode
@@ -39,14 +40,7 @@ export function EarlyAccessDialog({ children, signupType = "button", referralSou
   const buildPageWithTracking = () => {
     const base = pathname || "/"
     if (typeof window === "undefined") return base
-    const params = new URLSearchParams(window.location.search)
-    const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const
-    const tracking = new URLSearchParams()
-    utmKeys.forEach((key) => {
-      const val = params.get(key)
-      if (val) tracking.set(key, val)
-    })
-    const qs = tracking.toString()
+    const qs = getUtmParams()
     return qs ? `${base}?${qs}` : base
   }
 

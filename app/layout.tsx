@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
+import { UtmCapture } from '@/components/utm-capture'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className={GeistSans.className}>
+        <UtmCapture />
         {children}
         <Analytics />
         <CookieConsent />
