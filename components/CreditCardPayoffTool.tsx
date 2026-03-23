@@ -49,13 +49,12 @@ export function CreditCardPayoffTool() {
     setCard((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const validCards = useMemo(
-    () =>
-      card.balance > 0 && card.apr >= 0
-        ? [{ ...card, name: card.name.trim() || 'Visa Platinum' }]
-        : [],
-    [card]
-  );
+  const validCards = useMemo(() => {
+    const balance = Number(card.balance) || 0;
+    const apr = Number(card.apr);
+    if (balance <= 0 || apr < 0 || isNaN(apr)) return [];
+    return [{ ...card, name: String(card.name || '').trim() || 'Visa Platinum', balance, apr }];
+  }, [card]);
 
   const minPaymentTotal = useMemo(
     () => getMinTotalPayment(validCards),
