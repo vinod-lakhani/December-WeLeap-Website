@@ -53,7 +53,7 @@ export function CreditCardPayoffTool() {
     const balance = Number(card.balance) || 0;
     const apr = Number(card.apr);
     if (balance <= 0 || apr < 0 || isNaN(apr)) return [];
-    return [{ ...card, name: String(card.name || '').trim() || 'Visa Platinum', balance, apr }];
+    return [{ ...card, name: 'Credit card', balance, apr }];
   }, [card]);
 
   const minPaymentTotal = useMemo(
@@ -128,20 +128,11 @@ export function CreditCardPayoffTool() {
             Your card
           </CardTitle>
           <p className="text-sm text-gray-600">
-            Enter your credit card details to see your payoff timeline
+            Enter balance and APR to see your payoff timeline
           </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[140px] space-y-1">
-              <Label className="text-xs text-gray-500">Card name</Label>
-              <Input
-                placeholder="e.g. Visa Platinum"
-                value={card.name}
-                onChange={(e) => updateCard('name', e.target.value)}
-                className="border-[#D1D5DB]"
-              />
-            </div>
             <div className="w-28 space-y-1">
               <Label className="text-xs text-gray-500">Balance ($)</Label>
               <Input
