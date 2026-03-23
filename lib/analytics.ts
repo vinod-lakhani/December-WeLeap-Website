@@ -57,6 +57,11 @@
  * - emergency_fund_scenario_slider_changed (page, tool_version, scenario_months, target_dollars)
  * - emergency_fund_recalculate_clicked (page, tool_version)
  * - emergency_fund_feedback_submitted (page, feedback: yes|no|not_sure)
+ * - credit_card_payoff_page_view (page, tool_version)
+ * - credit_card_payoff_form_start (page, tool_version)
+ * - credit_card_payoff_calculated (page, tool_version, balance, apr, months_to_payoff, total_interest)
+ * - credit_card_payoff_extra_slider_changed (page, tool_version, extra_payment)
+ * - credit_card_payoff_feedback_submitted (page, feedback: yes|no|not_sure)
  *
  * Privacy Note: This utility only sends bucketed/non-PII parameters.
  * Never sends raw salary, email addresses, city names, or exact dates.

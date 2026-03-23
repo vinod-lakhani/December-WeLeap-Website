@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,10 @@ import {
 import { formatCurrency } from '@/lib/rounding';
 import { EarlyAccessDialog } from '@/components/early-access-dialog';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
+
+const PAGE = '/credit-card-payoff';
 
 const EXTRA_MAX = 500;
 const EXTRA_STEP = 10;
@@ -44,6 +47,8 @@ export function CreditCardPayoffTool() {
     apr: 0,
   });
   const [extraPayment, setExtraPayment] = useState(0);
+  const formStartedRef = useRef(false);
+  const resultsViewedRef = useRef(false);
 
   const updateCard = useCallback((field: keyof CreditCard, value: string | number) => {
     setCard((prev) => ({ ...prev, [field]: value }));
@@ -119,6 +124,28 @@ export function CreditCardPayoffTool() {
   const hasValidInput = validCards.length > 0;
   const hasBalance = validCards.some((c) => c.balance > 0);
 
+  const handleFormStart = useCallback(() => {
+    if (!formStartedRef.current) {
+      formStartedRef.current = true;
+      track('credit_card_payoff_form_start', { page: PAGE, tool_version: 'credit_card_payoff_v1' });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hasValidInput && hasBalance && validCards[0] && !resultsViewedRef.current) {
+      resultsViewedRef.current = true;
+      const c = validCards[0]!;
+      track('credit_card_payoff_calculated', {
+        page: PAGE,
+        tool_version: 'credit_card_payoff_v1',
+        balance: Math.round(c.balance),
+        apr: c.apr,
+        months_to_payoff: withExtraResult.months,
+        total_interest: Math.round(withExtraResult.totalInterest),
+      });
+    }
+  }, [hasValidInput, hasBalance, validCards, withExtraResult.months, withExtraResult.totalInterest]);
+
   return (
     <div className="space-y-8">
       {/* Card Input */}
@@ -140,9 +167,11 @@ export function CreditCardPayoffTool() {
                 placeholder="0"
                 min={0}
                 value={card.balance || ''}
-                onChange={(e) =>
-                  updateCard('balance', parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => {
+                  updateCard('balance', parseFloat(e.target.value) || 0);
+                  handleFormStart();
+                }}
+                onFocus={handleFormStart}
                 className="border-[#D1D5DB]"
               />
             </div>
@@ -154,9 +183,11 @@ export function CreditCardPayoffTool() {
                 min={0}
                 step={0.1}
                 value={card.apr || ''}
-                onChange={(e) =>
-                  updateCard('apr', parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => {
+                  updateCard('apr', parseFloat(e.target.value) || 0);
+                  handleFormStart();
+                }}
+                onFocus={handleFormStart}
                 className="border-[#D1D5DB]"
               />
             </div>
@@ -198,9 +229,17 @@ export function CreditCardPayoffTool() {
                   max={EXTRA_MAX}
                   step={EXTRA_STEP}
                   value={extraPayment}
-                  onChange={(e) =>
-                    setExtraPayment(parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setExtraPayment(val);
+                    if (val > 0) {
+                      track('credit_card_payoff_extra_slider_changed', {
+                        page: PAGE,
+                        tool_version: 'credit_card_payoff_v1',
+                        extra_payment: val,
+                      });
+                    }
+                  }}
                   className="w-full h-2 rounded-full bg-gray-200 appearance-none cursor-pointer accent-[#3F6B42]"
                 />
                 <p className="text-sm text-gray-600">
