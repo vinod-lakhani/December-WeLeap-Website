@@ -150,6 +150,19 @@ const blogPosts = [
     image: "/images/Community%20Fund.png",
     href: "/resources/community-fund-explained",
   },
+  {
+    id: 12,
+    title: "Most people don't have an emergency fund. They have a guess.",
+    excerpt:
+      "Why clarity—not just a number—changes everything. See your path, not just the target.",
+    author: "Vinod Lakhani",
+    date: "Mar 21, 2026",
+    readTime: "5 min read",
+    category: "Emergency Planning",
+    icon: DollarSign,
+    image: "/images/emergency-fund-illustration.png",
+    href: "/resources/emergency-fund-guess",
+  },
 ]
 
 export default function ResourcesPage() {
