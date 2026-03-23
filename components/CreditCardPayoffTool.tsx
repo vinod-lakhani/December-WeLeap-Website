@@ -51,8 +51,8 @@ export function CreditCardPayoffTool() {
 
   const validCards = useMemo(
     () =>
-      card.name.trim() && card.balance > 0 && card.apr >= 0
-        ? [card]
+      card.balance > 0 && card.apr >= 0
+        ? [{ ...card, name: card.name.trim() || 'Visa Platinum' }]
         : [],
     [card]
   );
