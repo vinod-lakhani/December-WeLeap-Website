@@ -155,13 +155,13 @@ export function CreditCardPayoffTool() {
             Your card
           </CardTitle>
           <p className="text-sm text-gray-600">
-            Enter balance and APR to see your payoff timeline
+            How much do you owe on your credit card, and what&apos;s the interest rate (APR)? We&apos;ll show your payoff timeline.
           </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 items-end">
             <div className="w-28 space-y-1">
-              <Label className="text-xs text-gray-500">Balance ($)</Label>
+              <Label className="text-xs text-gray-500">Balance owed ($)</Label>
               <Input
                 type="number"
                 placeholder="0"
