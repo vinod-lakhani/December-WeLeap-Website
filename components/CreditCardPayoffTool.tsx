@@ -152,7 +152,7 @@ export function CreditCardPayoffTool() {
       <Card className="border-[#D1D5DB] bg-white">
         <CardHeader>
           <CardTitle className="text-xl text-[#111827]">
-            Your card
+            Your debt, decoded
           </CardTitle>
           <p className="text-sm text-gray-600">
             How much do you owe on your credit card, and what&apos;s the interest rate (APR)? We&apos;ll show your payoff timeline.
