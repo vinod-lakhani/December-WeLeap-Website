@@ -37,8 +37,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
-import { EarlyAccessDialog } from '@/components/early-access-dialog';
-
 const PAGE = '/leap-impact-simulator';
 
 const US_STATES = [
@@ -262,6 +260,8 @@ export function LeapImpactTool() {
           email: email.trim(),
           signupType: 'leap_impact_lock_plan',
           page: PAGE,
+          source: `leap_impact_lock_plan|${PAGE}`,
+          referrer: typeof document !== 'undefined' ? document.referrer || '' : '',
         }),
       });
       if (!waitlistRes.ok) {

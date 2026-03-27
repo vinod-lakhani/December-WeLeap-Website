@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
         email: email.trim(),
         signupType: 'leap_stack_save',
         page: '/allocator',
+        source: 'leap_stack_save|/allocator',
+        referrer: request.headers.get('referer') || '',
       }),
     });
     if (!waitlistRes.ok) {

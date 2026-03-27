@@ -268,6 +268,7 @@ export function ImpactTool() {
       {/* Join Waitlist modal (same as site-wide) — opened when user taps Yes or Not sure */}
       <EarlyAccessDialog
         signupType="net_worth_tool_feedback"
+        placement="tool"
         open={showWaitlistModal}
         onOpenChange={setShowWaitlistModal}
       />

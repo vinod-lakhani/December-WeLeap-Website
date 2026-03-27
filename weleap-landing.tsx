@@ -174,7 +174,7 @@ export default function Component() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-            <EarlyAccessDialog signupType="hero">
+            <EarlyAccessDialog signupType="hero" placement="hero">
               <Button className="bg-white text-primary-600 hover:bg-gray-100 px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-lg">
                 Get Early Access
               </Button>
@@ -288,7 +288,7 @@ export default function Component() {
           <p className={cn(TYPOGRAPHY.body, "text-gray-700 mb-8 md:mb-10")}>
             Start free, upgrade when ready. Early users lock in founding-member perks.
           </p>
-          <EarlyAccessDialog signupType="cta">
+          <EarlyAccessDialog signupType="cta" placement="cta_section">
             <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl">
               Join Waitlist
             </Button>

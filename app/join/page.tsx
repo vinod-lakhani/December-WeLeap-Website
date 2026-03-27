@@ -23,6 +23,7 @@ function JoinContent() {
           <div className="flex justify-center">
             <EarlyAccessDialog
               signupType="join_page"
+              placement="join_page"
               referralSource={ref}
               variant="page"
             />

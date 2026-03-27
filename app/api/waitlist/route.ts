@@ -4,7 +4,7 @@ import { submitToWaitlist } from "@/lib/waitlist"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, signupType, page, ref } = body
+    const { email, signupType, page, ref, source, referrer } = body
 
     // Validate required fields
     if (!email || !signupType || !page) {
@@ -14,7 +14,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    await submitToWaitlist({ email, signupType, page, ref })
+    // Prefer client `document.referrer` when sent (including "" for direct traffic).
+    // If omitted (server-side fetch), fall back to the incoming Referer header.
+    const httpReferrer =
+      typeof referrer === "string"
+        ? referrer
+        : request.headers.get("referer") || ""
+
+    await submitToWaitlist({
+      email,
+      signupType,
+      page,
+      ref,
+      source: typeof source === "string" ? source : undefined,
+      referrer: httpReferrer,
+    })
 
     return NextResponse.json(
       { success: true, message: "Successfully joined waitlist" },

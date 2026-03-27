@@ -34,7 +34,7 @@ export default function ProductFeaturesPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <EarlyAccessDialog signupType="product-features-hero">
+            <EarlyAccessDialog signupType="product-features-hero" placement="hero">
               <Button className="bg-white text-primary-600 hover:bg-gray-100 px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
                 Join Waitlist
               </Button>
@@ -288,7 +288,7 @@ export default function ProductFeaturesPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <EarlyAccessDialog signupType="product-features-cta">
+            <EarlyAccessDialog signupType="product-features-cta" placement="cta_section">
               <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
                 Join Waitlist
               </Button>

@@ -20,6 +20,8 @@ import { getUtmParams } from "@/lib/utm-storage"
 interface EarlyAccessDialogProps {
   children?: React.ReactNode
   signupType?: string // Optional: e.g., "button", "cta", "navigation", "net_worth_tool_feedback", etc.
+  /** Optional label for the CTA placement (e.g. "header", "footer"). Sent as `source` with pathname. */
+  placement?: string
   /** Referral source for tracking (e.g. from ?ref=linkedin). Pass when using shareable links. */
   referralSource?: string
   /** When set, dialog is controlled by parent (e.g. open from survey). Omit for trigger-based use. */
@@ -29,7 +31,7 @@ interface EarlyAccessDialogProps {
   variant?: "dialog" | "page"
 }
 
-export function EarlyAccessDialog({ children, signupType = "button", referralSource, open: controlledOpen, onOpenChange, variant = "dialog" }: EarlyAccessDialogProps) {
+export function EarlyAccessDialog({ children, signupType = "button", placement, referralSource, open: controlledOpen, onOpenChange, variant = "dialog" }: EarlyAccessDialogProps) {
   const [email, setEmail] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -42,6 +44,12 @@ export function EarlyAccessDialog({ children, signupType = "button", referralSou
     if (typeof window === "undefined") return base
     const qs = getUtmParams()
     return qs ? `${base}?${qs}` : base
+  }
+
+  const buildAttributionSource = () => {
+    const path = pathname || "/"
+    if (placement) return `${placement}|${signupType}|${path}`
+    return `${signupType}|${path}`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,6 +67,8 @@ export function EarlyAccessDialog({ children, signupType = "button", referralSou
           email,
           signupType,
           page: buildPageWithTracking(),
+          source: buildAttributionSource(),
+          referrer: typeof document !== "undefined" ? document.referrer || "" : "",
           ...(referralSource && { ref: referralSource }),
         }),
       })

@@ -7,14 +7,49 @@ export interface WaitlistPayload {
   signupType: string;
   page: string;
   ref?: string;
+  /** Where the CTA lived (e.g. signupType + path, or an explicit placement label). */
+  source?: string;
+  /** HTTP Referer: previous page URL when available (empty if direct / stripped). */
+  referrer?: string;
+}
+
+function clipReferrer(value: string | undefined): string {
+  if (!value) return "";
+  const max = 2000;
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
+
+/** Keeps the same Sheet columns: everything lives in `page` as path + query (ref, wsrc, wref). */
+function appendPageTracking(
+  page: string,
+  fields: { ref?: string; wsrc?: string; wref?: string }
+): string {
+  let out = page;
+  const entries = Object.entries(fields).filter(
+    ([, v]) => v != null && String(v).length > 0
+  ) as [string, string][];
+  for (const [key, value] of entries) {
+    const sep = out.includes("?") ? "&" : "?";
+    out = `${out}${sep}${key}=${encodeURIComponent(value)}`;
+  }
+  return out;
 }
 
 export async function submitToWaitlist(payload: WaitlistPayload): Promise<void> {
-  const { email, signupType, page, ref } = payload;
+  const { email, signupType, page, ref, source, referrer } = payload;
   const timestamp = new Date().toISOString();
-  // Append ref to page so it appears in the existing Page column (no new sheet column needed)
-  const pageWithRef = ref ? `${page}${page.includes("?") ? "&" : "?"}ref=${ref}` : page;
-  const sheetData = { email, signupType, page: pageWithRef, timestamp };
+  const wref = clipReferrer(referrer);
+  const pageForSheet = appendPageTracking(page, {
+    ref: ref ?? undefined,
+    wsrc: source?.trim() || undefined,
+    wref: wref || undefined,
+  });
+  const sheetData = {
+    email,
+    signupType,
+    page: pageForSheet,
+    timestamp,
+  };
 
   const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 

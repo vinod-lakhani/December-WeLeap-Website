@@ -356,6 +356,7 @@ function AllocatorContent() {
           body: JSON.stringify({
             email: earlyAccessEmail.trim(),
             source: 'leap_stack',
+            referrer: typeof document !== 'undefined' ? document.referrer || '' : '',
             salaryAnnual: prefill?.salaryAnnual,
             state: prefill?.state,
             employerMatchEnabled: prefill?.employerMatchEnabled,

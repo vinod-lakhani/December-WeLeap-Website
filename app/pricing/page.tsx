@@ -97,7 +97,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                  <EarlyAccessDialog signupType="pricing">
+                  <EarlyAccessDialog signupType="pricing" placement="pricing_cta">
                     <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-8 rounded-xl transition-all duration-200">
                       Join the Waitlist
                     </Button>

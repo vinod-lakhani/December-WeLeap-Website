@@ -631,7 +631,7 @@ export function OfferTool() {
               <p className="text-base text-gray-600">
                 WeLeap tracks your money and tells you exactly what to do next — automatically.
               </p>
-              <EarlyAccessDialog signupType="rent_tool">
+              <EarlyAccessDialog signupType="rent_tool" placement="tool">
                 <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
                   Join the waitlist →
                 </Button>

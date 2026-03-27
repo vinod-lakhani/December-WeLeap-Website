@@ -413,7 +413,7 @@ export function CreditCardPayoffTool() {
               <p className="text-base text-gray-600">
                 WeLeap tracks your money and tells you exactly what to do next — automatically.
               </p>
-              <EarlyAccessDialog signupType="credit_card_payoff_tool">
+              <EarlyAccessDialog signupType="credit_card_payoff_tool" placement="tool">
                 <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
                   Join the waitlist →
                 </Button>

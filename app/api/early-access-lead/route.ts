@@ -9,7 +9,10 @@ const RETURN_ASSUMPTION_PCT = Math.round(REAL_RETURN_DEFAULT * 100);
 
 export interface EarlyAccessLeadBody {
   email: string;
+  /** Product/source label (e.g. leap_stack). Stored on waitlist row as `source`. */
   source?: string;
+  /** Client `document.referrer` when available. */
+  referrer?: string;
   salaryAnnual?: number;
   state?: string;
   employerMatchEnabled?: boolean;
@@ -51,6 +54,7 @@ export async function POST(request: NextRequest) {
     const {
       email,
       source = 'leap_stack',
+      referrer: clientReferrer,
       nextLeapTitle,
       impactAtYear30,
       annualContributionIncrease,
@@ -66,10 +70,17 @@ export async function POST(request: NextRequest) {
     const createdAt = new Date().toISOString();
 
     // 1) Lead capture via waitlist (direct call – no internal HTTP fetch)
+    const httpReferrer =
+      typeof clientReferrer === 'string'
+        ? clientReferrer
+        : request.headers.get('referer') || '';
+
     await submitToWaitlist({
       email: email.trim(),
       signupType: 'early_access_leap_stack',
       page: '/allocator',
+      source: `early_access_leap_stack|${source}|/allocator`,
+      referrer: httpReferrer,
     });
 
     // 2) Send early access confirmation email

@@ -337,7 +337,7 @@ export default function AboutPage() {
           <p className={cn(TYPOGRAPHY.body, "text-primary-100 mb-8 max-w-2xl mx-auto")}>
             Join thousands of early users who are already experiencing the power of AI-driven financial guidance.
           </p>
-          <EarlyAccessDialog signupType="cta">
+          <EarlyAccessDialog signupType="cta" placement="about_cta">
             <Button className="bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold text-base md:text-lg hover:bg-gray-50 transition-colors duration-200 shadow-lg">
               Join the Waitlist
             </Button>
