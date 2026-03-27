@@ -19,10 +19,10 @@ function clipReferrer(value: string | undefined): string {
   return value.length > max ? `${value.slice(0, max)}…` : value;
 }
 
-/** Keeps the same Sheet columns: everything lives in `page` as path + query (ref, wsrc, wref). */
+/** Keeps the same Sheet columns: everything lives in `page` as path + query (ref, source, wref). */
 function appendPageTracking(
   page: string,
-  fields: { ref?: string; wsrc?: string; wref?: string }
+  fields: { ref?: string; source?: string; wref?: string }
 ): string {
   let out = page;
   const entries = Object.entries(fields).filter(
@@ -41,7 +41,7 @@ export async function submitToWaitlist(payload: WaitlistPayload): Promise<void> 
   const wref = clipReferrer(referrer);
   const pageForSheet = appendPageTracking(page, {
     ref: ref ?? undefined,
-    wsrc: source?.trim() || undefined,
+    source: source?.trim() || undefined,
     wref: wref || undefined,
   });
   const sheetData = {
