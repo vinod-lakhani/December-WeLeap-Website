@@ -82,7 +82,7 @@ export default function PricingPage() {
                       </li>
                       <li className="flex items-start gap-3">
                         <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Vote on how the Community Fund is used (e.g., which charities we support or which member rewards we prioritize)</span>
+                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Early access to community governance — launching as we scale</span>
                       </li>
                     </ul>
 
@@ -121,9 +121,9 @@ export default function PricingPage() {
               <CardHeader className="text-center pb-6">
                 <CardTitle className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-4")}>Community Fund</CardTitle>
                 <p className={cn(TYPOGRAPHY.body, "text-gray-700 max-w-3xl mx-auto text-balance")}>
-                  WeLeap is built to fight misaligned incentives. When WeLeap earns referral or transaction revenue, we
-                  disclose it — and we route it into the <span className="font-semibold">WeLeap Community Fund</span> so
-                  the upside goes back to the community, not Wall Street.
+                  When WeLeap earns referral or transaction revenue, we disclose it — every time. A share comes back to
+                  you as an individual rebate. You took the action. You should share in the upside. The rest goes into
+                  the <span className="font-semibold">WeLeap Community Fund</span> to build something bigger together.
                 </p>
               </CardHeader>
 
@@ -131,21 +131,21 @@ export default function PricingPage() {
                 {/* Simple 3-up summary */}
                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>Transparent by default</div>
+                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>We disclose every fee</div>
                     <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
                       If we're paid, you'll see it — always.
                     </div>
                   </div>
                   <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>Fees flow to the Fund</div>
+                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>A share comes back to you</div>
                     <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      Referral/transaction revenue is routed into the Community Fund.
+                      When you take an action that generates revenue, a portion comes back to you as an individual rebate.
                     </div>
                   </div>
                   <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>Governed by members</div>
+                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>A portion builds the community</div>
                     <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      Founding Members vote on how the Fund is used (e.g., which charities we support or which member rewards we prioritize).
+                      The rest flows into the Community Fund. Governance over how it's used is coming as we grow.
                     </div>
                   </div>
                 </div>
@@ -194,8 +194,7 @@ export default function PricingPage() {
                 <CardContent className="p-6">
                 <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>How do you make money?</h3>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  Currently, we don't. We are venture-backed and focused on growth. In the future, we will introduce fair subscription fees and transparent referral models. When we're paid, we disclose it — and we route that revenue
-                  into the WeLeap Community Fund so the upside benefits the community.
+                  Three ways — all disclosed. (1) <strong>Subscriptions:</strong> a simple monthly fee once paid plans launch. (2) <strong>Individual rebates:</strong> when you sign up for a financial product through WeLeap, a share of any referral or transaction fee comes back to you directly. (3) <strong>Community Fund:</strong> the remainder goes into the Fund, which builds community programs and rewards. We never earn more by steering you toward worse products.
                   </p>
                 </CardContent>
               </Card>

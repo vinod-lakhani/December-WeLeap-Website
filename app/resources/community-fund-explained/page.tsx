@@ -32,11 +32,11 @@ export default function CommunityFundExplainedPage() {
           </div>
 
           <h1 className={cn(TYPOGRAPHY.h1, "text-gray-900 mb-4 md:mb-6")}>
-            The WeLeap Community Fund — A Financial First
+            What the WeLeap Community Fund Means for You
           </h1>
 
           <p className={cn(TYPOGRAPHY.body, "text-gray-600 leading-relaxed mb-6 md:mb-8")}>
-            What if every time you signed up for a financial product, the fee didn't disappear into a corporation's revenue stream — but flowed back into your community? That's the idea behind the WeLeap Community Fund.
+            Most financial apps collect fees when you take action — and keep them. WeLeap discloses every fee, gives a share back to you directly, and routes the rest into the Community Fund. Here's what that actually means.
           </p>
 
           <div className="mb-6 md:mb-8">
@@ -55,35 +55,27 @@ export default function CommunityFundExplainedPage() {
           <article className="prose prose-lg max-w-none">
             <div className={cn(TYPOGRAPHY.body, "text-gray-700 space-y-4 md:space-y-6")}>
               <p>
-                The WeLeap Community Fund is a shared pool of value created by the community, for the community. Here's how it works: when Plus members generate transaction or referral fees, 100% of those fees flow into the Community Fund. The Fund is not controlled by WeLeap.
+                When you sign up for a financial product through WeLeap — say, a high-yield savings account or a credit card — WeLeap may earn a referral or transaction fee. That's standard across the industry. What isn't standard is what happens next.
+              </p>
+
+              <p>
+                <strong>You see the fee. A share comes back to you.</strong> WeLeap discloses every fee we earn from your actions. Then a portion of that fee is returned to you directly as an individual rebate. You took the action. You should share in the upside — not just the platform.
+              </p>
+
+              <p>
+                <strong>The rest builds something bigger.</strong> The remainder flows into the WeLeap Community Fund. This is a shared pool — not controlled by WeLeap, not a marketing budget. It exists to fund things the community actually wants: financial literacy programs, member rewards, community events, and more. The specifics of how the Fund is used will be shaped by the community as we grow.
+              </p>
+
+              <p>
+                <strong>Why transparency is the whole point.</strong> Most platforms can't be transparent about fees because their entire business model depends on you not knowing. WeLeap's model is different by design: we earn when you succeed with a better product, not when we steer you toward a worse one. Disclosing fees isn't a risk for us — it's the proof that our incentives are aligned with yours.
+              </p>
+
+              <p>
+                <strong>Governance — coming as we scale.</strong> Community input over how the Fund is used is something we're building toward deliberately. We want it to be real, not performative — so we're launching it when the community is large enough for it to matter. Founding Members will have early access when it opens.
               </p>
 
               <p>
                 This isn't charity. It's a structural shift in who benefits when money moves.
-              </p>
-
-              <p>
-                <strong>Governed by members, not executives.</strong> Control matters as much as transparency. That's why the Community Fund is governed by members: earn 9 credits through referrals, and you unlock voting rights. Members vote on how funds are allocated. WeLeap executes — the community decides. Over time, governance expands as the community grows.
-              </p>
-
-              <p>
-                <strong>What the Fund can be used for.</strong> The Community Fund is designed to support real, tangible impact. Initial allocation categories include: new feature development voted on by users, dividends or credits back to members, financial literacy grants, emergency debt-relief micro-grants, and community events and programs.
-              </p>
-
-              <p>
-                Not everything will launch at once — but the direction is clear: shared upside, shared decision-making.
-              </p>
-
-              <p>
-                <strong>Radical transparency, by design.</strong> Trust only works if it's earned. That's why WeLeap commits to public dashboards showing inflows and allocations, clear explanations of how decisions are made, and no hidden pools or off-balance-sheet games. If money moves, you'll be able to see where it went — and why.
-              </p>
-
-              <p>
-                <strong>Why this hasn't been done before.</strong> Most platforms couldn't do this even if they wanted to. Their business models depend on maximizing transaction volume, steering users toward higher-paying products, and keeping control centralized. WeLeap was built from day one to challenge that structure.
-              </p>
-
-              <p>
-                <strong>💡 Your takeaway:</strong> Upgrade to Plus. Take part in governing the Community Fund. And help build a financial system where the upside flows back to the people who create it.
               </p>
             </div>
           </article>
