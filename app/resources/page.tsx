@@ -143,7 +143,7 @@ const blogPosts = [
     excerpt:
       "When you sign up for financial products, the fees flow back into your community—not corporate revenue. See how member governance works.",
     author: "Vinod Lakhani",
-    date: "Dec 1, 2025",
+    date: "Apr 18, 2026",
     readTime: "7 min read",
     category: "Community",
     icon: Users,
