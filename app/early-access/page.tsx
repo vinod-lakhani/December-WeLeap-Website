@@ -475,8 +475,8 @@ export default function EarlyAccessPage() {
               <tbody className="divide-y divide-gray-100">
                 {savingsStack.map(row => (
                   <tr key={row.priority}>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#386641] text-white text-xs font-bold mr-2">{row.priority}</span>
+                    <td className="px-4 py-3 whitespace-nowrap w-44">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#386641] text-white text-xs font-bold mr-2 flex-shrink-0">{row.priority}</span>
                       <span className="font-semibold text-gray-900">{row.label}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{row.where}</td>
