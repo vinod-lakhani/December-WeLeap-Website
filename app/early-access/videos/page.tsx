@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PageShell, Section, Container } from '@/components/layout'
 import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { track } from '@/lib/analytics'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -213,6 +214,10 @@ export default function VideosPage() {
   const [customSuggestion, setCustomSuggestion] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
+  useEffect(() => {
+    track('early_access_videos_page_viewed', {}, true)
+  }, [])
+
   const featured = VIDEOS.find(v => v.featured)
   const gridVideos = VIDEOS.filter(v => !v.featured)
 
@@ -223,14 +228,20 @@ export default function VideosPage() {
   const showFeatured = featured && (activeCategory === 'all' || activeCategory === featured.category)
 
   function toggleChip(chip: string) {
+    const isRemoving = selectedChips.includes(chip)
+    track('early_access_video_suggestion_chip_toggled', { chip, selected: !isRemoving })
     setSelectedChips(prev =>
-      prev.includes(chip) ? prev.filter(c => c !== chip) : [...prev, chip]
+      isRemoving ? prev.filter(c => c !== chip) : [...prev, chip]
     )
   }
 
   function handleSuggest() {
     const combined = [...selectedChips, customSuggestion.trim()].filter(Boolean).join(' | ')
     if (!combined) return
+    track('early_access_video_suggestion_submitted', {
+      chips_count: selectedChips.length,
+      has_custom: Boolean(customSuggestion.trim()),
+    })
     const subject = encodeURIComponent('WeLeap Video Suggestion')
     const body = encodeURIComponent(`Video topic suggestion:\n\n${combined}`)
     window.location.href = `mailto:feedback@weleap.ai?subject=${subject}&body=${body}`
@@ -261,6 +272,7 @@ export default function VideosPage() {
         <div className="max-w-4xl mx-auto px-6 flex gap-1 overflow-x-auto">
           <Link
             href="/early-access"
+            onClick={() => track('early_access_videos_back_to_guide_clicked')}
             className="py-3.5 px-4 text-sm font-semibold text-white/60 hover:text-white whitespace-nowrap border-b-2 border-transparent transition-colors mr-2"
           >
             ← Guide
@@ -268,7 +280,7 @@ export default function VideosPage() {
           {(Object.keys(CATEGORY_LABELS) as Category[]).map(cat => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat)}
+              onClick={() => { setActiveCategory(cat); track('early_access_video_filter_changed', { category: cat }) }}
               className={cn(
                 'py-3.5 px-4 text-base font-semibold whitespace-nowrap border-b-2 transition-colors',
                 activeCategory === cat
@@ -351,7 +363,7 @@ export default function VideosPage() {
                 <VideoCard
                   key={video.id}
                   video={video}
-                  onClick={() => setActiveVideo(video)}
+                  onClick={() => { setActiveVideo(video); track('early_access_video_opened', { video_id: video.id, video_title: video.title, is_live: Boolean(video.url) }) }}
                 />
               ))}
             </div>

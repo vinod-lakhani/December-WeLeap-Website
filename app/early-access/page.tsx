@@ -1,14 +1,11 @@
+'use client'
+
+import { useEffect } from 'react'
 import { PageShell, Section, Container } from '@/components/layout'
 import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import type { Metadata } from 'next'
-
-export const metadata: Metadata = {
-  title: 'WeLeap — Early Adopter Guide',
-  description: 'Everything you need to get the most out of WeLeap.',
-  robots: { index: false, follow: false }, // keep private
-}
+import { track } from '@/lib/analytics'
 
 // ── Data ────────────────────────────────────────────────────────────────────
 
@@ -147,6 +144,10 @@ const glossary = [
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function EarlyAccessPage() {
+  useEffect(() => {
+    track('early_access_guide_page_viewed', {}, true)
+  }, [])
+
   return (
     <PageShell>
 
@@ -165,6 +166,7 @@ export default function EarlyAccessPage() {
           <div className="flex flex-wrap gap-3 justify-center">
             <a
               href="https://dev.weleap.app"
+              onClick={() => track('early_access_open_app_clicked', { source: 'hero' })}
               className="inline-block bg-white text-[#386641] font-semibold px-6 py-3 rounded-lg hover:bg-white/90 transition-colors"
             >
               Open the app →
@@ -207,6 +209,7 @@ export default function EarlyAccessPage() {
             <Link
               key={href}
               href={href}
+              onClick={() => track('early_access_nav_clicked', { section: label })}
               className="py-3.5 px-4 text-base font-semibold text-white/70 hover:text-white whitespace-nowrap border-b-2 border-transparent hover:border-white/60 transition-colors"
             >
               {label}
@@ -527,18 +530,21 @@ export default function EarlyAccessPage() {
             <div className="flex flex-wrap gap-3 justify-center mb-4">
               <a
                 href="mailto:feedback@weleap.ai?subject=WeLeap Early Access Feedback"
+                onClick={() => track('early_access_email_feedback_clicked')}
                 className="inline-block bg-[#386641] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#2d5235] transition-colors"
               >
                 📧 Email us directly
               </a>
               <Link
                 href="/early-access/videos"
+                onClick={() => track('early_access_videos_link_clicked', { source: 'feedback' })}
                 className="inline-block bg-white border border-gray-200 text-gray-700 font-medium px-6 py-3 rounded-lg hover:border-[#386641] hover:text-[#386641] transition-colors"
               >
                 🎬 Watch video guides
               </Link>
               <a
                 href="https://dev.weleap.app"
+                onClick={() => track('early_access_open_app_clicked', { source: 'feedback' })}
                 className="inline-block bg-white border border-gray-200 text-gray-700 font-medium px-6 py-3 rounded-lg hover:border-[#386641] hover:text-[#386641] transition-colors"
               >
                 ↗ Open the app
