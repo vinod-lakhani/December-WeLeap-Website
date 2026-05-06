@@ -28,37 +28,38 @@ const steps = [
   {
     num: 3,
     title: 'Enter your income',
-    desc: "Enter your annual gross salary. WeLeap estimates your monthly take-home and builds the foundation of your plan. That's the only number you need to start.",
+    desc: "Enter your annual gross salary. WeLeap estimates your monthly take-home straight away — that's the number everything else is built on.",
     time: '~1 min',
   },
   {
     num: 4,
     title: 'See your 50/30/20 plan',
-    desc: 'WeLeap shows you a simple split: 50% Needs, 30% Wants, 20% Savings. Adjust any bucket and see the dollar impact in real time.',
+    desc: "WeLeap shows you your take-home split into Needs, Wants, and Savings. You'll see exactly how much you have to work with each month — and how much is available to save.",
     time: '~2 min',
   },
   {
     num: 5,
-    title: 'Connect your bank',
-    desc: "Link your bank account securely through Plaid. WeLeap pulls in 4 months of real transactions so your plan is built on what you actually spend. WeLeap never stores your bank credentials.",
-    time: '~3 min',
+    title: 'Allocate your savings',
+    desc: "WeLeap helps you decide where your savings go: how much stays in cash, how much goes into investments, and how much flows into retirement. Each bucket gets a specific dollar amount.",
+    time: '~2 min',
   },
   {
     num: 6,
-    title: 'Add your savings details',
-    desc: "Tell WeLeap about your 401(k) match, emergency fund target, any debts, and investments. This unlocks your most important Leaps.",
-    time: '~3 min',
-  },
-  {
-    num: 7,
-    title: 'See your 40-year projection',
-    desc: "Your plan comes to life as a chart showing your net worth growing over time. Adjust the savings rate and watch the number change. This is the moment most people realise what's at stake.",
+    title: 'See your net worth over time',
+    desc: "Before you've even connected your bank, you'll see your projected net worth grow over 40 years. Adjust the savings rate and watch the number change — this is the moment most people realise what's at stake.",
     time: '~1 min',
   },
   {
+    num: 7,
+    title: 'Connect your bank',
+    desc: "Link your bank account securely through Plaid. WeLeap pulls in your real transactions so you can see exactly how your actual spending compares to your plan. WeLeap never stores your bank credentials.",
+    time: '~3 min',
+  },
+  {
     num: 8,
-    title: 'Your Feed is ready',
-    desc: "You'll land on your Feed — a ranked list of the specific moves WeLeap recommends for you right now, ordered by how much they'll improve your financial position.",
+    title: "Enter your savings details and see how you're doing",
+    desc: "Tell WeLeap about your 401(k) match, emergency fund, debts, and investments. WeLeap then shows you where you stand against your plan — the gaps, the wins, and your highest-priority next moves.",
+    time: '~3 min',
   },
 ]
 
