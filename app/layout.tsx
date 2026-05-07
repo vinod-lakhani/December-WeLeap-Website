@@ -5,6 +5,9 @@ import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
 import { UtmCapture } from '@/components/utm-capture'
+import { PostHogProvider } from '@/components/posthog-provider'
+import { PostHogPageView } from '@/components/posthog-pageview'
+import { Suspense } from 'react'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -23,11 +26,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className={GeistSans.className}>
-        <UtmCapture />
-        {children}
-        <Analytics />
-        <CookieConsent />
-        <ConditionalGoogleAnalytics />
+        <PostHogProvider>
+          <UtmCapture />
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          {children}
+          <Analytics />
+          <CookieConsent />
+          <ConditionalGoogleAnalytics />
+        </PostHogProvider>
       </body>
     </html>
   )
