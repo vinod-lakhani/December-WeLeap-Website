@@ -70,7 +70,7 @@ const LEAP_VIDEOS: Video[] = [
   {
     id: 'increase-hsa',
     title: 'Increase your HSA contribution',
-    desc: 'How to action the HSA Leap — why it's a triple tax win and exactly what to do next.',
+    desc: "How to action the HSA Leap — why it's a triple tax win and exactly what to do next.",
     category: 'feature',
     emoji: '🏥',
     url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/increase-hsa.mp4',
