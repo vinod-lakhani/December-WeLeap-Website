@@ -101,6 +101,15 @@ const LEAP_VIDEOS: Video[] = [
     url: `${BASE}/videos/lock-in-plan.mp4`,
     thumbnail: `${BASE}/thumbnails/thumb-lock-in-plan.jpg`,
   },
+  {
+    id: 'pay-off-debt',
+    title: 'Pay off debt faster',
+    desc: 'How to action the debt payoff Leap — which debt to target first and how WeLeap tracks your progress.',
+    category: 'feature',
+    emoji: '💳',
+    url: `${BASE}/videos/pay-off-debt.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-pay-off-debt.jpg`,
+  },
 ]
 
 const VIDEOS: Video[] = [

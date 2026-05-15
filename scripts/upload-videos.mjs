@@ -5,10 +5,8 @@ import { resolve } from 'path'
 const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_so1Q55lslWRYYqWT_nuTsM5I8eLXYZtUdof0TTIEW8wL0yW'
 
 const videos = [
-  { localPath: '/Users/vinodlakhani/Desktop/demo/grow-savings.mp4',       blobName: 'videos/grow-savings.mp4' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/lock-in-plan.mp4',       blobName: 'videos/lock-in-plan.mp4' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-grow-savings.jpg', blobName: 'thumbnails/thumb-grow-savings.jpg' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-lock-in-plan.jpg', blobName: 'thumbnails/thumb-lock-in-plan.jpg' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/pay-off-debt.mp4',       blobName: 'videos/pay-off-debt.mp4' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-pay-off-debt.jpg', blobName: 'thumbnails/thumb-pay-off-debt.jpg' },
 ]
 
 for (const video of videos) {
