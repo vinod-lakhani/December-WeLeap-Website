@@ -5,11 +5,10 @@ import { resolve } from 'path'
 const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_so1Q55lslWRYYqWT_nuTsM5I8eLXYZtUdof0TTIEW8wL0yW'
 
 const videos = [
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-onboarding.jpg',  blobName: 'thumbnails/thumb-onboarding.jpg' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-set-my-plan.jpg', blobName: 'thumbnails/thumb-set-my-plan.jpg' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-navigate-app.jpg',blobName: 'thumbnails/thumb-navigate-app.jpg' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-capture-401k.jpg',blobName: 'thumbnails/thumb-capture-401k.jpg' },
-  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-increase-hsa.jpg',blobName: 'thumbnails/thumb-increase-hsa.jpg' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/grow-savings.mp4',       blobName: 'videos/grow-savings.mp4' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/lock-in-plan.mp4',       blobName: 'videos/lock-in-plan.mp4' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-grow-savings.jpg', blobName: 'thumbnails/thumb-grow-savings.jpg' },
+  { localPath: '/Users/vinodlakhani/Desktop/demo/thumb-lock-in-plan.jpg', blobName: 'thumbnails/thumb-lock-in-plan.jpg' },
 ]
 
 for (const video of videos) {

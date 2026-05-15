@@ -83,6 +83,24 @@ const LEAP_VIDEOS: Video[] = [
     url: `${BASE}/videos/increase-hsa.mp4`,
     thumbnail: `${BASE}/thumbnails/thumb-increase-hsa.jpg`,
   },
+  {
+    id: 'grow-savings',
+    title: 'Grow your savings',
+    desc: 'How to action the savings growth Leap — where the money goes and how to set it up.',
+    category: 'feature',
+    emoji: '📈',
+    url: `${BASE}/videos/grow-savings.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-grow-savings.jpg`,
+  },
+  {
+    id: 'lock-in-plan',
+    title: 'Lock in your plan',
+    desc: 'How to finalise and commit to your WeLeap plan so your money starts working immediately.',
+    category: 'feature',
+    emoji: '🔒',
+    url: `${BASE}/videos/lock-in-plan.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-lock-in-plan.jpg`,
+  },
 ]
 
 const VIDEOS: Video[] = [
@@ -382,7 +400,7 @@ export default function VideosPage() {
                 <p className="text-sm font-bold tracking-widest uppercase text-[#386641]">Leap walkthroughs</p>
               </div>
               <p className="text-sm text-gray-500 mb-6 ml-11">See exactly how to action a Leap inside the app.</p>
-              <div className="grid sm:grid-cols-2 gap-5">
+              <div className="grid sm:grid-cols-2 md:grid-cols-2 gap-5">
                 {LEAP_VIDEOS.map(video => (
                   <SeriesCard key={video.id} video={video} onClick={() => openVideo(video)} />
                 ))}
