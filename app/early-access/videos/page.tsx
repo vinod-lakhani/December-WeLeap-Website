@@ -19,6 +19,7 @@ interface Video {
   emoji: string
   duration?: string
   url?: string        // direct .mp4 URL or embed URL — undefined = coming soon
+  thumbnail?: string  // preview image URL
   seriesNum?: number  // if part of the Watch First series
 }
 
@@ -28,6 +29,8 @@ interface Video {
 // YouTube:  https://www.youtube.com/embed/VIDEO_ID
 // Loom:     https://www.loom.com/embed/VIDEO_ID
 
+const BASE = 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com'
+
 const SERIES: Video[] = [
   {
     id: 'onboarding',
@@ -36,7 +39,8 @@ const SERIES: Video[] = [
     desc: 'A walkthrough of your first experience in WeLeap — what to expect, what to enter, and what happens at the end.',
     category: 'start',
     emoji: '🚀',
-    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/onboarding.mp4',
+    url: `${BASE}/videos/onboarding.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-onboarding.jpg`,
   },
   {
     id: 'set-my-plan',
@@ -45,7 +49,8 @@ const SERIES: Video[] = [
     desc: 'How WeLeap builds your 50/30/20 split, allocates your savings, and shows you your net worth over time.',
     category: 'start',
     emoji: '📋',
-    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/set-my-plan.mp4',
+    url: `${BASE}/videos/set-my-plan.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-set-my-plan.jpg`,
   },
   {
     id: 'navigate-app',
@@ -54,7 +59,8 @@ const SERIES: Video[] = [
     desc: 'A tour of the app — your Feed, Ribbit, Leaps, and how to find what you need.',
     category: 'start',
     emoji: '🗺️',
-    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/navigate-app.mp4',
+    url: `${BASE}/videos/navigate-app.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-navigate-app.jpg`,
   },
 ]
 
@@ -65,7 +71,8 @@ const LEAP_VIDEOS: Video[] = [
     desc: 'How to action the employer match Leap — what to change, where to change it, and how much it matters.',
     category: 'feature',
     emoji: '💰',
-    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/capture-401k.mp4',
+    url: `${BASE}/videos/capture-401k.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-capture-401k.jpg`,
   },
   {
     id: 'increase-hsa',
@@ -73,7 +80,8 @@ const LEAP_VIDEOS: Video[] = [
     desc: "How to action the HSA Leap — why it's a triple tax win and exactly what to do next.",
     category: 'feature',
     emoji: '🏥',
-    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/increase-hsa.mp4',
+    url: `${BASE}/videos/increase-hsa.mp4`,
+    thumbnail: `${BASE}/thumbnails/thumb-increase-hsa.jpg`,
   },
 ]
 
@@ -204,15 +212,26 @@ function SeriesCard({ video, onClick }: { video: Video; onClick: () => void }) {
       className="group rounded-xl border border-gray-200 bg-white overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 transition-all w-full"
     >
       <div className="relative aspect-video bg-[#386641]">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#386641] to-[#1f3d24] flex items-center justify-center">
-          <span className="text-5xl opacity-20">{video.emoji}</span>
-        </div>
+        {/* Thumbnail or fallback gradient */}
+        {video.thumbnail ? (
+          <img
+            src={video.thumbnail}
+            alt={video.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#386641] to-[#1f3d24] flex items-center justify-center">
+            <span className="text-5xl opacity-20">{video.emoji}</span>
+          </div>
+        )}
         {/* Series number badge */}
-        <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white text-[#386641] font-bold text-sm flex items-center justify-center shadow-md">
-          {video.seriesNum}
-        </div>
-        {/* Play button */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors">
+        {video.seriesNum && (
+          <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white text-[#386641] font-bold text-sm flex items-center justify-center shadow-md z-10">
+            {video.seriesNum}
+          </div>
+        )}
+        {/* Play button overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition-colors">
           <div className="w-14 h-14 rounded-full bg-white/95 shadow-xl flex items-center justify-center">
             <svg className="w-6 h-6 fill-[#386641] ml-1" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
