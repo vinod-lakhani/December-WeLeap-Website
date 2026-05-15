@@ -17,36 +17,54 @@ interface Video {
   desc: string
   category: Exclude<Category, 'all'>
   emoji: string
-  duration?: string        // e.g. "4:32"
-  url?: string             // embed URL — leave undefined for coming soon
-  featured?: boolean
+  duration?: string
+  url?: string        // direct .mp4 URL or embed URL — undefined = coming soon
+  seriesNum?: number  // if part of the Watch First series
 }
 
 // ── Video data ───────────────────────────────────────────────────────────────
-// To add a video:
-//   1. Add an entry here with url: 'YOUR_EMBED_URL'
-//   2. YouTube:  https://www.youtube.com/embed/VIDEO_ID
-//      Loom:     https://www.loom.com/embed/VIDEO_ID
-//      Vimeo:    https://player.vimeo.com/video/VIDEO_ID
+// To add a video: set url to the Vercel Blob .mp4 URL or a YouTube/Loom embed URL
+// Blob:     https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/YOUR_FILE.mp4
+// YouTube:  https://www.youtube.com/embed/VIDEO_ID
+// Loom:     https://www.loom.com/embed/VIDEO_ID
 
-const VIDEOS: Video[] = [
+const SERIES: Video[] = [
   {
-    id: 'first-5-minutes',
-    title: 'Your first 5 minutes with WeLeap',
-    desc: "A walkthrough of what you'll see when you open the app for the first time — what to expect, what to enter, and what your Feed will show you.",
+    id: 'onboarding',
+    seriesNum: 1,
+    title: 'What does onboarding look like?',
+    desc: 'A walkthrough of your first experience in WeLeap — what to expect, what to enter, and what happens at the end.',
     category: 'start',
     emoji: '🚀',
-    duration: undefined,
-    url: undefined,        // ← paste embed URL here when ready
-    featured: true,
+    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/onboarding.mp4',
   },
+  {
+    id: 'set-my-plan',
+    seriesNum: 2,
+    title: 'How to set my plan',
+    desc: 'How WeLeap builds your 50/30/20 split, allocates your savings, and shows you your net worth over time.',
+    category: 'start',
+    emoji: '📋',
+    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/set-my-plan.mp4',
+  },
+  {
+    id: 'navigate-app',
+    seriesNum: 3,
+    title: 'How to navigate the application',
+    desc: 'A tour of the app — your Feed, Ribbit, Leaps, and how to find what you need.',
+    category: 'start',
+    emoji: '🗺️',
+    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/navigate-app.mp4',
+  },
+]
+
+const VIDEOS: Video[] = [
   {
     id: 'understanding-feed',
     title: 'Understanding your Feed',
     desc: 'What each card in your Feed means and how WeLeap decides what to show you first.',
     category: 'feature',
     emoji: '📊',
-    url: undefined,
   },
   {
     id: 'using-ribbit',
@@ -54,7 +72,6 @@ const VIDEOS: Video[] = [
     desc: 'The right questions to ask your AI advisor — and how to get the most useful answers.',
     category: 'feature',
     emoji: '🐸',
-    url: undefined,
   },
   {
     id: 'connecting-bank',
@@ -62,7 +79,6 @@ const VIDEOS: Video[] = [
     desc: 'How Plaid works, what WeLeap can see, and why your real transactions make the plan better.',
     category: 'feature',
     emoji: '🏦',
-    url: undefined,
   },
   {
     id: 'savings-stack',
@@ -70,7 +86,6 @@ const VIDEOS: Video[] = [
     desc: 'Why the order matters: emergency fund → debt → employer match → IRA → brokerage.',
     category: 'feature',
     emoji: '💰',
-    url: undefined,
   },
   {
     id: '40-year-projection',
@@ -78,7 +93,6 @@ const VIDEOS: Video[] = [
     desc: 'What the chart is actually showing you — and how to use it to make real decisions today.',
     category: 'tips',
     emoji: '📈',
-    url: undefined,
   },
   {
     id: 'update-plan',
@@ -86,7 +100,6 @@ const VIDEOS: Video[] = [
     desc: "Got a raise? Changed jobs? Here's exactly what to do in WeLeap when your situation changes.",
     category: 'tips',
     emoji: '🔄',
-    url: undefined,
   },
 ]
 
@@ -109,12 +122,14 @@ const SUGGEST_CHIPS = [
 // ── Sub-components ───────────────────────────────────────────────────────────
 
 function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
+  const isBlobMp4 = video.url?.includes('.mp4')
+
   return (
     <div
-      className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 md:p-8"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-[#386641] rounded-2xl overflow-hidden w-full max-w-3xl">
+      <div className="bg-[#1f3d24] rounded-2xl overflow-hidden w-full max-w-4xl shadow-2xl">
         <div className="relative aspect-video bg-black">
           <button
             onClick={onClose}
@@ -124,12 +139,22 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
             ✕
           </button>
           {video.url ? (
-            <iframe
-              src={video.url}
-              className="w-full h-full border-0"
-              allowFullScreen
-              allow="autoplay; fullscreen"
-            />
+            isBlobMp4 ? (
+              <video
+                src={video.url}
+                className="w-full h-full"
+                controls
+                autoPlay
+                playsInline
+              />
+            ) : (
+              <iframe
+                src={video.url}
+                className="w-full h-full border-0"
+                allowFullScreen
+                allow="autoplay; fullscreen"
+              />
+            )
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-black to-[#386641]">
               <span className="text-5xl">{video.emoji}</span>
@@ -137,71 +162,67 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
             </div>
           )}
         </div>
-        <div className="px-6 py-4">
-          <h3 className="text-white font-semibold text-base">{video.title}</h3>
-          <p className="text-white/55 text-sm mt-1">{video.desc}</p>
+        <div className="px-6 py-4 flex items-start gap-3">
+          {video.seriesNum && (
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-white/15 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+              {video.seriesNum}
+            </span>
+          )}
+          <div>
+            <h3 className="text-white font-semibold text-base">{video.title}</h3>
+            <p className="text-white/55 text-sm mt-1">{video.desc}</p>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
-  const isLive = Boolean(video.url)
-
-  if (!isLive) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden opacity-65">
-        <div className="aspect-video bg-gray-50 border-b border-gray-100 flex flex-col items-center justify-center gap-3">
-          <span className="text-3xl opacity-40">{video.emoji}</span>
-          <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 bg-gray-200 px-3 py-1 rounded-full">
-            Coming soon
-          </span>
-        </div>
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-400 text-sm mb-1">{video.title}</h3>
-          <p className="text-xs text-gray-400 leading-relaxed">{video.desc}</p>
-        </div>
-      </div>
-    )
-  }
-
+function SeriesCard({ video, onClick }: { video: Video; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="rounded-xl border border-gray-200 bg-white overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 transition-all w-full"
+      className="group rounded-xl border border-gray-200 bg-white overflow-hidden text-left hover:shadow-lg hover:-translate-y-0.5 transition-all w-full"
     >
       <div className="relative aspect-video bg-[#386641]">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#386641] to-[#2d5235]">
-          <span className="text-4xl opacity-50">{video.emoji}</span>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#386641] to-[#1f3d24] flex items-center justify-center">
+          <span className="text-5xl opacity-20">{video.emoji}</span>
         </div>
-        {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors">
+        {/* Series number badge */}
+        <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white text-[#386641] font-bold text-sm flex items-center justify-center shadow-md">
+          {video.seriesNum}
+        </div>
+        {/* Play button */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors">
           <div className="w-14 h-14 rounded-full bg-white/95 shadow-xl flex items-center justify-center">
             <svg className="w-6 h-6 fill-[#386641] ml-1" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
         </div>
-        {video.duration && (
-          <span className="absolute bottom-2.5 right-2.5 bg-black/75 text-white text-xs font-mono px-1.5 py-0.5 rounded">
-            {video.duration}
-          </span>
-        )}
-        <span className={cn(
-          'absolute top-2.5 left-2.5 text-xs font-semibold px-2 py-0.5 rounded-full',
-          video.category === 'start' && 'bg-amber-400 text-amber-900',
-          video.category === 'feature' && 'bg-white/20 text-white border border-white/30',
-          video.category === 'tips' && 'bg-[#386641]/80 text-white',
-        )}>
-          {CATEGORY_LABELS[video.category]}
-        </span>
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-1">{video.title}</h3>
         <p className="text-xs text-gray-500 leading-relaxed">{video.desc}</p>
       </div>
     </button>
+  )
+}
+
+function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden opacity-60">
+      <div className="aspect-video bg-gray-50 border-b border-gray-100 flex flex-col items-center justify-center gap-3">
+        <span className="text-3xl opacity-40">{video.emoji}</span>
+        <span className="text-xs font-semibold tracking-widest uppercase text-gray-400 bg-gray-200 px-3 py-1 rounded-full">
+          Coming soon
+        </span>
+      </div>
+      <div className="p-4">
+        <h3 className="font-semibold text-gray-400 text-sm mb-1">{video.title}</h3>
+        <p className="text-xs text-gray-400 leading-relaxed">{video.desc}</p>
+      </div>
+    </div>
   )
 }
 
@@ -218,14 +239,11 @@ export default function VideosPage() {
     track('early_access_videos_page_viewed', {}, true)
   }, [])
 
-  const featured = VIDEOS.find(v => v.featured)
-  const gridVideos = VIDEOS.filter(v => !v.featured)
+  const filteredVideos = activeCategory === 'all'
+    ? VIDEOS
+    : VIDEOS.filter(v => v.category === activeCategory)
 
-  const filteredGrid = activeCategory === 'all'
-    ? gridVideos
-    : gridVideos.filter(v => v.category === activeCategory)
-
-  const showFeatured = featured && (activeCategory === 'all' || activeCategory === featured.category)
+  const showSeries = activeCategory === 'all' || activeCategory === 'start'
 
   function toggleChip(chip: string) {
     const isRemoving = selectedChips.includes(chip)
@@ -250,6 +268,11 @@ export default function VideosPage() {
     setCustomSuggestion('')
   }
 
+  function openVideo(video: Video) {
+    setActiveVideo(video)
+    track('early_access_video_opened', { video_id: video.id, video_title: video.title, is_live: Boolean(video.url) })
+  }
+
   return (
     <PageShell>
       {/* Hero */}
@@ -262,7 +285,7 @@ export default function VideosPage() {
             See WeLeap in action.
           </h1>
           <p className={cn(TYPOGRAPHY.body, 'text-white/70 max-w-md mx-auto')}>
-            Short, user-focused videos that show you exactly what's happening inside WeLeap — and why it matters for your money.
+            Short videos that show you exactly what's happening inside WeLeap — and why it matters for your money.
           </p>
         </Container>
       </Section>
@@ -297,74 +320,33 @@ export default function VideosPage() {
       <Section>
         <Container maxWidth="narrow">
 
-          {/* Featured */}
-          {showFeatured && featured && (
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-4">
+          {/* Watch first series */}
+          {showSeries && (
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-0.5 bg-[#386641] rounded-full" />
-                <p className="text-sm font-bold tracking-widest uppercase text-[#386641]">Start here</p>
+                <p className="text-sm font-bold tracking-widest uppercase text-[#386641]">Watch first</p>
               </div>
-              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden grid md:grid-cols-2">
-                <div className="relative aspect-video md:aspect-auto bg-[#386641]">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#386641] to-[#1f3d24]">
-                    <span className="text-6xl opacity-30">{featured.emoji}</span>
-                  </div>
-                  {featured.url ? (
-                    <button
-                      onClick={() => setActiveVideo(featured)}
-                      className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
-                    >
-                      <div className="w-16 h-16 rounded-full bg-white/95 shadow-xl flex items-center justify-center">
-                        <svg className="w-7 h-7 fill-[#386641] ml-1" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-white/15 border-2 border-white/30 flex items-center justify-center">
-                        <svg className="w-7 h-7 fill-white/60 ml-1" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                      <span className="text-xs text-white/40 tracking-widest uppercase font-medium">Coming soon</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 md:p-8 flex flex-col justify-center">
-                  <p className="text-xs font-bold tracking-widest uppercase text-[#386641] mb-2">★ Watch first</p>
-                  <h2 className="text-xl font-bold text-gray-900 mb-3 leading-tight">{featured.title}</h2>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-5">{featured.desc}</p>
-                  <div className="flex gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-full">
-                      🎬 Getting started
-                    </span>
-                    {featured.duration && (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-full">
-                        ⏱ {featured.duration}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              <p className="text-sm text-gray-500 mb-6 ml-11">Watch these three in order to get up to speed quickly.</p>
+              <div className="grid sm:grid-cols-3 gap-5">
+                {SERIES.map(video => (
+                  <SeriesCard key={video.id} video={video} onClick={() => openVideo(video)} />
+                ))}
               </div>
             </div>
           )}
 
-          {/* Grid */}
+          {/* Coming soon grid */}
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-0.5 bg-[#386641] rounded-full" />
               <p className="text-sm font-bold tracking-widest uppercase text-[#386641]">
-                {activeCategory === 'all' ? 'All videos' : CATEGORY_LABELS[activeCategory]}
+                {activeCategory === 'all' ? 'More coming soon' : CATEGORY_LABELS[activeCategory]}
               </p>
             </div>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {filteredGrid.map(video => (
-                <VideoCard
-                  key={video.id}
-                  video={video}
-                  onClick={() => { setActiveVideo(video); track('early_access_video_opened', { video_id: video.id, video_title: video.title, is_live: Boolean(video.url) }) }}
-                />
+              {filteredVideos.map(video => (
+                <VideoCard key={video.id} video={video} onClick={() => openVideo(video)} />
               ))}
             </div>
           </div>
