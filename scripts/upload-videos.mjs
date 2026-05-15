@@ -6,16 +6,12 @@ const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_so1Q55lslWRYYqWT_nuTsM5I8eLXYZtUdo
 
 const videos = [
   {
-    localPath: '/Users/vinodlakhani/Desktop/demo/onboarding.mp4',
-    blobName: 'videos/onboarding.mp4',
+    localPath: '/Users/vinodlakhani/Desktop/demo/capture-401k.mp4',
+    blobName: 'videos/capture-401k.mp4',
   },
   {
-    localPath: '/Users/vinodlakhani/Desktop/demo/set-my-plan.mp4',
-    blobName: 'videos/set-my-plan.mp4',
-  },
-  {
-    localPath: '/Users/vinodlakhani/Desktop/demo/navigate-app.mp4',
-    blobName: 'videos/navigate-app.mp4',
+    localPath: '/Users/vinodlakhani/Desktop/demo/increase-hsa.mp4',
+    blobName: 'videos/increase-hsa.mp4',
   },
 ]
 

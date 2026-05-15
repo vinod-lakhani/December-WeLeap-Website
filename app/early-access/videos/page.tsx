@@ -58,6 +58,25 @@ const SERIES: Video[] = [
   },
 ]
 
+const LEAP_VIDEOS: Video[] = [
+  {
+    id: 'capture-401k',
+    title: 'Capture your 401(k) match',
+    desc: 'How to action the employer match Leap — what to change, where to change it, and how much it matters.',
+    category: 'feature',
+    emoji: '💰',
+    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/capture-401k.mp4',
+  },
+  {
+    id: 'increase-hsa',
+    title: 'Increase your HSA contribution',
+    desc: 'How to action the HSA Leap — why it's a triple tax win and exactly what to do next.',
+    category: 'feature',
+    emoji: '🏥',
+    url: 'https://so1q55lslwryyqwt.public.blob.vercel-storage.com/videos/increase-hsa.mp4',
+  },
+]
+
 const VIDEOS: Video[] = [
   {
     id: 'understanding-feed',
@@ -330,6 +349,22 @@ export default function VideosPage() {
               <p className="text-sm text-gray-500 mb-6 ml-11">Watch these three in order to get up to speed quickly.</p>
               <div className="grid sm:grid-cols-3 gap-5">
                 {SERIES.map(video => (
+                  <SeriesCard key={video.id} video={video} onClick={() => openVideo(video)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Leap walkthroughs */}
+          {(activeCategory === 'all' || activeCategory === 'feature') && (
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-0.5 bg-[#386641] rounded-full" />
+                <p className="text-sm font-bold tracking-widest uppercase text-[#386641]">Leap walkthroughs</p>
+              </div>
+              <p className="text-sm text-gray-500 mb-6 ml-11">See exactly how to action a Leap inside the app.</p>
+              <div className="grid sm:grid-cols-2 gap-5">
+                {LEAP_VIDEOS.map(video => (
                   <SeriesCard key={video.id} video={video} onClick={() => openVideo(video)} />
                 ))}
               </div>
