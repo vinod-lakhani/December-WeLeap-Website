@@ -6,6 +6,7 @@ import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
+import { usePostHog } from 'posthog-js/react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -294,6 +295,7 @@ function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function VideosPage() {
+  const posthog = usePostHog()
   const [activeCategory, setActiveCategory] = useState<Category>('all')
   const [activeVideo, setActiveVideo] = useState<Video | null>(null)
   const [selectedChips, setSelectedChips] = useState<string[]>([])
@@ -302,7 +304,11 @@ export default function VideosPage() {
 
   useEffect(() => {
     track('early_access_videos_page_viewed', {}, true)
-  }, [])
+    posthog?.capture('early_access_videos_viewed', {
+      referrer: document.referrer || 'direct',
+      total_videos_available: SERIES.length + LEAP_VIDEOS.length,
+    })
+  }, [posthog])
 
   const filteredVideos = activeCategory === 'all'
     ? VIDEOS
@@ -325,6 +331,10 @@ export default function VideosPage() {
       chips_count: selectedChips.length,
       has_custom: Boolean(customSuggestion.trim()),
     })
+    posthog?.capture('early_access_video_suggestion_submitted', {
+      chips: selectedChips,
+      custom_text: customSuggestion.trim() || null,
+    })
     const subject = encodeURIComponent('WeLeap Video Suggestion')
     const body = encodeURIComponent(`Video topic suggestion:\n\n${combined}`)
     window.location.href = `mailto:feedback@weleap.ai?subject=${subject}&body=${body}`
@@ -336,6 +346,12 @@ export default function VideosPage() {
   function openVideo(video: Video) {
     setActiveVideo(video)
     track('early_access_video_opened', { video_id: video.id, video_title: video.title, is_live: Boolean(video.url) })
+    posthog?.capture('early_access_video_played', {
+      video_id: video.id,
+      video_title: video.title,
+      section: video.seriesNum ? 'watch_first' : 'leap_walkthroughs',
+      active_filter: activeCategory,
+    })
   }
 
   return (
@@ -360,7 +376,7 @@ export default function VideosPage() {
         <div className="max-w-4xl mx-auto px-6 flex gap-1 overflow-x-auto">
           <Link
             href="/early-access"
-            onClick={() => track('early_access_videos_back_to_guide_clicked')}
+            onClick={() => { track('early_access_videos_back_to_guide_clicked'); posthog?.capture('early_access_videos_back_to_guide_clicked') }}
             className="py-3.5 px-4 text-sm font-semibold text-white/60 hover:text-white whitespace-nowrap border-b-2 border-transparent transition-colors mr-2"
           >
             ← Guide
@@ -368,7 +384,7 @@ export default function VideosPage() {
           {(Object.keys(CATEGORY_LABELS) as Category[]).map(cat => (
             <button
               key={cat}
-              onClick={() => { setActiveCategory(cat); track('early_access_video_filter_changed', { category: cat }) }}
+              onClick={() => { setActiveCategory(cat); track('early_access_video_filter_changed', { category: cat }); posthog?.capture('early_access_video_filter_changed', { category: cat }) }}
               className={cn(
                 'py-3.5 px-4 text-base font-semibold whitespace-nowrap border-b-2 transition-colors',
                 activeCategory === cat

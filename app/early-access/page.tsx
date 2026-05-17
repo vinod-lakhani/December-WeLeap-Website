@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { PageShell, Section, Container } from '@/components/layout'
 import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
+import { usePostHog } from 'posthog-js/react'
 
 // ── Data ────────────────────────────────────────────────────────────────────
 
@@ -144,9 +145,35 @@ const glossary = [
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function EarlyAccessPage() {
+  const posthog = usePostHog()
+  const sectionsSeenRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
     track('early_access_guide_page_viewed', {}, true)
-  }, [])
+    posthog?.capture('early_access_guide_viewed', {
+      referrer: document.referrer || 'direct',
+      screen_width: window.innerWidth,
+    })
+
+    // Scroll-depth: fire once per section as it enters the viewport
+    const sections = ['what-is-weleap', 'getting-started', 'plaid', 'leaps', 'ribbit', 'framework', 'glossary', 'feedback']
+    const observers: IntersectionObserver[] = []
+
+    sections.forEach(id => {
+      const el = document.getElementById(id)
+      if (!el) return
+      const obs = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting && !sectionsSeenRef.current.has(id)) {
+          sectionsSeenRef.current.add(id)
+          posthog?.capture('early_access_guide_section_reached', { section: id, total_sections_seen: sectionsSeenRef.current.size })
+        }
+      }, { threshold: 0.3 })
+      obs.observe(el)
+      observers.push(obs)
+    })
+
+    return () => observers.forEach(o => o.disconnect())
+  }, [posthog])
 
   return (
     <PageShell>
@@ -166,7 +193,7 @@ export default function EarlyAccessPage() {
           <div className="flex flex-wrap gap-3 justify-center">
             <a
               href="https://dev.weleap.app"
-              onClick={() => track('early_access_open_app_clicked', { source: 'hero' })}
+              onClick={() => { track('early_access_open_app_clicked', { source: 'hero' }); posthog?.capture('early_access_open_app_clicked', { source: 'hero' }) }}
               className="inline-block bg-white text-[#386641] font-semibold px-6 py-3 rounded-lg hover:bg-white/90 transition-colors"
             >
               Open the app →
@@ -209,7 +236,7 @@ export default function EarlyAccessPage() {
             <Link
               key={href}
               href={href}
-              onClick={() => track('early_access_nav_clicked', { section: label })}
+              onClick={() => { track('early_access_nav_clicked', { section: label }); posthog?.capture('early_access_nav_clicked', { section: label }) }}
               className="py-3.5 px-4 text-base font-semibold text-white/70 hover:text-white whitespace-nowrap border-b-2 border-transparent hover:border-white/60 transition-colors"
             >
               {label}
@@ -530,21 +557,21 @@ export default function EarlyAccessPage() {
             <div className="flex flex-wrap gap-3 justify-center mb-4">
               <a
                 href="mailto:feedback@weleap.ai?subject=WeLeap Early Access Feedback"
-                onClick={() => track('early_access_email_feedback_clicked')}
+                onClick={() => { track('early_access_email_feedback_clicked'); posthog?.capture('early_access_email_feedback_clicked') }}
                 className="inline-block bg-[#386641] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#2d5235] transition-colors"
               >
                 📧 Email us directly
               </a>
               <Link
                 href="/early-access/videos"
-                onClick={() => track('early_access_videos_link_clicked', { source: 'feedback' })}
+                onClick={() => { track('early_access_videos_link_clicked', { source: 'feedback' }); posthog?.capture('early_access_videos_link_clicked', { source: 'feedback' }) }}
                 className="inline-block bg-white border border-gray-200 text-gray-700 font-medium px-6 py-3 rounded-lg hover:border-[#386641] hover:text-[#386641] transition-colors"
               >
                 🎬 Watch video guides
               </Link>
               <a
                 href="https://dev.weleap.app"
-                onClick={() => track('early_access_open_app_clicked', { source: 'feedback' })}
+                onClick={() => { track('early_access_open_app_clicked', { source: 'feedback' }); posthog?.capture('early_access_open_app_clicked', { source: 'feedback' }) }}
                 className="inline-block bg-white border border-gray-200 text-gray-700 font-medium px-6 py-3 rounded-lg hover:border-[#386641] hover:text-[#386641] transition-colors"
               >
                 ↗ Open the app
