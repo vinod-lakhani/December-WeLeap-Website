@@ -25,6 +25,7 @@ export interface EmergencyFundResult {
   targetDollars: number;
   progressPct: number;
   reasons: string[];
+  recommendation: string;
 }
 
 const MIN_MONTHS = 2;
@@ -92,13 +93,6 @@ export function calculateEmergencyFundTarget(inputs: EmergencyFundInputs): Emerg
     reasons.push('You have dependents');
   }
 
-  // Low savings cushion
-  const oneMonthExpenses = monthlyExpenses;
-  if (currentSavings < oneMonthExpenses && oneMonthExpenses > 0) {
-    targetMonths += 0.5;
-    reasons.push('Your financial buffer is currently low');
-  }
-
   // Clamp
   targetMonths = Math.max(MIN_MONTHS, Math.min(MAX_MONTHS, Math.round(targetMonths * 2) / 2));
 
@@ -106,12 +100,68 @@ export function calculateEmergencyFundTarget(inputs: EmergencyFundInputs): Emerg
   const progressPct =
     targetDollars > 0 ? Math.min(100, (currentSavings / targetDollars) * 100) : 0;
 
+  const recommendation = generateRecommendation(inputs, targetMonths);
+
   return {
     targetMonths,
     targetDollars,
     progressPct,
     reasons: reasons.length > 0 ? reasons : ['Your situation suggests a standard buffer.'],
+    recommendation,
   };
+}
+
+/**
+ * Generate a personalized 2–3 sentence narrative recommendation based on the
+ * user's risk profile and computed target.
+ */
+function generateRecommendation(inputs: EmergencyFundInputs, targetMonths: number): string {
+  const { incomeStability, hasDependents, monthlyIncome, monthlyExpenses, creditCardDebt } = inputs;
+  const expenseRatio = monthlyIncome > 0 ? monthlyExpenses / monthlyIncome : 0;
+
+  const bufferDesc =
+    targetMonths <= 3 ? 'a standard' : targetMonths <= 4.5 ? 'a stronger-than-average' : 'a robust';
+
+  // Primary driver — the most important sentence
+  let primaryReason: string;
+  if (incomeStability === 'freelance' && hasDependents) {
+    primaryReason =
+      'With freelance income and dependents counting on you, a disruption carries a higher cost — you can\'t easily cut back when others are relying on your earnings.';
+  } else if (incomeStability === 'freelance') {
+    primaryReason =
+      'Freelance or unpredictable income means slow periods and client gaps are a real risk — a longer runway gives you time to adjust without going into debt.';
+  } else if (incomeStability === 'somewhat_variable' && hasDependents) {
+    primaryReason =
+      'Variable income combined with dependents means a bad month can quickly become a financial crisis without a buffer to absorb the gap.';
+  } else if (incomeStability === 'somewhat_variable') {
+    primaryReason =
+      'Variable income means some months will fall short — a buffer sized to your situation gives you time to adjust without reaching for credit.';
+  } else if (hasDependents) {
+    primaryReason =
+      'Even with stable income, dependents raise the stakes if anything goes wrong — a larger buffer protects the people relying on you.';
+  } else {
+    primaryReason =
+      'Your income is stable and your risk profile is relatively low — this target covers most disruptions without over-saving.';
+  }
+
+  // Secondary color based on expense pressure or CC debt
+  let secondary = '';
+  if (expenseRatio > 0.80) {
+    secondary =
+      ' Your expenses consume a large share of your income, leaving very little slack to absorb a financial shock.';
+  } else if (expenseRatio > 0.65) {
+    secondary =
+      ' Your expenses are a significant share of income, which pushed the recommendation slightly above the standard 3-month rule.';
+  } else if (creditCardDebt === 'yes') {
+    secondary =
+      ' Carrying credit card debt is also a factor — an emergency fund helps you weather a shock without adding to that balance.';
+  } else if (creditCardDebt === 'occasionally') {
+    secondary =
+      ' Occasionally carrying credit card debt signals that cash flow gets tight — a solid buffer helps prevent that from becoming a pattern.';
+  }
+
+  const intro = `We recommend ${bufferDesc} ${targetMonths}-month emergency fund for your situation.`;
+  return `${intro} ${primaryReason}${secondary}`.trim();
 }
 
 export interface Milestone {
