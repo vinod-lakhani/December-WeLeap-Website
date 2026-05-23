@@ -344,6 +344,11 @@ export function EmergencyFundTool() {
               <p className="text-sm text-gray-600">Recommended buffer</p>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Personalized narrative recommendation */}
+              <div className="rounded-lg bg-[#F0F7F0] border border-[#3F6B42]/20 p-4">
+                <p className="text-sm text-[#2D4F2F] leading-relaxed">{result.recommendation}</p>
+              </div>
+
               {hasMetTarget && (
                 <div className="rounded-lg bg-green-50 border border-green-200 p-4">
                   <p className="text-sm font-semibold text-green-800 mb-1">
