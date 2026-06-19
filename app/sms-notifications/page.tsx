@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { PageShell, Section, Container } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { SmsOptinForm } from "./sms-optin-form"
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -38,7 +39,7 @@ export default function SmsNotificationsPage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>What this program is</h2>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  WeLeap is a personal finance app for young adults. We send recurring SMS notifications to registered WeLeap users who have opted in. Each message delivers one of the following for that specific user:
+                  WeLeap is a personal finance app for young adults. We send recurring SMS notifications to WeLeap users who have opted in. Each message delivers one of the following for that specific user:
                 </p>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
                   <li>Your top recommended financial action for the week (a "Leap"), for example moving money to savings or capturing an employer 401(k) match.</li>
@@ -50,57 +51,21 @@ export default function SmsNotificationsPage() {
                 </p>
               </section>
 
-              {/* How you opt in */}
+              {/* Opt-in form */}
               <section className="space-y-3 md:space-y-4">
-                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>How you opt in</h2>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  You opt in during WeLeap account onboarding. On the notifications step, you enter your mobile number and check a consent box (unchecked by default). The box reads:
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Opt in to WeLeap texts</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-500")}>
+                  Enter your mobile number and check the box to opt in. You can opt in here, or on the notifications step during WeLeap account onboarding.
                 </p>
-                <div className="border-l-4 border-[#386641] bg-green-50 rounded-r-xl px-5 py-4 text-sm text-gray-700 italic">
-                  "I agree to receive recurring automated SMS notifications from WeLeap about my weekly financial summary, recommended actions (Leaps), and reminders. Msg frequency varies (about 1 to 3 per week). Message and data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of using WeLeap."
-                </div>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  SMS consent is collected on its own. It is not bundled with acceptance of our Terms or Privacy Policy, and it is not required to use WeLeap.
-                </p>
+                <SmsOptinForm />
               </section>
 
-              {/* The opt-in screen — phone mockup */}
+              {/* How consent is recorded */}
               <section className="space-y-3 md:space-y-4">
-                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>The opt-in screen</h2>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-500 text-center")}>
-                  The notifications step shown to users during WeLeap onboarding:
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>How consent is recorded</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  SMS consent is collected on its own. It is not bundled with acceptance of our Terms or Privacy Policy, and it is not required to use WeLeap. We store the mobile number, the exact consent language shown above, and the date and time of consent.
                 </p>
-
-                {/* Phone mockup */}
-                <div className="flex justify-center my-6">
-                  <div className="w-[300px] bg-white rounded-[32px] border-[8px] border-[#1A3320] px-5 py-6 shadow-2xl">
-                    {/* Notch */}
-                    <div className="w-24 h-1.5 bg-[#C2DEC6] rounded-full mx-auto mb-5" />
-                    {/* Step label */}
-                    <p className="text-[11px] font-semibold tracking-widest uppercase text-[#4A8A54] mb-1">Onboarding · Notifications</p>
-                    <h3 className="text-lg font-bold text-[#1A3320] mb-1">Stay on top of your money</h3>
-                    <p className="text-xs text-gray-500 mb-5">Get your weekly Leap, reminders, and money check-in by text.</p>
-                    {/* Phone field */}
-                    <label className="text-[11px] font-semibold text-[#1A3320] block mb-1.5">Mobile number</label>
-                    <div className="border border-[#C2DEC6] rounded-xl px-3 py-2.5 text-sm text-gray-400 bg-[#EDF4EE] mb-5">
-                      (555) 000-0000
-                    </div>
-                    {/* Consent row */}
-                    <div className="flex gap-2.5 items-start mb-5">
-                      <div className="w-5 h-5 min-w-[20px] border-2 border-[#386641] rounded-md mt-0.5 bg-white" />
-                      <p className="text-[11px] leading-relaxed text-gray-700">
-                        I agree to receive recurring automated SMS notifications from WeLeap about my weekly financial summary, recommended actions (Leaps), and reminders. Msg frequency varies (about 1 to 3 per week). Message and data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of using WeLeap. See{' '}
-                        <Link href="/terms-of-service" className="text-[#386641] underline">Terms</Link> and{' '}
-                        <Link href="/privacy-policy" className="text-[#386641] underline">Privacy Policy</Link>.
-                      </p>
-                    </div>
-                    {/* Button */}
-                    <div className="bg-[#386641] text-white text-center font-semibold text-sm py-3 rounded-xl mb-3">
-                      Continue
-                    </div>
-                    <p className="text-center text-xs text-gray-400">Skip for now</p>
-                  </div>
-                </div>
               </section>
 
               {/* Keywords */}
@@ -142,7 +107,7 @@ export default function SmsNotificationsPage() {
                 </p>
               </section>
 
-              {/* Further reading card */}
+              {/* Further reading */}
               <div className="rounded-xl border border-gray-200 bg-gray-50 px-6 py-4">
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700 m-0")}>
                   Read more:{' '}
