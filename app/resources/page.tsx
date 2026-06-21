@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home, Shield } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home, Shield, Briefcase } from "lucide-react"
 import { PageShell, Section, Container } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
@@ -394,6 +394,36 @@ export default function ResourcesPage() {
                     </p>
                     <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
                       <span>Plan my payoff</span>
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/offer" className="h-full">
+              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
+                <CardContent className="p-0 flex flex-col flex-1">
+                  <div className="relative overflow-hidden bg-[#1a2e1a] h-48 flex items-center justify-center">
+                    <div className="text-center px-6">
+                      <div className="text-[#A7C957] text-4xl font-black mb-2">7</div>
+                      <div className="text-white/70 text-sm font-medium">numbers in your offer letter</div>
+                    </div>
+                    <div className="absolute top-4 left-4">
+                      <div className="bg-primary-100 rounded-lg p-2">
+                        <Briefcase className="w-5 h-5 text-primary-600" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6 flex flex-col flex-1">
+                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors duration-200")}>
+                      Offer Letter Analyzer
+                    </h3>
+                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
+                      Your offer letter has 7 numbers. Most people only read one. See your real total comp, take-home, and 40-year wealth impact.
+                    </p>
+                    <div className="flex items-center text-primary-600 font-medium text-sm md:text-base mt-auto">
+                      <span>Analyze my offer</span>
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                     </div>
                   </div>
