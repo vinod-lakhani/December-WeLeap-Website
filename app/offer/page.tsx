@@ -34,8 +34,19 @@ export default function OfferAnalysisPage() {
         </Container>
       </Section>
 
-      {/* How it works */}
+      {/* Illustration */}
       <Section variant="muted">
+        <Container maxWidth="wide">
+          <img
+            src="/images/offer-tool-illustration.png"
+            alt="Unveiling your full job offer package: beyond salary"
+            className="w-full max-w-3xl mx-auto rounded-2xl shadow-lg mb-8"
+          />
+        </Container>
+      </Section>
+
+      {/* How it works */}
+      <Section variant="muted" className="pt-0">
         <Container maxWidth="narrow">
           <h2 className="text-lg font-bold text-gray-900 text-center mb-6">The 7 numbers in your offer</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">

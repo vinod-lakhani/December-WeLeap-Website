@@ -404,11 +404,12 @@ export default function ResourcesPage() {
             <Link href="/offer" className="h-full">
               <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
                 <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden bg-[#1a2e1a] h-48 flex items-center justify-center">
-                    <div className="text-center px-6">
-                      <div className="text-[#A7C957] text-4xl font-black mb-2">7</div>
-                      <div className="text-white/70 text-sm font-medium">numbers in your offer letter</div>
-                    </div>
+                  <div className="relative overflow-hidden">
+                    <img
+                      src="/images/offer-tool-illustration.png"
+                      alt="Unveiling your full job offer package beyond salary"
+                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                    />
                     <div className="absolute top-4 left-4">
                       <div className="bg-primary-100 rounded-lg p-2">
                         <Briefcase className="w-5 h-5 text-primary-600" />
