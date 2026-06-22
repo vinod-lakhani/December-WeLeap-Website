@@ -16,7 +16,8 @@ import { EarlyAccessDialog } from '@/components/early-access-dialog';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.weleap.ai';
+// TODO: update to https://app.weleap.ai once weleap.app domain is live
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dev.weleap.app';
 
 const NO_INCOME_TAX_STATES = new Set(['AK', 'FL', 'NV', 'NH', 'SD', 'TN', 'TX', 'WA', 'WY']);
 
