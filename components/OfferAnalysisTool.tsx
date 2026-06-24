@@ -48,6 +48,24 @@ const MAJOR_CITIES = [
   'Portland', 'San Diego', 'San Francisco', 'Seattle', 'Washington D.C.',
 ];
 
+// Map states to their major cities
+const STATE_TO_CITIES: Record<string, string[]> = {
+  'CA': ['Los Angeles', 'San Diego', 'San Francisco'],
+  'TX': ['Austin', 'Dallas', 'Houston'],
+  'CO': ['Denver'],
+  'MA': ['Boston'],
+  'IL': ['Chicago'],
+  'FL': ['Miami'],
+  'MN': ['Minneapolis'],
+  'TN': ['Nashville'],
+  'NY': ['New York City'],
+  'PA': ['Philadelphia'],
+  'AZ': ['Phoenix'],
+  'OR': ['Portland'],
+  'WA': ['Seattle'],
+  'DC': ['Washington D.C.'],
+};
+
 const MARKET_PTO_DAYS = 15;
 
 interface TaxResult {
@@ -336,6 +354,7 @@ export function OfferAnalysisTool() {
             </Label>
             <Select value={jobState} onValueChange={(val) => {
               setJobState(val);
+              setCity(''); // Clear city when state changes
               trackFieldChange('state', val);
             }}>
               <SelectTrigger><SelectValue placeholder="— select state —" /></SelectTrigger>
@@ -533,10 +552,14 @@ export function OfferAnalysisTool() {
             <Select value={city} onValueChange={(val) => {
               setCity(val);
               trackFieldChange('city', val);
-            }}>
-              <SelectTrigger><SelectValue placeholder="— optional —" /></SelectTrigger>
+            }} disabled={!jobState}>
+              <SelectTrigger><SelectValue placeholder={jobState ? "— select city —" : "— select state first —"} /></SelectTrigger>
               <SelectContent>
-                {MAJOR_CITIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {jobState && STATE_TO_CITIES[jobState] ? (
+                  STATE_TO_CITIES[jobState].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)
+                ) : (
+                  <SelectItem value="placeholder" disabled>No cities available</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
