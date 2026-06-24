@@ -157,6 +157,49 @@ export function OfferAnalysisTool() {
     return () => { cancelled = true; };
   }, [salary, jobState]);
 
+  // ── Calculations ─────────────────────────────────────────────────────────────
+  const calc = useMemo(() => {
+    if (salary <= 0) return null;
+    const takeHomeMonthly = taxResult ? Math.round(taxResult.netIncomeAnnual / 12) : Math.round(salary * 0.72 / 12);
+
+    // Effective tax rate on the base salary — used to approximate tax on bonus/equity.
+    // RSUs, bonuses, and ESPP are taxed as ordinary income (supplemental withholding),
+    // so applying the same effective rate is a reasonable estimate.
+    const effectiveTaxRate = taxResult
+      ? (taxResult.federalTaxAnnual + taxResult.stateTaxAnnual + taxResult.ficaTaxAnnual) / salary
+      : 0.28; // fallback ~28% when no API result yet
+
+    const annualBonus = salary * bonusPct / 100;
+    const annual401kMatch = salary * (matchUpToPct / 100) * (matchRatePct / 100);
+    const annualHsa = hsaMonthly * 12;
+    const annualHealthcare = -(healthcarePremium * 12);
+    const annualEspp = showEspp ? Math.round(salary * esppContrib / 100 * esppDiscount / 100) : 0;
+
+    // totalPackage is pre-tax total comp — industry standard for comp discussions
+    const totalPackage = salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare + rsuAnnual + annualEspp;
+    const ptoValue = Math.round((salary / 260) * Math.max(0, ptoDays - MARKET_PTO_DAYS));
+
+    // After-tax values for wealth-building — bonus and equity are taxed before you keep them
+    const annualBonusAfterTax = annualBonus * (1 - effectiveTaxRate);
+    const annualRsuAfterTax   = rsuAnnual   * (1 - effectiveTaxRate);
+    const annualEsppAfterTax  = annualEspp  * (1 - effectiveTaxRate);
+
+    // Monthly wealth = after-tax savings rate + employer contributions (pre-tax benefit) + after-tax equity
+    const monthlyWealth = Math.round(takeHomeMonthly * savingsPct / 100)
+      + (annual401kMatch + annualHsa) / 12
+      + (annualBonusAfterTax + annualRsuAfterTax + annualEsppAfterTax) / 12;
+
+    const nw40yr = Math.round(monthlyWealth * ((Math.pow(1 + 0.07 / 12, 480) - 1) / (0.07 / 12)));
+    const rentPct = rentMonthly > 0 && takeHomeMonthly > 0 ? Math.round(rentMonthly / takeHomeMonthly * 100) : null;
+
+    return {
+      takeHomeMonthly, effectiveTaxRate,
+      annualBonus, annual401kMatch, annualHsa, annualHealthcare, annualEspp,
+      annualBonusAfterTax, annualRsuAfterTax, annualEsppAfterTax,
+      ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
+    };
+  }, [salary, taxResult, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium, rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct]);
+
   // ── Market rent data load ────────────────────────────────────────────────────
   useEffect(() => {
     if (!city || !jobState) {
@@ -201,49 +244,6 @@ export function OfferAnalysisTool() {
         setLoadingMarketRent(false);
       });
   }, [city, jobState, calc]);
-
-  // ── Calculations ─────────────────────────────────────────────────────────────
-  const calc = useMemo(() => {
-    if (salary <= 0) return null;
-    const takeHomeMonthly = taxResult ? Math.round(taxResult.netIncomeAnnual / 12) : Math.round(salary * 0.72 / 12);
-
-    // Effective tax rate on the base salary — used to approximate tax on bonus/equity.
-    // RSUs, bonuses, and ESPP are taxed as ordinary income (supplemental withholding),
-    // so applying the same effective rate is a reasonable estimate.
-    const effectiveTaxRate = taxResult
-      ? (taxResult.federalTaxAnnual + taxResult.stateTaxAnnual + taxResult.ficaTaxAnnual) / salary
-      : 0.28; // fallback ~28% when no API result yet
-
-    const annualBonus = salary * bonusPct / 100;
-    const annual401kMatch = salary * (matchUpToPct / 100) * (matchRatePct / 100);
-    const annualHsa = hsaMonthly * 12;
-    const annualHealthcare = -(healthcarePremium * 12);
-    const annualEspp = showEspp ? Math.round(salary * esppContrib / 100 * esppDiscount / 100) : 0;
-
-    // totalPackage is pre-tax total comp — industry standard for comp discussions
-    const totalPackage = salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare + rsuAnnual + annualEspp;
-    const ptoValue = Math.round((salary / 260) * Math.max(0, ptoDays - MARKET_PTO_DAYS));
-
-    // After-tax values for wealth-building — bonus and equity are taxed before you keep them
-    const annualBonusAfterTax = annualBonus * (1 - effectiveTaxRate);
-    const annualRsuAfterTax   = rsuAnnual   * (1 - effectiveTaxRate);
-    const annualEsppAfterTax  = annualEspp  * (1 - effectiveTaxRate);
-
-    // Monthly wealth = after-tax savings rate + employer contributions (pre-tax benefit) + after-tax equity
-    const monthlyWealth = Math.round(takeHomeMonthly * savingsPct / 100)
-      + (annual401kMatch + annualHsa) / 12
-      + (annualBonusAfterTax + annualRsuAfterTax + annualEsppAfterTax) / 12;
-
-    const nw40yr = Math.round(monthlyWealth * ((Math.pow(1 + 0.07 / 12, 480) - 1) / (0.07 / 12)));
-    const rentPct = rentMonthly > 0 && takeHomeMonthly > 0 ? Math.round(rentMonthly / takeHomeMonthly * 100) : null;
-
-    return {
-      takeHomeMonthly, effectiveTaxRate,
-      annualBonus, annual401kMatch, annualHsa, annualHealthcare, annualEspp,
-      annualBonusAfterTax, annualRsuAfterTax, annualEsppAfterTax,
-      ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
-    };
-  }, [salary, taxResult, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium, rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct]);
 
   // ── Analytics helpers ───────────────────────────────────────────────────────
   const trackFieldChange = useCallback((field: string, value: any) => {
