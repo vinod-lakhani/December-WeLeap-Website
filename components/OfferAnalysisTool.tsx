@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { track } from '@/lib/analytics';
 import { EarlyAccessDialog } from '@/components/early-access-dialog';
+import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,16 @@ export function OfferAnalysisTool() {
   // Intent CTA
   const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>(null);
 
+  // Market rent data
+  const [marketRentData, setMarketRentData] = useState<{
+    medianRent: number;
+    marketLow: number;
+    marketHigh: number;
+    tier: string;
+  } | null>(null);
+  const [loadingMarketRent, setLoadingMarketRent] = useState(false);
+  const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
+
   // ── Tax API call ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (salary <= 0) { setTaxResult(null); return; }
@@ -145,6 +156,51 @@ export function OfferAnalysisTool() {
       .catch(() => { if (!cancelled) setTaxLoading(false); });
     return () => { cancelled = true; };
   }, [salary, jobState]);
+
+  // ── Market rent data load ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!city || !jobState) {
+      setMarketRentData(null);
+      setMarketRentComparison(null);
+      return;
+    }
+
+    setLoadingMarketRent(true);
+    const url = `/api/zori?state=${jobState}&region=${encodeURIComponent(city)}`;
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.medianRent) {
+          const marketRange = calculateMarketRentRange(data.medianRent);
+          setMarketRentData({
+            medianRent: data.medianRent,
+            marketLow: marketRange.marketLow,
+            marketHigh: marketRange.marketHigh,
+            tier: marketRange.tier,
+          });
+          // Only compare if we have rent data
+          if (calc && calc.rentPct !== null) {
+            const comparison = compareMarketToSafe(
+              marketRange.marketLow,
+              marketRange.marketHigh,
+              Math.round(calc.takeHomeMonthly * 0.28),
+              Math.round(calc.takeHomeMonthly * 0.35)
+            );
+            setMarketRentComparison(comparison);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load market rent data:', err);
+        setMarketRentData(null);
+      })
+      .finally(() => {
+        setLoadingMarketRent(false);
+      });
+  }, [city, jobState, calc]);
 
   // ── Calculations ─────────────────────────────────────────────────────────────
   const calc = useMemo(() => {
@@ -188,6 +244,23 @@ export function OfferAnalysisTool() {
       ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
     };
   }, [salary, taxResult, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium, rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct]);
+
+  // ── Analytics helpers ───────────────────────────────────────────────────────
+  const trackFieldChange = useCallback((field: string, value: any) => {
+    track('offer_tool_field_changed', {
+      field,
+      value_type: typeof value === 'number' ? 'number' : 'string',
+      has_value: !!value,
+    });
+  }, []);
+
+  const trackIntentSelect = useCallback((selectedIntent: typeof intent) => {
+    track('offer_tool_intent_selected', { intent: selectedIntent });
+  }, []);
+
+  const trackEsppToggle = useCallback((isOpen: boolean) => {
+    track('offer_tool_espp_toggled', { espp_expanded: isOpen });
+  }, []);
 
   // ── CTA ──────────────────────────────────────────────────────────────────────
   const handleSignUp = useCallback(() => {
@@ -248,7 +321,9 @@ export function OfferAnalysisTool() {
                 onChange={e => {
                   const raw = e.target.value.replace(/[^0-9]/g, '');
                   setSalaryInput(raw ? Number(raw).toLocaleString() : '');
-                  setSalary(raw ? Number(raw) : 0);
+                  const newSalary = raw ? Number(raw) : 0;
+                  setSalary(newSalary);
+                  if (newSalary > 0) trackFieldChange('salary', newSalary);
                 }}
                 className="pl-6 text-base font-semibold border-[#386641] focus-visible:ring-[#386641]"
                 autoFocus
@@ -259,7 +334,10 @@ export function OfferAnalysisTool() {
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">
               Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span>
             </Label>
-            <Select value={jobState} onValueChange={setJobState}>
+            <Select value={jobState} onValueChange={(val) => {
+              setJobState(val);
+              trackFieldChange('state', val);
+            }}>
               <SelectTrigger><SelectValue placeholder="— select state —" /></SelectTrigger>
               <SelectContent>
                 {US_STATES.map(s => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
@@ -288,7 +366,11 @@ export function OfferAnalysisTool() {
             <Label className="text-sm font-semibold text-gray-700">Target bonus</Label>
             <span className="text-lg font-extrabold text-gray-900">{bonusPct}%</span>
           </div>
-          <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => setBonusPct(Number(e.target.value))}
+          <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => {
+            const newVal = Number(e.target.value);
+            setBonusPct(newVal);
+            trackFieldChange('bonus_pct', newVal);
+          }}
             className="w-full accent-[#386641] cursor-pointer" />
           <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0%</span><span>Typical: 10–20%</span><span>50%</span></div>
           {calc && bonusPct > 0 && (
@@ -304,7 +386,11 @@ export function OfferAnalysisTool() {
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate</Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="100" value={matchRatePct || ''}
-                onChange={e => setMatchRatePct(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setMatchRatePct(newVal);
+                  trackFieldChange('match_rate_pct', newVal);
+                }}
                 className="pr-6" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
@@ -313,7 +399,11 @@ export function OfferAnalysisTool() {
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)</Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="6" value={matchUpToPct || ''}
-                onChange={e => setMatchUpToPct(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setMatchUpToPct(newVal);
+                  trackFieldChange('match_up_to_pct', newVal);
+                }}
                 className="pr-6" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
@@ -332,7 +422,11 @@ export function OfferAnalysisTool() {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={hsaMonthly || ''}
-                onChange={e => setHsaMonthly(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pl-6" />
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setHsaMonthly(newVal);
+                  if (newVal > 0) trackFieldChange('hsa_monthly', newVal);
+                }} className="pl-6" />
             </div>
           </div>
           <div>
@@ -340,7 +434,11 @@ export function OfferAnalysisTool() {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={healthcarePremium || ''}
-                onChange={e => setHealthcarePremium(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pl-6" />
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setHealthcarePremium(newVal);
+                  if (newVal > 0) trackFieldChange('healthcare_premium', newVal);
+                }} className="pl-6" />
             </div>
           </div>
         </div>
@@ -354,11 +452,19 @@ export function OfferAnalysisTool() {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={rsuAnnual || ''}
-                onChange={e => setRsuAnnual(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pl-6" />
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setRsuAnnual(newVal);
+                  if (newVal > 0) trackFieldChange('rsu_annual', newVal);
+                }} className="pl-6" />
             </div>
             <p className="text-xs text-gray-400 mt-1">Total grant ÷ vesting years. E.g. $100k over 4 years = $25,000/yr</p>
           </div>
-          <button type="button" onClick={() => setShowEspp(v => !v)}
+          <button type="button" onClick={() => {
+            const newVal = !showEspp;
+            setShowEspp(newVal);
+            trackEsppToggle(newVal);
+          }}
             className="text-sm font-semibold text-[#386641] flex items-center gap-1 bg-transparent border-none cursor-pointer">
             {showEspp ? '▾' : '▸'} Employee Stock Purchase Plan (ESPP)
           </button>
@@ -368,7 +474,11 @@ export function OfferAnalysisTool() {
                 <Label className="text-xs font-semibold text-gray-600 mb-1 block">Your contribution %</Label>
                 <div className="relative">
                   <Input type="text" inputMode="numeric" placeholder="10" value={esppContrib || ''}
-                    onChange={e => setEsppContrib(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pr-6 text-sm" />
+                    onChange={e => {
+                      const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                      setEsppContrib(newVal);
+                      trackFieldChange('espp_contrib_pct', newVal);
+                    }} className="pr-6 text-sm" />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
                 </div>
               </div>
@@ -376,7 +486,11 @@ export function OfferAnalysisTool() {
                 <Label className="text-xs font-semibold text-gray-600 mb-1 block">Discount %</Label>
                 <div className="relative">
                   <Input type="text" inputMode="numeric" placeholder="15" value={esppDiscount || ''}
-                    onChange={e => setEsppDiscount(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pr-6 text-sm" />
+                    onChange={e => {
+                      const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                      setEsppDiscount(newVal);
+                      trackFieldChange('espp_discount_pct', newVal);
+                    }} className="pr-6 text-sm" />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
                 </div>
               </div>
@@ -392,7 +506,11 @@ export function OfferAnalysisTool() {
             <Label className="text-sm font-semibold text-gray-700">PTO days offered</Label>
             <span className="text-lg font-extrabold text-gray-900">{ptoDays} days</span>
           </div>
-          <input type="range" min={0} max={40} step={1} value={ptoDays} onChange={e => setPtoDays(Number(e.target.value))}
+          <input type="range" min={0} max={40} step={1} value={ptoDays} onChange={e => {
+            const newVal = Number(e.target.value);
+            setPtoDays(newVal);
+            trackFieldChange('pto_days', newVal);
+          }}
             className="w-full accent-[#386641] cursor-pointer" />
           <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>US avg: 15 days</span><span>40</span></div>
           {calc && salary > 0 && (
@@ -412,7 +530,10 @@ export function OfferAnalysisTool() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">City</Label>
-            <Select value={city} onValueChange={setCity}>
+            <Select value={city} onValueChange={(val) => {
+              setCity(val);
+              trackFieldChange('city', val);
+            }}>
               <SelectTrigger><SelectValue placeholder="— optional —" /></SelectTrigger>
               <SelectContent>
                 {MAJOR_CITIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -424,17 +545,49 @@ export function OfferAnalysisTool() {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={rentMonthly || ''}
-                onChange={e => setRentMonthly(Number(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="pl-6" />
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setRentMonthly(newVal);
+                  if (newVal > 0) trackFieldChange('rent_monthly', newVal);
+                }} className="pl-6" />
             </div>
           </div>
         </div>
         {calc && rentMonthly > 0 && calc.rentPct !== null && (
-          <div className={`mt-3 rounded-xl px-4 py-2 text-sm font-semibold ${
-            calc.rentPct <= 30 ? 'bg-green-50 text-[#386641] border border-[#A7C957]'
-            : calc.rentPct <= 35 ? 'bg-yellow-50 text-yellow-700 border border-yellow-300'
-            : 'bg-red-50 text-red-700 border border-red-300'
-          }`}>
-            {calc.rentPct}% of take-home — {calc.rentPct <= 30 ? 'healthy range ✓' : calc.rentPct <= 35 ? 'a bit stretched' : 'over the 35% threshold'}
+          <div className="space-y-3 mt-3">
+            <div className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              calc.rentPct <= 30 ? 'bg-green-50 text-[#386641] border border-[#A7C957]'
+              : calc.rentPct <= 35 ? 'bg-yellow-50 text-yellow-700 border border-yellow-300'
+              : 'bg-red-50 text-red-700 border border-red-300'
+            }`}>
+              {calc.rentPct}% of take-home — {calc.rentPct <= 30 ? 'healthy range ✓' : calc.rentPct <= 35 ? 'a bit stretched' : 'over the 35% threshold'}
+            </div>
+
+            {city && (
+              <div className="rounded-xl border border-gray-200 bg-blue-50 px-4 py-3">
+                {loadingMarketRent ? (
+                  <p className="text-sm text-blue-700">Loading market rent data for {city}...</p>
+                ) : marketRentData ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm font-semibold text-blue-900">Market rent in {city}</span>
+                      <span className="text-sm font-bold text-blue-900">${marketRentData.marketLow}–${marketRentData.marketHigh}/mo</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      {marketRentComparison === 'overlap' ? (
+                        <>Your expected rent overlaps with the market — good fit! ✓</>
+                      ) : marketRentComparison === 'below' ? (
+                        <>Your expected rent is below market — you may find better options.</>
+                      ) : (
+                        <>Your expected rent is above market — consider negotiating or relocating.</>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-blue-600">Could not load market data for this city.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Section>
@@ -486,7 +639,11 @@ export function OfferAnalysisTool() {
                 <span className="text-sm font-bold text-gray-800">{fc(calc.takeHomeMonthly * needsPct / 100)}/mo</span>
               </div>
               <p className="text-xs text-gray-400 mb-2">Rent, utilities, groceries, transport, insurance, minimum debt payments.</p>
-              <input type="range" min={10} max={70} step={5} value={needsPct} onChange={e => setNeedsPct(Number(e.target.value))}
+              <input type="range" min={10} max={70} step={5} value={needsPct} onChange={e => {
+                const newVal = Number(e.target.value);
+                setNeedsPct(newVal);
+                trackFieldChange('needs_pct', newVal);
+              }}
                 className="w-full accent-gray-700 cursor-pointer" />
             </div>
 
@@ -497,7 +654,11 @@ export function OfferAnalysisTool() {
                 <span className="text-sm font-bold text-gray-800">{fc(calc.takeHomeMonthly * wantsPct / 100)}/mo</span>
               </div>
               <p className="text-xs text-gray-400 mb-2">Dining, subscriptions, travel, shopping, entertainment, hobbies.</p>
-              <input type="range" min={5} max={60} step={5} value={wantsPct} onChange={e => setWantsPct(Number(e.target.value))}
+              <input type="range" min={5} max={60} step={5} value={wantsPct} onChange={e => {
+                const newVal = Number(e.target.value);
+                setWantsPct(newVal);
+                trackFieldChange('wants_pct', newVal);
+              }}
                 className="w-full accent-gray-700 cursor-pointer" />
             </div>
 
@@ -544,7 +705,10 @@ export function OfferAnalysisTool() {
                 { key: 'two-offers' as const, emoji: '⇄', title: 'I have another offer to compare', desc: 'Add Offer B and see side-by-side total comp, take-home, and 40-year wealth impact.' },
                 { key: 'current-job' as const, emoji: '📊', title: 'Compare to my current job', desc: 'See exactly how cash flow, wealth building, and net worth change if you make the switch.' },
               ] as const).map(opt => (
-                <button key={opt.key} type="button" onClick={() => setIntent(opt.key)}
+                <button key={opt.key} type="button" onClick={() => {
+                  setIntent(opt.key);
+                  trackIntentSelect(opt.key);
+                }}
                   className={`w-full flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border-[1.5px] transition-all cursor-pointer ${
                     intent === opt.key ? 'border-[#386641] bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                   }`}>
