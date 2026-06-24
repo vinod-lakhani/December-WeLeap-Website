@@ -42,29 +42,6 @@ const US_STATES = [
   { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }, { code: 'DC', name: 'D.C.' },
 ];
 
-const MAJOR_CITIES = [
-  'Austin', 'Boston', 'Chicago', 'Dallas', 'Denver', 'Houston', 'Los Angeles',
-  'Miami', 'Minneapolis', 'Nashville', 'New York City', 'Philadelphia', 'Phoenix',
-  'Portland', 'San Diego', 'San Francisco', 'Seattle', 'Washington D.C.',
-];
-
-// Map states to their major cities
-const STATE_TO_CITIES: Record<string, string[]> = {
-  'CA': ['Los Angeles', 'San Diego', 'San Francisco'],
-  'TX': ['Austin', 'Dallas', 'Houston'],
-  'CO': ['Denver'],
-  'MA': ['Boston'],
-  'IL': ['Chicago'],
-  'FL': ['Miami'],
-  'MN': ['Minneapolis'],
-  'TN': ['Nashville'],
-  'NY': ['New York City'],
-  'PA': ['Philadelphia'],
-  'AZ': ['Phoenix'],
-  'OR': ['Portland'],
-  'WA': ['Seattle'],
-  'DC': ['Washington D.C.'],
-};
 
 const MARKET_PTO_DAYS = 15;
 
@@ -149,6 +126,10 @@ export function OfferAnalysisTool() {
   // Intent CTA
   const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>(null);
 
+  // Metro/city options
+  const [metroOptions, setMetroOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [loadingMetros, setLoadingMetros] = useState(false);
+
   // Market rent data
   const [marketRentData, setMarketRentData] = useState<{
     medianRent: number;
@@ -158,6 +139,37 @@ export function OfferAnalysisTool() {
   } | null>(null);
   const [loadingMarketRent, setLoadingMarketRent] = useState(false);
   const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
+
+  // ── Load metro options when state changes ───────────────────────────────────
+  useEffect(() => {
+    if (!jobState) {
+      setMetroOptions([]);
+      setCity('');
+      return;
+    }
+
+    setLoadingMetros(true);
+    const url = `/api/zori?state=${jobState}`;
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (data.options && Array.isArray(data.options)) {
+          setMetroOptions(data.options);
+        } else {
+          setMetroOptions([]);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load metro options:', err);
+        setMetroOptions([]);
+      })
+      .finally(() => {
+        setLoadingMetros(false);
+      });
+  }, [jobState]);
 
   // ── Tax API call ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -354,7 +366,6 @@ export function OfferAnalysisTool() {
             </Label>
             <Select value={jobState} onValueChange={(val) => {
               setJobState(val);
-              setCity(''); // Clear city when state changes
               trackFieldChange('state', val);
             }}>
               <SelectTrigger><SelectValue placeholder="— select state —" /></SelectTrigger>
@@ -548,18 +559,14 @@ export function OfferAnalysisTool() {
       <Section num={7} title="Where You'll Live" subtitle="Rent as a % of take-home reveals more than the salary alone">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">City</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">City / Metro</Label>
             <Select value={city} onValueChange={(val) => {
               setCity(val);
               trackFieldChange('city', val);
-            }} disabled={!jobState}>
-              <SelectTrigger><SelectValue placeholder={jobState ? "— select city —" : "— select state first —"} /></SelectTrigger>
+            }} disabled={!jobState || loadingMetros}>
+              <SelectTrigger><SelectValue placeholder={loadingMetros ? "Loading..." : jobState ? "— select city —" : "— select state first —"} /></SelectTrigger>
               <SelectContent>
-                {jobState && STATE_TO_CITIES[jobState] ? (
-                  STATE_TO_CITIES[jobState].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)
-                ) : (
-                  <SelectItem value="placeholder" disabled>No cities available</SelectItem>
-                )}
+                {metroOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
