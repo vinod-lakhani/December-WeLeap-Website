@@ -248,19 +248,28 @@ export function OfferAnalysisTool() {
       .then(data => {
         if (data.medianRent) {
           const marketRange = calculateMarketRentRange(data.medianRent);
+
+          // Auto-fill rent with median if not already set
+          if (rentMonthly === 0) {
+            setRentMonthly(Math.round(data.medianRent));
+          }
+
           setMarketRentData({
             medianRent: data.medianRent,
             marketLow: marketRange.marketLow,
             marketHigh: marketRange.marketHigh,
             tier: marketRange.tier,
           });
-          // Only compare if we have rent data
-          if (calc && calc.rentPct !== null) {
+
+          // Calculate comparison based on safe range
+          if (calc) {
+            const safeLow = Math.round(calc.takeHomeMonthly * 0.28);
+            const safeHigh = Math.round(calc.takeHomeMonthly * 0.35);
             const comparison = compareMarketToSafe(
               marketRange.marketLow,
               marketRange.marketHigh,
-              Math.round(calc.takeHomeMonthly * 0.28),
-              Math.round(calc.takeHomeMonthly * 0.35)
+              safeLow,
+              safeHigh
             );
             setMarketRentComparison(comparison);
           }
@@ -273,7 +282,7 @@ export function OfferAnalysisTool() {
       .finally(() => {
         setLoadingMarketRent(false);
       });
-  }, [city, jobState, calc]);
+  }, [city, jobState, calc, rentMonthly]);
 
   // ── Analytics helpers ───────────────────────────────────────────────────────
   const trackFieldChange = useCallback((field: string, value: any) => {
@@ -594,27 +603,34 @@ export function OfferAnalysisTool() {
             </div>
 
             {city && (
-              <div className="rounded-xl border border-gray-200 bg-blue-50 px-4 py-3">
+              <div className="border-t border-gray-100 pt-3 mt-3 space-y-2">
                 {loadingMarketRent ? (
-                  <p className="text-sm text-blue-700">Loading market rent data for {city}...</p>
+                  <p className="text-sm text-gray-600">Loading market rent data for {city}...</p>
                 ) : marketRentData ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-sm font-semibold text-blue-900">Market rent in {city}</span>
-                      <span className="text-sm font-bold text-blue-900">${marketRentData.marketLow}–${marketRentData.marketHigh}/mo</span>
+                  <>
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                      <p className="text-xs text-blue-900 mb-2">
+                        <strong>What's out there:</strong> Typical rents in {city} are around <strong>${marketRentData.marketLow}–${marketRentData.marketHigh}/month.</strong>
+                      </p>
+                      <p className="text-xs text-blue-800">
+                        {marketRentComparison === 'above' ? (
+                          <>
+                            <strong>Reality check:</strong> Typical rents run higher than your safe range (28–35% of take-home). Many people get roommates or trade space for flexibility.
+                          </>
+                        ) : marketRentComparison === 'below' ? (
+                          <>
+                            <strong>Good news:</strong> Typical rents fall below your safe range — you may have more room to save or upgrade your living space.
+                          </>
+                        ) : (
+                          <>
+                            <strong>Heads up:</strong> Typical rents overlap your safe range — being intentional about location and space tradeoffs matters.
+                          </>
+                        )}
+                      </p>
                     </div>
-                    <p className="text-xs text-blue-700">
-                      {marketRentComparison === 'overlap' ? (
-                        <>Your expected rent overlaps with the market — good fit! ✓</>
-                      ) : marketRentComparison === 'below' ? (
-                        <>Your expected rent is below market — you may find better options.</>
-                      ) : (
-                        <>Your expected rent is above market — consider negotiating or relocating.</>
-                      )}
-                    </p>
-                  </div>
+                  </>
                 ) : (
-                  <p className="text-xs text-blue-600">Could not load market data for this city.</p>
+                  <p className="text-xs text-gray-500">Could not load market data for {city}.</p>
                 )}
               </div>
             )}
