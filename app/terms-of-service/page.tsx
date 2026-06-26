@@ -25,7 +25,7 @@ export default function TermsOfServicePage() {
           <article className="prose prose-lg max-w-none">
             <div className="space-y-6 md:space-y-8 text-gray-700 leading-relaxed">
               <p className={cn(TYPOGRAPHY.body, "text-gray-700")}>
-                Welcome to WeLeap. By using our services, website, waitlist, SMS communications, email communications, or related features, you agree to these Terms of Service.
+                Welcome to WeLeap. By using our services, website, waitlist, or related features, you agree to these Terms of Service. SMS messaging is optional and is governed by the SMS/Text Message Terms below. Using WeLeap or accepting these Terms does not opt you in to SMS.
               </p>
 
               <section className="space-y-3 md:space-y-4">
@@ -80,19 +80,16 @@ export default function TermsOfServicePage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>SMS/Text Message Terms</h2>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  By providing your mobile phone number and opting in to receive SMS/text messages from WeLeap, you agree that WeLeap may send you recurring text messages related to your account, onboarding, product updates, financial sidekick notifications, reminders, alerts, waitlist updates, and other service-related communications.
+                  SMS messages from WeLeap are optional. Agreeing to these Terms of Service does not opt you in to SMS, and you are never required to receive SMS messages to create an account, use WeLeap, or complete any transaction. You will only receive SMS messages if you separately and voluntarily opt in, either through the opt-in form at https://www.weleap.ai/sms-notifications or through an optional, unchecked SMS checkbox during onboarding. You may decline or skip SMS and continue to use all of WeLeap.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Message frequency may vary based on your account activity, preferences, and use of WeLeap.
+                  If you choose to opt in by providing your mobile number and actively consenting, you agree that WeLeap may send you recurring text messages about your weekly financial summary, recommended actions (Leaps), and reminders related to your account.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Message and data rates may apply.
+                  Message frequency varies and is about 1 to 3 messages per week. Message and data rates may apply.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  You may opt out of SMS messages at any time by replying <strong>STOP</strong> to any message from WeLeap. You may request help by replying <strong>HELP</strong>.
-                </p>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  After you reply STOP, we may send one final confirmation message to confirm that you have opted out. After that, we will stop sending SMS messages to your mobile number unless you opt in again.
+                  You may opt out at any time by replying <strong>STOP</strong> to any message from WeLeap. You may request help by replying <strong>HELP</strong>. After you reply STOP, we may send one final confirmation message; after that, we will stop sending SMS messages to your number unless you opt in again.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   Consent to receive SMS messages is not a condition of purchasing or using WeLeap.
@@ -101,7 +98,7 @@ export default function TermsOfServicePage() {
                   Mobile carriers are not liable for delayed or undelivered messages.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  WeLeap may use Twilio and related service providers to deliver SMS messages. WeLeap does not sell, rent, share, or disclose your mobile phone number, SMS opt-in information, or text messaging consent to third parties or affiliates for their marketing or promotional purposes.
+                  WeLeap uses Twilio and related service providers to deliver SMS messages. WeLeap does not sell, rent, share, or disclose your mobile phone number, SMS opt-in information, or text messaging consent to third parties or affiliates for their marketing or promotional purposes.
                 </p>
               </section>
 
