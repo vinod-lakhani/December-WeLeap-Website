@@ -65,8 +65,11 @@ export function SmsOptinForm() {
         disabled={!isValid}
         className="w-full bg-[#386641] text-white font-semibold text-base py-3 rounded-xl transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#2d5235]"
       >
-        Sign up for texts
+        Opt in to texts
       </button>
+      <Link href="/" className="block text-center text-sm text-gray-500 hover:text-gray-700 underline mt-4">
+        No thanks, continue without texts
+      </Link>
     </div>
   )
 }
