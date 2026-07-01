@@ -17,8 +17,7 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// TODO: update to https://app.weleap.ai once weleap.app domain is live
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://dev.weleap.app';
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://weleap.app';
 
 const NO_INCOME_TAX_STATES = new Set(['AK', 'FL', 'NV', 'NH', 'SD', 'TN', 'TX', 'WA', 'WY']);
 
