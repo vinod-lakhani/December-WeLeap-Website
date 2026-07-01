@@ -8,17 +8,21 @@ const CONSENT_TEXT = "I agree to receive recurring automated SMS notifications f
 export function SmsOptinForm() {
   const [phone, setPhone] = useState('')
   const [checked, setChecked] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState<'optin' | 'skip' | null>(null)
 
   const digits = phone.replace(/\D/g, '')
   const isValid = digits.length >= 10 && checked
 
   function handleSubmit() {
     if (!isValid) return
-    setSubmitted(true)
+    setSubmitted('optin')
   }
 
-  if (submitted) {
+  function handleSkip() {
+    setSubmitted('skip')
+  }
+
+  if (submitted === 'optin') {
     return (
       <div className="rounded-2xl border border-gray-200 bg-green-50 px-6 py-8 max-w-md text-center">
         <div className="w-12 h-12 rounded-full bg-[#386641] text-white flex items-center justify-center text-xl mx-auto mb-4">✓</div>
@@ -26,6 +30,21 @@ export function SmsOptinForm() {
         <p className="text-sm text-gray-600 leading-relaxed">
           Your consent has been recorded. Once WeLeap text notifications are live, you'll start receiving your weekly messages. Reply <strong>STOP</strong> anytime to unsubscribe.
         </p>
+      </div>
+    )
+  }
+
+  if (submitted === 'skip') {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-blue-50 px-6 py-8 max-w-md text-center">
+        <div className="w-12 h-12 rounded-full bg-[#386641] text-white flex items-center justify-center text-xl mx-auto mb-4">✓</div>
+        <h3 className="text-lg font-bold text-[#1A3320] mb-2">You're all set.</h3>
+        <p className="text-sm text-gray-600 leading-relaxed mb-6">
+          You can use all of WeLeap without SMS notifications. You can always opt in to texts later from your account settings.
+        </p>
+        <Link href="/" className="inline-block bg-[#386641] text-white font-semibold text-base py-3 px-6 rounded-xl hover:bg-[#2d5235] transition-colors">
+          Continue to WeLeap
+        </Link>
       </div>
     )
   }
@@ -67,9 +86,12 @@ export function SmsOptinForm() {
       >
         Opt in to texts
       </button>
-      <Link href="/" className="block text-center text-sm text-gray-500 hover:text-gray-700 underline mt-4">
+      <button
+        onClick={handleSkip}
+        className="block w-full text-center text-sm text-gray-500 hover:text-gray-700 underline mt-4 bg-none border-none cursor-pointer"
+      >
         No thanks, continue without texts
-      </Link>
+      </button>
     </div>
   )
 }
