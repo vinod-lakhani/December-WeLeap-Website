@@ -59,9 +59,6 @@ export default function SmsNotificationsPage() {
                     Signing up for texts is optional. This page only turns on optional text notifications. It is not account signup, and you do not need to complete it to create an account or use WeLeap. You can decline and still use the service in full.
                   </p>
                 </div>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-500")}>
-                  Enter your mobile number and check the box to opt in.
-                </p>
                 <SmsOptinForm />
               </section>
 

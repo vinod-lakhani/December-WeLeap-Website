@@ -87,9 +87,13 @@ export function SmsOptinForm() {
 
   // Details stage - show phone and consent
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6 max-w-md">
-      {/* Phone input */}
-      <label className="block text-sm font-semibold text-[#1A3320] mb-1.5">Mobile number</label>
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">
+        Enter your mobile number and check the box to opt in.
+      </p>
+      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6 max-w-md">
+        {/* Phone input */}
+        <label className="block text-sm font-semibold text-[#1A3320] mb-1.5">Mobile number</label>
       <input
         type="tel"
         value={phone}
@@ -129,6 +133,7 @@ export function SmsOptinForm() {
       >
         No thanks, continue without texts
       </button>
+      </div>
     </div>
   )
 }
