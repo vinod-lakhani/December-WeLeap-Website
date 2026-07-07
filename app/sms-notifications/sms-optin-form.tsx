@@ -6,23 +6,49 @@ import Link from 'next/link'
 const CONSENT_TEXT = "I agree to receive recurring automated SMS notifications from WeLeap about my weekly financial summary, recommended actions (Leaps), and reminders. Msg frequency varies (about 1 to 3 per week). Message and data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of using WeLeap."
 
 export function SmsOptinForm() {
+  const [stage, setStage] = useState<'intent' | 'details' | 'submitted'>('intent')
   const [phone, setPhone] = useState('')
   const [checked, setChecked] = useState(false)
-  const [submitted, setSubmitted] = useState<'optin' | 'skip' | null>(null)
+  const [userDeclined, setUserDeclined] = useState(false)
 
   const digits = phone.replace(/\D/g, '')
   const isValid = digits.length >= 10 && checked
 
+  function handleYes() {
+    setStage('details')
+  }
+
+  function handleNo() {
+    setUserDeclined(true)
+  }
+
   function handleSubmit() {
     if (!isValid) return
-    setSubmitted('optin')
+    setStage('submitted')
   }
 
   function handleSkip() {
-    setSubmitted('skip')
+    setUserDeclined(true)
   }
 
-  if (submitted === 'optin') {
+  // Declined - show "No problem" message
+  if (userDeclined) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-blue-50 px-6 py-8 max-w-md text-center">
+        <div className="w-12 h-12 rounded-full bg-[#386641] text-white flex items-center justify-center text-xl mx-auto mb-4">✓</div>
+        <h3 className="text-lg font-bold text-[#1A3320] mb-2">No problem.</h3>
+        <p className="text-sm text-gray-600 leading-relaxed mb-6">
+          You won't receive SMS notifications. You can use all of WeLeap without them, and you can always change your mind later.
+        </p>
+        <Link href="/" className="inline-block bg-[#386641] text-white font-semibold text-base py-3 px-6 rounded-xl hover:bg-[#2d5235] transition-colors">
+          Continue to WeLeap
+        </Link>
+      </div>
+    )
+  }
+
+  // Submitted - show confirmation
+  if (stage === 'submitted') {
     return (
       <div className="rounded-2xl border border-gray-200 bg-green-50 px-6 py-8 max-w-md text-center">
         <div className="w-12 h-12 rounded-full bg-[#386641] text-white flex items-center justify-center text-xl mx-auto mb-4">✓</div>
@@ -34,21 +60,32 @@ export function SmsOptinForm() {
     )
   }
 
-  if (submitted === 'skip') {
+  // Initial stage - ask intent first
+  if (stage === 'intent') {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-blue-50 px-6 py-8 max-w-md text-center">
-        <div className="w-12 h-12 rounded-full bg-[#386641] text-white flex items-center justify-center text-xl mx-auto mb-4">✓</div>
-        <h3 className="text-lg font-bold text-[#1A3320] mb-2">You're all set.</h3>
-        <p className="text-sm text-gray-600 leading-relaxed mb-6">
-          You can use all of WeLeap without SMS notifications. You can always opt in to texts later from your account settings.
+      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6 max-w-md">
+        <p className="text-base font-semibold text-[#1A3320] mb-5 text-center">
+          Would you like to receive WeLeap text notifications about your weekly financial summary, recommended actions (Leaps), and reminders?
         </p>
-        <Link href="/" className="inline-block bg-[#386641] text-white font-semibold text-base py-3 px-6 rounded-xl hover:bg-[#2d5235] transition-colors">
-          Continue to WeLeap
-        </Link>
+        <div className="space-y-3 flex flex-col gap-3">
+          <button
+            onClick={handleYes}
+            className="w-full bg-[#386641] text-white font-semibold text-base py-3 rounded-xl hover:bg-[#2d5235] transition-colors"
+          >
+            Yes, text me
+          </button>
+          <button
+            onClick={handleNo}
+            className="w-full bg-gray-100 text-gray-900 font-semibold text-base py-3 rounded-xl hover:bg-gray-200 transition-colors border border-gray-200"
+          >
+            No thanks
+          </button>
+        </div>
       </div>
     )
   }
 
+  // Details stage - show phone and consent
   return (
     <div className="rounded-2xl border border-gray-200 bg-white px-6 py-6 max-w-md">
       {/* Phone input */}
