@@ -68,6 +68,7 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics';
+import posthog from 'posthog-js';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -141,6 +142,19 @@ export async function track(eventName: string, params?: Record<string, any>, wai
       console.error('[Analytics] Error tracking to Vercel Analytics:', eventName, error);
     }
     // Continue even if Vercel Analytics fails
+  }
+
+  // Track to PostHog — the source of truth for the Phase 0 funnel (HogQL).
+  // PostHog is initialized in components/posthog-provider.tsx; capturing here
+  // means funnel events (tool_completed, tool_cta_clicked, cta_click_signup,
+  // etc.) land in PostHog alongside GA4/Vercel.
+  try {
+    posthog.capture(eventName, params || {});
+  } catch (error) {
+    if (DEBUG_ANALYTICS) {
+      console.error('[Analytics] Error tracking to PostHog:', eventName, error);
+    }
+    // Continue even if PostHog capture fails
   }
 
   // Track to GA4

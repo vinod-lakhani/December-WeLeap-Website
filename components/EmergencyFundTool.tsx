@@ -511,7 +511,7 @@ export function EmergencyFundTool() {
               </p>
               <EarlyAccessDialog signupType="emergency_fund_tool" placement="tool">
                 <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-                  Join the waitlist →
+                  Create free account →
                 </Button>
               </EarlyAccessDialog>
             </CardContent>

@@ -16,7 +16,7 @@ function JoinContent() {
     <PageShell>
       <Section variant="brand" className="text-center min-h-[40vh] flex flex-col justify-center">
         <Container maxWidth="narrow">
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>Join the Waitlist</h1>
+          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>Create free account</h1>
           <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-xl mx-auto mb-8")}>
             Be the first to know when our self-service app launches with AI-powered financial guidance.
           </p>

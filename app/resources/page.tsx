@@ -523,7 +523,7 @@ export default function ResourcesPage() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>

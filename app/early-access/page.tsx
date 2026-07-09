@@ -192,7 +192,7 @@ export default function EarlyAccessPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a
-              href="https://dev.weleap.app"
+              href="https://weleap.app"
               onClick={() => { track('early_access_open_app_clicked', { source: 'hero' }); posthog?.capture('early_access_open_app_clicked', { source: 'hero' }) }}
               className="inline-block bg-white text-[#386641] font-semibold px-6 py-3 rounded-lg hover:bg-white/90 transition-colors"
             >
@@ -298,7 +298,7 @@ export default function EarlyAccessPage() {
           <h2 className={cn(TYPOGRAPHY.h2, 'text-gray-900 mb-4')}>Your first 15 minutes.</h2>
           <p className={cn(TYPOGRAPHY.body, 'text-gray-600 mb-8')}>
             Here's exactly what happens when you get started at{' '}
-            <a href="https://dev.weleap.app" className="text-[#386641] font-semibold hover:underline">dev.weleap.app</a>.
+            <a href="https://weleap.app" className="text-[#386641] font-semibold hover:underline">weleap.app</a>.
           </p>
 
           <div className="space-y-0 mb-8">
@@ -570,7 +570,7 @@ export default function EarlyAccessPage() {
                 🎬 Watch video guides
               </Link>
               <a
-                href="https://dev.weleap.app"
+                href="https://weleap.app"
                 onClick={() => { track('early_access_open_app_clicked', { source: 'feedback' }); posthog?.capture('early_access_open_app_clicked', { source: 'feedback' }) }}
                 className="inline-block bg-white border border-gray-200 text-gray-700 font-medium px-6 py-3 rounded-lg hover:border-[#386641] hover:text-[#386641] transition-colors"
               >

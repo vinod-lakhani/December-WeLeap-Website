@@ -7,6 +7,7 @@ import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { track } from '@/lib/analytics';
+import { fbqTrack } from '@/lib/meta-pixel';
 
 export default function HowMuchRentCanIAffordPage() {
   // Track page view on mount - wait for gtag to be available
@@ -18,6 +19,9 @@ export default function HowMuchRentCanIAffordPage() {
         tool_version: 'rent_tool_v1',
       }, true); // true = wait for gtag to load (up to 3 seconds)
     }, 500); // Give GA4 a bit more time to initialize
+
+    // Meta Pixel: ViewContent on tool page (Phase 0).
+    fbqTrack('ViewContent', { content_name: 'rent_tool' });
 
     return () => clearTimeout(timer);
   }, []);
@@ -187,7 +191,7 @@ export default function HowMuchRentCanIAffordPage() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>

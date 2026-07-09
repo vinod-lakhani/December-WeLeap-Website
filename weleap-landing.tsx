@@ -290,7 +290,7 @@ export default function Component() {
           </p>
           <EarlyAccessDialog signupType="cta" placement="cta_section">
             <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl">
-              Join Waitlist
+              Create free account
             </Button>
           </EarlyAccessDialog>
         </Container>
@@ -304,7 +304,7 @@ export default function Component() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>
