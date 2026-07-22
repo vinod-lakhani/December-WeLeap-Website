@@ -6,14 +6,16 @@
  * On CTA: encodes key fields as URL params and redirects to the WeLeap app.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { track } from '@/lib/analytics';
-import { EarlyAccessDialog } from '@/components/early-access-dialog';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
+import { getUtmParams } from '@/lib/utm-storage';
+import { fbqTrack } from '@/lib/meta-pixel';
+import posthog from 'posthog-js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -303,6 +305,8 @@ export function OfferAnalysisTool() {
   // ── CTA ──────────────────────────────────────────────────────────────────────
   const handleSignUp = useCallback(() => {
     if (!salary) return;
+    // Phase 0 funnel event (mirrors the rent tool with tool: 'offer').
+    track('tool_cta_clicked', { tool: 'offer' });
     track('offer_tool_cta_clicked', { intent, salary: Math.round(salary / 10000) * 10000, state: jobState });
     const params = new URLSearchParams();
     params.set('src', 'offer_tool');
@@ -316,10 +320,29 @@ export function OfferAnalysisTool() {
     if (city) params.set('city', city);
     if (rentMonthly) params.set('rent', String(rentMonthly));
     if (intent) params.set('intent', intent);
+    // Carry attribution forward so the app can stitch identity across domains.
+    const utm = getUtmParams();
+    if (utm) new URLSearchParams(utm).forEach((value, key) => params.set(key, value));
+    try {
+      const did = posthog?.get_distinct_id?.();
+      if (did) params.set('ph_did', did);
+    } catch {
+      // PostHog not ready — deep link still works without stitching.
+    }
     window.location.href = `${APP_BASE_URL}/react/#analyze?${params.toString()}`;
   }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly, intent]);
 
   const hasResults = !!calc;
+
+  // Fire tool_completed once when results first render (Phase 0 funnel).
+  const toolCompletedRef = useRef(false);
+  useEffect(() => {
+    if (hasResults && !toolCompletedRef.current) {
+      toolCompletedRef.current = true;
+      track('tool_completed', { tool: 'offer' });
+      fbqTrack('Lead', { content_name: 'offer_tool' });
+    }
+  }, [hasResults]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">

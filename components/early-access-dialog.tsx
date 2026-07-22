@@ -2,179 +2,118 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useCallback } from "react"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { getUtmParams } from "@/lib/utm-storage"
+import { appLink } from "@/lib/app-link"
+import { track } from "@/lib/analytics"
 
+/**
+ * EarlyAccessDialog — now an attribution-aware "Create free account" CTA.
+ *
+ * Self-serve signup is open on the app, so this no longer collects an email
+ * into a waitlist. Instead, every instance links to the app signup route and
+ * carries attribution forward (stored UTMs + PostHog distinct_id) via appLink().
+ *
+ * The component name and props are preserved so the ~40 existing call sites
+ * keep working; they now navigate to signup instead of opening an email modal.
+ */
 interface EarlyAccessDialogProps {
   children?: React.ReactNode
-  signupType?: string // Optional: e.g., "button", "cta", "navigation", "net_worth_tool_feedback", etc.
-  /** Optional label for the CTA placement (e.g. "header", "footer"). Sent as `source` with pathname. */
+  /** Tracking label for the CTA type (e.g. "hero", "navigation", "pricing"). */
+  signupType?: string
+  /** Optional label for the CTA placement (e.g. "header", "footer"). */
   placement?: string
-  /** Referral source for tracking (e.g. from ?ref=linkedin). Pass when using shareable links. */
+  /** Referral source for tracking (e.g. from ?ref=linkedin). */
   referralSource?: string
-  /** When set, dialog is controlled by parent (e.g. open from survey). Omit for trigger-based use. */
+  /** When set, the parent controls visibility (legacy survey flow). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  /** When "page", renders form inline (no modal). Use for dedicated /join page. */
+  /** When "page", renders an inline CTA card. Use for the dedicated /join page. */
   variant?: "dialog" | "page"
 }
 
-export function EarlyAccessDialog({ children, signupType = "button", placement, referralSource, open: controlledOpen, onOpenChange, variant = "dialog" }: EarlyAccessDialogProps) {
-  const [email, setEmail] = useState("")
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function EarlyAccessDialog({
+  children,
+  signupType = "button",
+  placement,
+  referralSource,
+  open: controlledOpen,
+  onOpenChange,
+  variant = "dialog",
+}: EarlyAccessDialogProps) {
   const pathname = usePathname()
-  const isControlled = controlledOpen !== undefined && onOpenChange !== undefined
 
-  const buildPageWithTracking = () => {
-    const base = pathname || "/"
-    if (typeof window === "undefined") return base
-    const qs = getUtmParams()
-    return qs ? `${base}?${qs}` : base
-  }
+  const goToSignup = useCallback(() => {
+    track("cta_click_signup", {
+      signup_type: signupType,
+      placement: placement ?? null,
+      path: pathname || "/",
+      ...(referralSource && { ref: referralSource }),
+    })
+    // Close any legacy controlled dialog before navigating away.
+    onOpenChange?.(false)
+    window.location.href = appLink()
+  }, [signupType, placement, referralSource, pathname, onOpenChange])
 
-  const buildAttributionSource = () => {
-    const path = pathname || "/"
-    if (placement) return `${placement}|${signupType}|${path}`
-    return `${signupType}|${path}`
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          signupType,
-          page: buildPageWithTracking(),
-          source: buildAttributionSource(),
-          referrer: typeof document !== "undefined" ? document.referrer || "" : "",
-          ...(referralSource && { ref: referralSource }),
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to join waitlist")
-      }
-
-      setIsSubmitted(true)
-      setEmail("")
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Please try again."
-      setError(errorMessage)
-      console.error("Error joining waitlist:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const formBody = (
-    <>
-      {!isSubmitted ? (
-        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email" className="text-gray-700">
-              Email address
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-          <div className="text-left text-gray-700 mt-2">
-            <p className="font-semibold mb-2">What to expect:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Early access when app launches</li>
-              <li>AI-powered financial insights</li>
-              <li>Self-service financial guidance</li>
-              <li>No spam, just updates</li>
-            </ul>
-          </div>
-          {error && (
-            <div className="text-red-600 text-sm mt-2">{error}</div>
-          )}
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? "Joining..." : "Join Waitlist"}
-          </Button>
-        </form>
-      ) : (
-        <div className="text-center py-8">
-          <h3 className="text-xl font-semibold text-primary-600 mb-2">Thank You!</h3>
-          <p className="text-gray-600">We'll notify you when the app launches.</p>
-        </div>
-      )}
-    </>
-  )
-
-  const dialogContent = (
-    <DialogContent className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl">
-      <DialogHeader>
-        <DialogTitle className="text-2xl font-bold text-gray-900">Join Waitlist</DialogTitle>
-        <DialogDescription className="text-gray-600 mt-2">
-          Be the first to know when our self-service app launches with AI-powered financial guidance.
-        </DialogDescription>
-      </DialogHeader>
-      {formBody}
-    </DialogContent>
-  )
-
+  // Inline CTA card (dedicated /join page).
   if (variant === "page") {
     return (
       <div className="sm:max-w-[425px] bg-white p-6 rounded-lg shadow-xl border border-gray-200">
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-gray-900">Join Waitlist</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Create your free account</h2>
           <p className="text-gray-600 mt-2">
-            Be the first to know when our self-service app launches with AI-powered financial guidance.
+            Get your AI financial sidekick in about 2 minutes. No waitlist — start today.
           </p>
         </div>
-        {formBody}
+        <div className="mt-4">
+          <div className="text-left text-gray-700 mb-4">
+            <p className="font-semibold mb-2">What you get:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Your full financial picture in one place</li>
+              <li>One clear next step — a smart Leap</li>
+              <li>AI-powered guidance built around you</li>
+              <li>Free to start</li>
+            </ul>
+          </div>
+          <Button
+            onClick={goToSignup}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium"
+          >
+            Create free account
+          </Button>
+        </div>
       </div>
     )
   }
 
-  if (isControlled) {
+  // Legacy controlled usage (e.g. opened from a survey): render a CTA panel
+  // instead of the old email modal. When opened, it simply routes to signup.
+  if (controlledOpen !== undefined && onOpenChange !== undefined) {
+    if (!controlledOpen) return null
     return (
-      <Dialog open={controlledOpen} onOpenChange={onOpenChange}>
-        {dialogContent}
-      </Dialog>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => onOpenChange(false)}>
+        <div className="bg-white p-6 rounded-lg shadow-xl max-w-[425px] w-full" onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create your free account</h2>
+          <p className="text-gray-600 mb-4">
+            Start with your AI financial sidekick in about 2 minutes. No waitlist.
+          </p>
+          <Button
+            onClick={goToSignup}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium"
+          >
+            Create free account
+          </Button>
+        </div>
+      </div>
     )
   }
 
+  // Trigger mode: wrap the provided children so a click routes to signup.
+  // `display: contents` keeps the child's own styling/layout intact.
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      {dialogContent}
-    </Dialog>
+    <span onClick={goToSignup} className="contents cursor-pointer">
+      {children}
+    </span>
   )
 }

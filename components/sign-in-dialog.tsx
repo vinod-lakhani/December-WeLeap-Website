@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { appLink } from "@/lib/app-link"
 
 export function SignInDialog({ children }: { children: React.ReactNode }) {
   const [username, setUsername] = useState("")
@@ -80,8 +81,12 @@ export function SignInDialog({ children }: { children: React.ReactNode }) {
             </Button>
             <div className="text-center text-sm text-gray-600 mt-2">
               Don't have an account?{" "}
-              <button type="button" className="text-primary-600 hover:text-primary-700 font-medium">
-                Join our waitlist
+              <button
+                type="button"
+                onClick={() => { window.location.href = appLink() }}
+                className="text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Create free account
               </button>
             </div>
           </form>

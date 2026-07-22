@@ -16,11 +16,12 @@ import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
-import { EarlyAccessDialog } from '@/components/early-access-dialog';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { appLink } from '@/lib/app-link';
+import { fbqTrack } from '@/lib/meta-pixel';
 import {
   bucketSalary,
   bucketRentRatio,
@@ -78,6 +79,17 @@ export function OfferTool() {
   // Track form start (fire once on first interaction)
   const formStartedRef = useRef(false);
   const prefillAppliedRef = useRef(false);
+  const toolCompletedRef = useRef(false);
+
+  // Fire tool_completed once when results first render (Phase 0 funnel).
+  // Mirrors the same event on /offer with tool: 'offer'.
+  useEffect(() => {
+    if (results && !toolCompletedRef.current) {
+      toolCompletedRef.current = true;
+      track('tool_completed', { tool: 'rent' });
+      fbqTrack('Lead', { content_name: 'rent_tool' });
+    }
+  }, [results]);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
@@ -577,65 +589,45 @@ export function OfferTool() {
             planData={planData}
           />
 
-          {/* Full Allocation CTA — directly under Timing Pressure for momentum */}
-          <Card className="border-2 border-[#3F6B42] bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-[#111827]">
-                Your rent is your first big money decision.
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Your full plan adjusts savings, debt, and investing around this.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-700 mb-4">
-                Most people only focus on rent. The real gains come from how the rest of your money flows.
+          {/* Primary bridge: create a free account (Phase 0 landing bridge).
+              Personalized with the user's rent range. Email capture becomes the
+              secondary action, not the terminus. */}
+          <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">
+            <CardContent className="py-6 space-y-4">
+              <h3 className="text-xl font-bold text-[#111827]">
+                Your range is {rentRange}. See what that leaves for saving.
+              </h3>
+              <p className="text-sm text-gray-700">
+                Create your free account and WeLeap builds your full plan around this —
+                savings, debt, and investing. Takes about 2 minutes.
               </p>
               <div>
                 <Button
                   onClick={() => {
+                    track('tool_cta_clicked', { tool: 'rent' });
                     const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
-                    if (!stateCode || !salary.trim()) return;
-                    const base = typeof window !== 'undefined' ? window.location.origin : '';
-                    const params = new URLSearchParams();
-                    params.set('src', 'rent');
-                    params.set('salaryAnnual', String(Math.round(parseFloat(salary))));
-                    params.set('state', stateCode);
-                    if (takeHomeMonthly > 0) {
-                      params.set('estimatedNetMonthlyIncome', String(Math.round(takeHomeMonthly)));
-                    }
-                    const rentMid = (rentRangeLow + rentRangeHigh) / 2;
-                    if (rentMid > 0) {
-                      params.set('rentEstimateMonthly', String(Math.round(rentMid)));
-                    }
-                    track('rent_tool_leap_cta_clicked', { page: '/how-much-rent-can-i-afford' });
-                    window.location.href = `${base}/leap-impact-simulator?${params.toString()}`;
+                    const extra: Record<string, string> = {};
+                    if (salary.trim()) extra.salary = String(Math.round(parseFloat(salary)));
+                    if (city) extra.city = city;
+                    if (stateCode) extra.state = stateCode;
+                    window.location.href = appLink('', extra);
                   }}
                   className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                 >
-                  Build my full money plan → (2 min)
+                  Create my free account →
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
-                  Takes ~2 minutes. No email required.
+                  Free · 2 minutes · No credit card.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* WeLeap Waitlist CTA */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardContent className="py-8 space-y-4">
-              <h3 className="text-xl font-bold text-[#111827]">
-                Want help actually getting there?
-              </h3>
-              <p className="text-base text-gray-600">
-                WeLeap tracks your money and tells you exactly what to do next — automatically.
-              </p>
-              <EarlyAccessDialog signupType="rent_tool" placement="tool">
-                <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-                  Join the waitlist →
-                </Button>
-              </EarlyAccessDialog>
+              <div>
+                <a
+                  href="#email-plan"
+                  className="text-sm text-gray-500 underline hover:text-gray-700"
+                >
+                  Email me my plan instead
+                </a>
+              </div>
             </CardContent>
           </Card>
 
@@ -711,8 +703,11 @@ export function OfferTool() {
 
           <div className="mt-8" />
 
-          {/* Tile 2: Secondary — Day 1 Rent Plan (PDF) */}
-          <WaitlistForm planData={planData} variant="secondary" />
+          {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
+              "Email me my plan instead" link. */}
+          <div id="email-plan" className="scroll-mt-24">
+            <WaitlistForm planData={planData} variant="secondary" />
+          </div>
 
           {/* Assumptions Accordion */}
           <div onClick={() => track('offer_tool_assumptions_opened')}>

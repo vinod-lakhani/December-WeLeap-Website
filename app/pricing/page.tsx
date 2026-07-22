@@ -99,7 +99,7 @@ export default function PricingPage() {
                 <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                   <EarlyAccessDialog signupType="pricing" placement="pricing_cta">
                     <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-8 rounded-xl transition-all duration-200">
-                      Join the Waitlist
+                      Create free account
                     </Button>
                   </EarlyAccessDialog>
 
@@ -231,7 +231,7 @@ export default function PricingPage() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>

@@ -4,12 +4,15 @@ import { useEffect } from 'react';
 import { OfferAnalysisTool } from '@/components/OfferAnalysisTool';
 import { PageShell, Section, Container } from '@/components/layout';
 import { track } from '@/lib/analytics';
+import { fbqTrack } from '@/lib/meta-pixel';
 
 export default function OfferAnalysisPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       track('offer_analysis_page_view', { page: '/offer', tool_version: 'offer_tool_v1' }, true);
     }, 500);
+    // Meta Pixel: ViewContent on tool page (Phase 0).
+    fbqTrack('ViewContent', { content_name: 'offer_tool' });
     return () => clearTimeout(timer);
   }, []);
 

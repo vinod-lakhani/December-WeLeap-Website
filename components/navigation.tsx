@@ -1,9 +1,9 @@
 "use client"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { EarlyAccessDialog } from "./early-access-dialog"
 import { useState } from "react"
+import { appLink, APP_HREF } from "@/lib/app-link"
+import { track } from "@/lib/analytics"
 
 export function Navigation() {
   const pathname = usePathname()
@@ -79,20 +79,13 @@ export function Navigation() {
               )}
             </button>
             <div className="hidden md:flex items-center gap-4">
-              {pathname.startsWith('/early-access') ? (
-                <a
-                  href="https://dev.weleap.app"
-                  className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md"
-                >
-                  Open the app →
-                </a>
-              ) : (
-                <EarlyAccessDialog signupType="navigation" placement="header">
-                  <Button className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md">
-                    Join Waitlist
-                  </Button>
-                </EarlyAccessDialog>
-              )}
+              <a
+                href={APP_HREF}
+                onClick={(e) => { e.preventDefault(); track('open_app_clicked', { placement: 'header' }); window.location.href = appLink() }}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md"
+              >
+                Open app
+              </a>
             </div>
           </div>
         </div>
@@ -147,20 +140,13 @@ export function Navigation() {
               </Link>
 
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200">
-                {pathname.startsWith('/early-access') ? (
-                  <a
-                    href="https://dev.weleap.app"
-                    className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm transition-all duration-200 text-center block"
-                  >
-                    Open the app →
-                  </a>
-                ) : (
-                  <EarlyAccessDialog signupType="navigation-mobile" placement="mobile_nav">
-                    <Button className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm transition-all duration-200">
-                      Join Waitlist
-                    </Button>
-                  </EarlyAccessDialog>
-                )}
+                <a
+                  href={APP_HREF}
+                  onClick={(e) => { e.preventDefault(); track('open_app_clicked', { placement: 'mobile_nav' }); window.location.href = appLink() }}
+                  className="w-full bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-xl font-medium shadow-sm transition-all duration-200 text-center block"
+                >
+                  Open app
+                </a>
               </div>
             </nav>
           </div>

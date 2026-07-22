@@ -339,7 +339,7 @@ export default function AboutPage() {
           </p>
           <EarlyAccessDialog signupType="cta" placement="about_cta">
             <Button className="bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold text-base md:text-lg hover:bg-gray-50 transition-colors duration-200 shadow-lg">
-              Join the Waitlist
+              Create free account
             </Button>
           </EarlyAccessDialog>
         </Container>
@@ -353,7 +353,7 @@ export default function AboutPage() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>

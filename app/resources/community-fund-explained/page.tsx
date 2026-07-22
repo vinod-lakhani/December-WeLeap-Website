@@ -87,7 +87,7 @@ export default function CommunityFundExplainedPage() {
         <Container maxWidth="narrow">
           <EarlyAccessDialog signupType="resource">
             <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
-              Join Waitlist
+              Create free account
             </Button>
           </EarlyAccessDialog>
           <p className={cn(TYPOGRAPHY.body, "text-gray-600 mt-4 md:mt-6")}>
@@ -104,7 +104,7 @@ export default function CommunityFundExplainedPage() {
               <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
             </div>
             <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2024 WeLeap.</p>
+              <p>© 2026 WeLeap.</p>
               <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 Privacy Policy
               </Link>
