@@ -21,15 +21,15 @@ export function Navigation() {
           <nav className="hidden md:flex items-center gap-8">
             {/* About Us intentionally lives in the footer, not the header —
                 the header stays on the product and the offering. */}
+            {/* Anchors into the homepage section, which shows real product UI.
+                The old /product-features page was badly out of date, but it was
+                the 5th most-visited page (~260 visitors) — so it is 301'd to
+                this anchor in next.config.mjs rather than deleted. */}
             <Link
-              href="/product-features"
-              className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/product-features"
-                  ? "text-brand-700 bg-brand-50"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              href="/#how-it-works"
+              className="font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit text-gray-600 hover:text-gray-900"
             >
-              Product Features
+              How it works
             </Link>
             <Link
               href="/pricing"
@@ -89,13 +89,11 @@ export function Navigation() {
           <div className="md:hidden border-t border-gray-200 py-4 px-4 sm:px-6 animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col gap-2">
               <Link
-                href="/product-features"
+                href="/#how-it-works"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/product-features" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
-                }`}
+                className="font-medium transition-colors duration-200 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50"
               >
-                Product Features
+                How it works
               </Link>
               <Link
                 href="/pricing"

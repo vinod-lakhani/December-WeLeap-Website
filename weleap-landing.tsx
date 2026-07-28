@@ -271,13 +271,14 @@ function Hero() {
    Problem
    ========================================================================== */
 
-// YNAB 2026 Money Mood Report, conducted online by The Harris Poll among
-// 2,088 U.S. adults, November 2025. Keep the citation next to the numbers —
-// unsourced stats on a finance site are a credibility liability.
+// First-party data from our own survey. Keep the citation next to the numbers
+// — unsourced stats on a finance site are a credibility liability, and a
+// self-run survey invites more scrutiny than a third-party one, not less.
+// TODO: add sample size and field dates to the source line once confirmed.
 const STATS = [
-  { n: "87%", t: "of Gen Z are worried about money" },
-  { n: "62%", t: "often wonder where their money goes each month" },
-  { n: "58%", t: "say managing money feels like a chore" },
+  { n: "73%", t: "don’t have a clear, complete view of their finances in one place" },
+  { n: "1 in 5", t: "feel very confident about basic financial concepts" },
+  { n: "44%", t: "rarely or never use financial tools to manage their money" },
 ]
 
 function Problem() {
@@ -306,7 +307,7 @@ function Problem() {
         </div>
 
         <p className="mt-5 text-center text-[12.5px] leading-relaxed text-faint">
-          YNAB 2026 Money Mood Report, conducted online by The Harris Poll among 2,088 U.S. adults, November 2025.
+          Source: WeLeap Financial Needs Survey.
         </p>
       </Container>
     </Section>

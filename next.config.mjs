@@ -17,7 +17,22 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  
+
+  async redirects() {
+    return [
+      {
+        // /product-features was the 5th most-visited page (~260 visitors) but
+        // its content was badly out of date. Permanent redirect rather than a
+        // delete so the traffic and any inbound links land on the current
+        // "how it works" content instead of a 404.
+        source: '/product-features',
+        destination: '/#how-it-works',
+        permanent: true,
+      },
+    ]
+  },
+
+
   // Ensure PDFKit's data files are included in serverless builds
   serverExternalPackages: ['pdfkit'],
   webpack: (config, { isServer, webpack }) => {

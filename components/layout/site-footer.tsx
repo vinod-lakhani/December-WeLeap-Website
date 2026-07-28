@@ -14,7 +14,7 @@ export function SiteFooter() {
       h: "Product",
       links: [
         { t: "How it works", u: "/#how-it-works" },
-        { t: "Product features", u: "/product-features" },
+        { t: "Free tools", u: "/tools" },
         { t: "Pricing", u: "/pricing" },
       ],
     },
