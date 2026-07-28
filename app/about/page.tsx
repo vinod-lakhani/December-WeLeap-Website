@@ -1,6 +1,6 @@
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
-import { PageShell, Section, Container } from "@/components/layout"
+import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -10,16 +10,16 @@ export const dynamic = "force-dynamic"
 
 export default function AboutPage() {
   return (
-    <PageShell>
+    <PageShell className="bg-canvas">
       {/* Hero Section */}
-      <Section variant="brand" className="text-center" isHero>
+      <Section variant="canvas" className="text-center" isHero>
         <Container>
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>
-            About <span className="text-white">WeLeap</span>
+          <h1 className="text-balance text-[clamp(2.4rem,4.35vw,3.6rem)] font-extrabold leading-[1.05] tracking-[-0.035em] text-ink">
+            We started this for our own kids.
           </h1>
-          <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-3xl mx-auto")}>
-            We're building the future of personal finance through AI-powered guidance that adapts to your unique
-            financial journey.
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtle">
+            WeLeap gives young adults one clear money move at a time — so getting ahead stops depending on already
+            knowing what to do.
           </p>
         </Container>
       </Section>
@@ -262,108 +262,34 @@ export default function AboutPage() {
                   />
                 </svg>
               </div>
-              <h3 className={cn("text-lg md:text-xl font-bold text-black mb-3 text-center")}>Aligned incentives</h3>
+              <h3 className={cn("text-lg md:text-xl font-bold text-black mb-3 text-center")}>We only win when you do</h3>
               <p className={cn(TYPOGRAPHY.subtext, "text-gray-700 text-center flex-grow")}>
-                We believe that financial advice should be trustworthy and transparent. Our success is directly tied to your financial success—we only win when you do.
+                No ads, no selling your data, and no pushing credit cards you don't need. If we ever earn a referral fee,
+                we tell you on the spot.
               </p>
             </div>
           </div>
         </Container>
       </Section>
 
-      {/* Community-First Model */}
-      <Section variant="muted">
+      <Section variant="deep" className="text-center">
         <Container>
-          <div className={cn(CARD_STYLES.base, "bg-white p-6 md:p-10 shadow-sm")}>
-            <h2 className={cn("text-2xl md:text-4xl font-bold text-black mb-4")}>Our Community-First Model</h2>
-
-            <p className={cn(TYPOGRAPHY.subtext, "md:text-lg text-gray-700 leading-relaxed mb-8 max-w-4xl")}>
-              WeLeap operates on a community-first model where member fees and revenue flow into a shared Community Fund.
-              This fund supports members during financial challenges, enables product improvements, and creates a
-              sustainable cycle where success is shared, not extracted.
-            </p>
-
-            {/* 3-item value row */}
-            <div className={cn("grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8")}>
-              <div className="rounded-2xl border bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-black mb-1">Member-backed improvements</div>
-                <div className="text-sm text-gray-600">Revenue fuels better product outcomes, driven by the community.</div>
-              </div>
-              <div className="rounded-2xl border bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-black mb-1">Support when life hits</div>
-                <div className="text-sm text-gray-600">A portion of our revenue goes into a fund that rewards successful saving streaks or provides emergency micro-grants for members in need.</div>
-              </div>
-              <div className="rounded-2xl border bg-gray-50 p-5">
-                <div className="text-sm font-semibold text-black mb-1">Shared upside</div>
-                <div className="text-sm text-gray-600">Success flows back to members—not extracted for someone else.</div>
-              </div>
-            </div>
-
-            {/* Transparency note */}
-            <div className="bg-green-50 border-l-4 border-primary-500 rounded-r-lg p-5 md:p-6 mb-6">
-              <p className={cn(TYPOGRAPHY.subtext, "md:text-lg text-gray-800 leading-relaxed")}>
-                <strong className="text-primary-700">Transparency & Alignment:</strong> When WeLeap earns referral revenue
-                or transaction fees, we disclose it—and a portion flows into the <strong>WeLeap Community Fund</strong>.
-                This ensures our recommendations are based on what's best for you, not what pays us most. Your success
-                and our success are aligned.
-              </p>
-            </div>
-
-            <Link
-              href="/how-it-works"
-              className="text-primary-600 hover:text-primary-700 font-semibold inline-flex items-center group text-sm md:text-base"
-            >
-              Learn more about our model
-              <svg
-                className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </Link>
-          </div>
-        </Container>
-      </Section>
-
-      {/* CTA Section */}
-      <Section variant="brand" className="text-center">
-        <Container>
-          <h2 className={cn("text-2xl md:text-4xl font-bold text-white mb-4")}>Ready to Transform Your Financial Future?</h2>
-          <p className={cn(TYPOGRAPHY.body, "text-primary-100 mb-8 max-w-2xl mx-auto")}>
-            Join thousands of early users who are already experiencing the power of AI-driven financial guidance.
+          <h2 className="text-balance text-[clamp(1.9rem,3.2vw,2.7rem)] font-extrabold leading-tight tracking-[-0.03em] text-white">
+            Find out what your money should be doing.
+          </h2>
+          <p className="mx-auto mb-8 mt-4 max-w-2xl text-lg leading-relaxed text-white/75">
+            Connect your accounts and get your first Leap in about two minutes. Free while we're in early access.
           </p>
           <EarlyAccessDialog signupType="cta" placement="about_cta">
-            <Button className="bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold text-base md:text-lg hover:bg-gray-50 transition-colors duration-200 shadow-lg">
-              Create free account
+            <Button className="rounded-full bg-white px-9 py-[17px] text-[17px] font-bold text-brand-700 shadow-lg transition hover:-translate-y-px">
+              Get your first Leap →
             </Button>
           </EarlyAccessDialog>
         </Container>
       </Section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <SiteFooter />
     </PageShell>
   )
 }

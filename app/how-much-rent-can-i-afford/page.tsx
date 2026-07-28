@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { OfferTool } from '@/components/OfferTool';
-import { PageShell, Section, Container } from '@/components/layout';
+import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -61,20 +61,20 @@ export default function HowMuchRentCanIAffordPage() {
 
 
   return (
-    <PageShell>
+    <PageShell className="bg-canvas">
       {/* Hero Section */}
-      <Section variant="brand" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
+      <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-6 md:mb-8")}>
+          <h1 className={cn("text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink", "mb-6 md:mb-8")}>
             Don't let rent break your first paycheck.
           </h1>
-          <p className={cn(TYPOGRAPHY.body, "text-white/85 leading-relaxed max-w-2xl mx-auto mb-5 md:mb-6")}>
+          <p className={cn(TYPOGRAPHY.body, "text-subtle leading-relaxed max-w-2xl mx-auto mb-5 md:mb-6")}>
             Turn your job offer into a rent range you can afford — and see what life actually looks like before you sign a lease.
           </p>
-          <p className={cn("text-xs md:text-sm text-white/60 mt-4 max-w-2xl mx-auto")}>
+          <p className={cn("text-xs md:text-sm text-faint mt-4 max-w-2xl mx-auto")}>
             Most people stretch too thin on rent before they see what they actually take home.
           </p>
-          <p className={cn("text-xs md:text-sm text-white/60 mt-6 md:mt-8 max-w-2xl mx-auto")}>
+          <p className={cn("text-xs md:text-sm text-faint mt-6 md:mt-8 max-w-2xl mx-auto")}>
             Built for when you're just starting out. Estimates only.
           </p>
         </Container>
@@ -172,7 +172,7 @@ export default function HowMuchRentCanIAffordPage() {
       </Section>
 
       {/* Calculator Section */}
-      <Section variant="muted" className="bg-[#F9FAFB]">
+      <Section variant="canvas">
         <Container>
           <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
             <p className="text-center text-base md:text-lg text-gray-700 mb-6 md:mb-8 font-medium">
@@ -184,24 +184,7 @@ export default function HowMuchRentCanIAffordPage() {
       </Section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <SiteFooter />
     </PageShell>
   );
 }

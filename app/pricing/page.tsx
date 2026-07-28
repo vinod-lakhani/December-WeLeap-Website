@@ -1,247 +1,148 @@
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Check, Star } from "lucide-react"
+import { Check } from "lucide-react"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
-import { PageShell, Section, Container } from "@/components/layout"
-import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
-import { cn } from "@/lib/utils"
+import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import Link from "next/link"
+
+const NOW = [
+  "Your weekly Leap — the single move that does the most",
+  "Full picture: cash, debt, 401(k), goals",
+  "Ask Ribbit anything, in plain English",
+  "All six planning tools",
+]
+
+const FOUNDING = [
+  "Recognition as a founding supporter",
+  "Priority support",
+  "Locked-in pricing — our lowest rate, for life",
+]
+
+const FAQS = [
+  {
+    q: "Do you have multiple plans?",
+    a: "Not right now. Everyone gets the same experience, free, during early access. We'll introduce paid plans once we've earned it — and Founding Members keep their perks and lock in the lowest rate.",
+  },
+  {
+    q: "Who is a Founding Member?",
+    a: "The first 500 signups, automatically. No extra step and no checkout — it's a thank-you for helping us build.",
+  },
+  {
+    q: "How do you make money?",
+    a: "Eventually, a simple subscription. If we ever earn a referral fee from a financial product, we disclose it on the spot. We never earn more by steering you toward a worse option — that's the whole point.",
+  },
+  {
+    q: "Do you move my money?",
+    a: "Never without your say-so. Ribbit finds the move and shows you the math behind it. You decide whether it happens.",
+  },
+  {
+    q: "Is my financial data secure?",
+    a: "We connect through Plaid with read-only access — the same infrastructure your other financial apps use. We don't store your banking credentials, and we don't sell your data.",
+  },
+  {
+    q: "What if it doesn't work for me?",
+    a: "Early access is free, so there's nothing to lose by trying. When paid plans launch we'll publish a clear guarantee policy.",
+  },
+]
 
 export default function PricingPage() {
   return (
-    <PageShell>
-      {/* Hero Section */}
-      <Section variant="brand" className="text-center" isHero>
+    <PageShell className="bg-canvas">
+      <Section variant="canvas" isHero className="text-center">
         <Container maxWidth="narrow">
-          <p className={cn(TYPOGRAPHY.body, "font-semibold text-white mb-2")}>
-            🎉 Early Access is free. No credit card required.
+          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[13.5px] font-semibold text-brand-700">
+            Free during early access · No card required
+          </div>
+          <h1 className="text-balance text-[clamp(2.4rem,4.35vw,3.6rem)] font-extrabold leading-[1.05] tracking-[-0.035em] text-ink">
+            Free while we earn it.
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtle">
+            One experience, free during early access. We'll introduce paid plans only once the product has proven
+            itself — and the first 500 members lock in our lowest rate for life.
           </p>
-          <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 md:px-6 py-3 md:py-4 mb-4 md:mb-6 max-w-2xl mx-auto">
-            <p className={cn(TYPOGRAPHY.body, "font-bold text-white text-center")}>
-              Only 500 Founding Member spots available. Join now to lock in lifetime benefits.
+        </Container>
+      </Section>
+
+      <Section variant="canvas" className="pt-0">
+        <Container maxWidth="wide">
+          <div className="mx-auto max-w-4xl rounded-card border border-hairline bg-white p-8 shadow-card md:p-11">
+            <div className="text-center">
+              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">Early access</div>
+              <div className="mt-3 flex items-baseline justify-center gap-2">
+                <span className="text-[64px] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">$0</span>
+              </div>
+              <p className="mt-3 text-[15px] text-subtle">Free during the early access period</p>
+            </div>
+
+            <div className="mt-10 grid gap-8 sm:grid-cols-2">
+              <div>
+                <h2 className="mb-4 text-lg font-extrabold tracking-[-0.018em] text-ink">What you get today</h2>
+                <ul className="space-y-3">
+                  {NOW.map((f) => (
+                    <li key={f} className="flex items-start gap-3">
+                      <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand-700" />
+                      <span className="text-[15px] leading-snug text-ink-soft">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h2 className="mb-4 text-lg font-extrabold tracking-[-0.018em] text-ink">What the first 500 keep</h2>
+                <ul className="space-y-3">
+                  {FOUNDING.map((f) => (
+                    <li key={f} className="flex items-start gap-3">
+                      <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand-700" />
+                      <span className="text-[15px] leading-snug text-ink-soft">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 rounded-2xl border border-brand-100 bg-brand-50 p-5">
+                  <p className="mb-1 text-[15px] font-bold text-ink">What happens after early access?</p>
+                  <p className="text-[14.5px] leading-relaxed text-subtle">
+                    We'll introduce paid plans only once we've earned it. Founding Members keep their perks and lock in
+                    our lowest possible rate for life.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+              <EarlyAccessDialog signupType="pricing" placement="pricing_cta">
+                <Button className="w-full rounded-full bg-brand-700 px-9 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800 sm:w-auto">
+                  Get your first Leap →
+                </Button>
+              </EarlyAccessDialog>
+              <Link
+                href="/resources/pricing-philosophy"
+                className="w-full rounded-full border border-brand-100 px-8 py-[17px] text-center text-[17px] font-bold text-brand-700 transition hover:bg-brand-700/5 sm:w-auto"
+              >
+                Read our pricing philosophy
+              </Link>
+            </div>
+
+            <p className="mt-5 text-center text-[13.5px] text-faint">
+              Free to start · No card · You approve every move
             </p>
           </div>
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-3 md:mb-4 break-words")}>Pricing</h1>
-          <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-2xl mx-auto text-balance break-words")}>
-            We're keeping Phase 1 simple: one experience, free during early access. We'll introduce paid plans once the
-            product is proven.
-          </p>
-        </Container>
-      </Section>
 
-      <Section variant="white">
-        <Container>
-          {/* Single Tier Card */}
-          <div className="max-w-4xl mx-auto mb-10 md:mb-12">
-            <Card className="border-primary/30 shadow-lg">
-              <CardHeader className="text-center pb-4 md:pb-6 px-4 md:px-6">
-                <CardTitle className={cn(TYPOGRAPHY.h3, "text-gray-900")}>Early Access</CardTitle>
-                <div className="mt-3 md:mt-4">
-                  <span className="text-4xl md:text-5xl font-bold text-gray-900">$0</span>
-                  <div className={cn(TYPOGRAPHY.subtext, "text-gray-600 mt-2")}>Free during the early access period</div>
+          <div className="mx-auto mt-20 max-w-[780px]">
+            <h2 className="mb-10 text-center text-balance text-[clamp(1.9rem,3.2vw,2.6rem)] font-extrabold leading-tight tracking-[-0.03em] text-ink">
+              Questions about pricing.
+            </h2>
+            <div className="grid gap-4">
+              {FAQS.map((f) => (
+                <div key={f.q} className="rounded-card border border-hairline bg-white p-6 shadow-card">
+                  <h3 className="mb-2 text-[17.5px] font-bold tracking-[-0.015em] text-ink">{f.q}</h3>
+                  <p className="text-[15.5px] leading-relaxed text-subtle">{f.a}</p>
                 </div>
-              </CardHeader>
-
-              <CardContent className="px-4 md:px-6">
-                <div className="grid sm:grid-cols-2 gap-6 md:gap-8">
-                  {/* What everyone gets right now */}
-                  <div>
-                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>What everyone gets right now</h3>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Dashboard + insights</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Automation & alerts</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Track spending, income, and savings</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* What the First 500 get forever */}
-                  <div>
-                    <h3 className={cn("text-lg font-semibold text-gray-900 mb-4")}>What the First 500 get forever</h3>
-                    <ul className="space-y-3">
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Recognition as a founding supporter</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Priority support</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Locked-in pricing (lowest rate for life)</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>Early access to community governance — launching as we scale</span>
-                      </li>
-                    </ul>
-
-                    <div className="bg-primary/5 rounded-lg p-4 mt-6 w-full">
-                      <p className={cn(TYPOGRAPHY.subtext, "text-gray-900 font-medium mb-1")}>What happens after early access?</p>
-                      <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                        We'll introduce paid plans only after we've earned it. Founding Members will keep access to
-                        founding perks and lock in our lowest possible rate for life once paid plans launch.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                  <EarlyAccessDialog signupType="pricing" placement="pricing_cta">
-                    <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-8 rounded-xl transition-all duration-200">
-                      Create free account
-                    </Button>
-                  </EarlyAccessDialog>
-
-                  <Button
-                    variant="outline"
-                    className="w-full sm:w-auto py-3 px-8 rounded-xl"
-                    asChild
-                  >
-                    <Link href="/resources/pricing-philosophy">Read our pricing philosophy</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Community Fund Section */}
-          <div className="max-w-4xl mx-auto mb-12 md:mb-14">
-            <Card className="border-primary/10 rounded-2xl">
-              <CardHeader className="text-center pb-6">
-                <CardTitle className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-4")}>Community Fund</CardTitle>
-                <p className={cn(TYPOGRAPHY.body, "text-gray-700 max-w-3xl mx-auto text-balance")}>
-                  When WeLeap earns referral or transaction revenue, we disclose it — every time. A share comes back to
-                  you as an individual rebate. You took the action. You should share in the upside. The rest goes into
-                  the <span className="font-semibold">WeLeap Community Fund</span> to build something bigger together.
-                </p>
-              </CardHeader>
-
-              <CardContent>
-                {/* Simple 3-up summary */}
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>We disclose every fee</div>
-                    <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      If we're paid, you'll see it — always.
-                    </div>
-                  </div>
-                  <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>A share comes back to you</div>
-                    <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      When you take an action that generates revenue, a portion comes back to you as an individual rebate.
-                    </div>
-                  </div>
-                  <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
-                    <div className={cn("font-semibold text-gray-900 mb-1", TYPOGRAPHY.subtext)}>A portion builds the community</div>
-                    <div className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                      The rest flows into the Community Fund. Governance over how it's used is coming as we grow.
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center mt-8">
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                    Explore how the Community Fund works →{" "}
-                    <Link
-                      href="/resources/community-fund-explained"
-                      className="text-primary hover:text-primary/80 underline font-medium"
-                    >
-                      What the WeLeap Community Fund Means for You
-                    </Link>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* FAQ */}
-          <div className="max-w-4xl mx-auto">
-            <h2 className={cn(TYPOGRAPHY.h2, "text-center text-gray-900 mb-12")}>Frequently Asked Questions</h2>
-
-            <div className="space-y-6">
-              <Card className="rounded-xl">
-                <CardContent className="p-6">
-                  <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>Do you have multiple plans?</h3>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  In Phase 1, no — everyone gets the same Early Access experience for free. Once we've proven value,
-                  we'll introduce paid plans (and Founding Members will get founder perks and best-available pricing).
-                </p>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-xl">
-                <CardContent className="p-6">
-                  <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>Who is a Founding Member?</h3>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  The first 500 signups are automatically recognized as Founding Members. No extra step, no separate
-                  checkout — it's a thank-you for helping us build.
-                </p>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-xl">
-                <CardContent className="p-6">
-                <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>How do you make money?</h3>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  Three ways — all disclosed. (1) <strong>Subscriptions:</strong> a simple monthly fee once paid plans launch. (2) <strong>Individual rebates:</strong> when you sign up for a financial product through WeLeap, a share of any referral or transaction fee comes back to you directly. (3) <strong>Community Fund:</strong> the remainder goes into the Fund, which builds community programs and rewards. We never earn more by steering you toward worse products.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-xl">
-                <CardContent className="p-6">
-                  <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>Is my financial data secure?</h3>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                    Your data is encrypted with bank-level security. We use read-only connections to your accounts and
-                    never store your banking credentials.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-xl">
-                <CardContent className="p-6">
-                  <h3 className={cn("text-lg font-semibold text-gray-900 mb-2")}>What if WeLeap doesn't work for me?</h3>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-gray-600")}>
-                  Early Access is free — you can try it without risk. As we launch paid plans later, we'll include a
-                  clear guarantee policy.
-                </p>
-                </CardContent>
-              </Card>
+              ))}
             </div>
           </div>
         </Container>
       </Section>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <SiteFooter />
     </PageShell>
   )
 }

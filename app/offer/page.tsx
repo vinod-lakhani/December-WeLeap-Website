@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { OfferAnalysisTool } from '@/components/OfferAnalysisTool';
-import { PageShell, Section, Container } from '@/components/layout';
+import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { track } from '@/lib/analytics';
 import { fbqTrack } from '@/lib/meta-pixel';
 
@@ -17,20 +17,21 @@ export default function OfferAnalysisPage() {
   }, []);
 
   return (
-    <PageShell>
+    <PageShell className="bg-canvas">
       {/* Hero */}
-      <Section variant="brand" isHero className="text-center">
+      <Section variant="canvas" isHero className="text-center">
         <Container maxWidth="narrow">
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-semibold text-[#A7C957] mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#A7C957] inline-block" />
+          {/* lime on the old dark hero; on the warm canvas it needs brand green to stay legible */}
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 text-sm font-semibold text-brand-700">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand-700" />
             Free · No account required
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-4">
+          <h1 className="mb-4 text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
             Your offer letter has{' '}
-            <span className="text-[#A7C957]">7 numbers.</span>
+            <span className="text-brand-700">7 numbers.</span>
             <br />Most people only read one.
           </h1>
-          <p className="text-lg text-white/60 max-w-md mx-auto">
+          <p className="mx-auto max-w-md text-lg leading-relaxed text-subtle">
             Enter your offer details below. We&apos;ll show you what the full package is actually worth
             — and what you&apos;ll keep each month.
           </p>
@@ -38,7 +39,7 @@ export default function OfferAnalysisPage() {
       </Section>
 
       {/* How it works */}
-      <Section variant="muted" className="pt-0">
+      <Section variant="canvas" className="pt-0">
         <Container maxWidth="narrow">
           <h2 className="text-lg font-bold text-gray-900 text-center mb-6">The 7 numbers in your offer</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
@@ -69,13 +70,7 @@ export default function OfferAnalysisPage() {
         </Container>
       </Section>
 
-      <footer className="border-t border-gray-200 py-6 text-center text-sm text-gray-400">
-        <a href="/privacy-policy" className="hover:underline">Privacy</a>
-        {' · '}
-        <a href="/terms-of-service" className="hover:underline">Terms</a>
-        {' · '}
-        <span>© {new Date().getFullYear()} WeLeap</span>
-      </footer>
+      <SiteFooter />
     </PageShell>
   );
 }

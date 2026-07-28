@@ -2,7 +2,7 @@ import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
-import { PageShell, Section, Container } from "@/components/layout"
+import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 
@@ -12,7 +12,7 @@ export default function PricingPhilosophyPage() {
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
-          <Link href="/resources" className={cn("inline-flex items-center text-primary-600 hover:text-primary-700 mb-6 md:mb-8", TYPOGRAPHY.subtext)}>
+          <Link href="/resources" className={cn("inline-flex items-center text-brand-700 hover:text-brand-800 mb-6 md:mb-8", TYPOGRAPHY.subtext)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Resources
           </Link>
@@ -75,15 +75,11 @@ export default function PricingPhilosophyPage() {
               </p>
 
               <p>
-                <strong>The rest builds the community.</strong> The remaining revenue flows into the WeLeap Community Fund — a shared pool used to fund financial literacy programs, member rewards, and community initiatives. This isn't a slush fund. It's a commitment that WeLeap's growth should benefit the people who made it possible.
-              </p>
-
-              <p>
                 <strong>Subscriptions, when they launch, stay clean.</strong> Once we introduce paid plans, they'll be straightforward: a flat fee for the service. No hidden upsells, no "premium" recommendations that happen to pay us more. The subscription model keeps our incentives simple — help you get more value, not more transactions.
               </p>
 
               <p>
-                <strong>Why this matters.</strong> WeLeap isn't trying to win by selling you more financial products. We're trying to win by aligning incentives, disclosing how money moves, and giving you a real share of the upside. The Community Fund is what that looks like at scale — members building something together, not just funding a platform.
+                <strong>Why this matters.</strong> WeLeap isn't trying to win by selling you more financial products. We're trying to win by disclosing exactly how money moves and never earning more when you choose worse. If a recommendation pays us, you'll know before you act on it.
               </p>
 
               <p>
@@ -98,7 +94,7 @@ export default function PricingPhilosophyPage() {
       <Section variant="white" className="text-center">
         <Container maxWidth="narrow">
           <EarlyAccessDialog signupType="resource">
-            <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
+            <Button className="bg-brand-700 hover:bg-brand-800 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl font-medium shadow-lg transition-all duration-200 hover:shadow-xl">
               Create free account
             </Button>
           </EarlyAccessDialog>
@@ -109,24 +105,7 @@ export default function PricingPhilosophyPage() {
       </Section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <SiteFooter />
     </PageShell>
   )
 }

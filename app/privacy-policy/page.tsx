@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from 'lucide-react'
-import { PageShell, Section, Container } from "@/components/layout"
+import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 
@@ -159,24 +159,7 @@ export default function PrivacyPolicyPage() {
       </Section>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <SiteFooter />
     </PageShell>
   )
 }
