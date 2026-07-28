@@ -11,7 +11,8 @@ export function Navigation() {
 
   return (
     <header className="fixed top-4 left-0 right-0 z-50 px-4 sm:px-6">
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-lg shadow-black/10">
+      {/* Pill + glass, matching the product app's floating nav */}
+      <div className="rounded-[28px] border border-hairline bg-white/85 shadow-[0_4px_22px_rgba(17,63,36,.07)] backdrop-blur-md md:rounded-full">
         <div className="container mx-auto max-w-6xl py-3 sm:py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center">
             <img src="/images/weleap-logo.png" alt="WeLeap" className="h-10 w-auto" />
@@ -21,7 +22,7 @@ export function Navigation() {
             <Link
               href="/"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:text-gray-900"
+                pathname === "/" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Home
@@ -29,7 +30,7 @@ export function Navigation() {
             <Link
               href="/about"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/about" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:text-gray-900"
+                pathname === "/about" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               About Us
@@ -38,7 +39,7 @@ export function Navigation() {
               href="/product-features"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
                 pathname === "/product-features"
-                  ? "text-primary-600 bg-primary-50"
+                  ? "text-brand-700 bg-brand-50"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -47,7 +48,7 @@ export function Navigation() {
             <Link
               href="/pricing"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/pricing" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:text-gray-900"
+                pathname === "/pricing" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Pricing
@@ -55,7 +56,7 @@ export function Navigation() {
             <Link
               href="/resources"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/resources" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:text-gray-900"
+                pathname === "/resources" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Resources
@@ -82,7 +83,7 @@ export function Navigation() {
               <a
                 href={APP_HREF}
                 onClick={(e) => { e.preventDefault(); track('open_app_clicked', { placement: 'header' }); window.location.href = appLink() }}
-                className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md"
+                className="bg-brand-700 hover:bg-brand-800 text-white px-6 py-2.5 rounded-full font-bold shadow-pill transition-all duration-200 hover:-translate-y-px"
               >
                 Open app
               </a>
@@ -97,7 +98,7 @@ export function Navigation() {
                 href="/"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname === "/" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 Home
@@ -106,7 +107,7 @@ export function Navigation() {
                 href="/about"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/about" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname === "/about" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 About Us
@@ -115,7 +116,7 @@ export function Navigation() {
                 href="/product-features"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/product-features" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname === "/product-features" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 Product Features
@@ -124,7 +125,7 @@ export function Navigation() {
                 href="/pricing"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/pricing" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname === "/pricing" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 Pricing
@@ -133,7 +134,7 @@ export function Navigation() {
                 href="/resources"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/resources" ? "text-primary-600 bg-primary-50" : "text-gray-600 hover:bg-gray-50"
+                  pathname === "/resources" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 Resources

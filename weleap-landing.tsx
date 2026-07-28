@@ -1,320 +1,1019 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Headphones,
-  CreditCard,
-  Zap,
-  PiggyBank,
-  Receipt,
-  TrendingUp,
-} from "lucide-react"
 import { EarlyAccessDialog } from "./components/early-access-dialog"
 import { PageShell, Section, Container } from "@/components/layout"
-import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
 
-/* ===============================
-   Typing Animation (STABLE)
-   =============================== */
-function TypingAnimation() {
-  const phrases = [
-    "can I spend this week?",
-    "should I save this month?",
-    "debt can I pay off faster?",
-    "will I save if I cancel this?",
-    "does this change my net worth?",
-  ]
+/* ============================================================================
+   Shared bits
+   ========================================================================== */
 
-  const [index, setIndex] = useState(0)
-  const [text, setText] = useState("")
-  const [deleting, setDeleting] = useState(false)
+const NUM = "tabular-nums tracking-[-0.02em]"
 
-  useEffect(() => {
-    const full = phrases[index]
-    if (!full) return
-
-    const typeSpeed = 65
-    const deleteSpeed = 45
-    const pauseMs = 1400
-
-    let timeout: ReturnType<typeof setTimeout>
-
-    // Pause when fully typed
-    if (!deleting && text === full) {
-      timeout = setTimeout(() => setDeleting(true), pauseMs)
-      return () => clearTimeout(timeout)
-    }
-
-    // Move to next phrase when fully deleted
-    if (deleting && text === "") {
-      setDeleting(false)
-      setIndex((prev) => (prev + 1) % phrases.length)
-      return
-    }
-
-    // Continue typing or deleting
-    timeout = setTimeout(() => {
-      if (deleting) {
-        setText((prev) => prev.substring(0, prev.length - 1))
-      } else {
-        setText((prev) => full.substring(0, prev.length + 1))
-      }
-    }, deleting ? deleteSpeed : typeSpeed)
-
-    return () => clearTimeout(timeout)
-  }, [text, deleting, index])
-
+function Eyebrow({ children, tone = "dark" }: { children: React.ReactNode; tone?: "dark" | "light" }) {
   return (
-    <span className="inline-block text-white break-words leading-[1.2]">
-      {text}
-      <span className="animate-pulse text-white">|</span>
-    </span>
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em]",
+        tone === "dark" ? "text-brand-700" : "text-lime",
+      )}
+    >
+      {children}
+    </div>
   )
 }
 
-/* ===============================
-   Page Component
-   =============================== */
-export default function Component() {
-  const testimonials = [
-    { id: 1, quote: "Seeing the long-term impact of my rent was eye-opening — no app shows that." },
-    { id: 2, quote: "I love seeing how today's choices change my future net worth — it's motivating." },
-    { id: 3, quote: "I want to understand what happens if I spend more now vs. invest — this shows it clearly." },
-    { id: 4, quote: "I want advice, but I hate asking 'dumb' money questions to family. This feels safe." },
-    {
-      id: 5,
-      quote: "I have accounts but no clue what I'm doing. I need something that helps me grow wealth, not just track it.",
-    },
-    { id: 6, quote: "Budgeting is hard — this makes it feel manageable." },
-  ]
+function SectionHead({
+  eyebrow,
+  title,
+  sub,
+  className,
+}: {
+  eyebrow: string
+  title: React.ReactNode
+  sub?: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("mx-auto max-w-3xl text-center", className)}>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h2 className="mt-3.5 text-balance text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-ink">
+        {title}
+      </h2>
+      {sub ? <p className="mt-4 text-lg leading-relaxed text-subtle">{sub}</p> : null}
+    </div>
+  )
+}
 
-  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0)
-  const testimonialRef = useRef<HTMLDivElement>(null)
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+/* ============================================================================
+   Hero — the Leap card cycles through three real moves
+   ========================================================================== */
+
+const HERO_LEAPS = [
+  {
+    title: "Capture your full 401(k) match",
+    desc: "You’re deferring 3%. Your employer matches every dollar up to 6% — you’re leaving half of it on the table.",
+    label: "Free money you’re missing",
+    value: "+$750",
+    unit: "/mo",
+    aside1: "≈ $212k",
+    aside2: "by age 60",
+  },
+  {
+    title: "Move $4,200 out of checking",
+    desc: "It’s earning 0.01% where it sits. The same money in a high-yield account pays about 4.3%.",
+    label: "You’re leaving on the table",
+    value: "+$183",
+    unit: "/yr",
+    aside1: "≈ $2,240",
+    aside2: "over 10 yrs",
+  },
+  {
+    title: "Clear the 22% APR card first",
+    desc: "Investing ahead of this is a losing trade — no portfolio reliably beats 22% a year.",
+    label: "Interest you’d avoid",
+    value: "$1,240",
+    unit: " saved",
+    aside1: "debt-free",
+    aside2: "14 mo sooner",
+  },
+]
+
+function Hero() {
+  const [i, setI] = useState(0)
+  const [fading, setFading] = useState(false)
+  const [paused, setPaused] = useState(false)
+
+  const goTo = (next: number) => {
+    if (next === i) return
+    setFading(true)
+    setTimeout(() => {
+      setI(next)
+      setFading(false)
+    }, 200)
+  }
 
   useEffect(() => {
-    if (testimonialRef.current) {
-      const cardWidth = (testimonialRef.current.children[0] as HTMLElement)?.clientWidth || 0
-      testimonialRef.current.scrollTo({
-        left: currentTestimonialIndex * cardWidth,
-        behavior: "smooth",
-      })
-    }
-  }, [currentTestimonialIndex])
+    if (paused) return
+    const t = setTimeout(() => goTo((i + 1) % HERO_LEAPS.length), 5200)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, paused])
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonialIndex((prev) =>
-        prev === testimonials.length - 1 ? 0 : prev + 1,
-      )
-    }, 3200)
-
-    return () => clearInterval(interval)
-  }, [testimonials.length])
+  const leap = HERO_LEAPS[i]
 
   return (
-    <PageShell>
-      {/* ================= HERO ================= */}
-      <Section variant="brand" className="text-center" isHero>
-        <Container>
-          <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-6 md:mb-8 leading-[0.95] tracking-tight max-w-5xl mx-auto")}>
-            <span className="block">How much</span>
-            <div className="mt-2 mb-4 md:mb-6 min-h-[4.5rem] md:min-h-[6rem] lg:min-h-[7.5rem] flex items-start justify-center">
-              <span className="block text-center break-words leading-[1.2]">
-                <TypingAnimation />
+    <Section variant="canvas" isHero className="relative overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-[8%] -top-32 h-[620px] w-[620px] rounded-full"
+        style={{ background: "radial-gradient(circle at 35% 35%, rgba(167,201,87,.20), transparent 68%)" }}
+      />
+      <Container maxWidth="wide">
+        <div className="relative grid items-center gap-x-16 gap-y-14 lg:grid-cols-[1.1fr_.9fr]">
+          {/* copy */}
+          <div>
+            <div className="mb-7 inline-flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1.5 pl-2 pr-4 shadow-sm">
+              <img src="/images/ribbit.png" alt="" className="h-[26px] w-[26px] object-contain" />
+              <span className="text-[13.5px] font-semibold text-ink-soft">Meet Ribbit — your financial sidekick</span>
+            </div>
+
+            <h1 className="max-w-[620px] text-balance text-[clamp(2.4rem,4.35vw,3.95rem)] font-extrabold leading-[1.02] tracking-[-0.035em] text-ink">
+              You’re not behind.
+              <br />
+              You just don’t have
+              <br />
+              <span className="relative inline-block">
+                <span className="text-brand-700">a next move.</span>
+                <svg
+                  viewBox="0 0 300 12"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                  className="absolute -bottom-1.5 left-0 h-[11px] w-full"
+                >
+                  <path d="M2 8 C 70 2, 150 2, 298 6" fill="none" stroke="#a7c957" strokeWidth="5" strokeLinecap="round" />
+                </svg>
               </span>
-            </div>
-          </h1>
+            </h1>
 
-          <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-3xl mx-auto mb-8 md:mb-10 break-words")}>
-            WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next
-            step — a smart <span className="font-semibold text-white">Leap</span> — so you're never guessing what to do
-            next.
+            <p className="mt-7 max-w-[530px] text-[19px] leading-relaxed text-subtle">
+              WeLeap finds the money sitting idle in your accounts and shows you the{" "}
+              <strong className="font-bold text-ink">single move that does the most</strong> — 401(k) match, HYSA, Roth,
+              or debt. You approve it. That’s a Leap.
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <EarlyAccessDialog signupType="hero" placement="hero">
+                <Button className="rounded-full bg-brand-700 px-8 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800">
+                  Get your first Leap →
+                </Button>
+              </EarlyAccessDialog>
+              <Link
+                href="#how-it-works"
+                className="rounded-full border border-brand-100 px-7 py-[17px] text-[17px] font-bold text-brand-700 transition hover:bg-brand-700/5"
+              >
+                See how it works
+              </Link>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] text-faint">
+              <span>Free to start</span>
+              <span aria-hidden>·</span>
+              <span>2 minutes</span>
+              <span aria-hidden>·</span>
+              <span>No card</span>
+              <span aria-hidden>·</span>
+              <span className="font-semibold text-brand-700">You approve every move</span>
+            </div>
+          </div>
+
+          {/* product moment */}
+          <div className="relative pb-10">
+            <div className="absolute -top-5 right-1.5 z-20 flex items-center gap-2.5 rounded-full border border-hairline bg-white px-[18px] py-2.5 shadow-card">
+              <span className="relative flex h-[9px] w-[9px]">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75" />
+                <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-brand-700" />
+              </span>
+              <span className="text-[13.5px] font-bold text-ink">Ribbit found 3 moves</span>
+            </div>
+
+            <div
+              onMouseEnter={() => setPaused(true)}
+              onMouseLeave={() => setPaused(false)}
+              className="relative z-10 rounded-[26px] border border-hairline bg-white p-[26px] pb-6"
+              style={{ boxShadow: "0 2px 4px rgba(16,32,26,.05), 0 24px 60px rgba(16,32,26,.13)" }}
+            >
+              <div className="flex items-center justify-between">
+                <Eyebrow>
+                  <span className="inline-block h-[7px] w-[7px] rounded-full bg-lime" />
+                  Next Leap
+                </Eyebrow>
+                <div className="flex items-center gap-1.5">
+                  {HERO_LEAPS.map((_, d) => (
+                    <button
+                      key={d}
+                      onClick={() => goTo(d)}
+                      aria-label={`Show Leap ${d + 1}`}
+                      className={cn(
+                        "h-[7px] rounded-full transition-all duration-300",
+                        d === i ? "w-5 bg-brand-700" : "w-[7px] bg-brand-100",
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div
+                className="transition-all duration-200"
+                style={{ opacity: fading ? 0 : 1, transform: fading ? "translateY(6px)" : "none" }}
+              >
+                <div className="min-h-[132px]">
+                  <h3 className="mb-2.5 mt-3.5 text-[25px] font-extrabold leading-tight tracking-[-0.022em] text-ink">
+                    {leap.title}
+                  </h3>
+                  <p className="text-[15px] leading-relaxed text-subtle">{leap.desc}</p>
+                </div>
+
+                <div className="mt-3 flex items-end justify-between rounded-2xl border border-brand-100 bg-brand-50 px-[18px] py-4">
+                  <div>
+                    <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-brand-700">
+                      {leap.label}
+                    </div>
+                    <div className={cn("text-[30px] font-extrabold leading-none text-ink", NUM)}>
+                      {leap.value}
+                      <span className="text-[15px] font-semibold text-subtle">{leap.unit}</span>
+                    </div>
+                  </div>
+                  <div className="text-right text-[12.5px] leading-snug text-subtle">
+                    <strong className={cn("text-ink", NUM)}>{leap.aside1}</strong>
+                    <br />
+                    {leap.aside2}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-2.5">
+                <EarlyAccessDialog signupType="hero" placement="hero_leap_card">
+                  <Button className="rounded-full bg-brand-700 px-6 py-3 text-[15px] font-bold text-white shadow-pill transition hover:bg-brand-800">
+                    Approve this Leap
+                  </Button>
+                </EarlyAccessDialog>
+                <span className="px-3 py-3 text-[14.5px] font-semibold text-subtle">Not now</span>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2 border-t border-hairline pt-3.5 text-[12.5px] text-faint">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Nothing moves until you tap approve.
+              </div>
+            </div>
+
+            <img
+              src="/images/ribbit.png"
+              alt="Ribbit, the WeLeap financial sidekick"
+              className="absolute -bottom-8 -left-24 z-[5] hidden w-[152px] lg:block"
+              style={{ filter: "drop-shadow(0 18px 26px rgba(16,32,26,.22))" }}
+            />
+          </div>
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Problem
+   ========================================================================== */
+
+function Problem() {
+  const quotes = [
+    "I make decent money, but I don’t feel in control.",
+    "I’ve got some extra cash — what’s the smartest move right now?",
+    "Everyone’s talking about Roth, ETFs, HYSA. I’m lost.",
+  ]
+  return (
+    <Section variant="canvas">
+      <Container maxWidth="wide">
+        <SectionHead
+          eyebrow="The real problem"
+          title={
+            <>
+              Your money isn’t lazy.
+              <br />
+              It’s just unassigned.
+            </>
+          }
+          sub="You’re earning. You’re saving a bit. But it sits in checking doing nothing while you scroll conflicting advice from people who don’t know your numbers."
+        />
+
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {quotes.map((q) => (
+            <div key={q} className="rounded-card border border-hairline bg-white p-6 shadow-card">
+              <div className="mb-1.5 text-[40px] font-extrabold leading-none text-brand-100">“</div>
+              <p className="text-[17px] font-semibold leading-snug text-ink">{q}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          {[
+            { n: "58%", t: "feel overwhelmed managing their money" },
+            { n: "43%", t: "quit money apps — they show data, never the next step" },
+          ].map((s) => (
+            <div key={s.n} className="flex items-center gap-5 rounded-[20px] border border-brand-100 bg-brand-50 px-6 py-5">
+              <div className={cn("text-[40px] font-extrabold leading-none text-brand-700", NUM)}>{s.n}</div>
+              <div className="text-[15.5px] leading-snug text-ink-soft">{s.t}</div>
+            </div>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   How it works — real product UI, alternating rows
+   ========================================================================== */
+
+const STEPS = [
+  {
+    n: "01",
+    t: "Connect your accounts",
+    d: "Two minutes, read-only, bank-level security through Plaid. We never touch your money.",
+    shot: "/images/product/setup-checklist.png",
+    w: 1720,
+    h: 680,
+    alt: "WeLeap setup checklist: plan created, connect a bank, add your 401(k) and HSA",
+  },
+  {
+    n: "02",
+    t: "Ribbit finds your Leap",
+    d: "He reads your whole picture — cash, debt, 401(k), goals — and ranks every option to find the one that does the most.",
+    shot: "/images/product/weekly-focus.jpg",
+    w: 1400,
+    h: 529,
+    alt: "This week’s focus in WeLeap: capture your full 401(k) match, worth $750 a month",
+  },
+  {
+    n: "03",
+    t: "You approve it",
+    d: "See the move, the dollar impact, and exactly what changes — before and after. Tap confirm, or edit it. Nothing happens without you.",
+    shot: "/images/product/confirm-goal.png",
+    w: 1400,
+    h: 1240,
+    alt: "Ribbit proposes a new savings goal with a before-and-after contribution table and a confirm button",
+  },
+]
+
+function How() {
+  return (
+    <Section variant="white" id="how-it-works" className="border-y border-hairline scroll-mt-24">
+      <Container maxWidth="wide">
+        <SectionHead eyebrow="How it works" title="Three steps. Then one decision a week." />
+
+        {/* Alternating rows, not a 3-up grid: real product UI is illegible at
+            card width, and these shots are the strongest proof on the page. */}
+        <div className="mt-16 flex flex-col gap-16 md:gap-20">
+          {STEPS.map((s, i) => (
+            <div key={s.n} className="grid items-center gap-8 md:gap-14 lg:grid-cols-2">
+              <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    className={cn(
+                      "flex h-[34px] w-[34px] items-center justify-center rounded-full border border-brand-100 bg-brand-50 text-[13px] font-extrabold text-brand-700",
+                      NUM,
+                    )}
+                  >
+                    {s.n}
+                  </span>
+                  <span className="h-px flex-1 bg-hairline" />
+                </div>
+                <h3 className="mb-3 text-[clamp(1.4rem,2.2vw,1.9rem)] font-extrabold leading-tight tracking-[-0.025em] text-ink">
+                  {s.t}
+                </h3>
+                <p className="max-w-[460px] text-[17px] leading-relaxed text-subtle">{s.d}</p>
+              </div>
+
+              <div className={i % 2 === 1 ? "lg:order-1" : ""}>
+                <img
+                  src={s.shot}
+                  alt={s.alt}
+                  width={s.w}
+                  height={s.h}
+                  loading="lazy"
+                  className="block h-auto w-full rounded-[20px] border border-hairline bg-canvas shadow-card"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Leap examples
+   ========================================================================== */
+
+const LEAPS = [
+  { tag: "Free money", tone: "text-cat-savings bg-cat-savings/10", t: "Capture your 401(k) match", d: "You’re at 3%, they match to 6%.", impact: "+$9,000", unit: "/year" },
+  { tag: "Idle cash", tone: "text-cat-wants bg-cat-wants/10", t: "Move $4,200 to a HYSA", d: "It’s earning 0.01% in checking today.", impact: "+$183", unit: "/year" },
+  { tag: "Debt first", tone: "text-cat-needs bg-cat-needs/10", t: "Hit the 22% APR card before investing", d: "No portfolio reliably beats 22%.", impact: "$1,240", unit: "saved" },
+  { tag: "Long game", tone: "text-brand-700 bg-brand-700/10", t: "Open a Roth IRA at $200/mo", d: "Tax-free growth, and you’re early.", impact: "+$61k", unit: "by 60" },
+]
+
+function Leaps() {
+  return (
+    <Section variant="canvas" id="leaps" className="scroll-mt-24">
+      <Container maxWidth="wide">
+        <SectionHead
+          eyebrow="What a Leap looks like"
+          title="Not advice. A specific move, with a number on it."
+          sub="Every Leap tells you exactly what to do, what it’s worth, and why it beat the alternatives."
+        />
+
+        <div className="mt-14 grid gap-5 md:grid-cols-2">
+          {LEAPS.map((l) => (
+            <div
+              key={l.t}
+              className="rounded-card border border-hairline bg-white p-6 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
+            >
+              <div className="mb-2.5 flex items-start justify-between gap-3">
+                <span className={cn("whitespace-nowrap rounded-full px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.1em]", l.tone)}>
+                  {l.tag}
+                </span>
+                <div className="-mt-1 shrink-0 text-right">
+                  <div className={cn("text-[22px] font-extrabold leading-tight text-brand-700", NUM)}>{l.impact}</div>
+                  <div className="text-[11.5px] font-semibold text-faint">{l.unit}</div>
+                </div>
+              </div>
+              <h3 className="mb-1.5 text-[18.5px] font-extrabold leading-snug tracking-[-0.018em] text-ink">{l.t}</h3>
+              <p className="text-[14.5px] leading-relaxed text-subtle">{l.d}</p>
+            </div>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Ask Ribbit
+   ========================================================================== */
+
+const QA = [
+  {
+    q: "Can I afford $2,400 rent?",
+    a: "On $78k, $2,400 is 44% of your take-home — past the point where saving usually stalls. At $2,050 you’d stay on track for your emergency fund and still bank about $180 a month. Want me to lay both out side by side?",
+  },
+  {
+    q: "Roth or 401(k) first?",
+    a: "401(k) up to your 6% match first — that’s an instant 100% return, and nothing else on the board beats it. After that, Roth makes sense for you: you’re likely in a lower tax bracket now than you’ll be later.",
+  },
+  {
+    q: "Pay off my car or invest?",
+    a: "Your car loan is at 4.1% — low enough that investing probably wins over time. But your emergency fund only covers 1.2 months right now. I’d get that to three months first, then put the rest to work.",
+  },
+  {
+    q: "Am I saving enough?",
+    a: "You’re at 12% of gross. Going to 15% — about $170 a month — fully funds your emergency fund by next March instead of next October. That’s the single biggest thing you could change right now.",
+  },
+]
+
+function AskRibbit() {
+  const [i, setI] = useState(0)
+  const [fading, setFading] = useState(false)
+
+  const pick = (n: number) => {
+    if (n === i) return
+    setFading(true)
+    setTimeout(() => {
+      setI(n)
+      setFading(false)
+    }, 180)
+  }
+
+  return (
+    <Section variant="white" className="border-y border-hairline">
+      <Container maxWidth="wide">
+        <SectionHead
+          eyebrow="Ask Ribbit"
+          title="Or just ask, in plain English."
+          sub="No jargon, no lecture about your coffee. Ribbit answers using your actual numbers."
+        />
+
+        <div className="mx-auto mt-12 max-w-[780px]">
+          <div className="mb-6 flex flex-wrap justify-center gap-2.5">
+            {QA.map((item, n) => (
+              <button
+                key={item.q}
+                onClick={() => pick(n)}
+                className={cn(
+                  "rounded-full border px-[18px] py-2.5 text-sm font-semibold transition",
+                  n === i
+                    ? "border-brand-700 bg-brand-700 text-white"
+                    : "border-hairline bg-canvas text-ink-soft hover:border-brand-200",
+                )}
+              >
+                {item.q}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-card border border-hairline bg-canvas p-6 shadow-card">
+            <div className="mb-5 flex justify-end">
+              <div className="max-w-[80%] rounded-[18px] rounded-br-[4px] bg-brand-700 px-[18px] py-3 text-[15.5px] font-semibold text-white">
+                {QA[i].q}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <img src="/images/ribbit.png" alt="" className="h-10 w-10 shrink-0 rounded-full bg-brand-50 p-[3px] object-contain" />
+              <div
+                className="min-h-[96px] rounded-[18px] rounded-bl-[4px] border border-hairline bg-white px-[18px] py-3.5 text-[15.5px] leading-relaxed text-ink-soft transition-opacity duration-200"
+                style={{ opacity: fading ? 0 : 1 }}
+              >
+                {QA[i].a}
+              </div>
+            </div>
+
+            <p className="mt-4 text-center text-[11.5px] text-faint">
+              Illustrative answers. Ribbit uses your real numbers once your accounts are connected.
+            </p>
+          </div>
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Net worth reveal — ported from the app's onboarding
+   ========================================================================== */
+
+const NW = { start: 10000, monthly: 500, rate: 0.07, idleRate: 0.004, years: 40 }
+
+function buildSeries(rate: number) {
+  const annual = NW.monthly * 12
+  const out: number[] = []
+  for (let y = 0; y <= NW.years; y++) {
+    const g = Math.pow(1 + rate, y)
+    out.push(NW.start * g + annual * ((g - 1) / rate))
+  }
+  return out
+}
+
+const money = (n: number) => `$${Math.round(Math.max(0, n)).toLocaleString("en-US")}`
+const compact = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`)
+
+function NetWorthReveal() {
+  const series = React.useMemo(() => buildSeries(NW.rate), [])
+  const idle = React.useMemo(() => buildSeries(NW.idleRate), [])
+
+  const final = series[series.length - 1]
+  const contributed = NW.start + NW.monthly * 12 * NW.years
+  const compounded = final - contributed
+
+  const W = 700, H = 280, PADL = 8, PADR = 8, PADT = 30, PADB = 26
+  const n = series.length
+  const max = Math.max(...series)
+  const xAt = (idx: number) => PADL + (idx / (n - 1)) * (W - PADL - PADR)
+  const yAt = (v: number) => H - PADB - (v / max) * (H - PADT - PADB)
+
+  const lineD = series.map((v, idx) => `${idx ? "L" : "M"}${xAt(idx).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ")
+  const areaD = `${lineD} L${xAt(n - 1).toFixed(1)} ${H - PADB} L${PADL} ${H - PADB} Z`
+  const idleD = idle.map((v, idx) => `${idx ? "L" : "M"}${xAt(idx).toFixed(1)} ${yAt(v).toFixed(1)}`).join(" ")
+
+  const crossIdx = (t: number) => series.findIndex((v) => v >= t)
+  const i100k = crossIdx(1e5)
+  const i1m = crossIdx(1e6)
+  const pills = [
+    i100k > 0 && { i: i100k, label: "First $100K", sub: `${i100k} years in`, big: false },
+    i1m > 0 && { i: i1m, label: "Millionaire", sub: `${i1m} years in`, big: true },
+    { i: n - 1, label: compact(final), sub: `${NW.years} years`, big: true },
+  ].filter(Boolean) as { i: number; label: string; sub: string; big: boolean }[]
+
+  const clipRef = useRef<SVGRectElement>(null)
+  const tipRef = useRef<SVGCircleElement>(null)
+  const counterRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
+  // Renders finished by default: if the animation never runs, the figure is
+  // still correct rather than stranded at $0.
+  const [done, setDone] = useState(true)
+  const [shownPills, setShownPills] = useState(pills.length)
+
+  useEffect(() => {
+    const el = chartRef.current
+    if (!el) return
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return
+
+    const inView = () => {
+      const r = el.getBoundingClientRect()
+      return r.top < window.innerHeight * 0.8 && r.bottom > 0
+    }
+    if (inView()) return // already on screen — don't yank it back to zero
+
+    const DUR = 3200
+    let raf = 0, safety = 0, started = false
+
+    const finish = () => {
+      if (raf) cancelAnimationFrame(raf)
+      clipRef.current?.setAttribute("width", String(xAt(n - 1)))
+      if (tipRef.current) tipRef.current.style.opacity = "0"
+      if (counterRef.current) counterRef.current.textContent = compact(final)
+      setShownPills(pills.length)
+      setDone(true)
+    }
+
+    const rewind = () => {
+      setDone(false)
+      setShownPills(0)
+      clipRef.current?.setAttribute("width", "0")
+      if (counterRef.current) counterRef.current.textContent = money(0)
+    }
+
+    const play = () => {
+      if (started) return
+      started = true
+      if (tipRef.current) tipRef.current.style.opacity = "1"
+      const t0 = performance.now()
+      const frame = (now: number) => {
+        const t = Math.min((now - t0) / DUR, 1)
+        const e = 1 - Math.pow(1 - t, 3)
+        const idx = Math.round(e * (n - 1))
+        clipRef.current?.setAttribute("width", String(xAt(idx)))
+        if (counterRef.current) counterRef.current.textContent = money(series[idx])
+        if (tipRef.current) {
+          tipRef.current.setAttribute("cx", String(xAt(idx)))
+          tipRef.current.setAttribute("cy", String(yAt(series[idx])))
+        }
+        setShownPills(pills.filter((p) => idx >= p.i).length)
+        if (t < 1) raf = requestAnimationFrame(frame)
+        else finish()
+      }
+      raf = requestAnimationFrame(frame)
+      safety = window.setTimeout(finish, DUR + 900) // rAF throttled? still finish
+    }
+
+    rewind()
+
+    // Two triggers, both guarded by `started`. No blind timer — that would play
+    // the animation while the visitor is still at the top of the page.
+    const onScroll = () => {
+      if (inView()) play()
+    }
+    let io: IntersectionObserver | null = null
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver((es) => es[0].isIntersecting && play(), { rootMargin: "0px 0px -20% 0px" })
+      io.observe(el)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    window.addEventListener("resize", onScroll)
+
+    return () => {
+      io?.disconnect()
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
+      if (raf) cancelAnimationFrame(raf)
+      clearTimeout(safety)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <Section variant="canvas">
+      <Container maxWidth="wide">
+        <div className="rounded-card border border-hairline bg-white p-8 shadow-card md:p-11">
+          <div className="text-center">
+            <Eyebrow>The compounding part</Eyebrow>
+            <h2 className="mb-6 mt-3.5 text-balance text-[clamp(1.9rem,3.2vw,2.6rem)] font-extrabold leading-tight tracking-[-0.03em] text-ink">
+              Here’s where this actually goes.
+            </h2>
+            <div ref={counterRef} className={cn("text-[clamp(2.8rem,6vw,4.2rem)] font-extrabold leading-none text-brand-700", NUM)}>
+              {compact(final)}
+            </div>
+            <p className="mt-3 text-[15px] text-subtle">
+              In {NW.years} years, at ${NW.monthly} a month
+            </p>
+          </div>
+
+          <div ref={chartRef} className="relative mt-8 w-full">
+            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[280px] w-full overflow-visible">
+              <defs>
+                <linearGradient id="nwFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#a7c957" stopOpacity="0.5" />
+                  <stop offset="1" stopColor="#a7c957" stopOpacity="0" />
+                </linearGradient>
+                <clipPath id="nwClip">
+                  <rect ref={clipRef} x="0" y="-40" width={xAt(n - 1)} height={H + 80} />
+                </clipPath>
+              </defs>
+
+              <line x1={PADL} y1={H - PADB} x2={W - PADR} y2={H - PADB} stroke="#e7e5dd" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              <path
+                d={idleD}
+                fill="none"
+                stroke="#8A9A8E"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+                vectorEffect="non-scaling-stroke"
+                className="transition-opacity duration-500"
+                style={{ opacity: done ? 1 : 0 }}
+              />
+              <g clipPath="url(#nwClip)">
+                <path d={areaD} fill="url(#nwFill)" />
+                <path d={lineD} fill="none" stroke="#2d6a4f" strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              </g>
+              <circle ref={tipRef} r="5" cx={xAt(n - 1)} cy={yAt(final)} fill="#205038" style={{ opacity: 0 }} />
+            </svg>
+
+            {pills.map((p, pi) => {
+              const on = pi < shownPills
+              const px = xAt(p.i) / W
+              const ax = px >= 0.85 ? "-100%" : px <= 0.08 ? "0%" : "-50%"
+              return (
+                <div
+                  key={p.label}
+                  className={cn(
+                    "pointer-events-none absolute whitespace-nowrap rounded-full font-bold text-white transition-all duration-300",
+                    p.big ? "bg-brand-700 px-[15px] py-2 text-[13px] shadow-lift" : "bg-brand-800 px-[13px] py-[7px] text-xs",
+                  )}
+                  style={{
+                    left: `${px * 100}%`,
+                    top: `${(yAt(series[p.i]) / H) * 100}%`,
+                    transform: `translate(${ax}, ${on ? "-150%" : "-130%"})`,
+                    opacity: on ? 1 : 0,
+                  }}
+                >
+                  {p.label}
+                  <span className="hidden font-semibold opacity-70 sm:inline">
+                    {" · "}
+                    {p.sub}
+                  </span>
+                </div>
+              )
+            })}
+
+            <div
+              className="absolute bottom-8 right-0 text-xs font-semibold text-[#8A9A8E] transition-opacity duration-500"
+              style={{ opacity: done ? 1 : 0 }}
+            >
+              parked in checking · {compact(idle[idle.length - 1])}
+            </div>
+
+            <div className="mt-2 flex justify-between text-xs font-semibold text-faint">
+              <span>Now</span>
+              <span>10 yrs</span>
+              <span>20 yrs</span>
+              <span>30 yrs</span>
+              <span>40 yrs</span>
+            </div>
+          </div>
+
+          <div
+            className="mt-9 flex items-center justify-center gap-4 rounded-[20px] border border-brand-100 bg-brand-50 px-6 py-5 transition-opacity duration-500"
+            style={{ opacity: done ? 1 : 0 }}
+          >
+            <img src="/images/ribbit.png" alt="" className="h-11 w-11 shrink-0 object-contain" />
+            <div>
+              <p className="text-[17.5px] font-bold leading-snug text-ink">
+                You put in <span className="text-brand-700">{compact(contributed)}</span>. Compounding does the other{" "}
+                <span className="text-brand-700">{compact(compounded)}</span>.
+              </p>
+              <p className="mt-1 text-sm text-subtle">That gap is the plan. Protecting it is Ribbit’s whole job.</p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-center text-[11.5px] leading-relaxed text-faint">
+            Illustrative: ${NW.start.toLocaleString()} starting balance, ${NW.monthly}/month, {(NW.rate * 100).toFixed(0)}%
+            average annual return, versus {(NW.idleRate * 100).toFixed(1)}% in checking. Not a forecast — your numbers
+            will differ.
           </p>
+        </div>
+      </Container>
+    </Section>
+  )
+}
 
-          {/* Leaps cards */}
-          <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3", SPACING.cardGap, "max-w-5xl mx-auto mb-8 md:mb-10")}>
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                  <PiggyBank className="w-5 h-5 text-white" />
-                </div>
-                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Save without thinking</p>
+/* ============================================================================
+   Free tools — the GTM engine, promoted onto the homepage
+   ========================================================================== */
+
+const TOOLS = [
+  { t: "Rent Affordability", d: "Turn a job offer into a safe rent range", href: "/how-much-rent-can-i-afford" },
+  { t: "Offer Letter Analyzer", d: "Your real total comp and 40-year impact", href: "/offer" },
+  { t: "Leap Impact Simulator", d: "One move, one chart, 30 years", href: "/leap-impact-simulator" },
+  { t: "Emergency Fund Target", d: "Your actual number, not a guess", href: "/emergency-fund-target" },
+  { t: "Credit Card Payoff", d: "Your debt-free date, and how to pull it in", href: "/credit-card-payoff" },
+  { t: "Net Worth Impact", d: "What one monthly change is really worth", href: "/net-worth-impact" },
+]
+
+function Tools() {
+  return (
+    <Section variant="white" id="tools" className="border-y border-hairline scroll-mt-24">
+      <Container maxWidth="wide">
+        <SectionHead
+          eyebrow="Free — no signup"
+          title="Try the math before you trust us with anything."
+          sub="Six calculators that answer a real question in under a minute. No account, no email wall."
+        />
+
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {TOOLS.map((t) => (
+            <Link
+              key={t.t}
+              href={t.href}
+              className="block rounded-card border border-hairline bg-canvas p-6 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
+            >
+              <h3 className="mb-1.5 text-[17.5px] font-extrabold tracking-[-0.018em] text-ink">{t.t}</h3>
+              <p className="mb-3.5 text-[14.5px] leading-relaxed text-subtle">{t.d}</p>
+              <span className="text-[13.5px] font-bold text-brand-700">Open tool →</span>
+            </Link>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Trust — the one place the dark green earns its keep
+   ========================================================================== */
+
+function Trust() {
+  const items = [
+    { t: "Judgment-free, always", d: "No shame about your spending, your debt, or how late you think you started." },
+    { t: "You approve everything", d: "Ribbit drafts the move and shows the math. You decide. Nothing is automatic." },
+    { t: "We don’t sell your data", d: "Not to advertisers, not to lenders, not to anyone. Read-only access via Plaid." },
+    { t: "No ads, no credit-card pushing", d: "We don’t make money steering you into products you don’t need." },
+  ]
+  return (
+    <Section variant="canvas">
+      <Container maxWidth="wide">
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#3d6b47] to-[#1c3524] p-9 md:p-14">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full"
+            style={{ background: "radial-gradient(circle at 30% 30%, rgba(167,201,87,.20), transparent 70%)" }}
+          />
+          <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_.52fr]">
+            <div>
+              <Eyebrow tone="light">Why you can relax</Eyebrow>
+              <h2 className="mb-8 mt-3.5 text-balance text-[clamp(1.9rem,3.2vw,2.7rem)] font-extrabold leading-tight tracking-[-0.03em] text-white">
+                Money help that won’t make you feel like an idiot.
+              </h2>
+              <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                {items.map((it) => (
+                  <div key={it.t}>
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a7c957" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                      <span className="text-base font-bold text-white">{it.t}</span>
+                    </div>
+                    <p className="pl-[27px] text-[14.5px] leading-relaxed text-white/70">{it.d}</p>
+                  </div>
+                ))}
               </div>
-              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
-                Shift <span className="font-semibold">3%</span> to savings → <span className="font-semibold">+$412</span> this year
-              </p>
             </div>
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                  <Receipt className="w-5 h-5 text-white" />
-                </div>
-                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Cut waste instantly</p>
-              </div>
-              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
-                Cancel unused subscription → <span className="font-semibold">+$190</span>/year
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white/10 border border-white/15 p-5 text-left text-white backdrop-blur-sm break-words">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-5 h-5 text-white" />
-                </div>
-                <p className={cn("font-semibold", TYPOGRAPHY.subtext)}>Get ahead faster</p>
-              </div>
-              <p className={cn("text-white/90", TYPOGRAPHY.subtext)}>
-                Save <span className="font-semibold">$50</span> today → emergency fund <span className="font-semibold">1 month sooner</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-            <EarlyAccessDialog signupType="hero" placement="hero">
-              <Button className="bg-white text-primary-600 hover:bg-gray-100 px-6 md:px-8 py-3 md:py-4 rounded-xl font-medium shadow-lg">
-                Get Early Access
-              </Button>
-            </EarlyAccessDialog>
-          </div>
-        </Container>
-      </Section>
-
-      {/* ================= FEATURES ================= */}
-      <Section id="how-it-works" variant="white" className="text-center">
-        <Container>
-          <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>
-            Most money apps show you what you did. WeLeap shows you what to do next.
-          </h2>
-          <p className={cn(TYPOGRAPHY.body, "text-gray-700 max-w-3xl mx-auto mb-10 md:mb-12")}>
-            Your Sidekick cuts through the noise and focuses on actions that actually improve your future.
-          </p>
-
-          <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3", SPACING.cardGap)}>
-            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
-              <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <Headphones className="w-7 h-7 text-primary-600" />
-                </div>
-                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Clear Next Steps</h3>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Stop drowning in data. We prioritize your financial life into a single, doable task so you always know exactly what to do next.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
-              <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <CreditCard className="w-7 h-7 text-primary-600" />
-                </div>
-                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Action with Impact</h3>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  See the long-term ripple effect of today's choices. We show you exactly how a $50 saving today grows into a safety net tomorrow.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className={cn(CARD_STYLES.base, CARD_STYLES.padding, "shadow-lg")}>
-              <CardContent className="p-0">
-                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <Zap className="w-7 h-7 text-primary-600" />
-                </div>
-                <h3 className={cn("text-lg md:text-xl font-semibold text-gray-900 mb-3")}>Aligned Incentives</h3>
-                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  We only win when you do. No ads, no selling your data, and no pushing credit cards you don't need.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </Container>
-      </Section>
-
-      {/* ================= INTRO VIDEO ================= */}
-      <Section variant="white" className="text-center">
-        <Container>
-          <div className="max-w-5xl mx-auto">
-            <div className="relative rounded-3xl overflow-hidden border border-gray-200 shadow-2xl">
-              {!isVideoPlaying && (
-                <div className="absolute top-4 left-0 right-0 z-10">
-                  <p className={cn(TYPOGRAPHY.body, "text-white drop-shadow-lg")}>
-                    Hit play to learn more about WeLeap
-                  </p>
-                </div>
-              )}
-              <video
-                src="/Intro.mp4"
-                loop
-                muted
-                playsInline
-                className="w-full h-auto mx-auto bg-black"
-                controls
-                onPlay={() => setIsVideoPlaying(true)}
-                onPause={() => setIsVideoPlaying(false)}
+            <div className="hidden justify-center lg:flex">
+              <img
+                src="/images/ribbit.png"
+                alt=""
+                className="w-[260px]"
+                style={{ filter: "drop-shadow(0 26px 40px rgba(0,0,0,.35))" }}
               />
             </div>
           </div>
-        </Container>
-      </Section>
+        </div>
+      </Container>
+    </Section>
+  )
+}
 
-      {/* ================= TESTIMONIALS ================= */}
-      <Section variant="brand" className="text-center">
-        <Container>
-          <h2 className={cn(TYPOGRAPHY.h2, "text-white mb-4")}>What Our Demo Users Have Said</h2>
-          <p className={cn(TYPOGRAPHY.body, "text-white/80 mb-12")}>
-            Early users don't want another budgeting app — they want guidance they can trust.
-          </p>
+/* ============================================================================
+   FAQ
+   ========================================================================== */
 
-          <div ref={testimonialRef} className="flex gap-6 md:gap-8 overflow-x-auto overflow-y-hidden snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {testimonials.map((t) => (
-              <Card key={t.id} className="min-w-[280px] md:min-w-[300px] max-w-[280px] md:max-w-[300px] bg-black/40 text-white p-6 md:p-8 rounded-2xl snap-start flex-shrink-0">
-                <CardContent className="p-0 italic">
-                  <p className={cn(TYPOGRAPHY.body, "break-words")}>"{t.quote}"</p>
-                  <p className={cn(TYPOGRAPHY.subtext, "text-white/70 mt-3 not-italic")}>– Early Access Member</p>
-                </CardContent>
-              </Card>
-            ))}
+const FAQS = [
+  { q: "What if I’m bad with money?", a: "Then you’re exactly who this is for. Ribbit doesn’t grade your spending or lecture you about takeout. It looks at where you actually are and tells you the next useful thing to do." },
+  { q: "Do you move my money for me?", a: "Never without your say-so. Ribbit finds the move and shows you the math behind it — you decide whether it happens. Nothing is automatic." },
+  { q: "Is my bank data safe?", a: "We connect through Plaid with read-only access — the same infrastructure your other financial apps use. We don’t store your bank login, and we don’t sell your data to anyone." },
+  { q: "Are you financial advisors?", a: "No. WeLeap isn’t a registered investment adviser and doesn’t give personalised investment advice. We show you the math on your own numbers so you can make your own call — and we tell you when something is worth asking a professional about." },
+  { q: "What if I’m still paying off debt?", a: "Then debt is probably your best move on the board. A 22% credit card beats almost any investment return, and Ribbit will say so instead of pushing you toward a portfolio." },
+  { q: "How long does setup take?", a: "About two minutes to connect an account, and your first Leap shows up right after. There’s no long questionnaire and no budget to build." },
+]
+
+function Faq() {
+  const [open, setOpen] = useState<number | null>(0)
+  return (
+    <Section variant="canvas" id="faq" className="scroll-mt-24">
+      <Container maxWidth="wide">
+        <SectionHead eyebrow="Questions" title="The stuff you’re actually wondering." />
+        <div className="mx-auto mt-12 max-w-[780px]">
+          {FAQS.map((f, n) => {
+            const isOpen = open === n
+            return (
+              <div key={f.q} className="border-b border-hairline">
+                <button
+                  onClick={() => setOpen(isOpen ? null : n)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center justify-between gap-4 px-1 py-5 text-left"
+                >
+                  <span className="text-[17.5px] font-bold tracking-[-0.015em] text-ink">{f.q}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    aria-hidden
+                    className={cn("shrink-0 transition-transform duration-200", isOpen ? "rotate-180 stroke-brand-700" : "stroke-faint")}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                {isOpen && <p className="mb-5 max-w-[660px] pr-10 text-base leading-relaxed text-subtle">{f.a}</p>}
+              </div>
+            )
+          })}
+        </div>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Closing + footer
+   ========================================================================== */
+
+function Closing() {
+  return (
+    <>
+      <Section variant="canvas" className="pt-0">
+        <Container maxWidth="narrow">
+          <div className="mx-auto max-w-[760px] text-center">
+            <h2 className="mb-4 text-balance text-[clamp(2.1rem,4vw,3.3rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
+              Find out what your money should be doing.
+            </h2>
+            <p className="mb-8 text-[18.5px] leading-relaxed text-subtle">
+              Connect your accounts and get your first Leap in about two minutes.
+            </p>
+            <EarlyAccessDialog signupType="cta" placement="cta_section">
+              <Button className="rounded-full bg-brand-700 px-9 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800">
+                Get your first Leap →
+              </Button>
+            </EarlyAccessDialog>
+            <p className="mt-4 text-[13.5px] text-faint">Free to start · No card · Cancel whenever</p>
           </div>
         </Container>
       </Section>
 
-      {/* ================= CTA ================= */}
-      <Section variant="white" className="text-center">
-        <Container>
-          <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-4 md:mb-6")}>
-            Want deeper guidance and automation?
-          </h2>
-          <p className={cn(TYPOGRAPHY.body, "text-gray-700 mb-8 md:mb-10")}>
-            Start free, upgrade when ready. Early users lock in founding-member perks.
-          </p>
-          <EarlyAccessDialog signupType="cta" placement="cta_section">
-            <Button className="bg-primary-600 hover:bg-primary-700 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl">
-              Create free account
-            </Button>
-          </EarlyAccessDialog>
-        </Container>
-      </Section>
+      <footer className="border-t border-hairline bg-white py-14">
+        <Container maxWidth="wide">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+            <div>
+              <img src="/images/weleap-logo.png" alt="WeLeap" className="mb-3.5 h-7 w-auto" />
+              <p className="max-w-[260px] text-[14.5px] leading-relaxed text-subtle">
+                One clear money move at a time — so you always know what to do next.
+              </p>
+            </div>
+            {[
+              { h: "Product", links: [{ t: "How it works", u: "/#how-it-works" }, { t: "Product features", u: "/product-features" }, { t: "Pricing", u: "/pricing" }] },
+              { h: "Free tools", links: [{ t: "Rent affordability", u: "/how-much-rent-can-i-afford" }, { t: "Offer analyzer", u: "/offer" }, { t: "Leap simulator", u: "/leap-impact-simulator" }, { t: "Emergency fund", u: "/emergency-fund-target" }] },
+              { h: "Company", links: [{ t: "About", u: "/about" }, { t: "Resources", u: "/resources" }, { t: "Privacy Policy", u: "/privacy-policy" }, { t: "Terms of Service", u: "/terms-of-service" }] },
+            ].map((col) => (
+              <div key={col.h}>
+                <div className="mb-3.5 text-xs font-extrabold uppercase tracking-[0.1em] text-faint">{col.h}</div>
+                <ul className="grid gap-2.5">
+                  {col.links.map((l) => (
+                    <li key={l.t}>
+                      <Link href={l.u} className="text-[14.5px] text-ink-soft hover:text-brand-700">
+                        {l.t}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
 
-      {/* ================= FOOTER ================= */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-6">
-        <Container>
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/images/weleap-logo.png" alt="WeLeap" className="h-7 w-auto" />
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-gray-500 text-sm">
-              <p>© 2026 WeLeap.</p>
-              <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                Privacy Policy
-              </Link>
-              <Link href="/terms-of-service" className="hover:underline">
-                Terms of Service
-              </Link>
-            </div>
+          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-hairline pt-6 md:flex-row">
+            <span className="text-[13.5px] text-faint">© 2026 WeLeap. All rights reserved.</span>
+            <span className="max-w-[620px] text-right text-[12.5px] leading-relaxed text-faint">
+              WeLeap is not a registered investment adviser and does not provide personalised investment advice.
+            </span>
           </div>
         </Container>
       </footer>
+    </>
+  )
+}
+
+/* ============================================================================
+   Page
+   ========================================================================== */
+
+export default function Component() {
+  return (
+    <PageShell className="bg-canvas">
+      <Hero />
+      <Problem />
+      <How />
+      <Leaps />
+      <AskRibbit />
+      <NetWorthReveal />
+      <Tools />
+      <Trust />
+      <Faq />
+      <Closing />
     </PageShell>
   )
 }

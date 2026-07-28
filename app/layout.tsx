@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
@@ -10,6 +10,15 @@ import { PostHogPageView } from '@/components/posthog-pageview'
 import { MetaPixel } from '@/components/meta-pixel'
 import { Suspense } from 'react'
 import './globals.css'
+
+// Plus Jakarta Sans is the product app's typeface. Geist reads as a developer
+// tool, which was a large part of why the site felt B2B.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-jakarta',
+})
 
 export const metadata: Metadata = {
   title: 'WeLeap - Your AI Financial Sidekick',
@@ -25,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className={GeistSans.className}>
+    <html lang="en" className={`${jakarta.variable} ${GeistMono.variable}`}>
+      <body className={jakarta.className}>
         <PostHogProvider>
           <UtmCapture />
           <Suspense fallback={null}>
