@@ -138,19 +138,6 @@ const blogPosts = [
     href: "/resources/pricing-philosophy",
   },
   {
-    id: 11,
-    title: "The WeLeap Community Fund — A Financial First",
-    excerpt:
-      "When you sign up for financial products, the fees flow back into your community—not corporate revenue. See how member governance works.",
-    author: "Vinod Lakhani",
-    date: "Apr 18, 2026",
-    readTime: "7 min read",
-    category: "Community",
-    icon: Users,
-    image: "/images/Community%20Fund.png",
-    href: "/resources/community-fund-explained",
-  },
-  {
     id: 12,
     title: "Most people don't have an emergency fund. They have a guess.",
     excerpt:

@@ -247,15 +247,9 @@ export default function ProductFeaturesPage() {
                     <CardContent className="p-4 md:p-6">
                       <p className={cn("font-semibold text-gray-900 mb-2", TYPOGRAPHY.subtext)}>Where fees go</p>
                       <p className={cn(TYPOGRAPHY.subtext, "md:text-base text-gray-700")}>
-                        If WeLeap earns referral revenue, we disclose it — and a portion flows into the{" "}
-                        <span className="font-semibold">WeLeap Community Fund</span> to support members and product
-                        improvements. Recommendations are based on fit, not payouts.
+                        If WeLeap ever earns referral revenue, we disclose it on the spot. Recommendations are based on
+                        fit, never on payouts — we don't make money steering you toward a worse option.
                       </p>
-                      <div className="mt-3 md:mt-4">
-                        <Link href="/resources/community-fund-explained" className="inline-flex items-center text-primary-700 font-medium hover:underline text-sm md:text-base">
-                          Learn about our community-first model <ArrowRight className="w-3 h-3 md:w-4 md:h-4 ml-1" />
-                        </Link>
-                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -302,7 +296,7 @@ export default function ProductFeaturesPage() {
           </div>
 
           <p className={cn(TYPOGRAPHY.subtext, "text-gray-500 mt-3 md:mt-4")}>
-            No spam. Always transparent. Community-first from day one.
+            No spam. No selling your data. You approve every move.
           </p>
         </Container>
       </Section>

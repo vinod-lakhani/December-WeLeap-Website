@@ -75,15 +75,11 @@ export default function PricingPhilosophyPage() {
               </p>
 
               <p>
-                <strong>The rest builds the community.</strong> The remaining revenue flows into the WeLeap Community Fund — a shared pool used to fund financial literacy programs, member rewards, and community initiatives. This isn't a slush fund. It's a commitment that WeLeap's growth should benefit the people who made it possible.
-              </p>
-
-              <p>
                 <strong>Subscriptions, when they launch, stay clean.</strong> Once we introduce paid plans, they'll be straightforward: a flat fee for the service. No hidden upsells, no "premium" recommendations that happen to pay us more. The subscription model keeps our incentives simple — help you get more value, not more transactions.
               </p>
 
               <p>
-                <strong>Why this matters.</strong> WeLeap isn't trying to win by selling you more financial products. We're trying to win by aligning incentives, disclosing how money moves, and giving you a real share of the upside. The Community Fund is what that looks like at scale — members building something together, not just funding a platform.
+                <strong>Why this matters.</strong> WeLeap isn't trying to win by selling you more financial products. We're trying to win by disclosing exactly how money moves and never earning more when you choose worse. If a recommendation pays us, you'll know before you act on it.
               </p>
 
               <p>
