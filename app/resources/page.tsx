@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet, Users, Calculator, Home, Shield, Briefcase } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
@@ -168,7 +168,7 @@ export default function ResourcesPage() {
       <Section variant="canvas" className="text-center" isHero>
         <Container>
           <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink mb-4 md:mb-6">
-            Financial <span className="text-white">Resources</span>
+            Financial <span className="text-brand-700">Resources</span>
           </h1>
           <p className={cn(TYPOGRAPHY.body, "text-subtle max-w-2xl mx-auto mb-6 md:mb-8")}>
             Expert insights, practical tools, and actionable advice to help you make smarter financial decisions.
@@ -222,203 +222,31 @@ export default function ResourcesPage() {
         </Container>
       </Section>
 
-      {/* Free Tools Section */}
+      {/* Tools now live at /tools. Resources is educational, tools are
+          actionable — the C2 research session flagged mixing the two as the
+          main source of confusion. One clear pointer, not a duplicate list. */}
       <Section variant="white">
         <Container>
-          <div className="mb-8 md:mb-12">
-            <h2 className={cn(TYPOGRAPHY.h2, "text-gray-900 mb-3 md:mb-4")}>Free Tools</h2>
-            <p className={cn(TYPOGRAPHY.body, "text-gray-600 max-w-2xl")}>
-              Practical calculators and tools to help you make smarter financial decisions.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/how-much-rent-can-i-afford" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/rent-tool-illustration.png"
-                      alt="What your job offer really supports - rent calculator"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <Home className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Rent Affordability Calculator
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      Turn your job offer into a safe rent range — and see what life actually looks like before you sign a lease.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>Calculate your rent range</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/net-worth-impact" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/net-worth-impact-illustration.png"
-                      alt="Small moves compound — net worth impact calculator"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <Calculator className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Net Worth Impact Calculator
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      See how one monthly change ($/mo) translates into future net worth at 1, 10, and 30 years. Investing, cash, or debt payoff.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>See your net worth impact</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/leap-impact-simulator" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/leap_generator.png"
-                      alt="See your money growth — Leap Impact Simulator"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <TrendingUp className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Leap Impact Simulator
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      One Leap, one chart. See how your single best move changes your net worth over 30 years — and lock your plan.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>See my growth</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/emergency-fund-target" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/emergency-fund-illustration.png"
-                      alt="Emergency fund — financial protection against unexpected expenses"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <Shield className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Emergency Fund Target
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      Not everyone needs 6 months. Find your personalized safety buffer and your next step to build it.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>Find my target</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/credit-card-payoff" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/credit-card-payoff-illustration.png"
-                      alt="Credit Card Payoff — see when you'll be debt-free"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <CreditCard className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Credit Card Payoff
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      See when you&apos;ll be debt-free and how much extra payments save you.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>Plan my payoff</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/offer" className="h-full">
-              <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
-                <CardContent className="p-0 flex flex-col flex-1">
-                  <div className="relative overflow-hidden">
-                    <img
-                      src="/images/offer-tool-illustration.png"
-                      alt="Unveiling your full job offer package beyond salary"
-                      className="w-full h-48 object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="bg-brand-50 rounded-lg p-2">
-                        <Briefcase className="w-5 h-5 text-brand-700" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-6 flex flex-col flex-1">
-                    <h3 className={cn("text-xl font-semibold text-gray-900 mb-3 group-hover:text-brand-700 transition-colors duration-200")}>
-                      Offer Letter Analyzer
-                    </h3>
-                    <p className={cn(TYPOGRAPHY.subtext, "text-gray-600 mb-4 leading-relaxed flex-1")}>
-                      Your offer letter has 7 numbers. Most people only read one. See your real total comp, take-home, and 40-year wealth impact.
-                    </p>
-                    <div className="flex items-center text-brand-700 font-medium text-sm md:text-base mt-auto">
-                      <span>Analyze my offer</span>
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+          <Link
+            href="/tools"
+            className="group flex flex-col items-start gap-5 rounded-card border border-brand-100 bg-brand-50 p-8 transition hover:border-lime md:flex-row md:items-center md:justify-between md:p-10"
+          >
+            <div>
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+                Free · No signup
+              </div>
+              <h2 className="mb-2 text-balance text-[clamp(1.5rem,2.4vw,2rem)] font-extrabold leading-tight tracking-[-0.025em] text-ink">
+                Six calculators for the decision in front of you.
+              </h2>
+              <p className="max-w-xl text-[16px] leading-relaxed text-subtle">
+                Rent, offer letters, credit-card payoff, emergency fund and more — each answers one real question in
+                under a minute.
+              </p>
+            </div>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-brand-700 px-7 py-3.5 text-[15.5px] font-bold text-white shadow-pill transition group-hover:-translate-y-px">
+              Open the tools →
+            </span>
+          </Link>
         </Container>
       </Section>
 

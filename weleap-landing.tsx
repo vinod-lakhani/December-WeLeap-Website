@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "./components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { cn } from "@/lib/utils"
+import { PRESENT_DAY_TOOLS } from "@/lib/tools"
 
 /* ============================================================================
    Shared bits
@@ -833,15 +834,6 @@ function NetWorthReveal() {
    Free tools — the GTM engine, promoted onto the homepage
    ========================================================================== */
 
-const TOOLS = [
-  { t: "Rent Affordability", d: "Turn a job offer into a safe rent range", href: "/how-much-rent-can-i-afford" },
-  { t: "Offer Letter Analyzer", d: "Your real total comp and 40-year impact", href: "/offer" },
-  { t: "Leap Impact Simulator", d: "One move, one chart, 30 years", href: "/leap-impact-simulator" },
-  { t: "Emergency Fund Target", d: "Your actual number, not a guess", href: "/emergency-fund-target" },
-  { t: "Credit Card Payoff", d: "Your debt-free date, and how to pull it in", href: "/credit-card-payoff" },
-  { t: "Net Worth Impact", d: "What one monthly change is really worth", href: "/net-worth-impact" },
-]
-
 function Tools() {
   return (
     <Section variant="white" id="tools" className="border-y border-hairline scroll-mt-24">
@@ -849,21 +841,35 @@ function Tools() {
         <SectionHead
           eyebrow="Free — no signup"
           title="Try the math before you trust us with anything."
-          sub="Six calculators that answer a real question in under a minute. No account, no email wall."
+          sub="Answer the question you're actually facing, in under a minute. No account, no email wall."
         />
 
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {TOOLS.map((t) => (
+        {/* Leads with the three present-day decisions. From the C2 session:
+            "offer is present-day, retirement is hypothetical… I'd have seen the
+            first two and stopped exploring." The rest live on /tools. */}
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {PRESENT_DAY_TOOLS.map((t) => (
             <Link
-              key={t.t}
+              key={t.href}
               href={t.href}
-              className="block rounded-card border border-hairline bg-canvas p-6 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
+              className="group flex h-full flex-col rounded-card border border-hairline bg-canvas p-7 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
             >
-              <h3 className="mb-1.5 text-[17.5px] font-extrabold tracking-[-0.018em] text-ink">{t.t}</h3>
-              <p className="mb-3.5 text-[14.5px] leading-relaxed text-subtle">{t.d}</p>
-              <span className="text-[13.5px] font-bold text-brand-700">Open tool →</span>
+              <img src={t.icon} alt="" className="mb-5 h-12 w-12 object-contain" />
+              <h3 className="mb-2 text-[18.5px] font-extrabold tracking-[-0.018em] text-ink">{t.name}</h3>
+              <p className="mb-3 text-[15.5px] font-semibold leading-snug text-brand-700">&ldquo;{t.question}&rdquo;</p>
+              <p className="mb-5 flex-1 text-[14.5px] leading-relaxed text-subtle">{t.blurb}</p>
+              <span className="text-[13.5px] font-bold text-brand-700 group-hover:underline">Open tool →</span>
             </Link>
           ))}
+        </div>
+
+        <div className="mt-10 text-center">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-2 rounded-full border border-brand-100 px-7 py-3.5 text-[16px] font-bold text-brand-700 transition hover:bg-brand-700/5"
+          >
+            See all six tools →
+          </Link>
         </div>
       </Container>
     </Section>
