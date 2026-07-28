@@ -270,12 +270,16 @@ function Hero() {
    Problem
    ========================================================================== */
 
+// YNAB 2026 Money Mood Report, conducted online by The Harris Poll among
+// 2,088 U.S. adults, November 2025. Keep the citation next to the numbers —
+// unsourced stats on a finance site are a credibility liability.
+const STATS = [
+  { n: "87%", t: "of Gen Z are worried about money" },
+  { n: "62%", t: "often wonder where their money goes each month" },
+  { n: "58%", t: "say managing money feels like a chore" },
+]
+
 function Problem() {
-  const quotes = [
-    "I make decent money, but I don’t feel in control.",
-    "I’ve got some extra cash — what’s the smartest move right now?",
-    "Everyone’s talking about Roth, ETFs, HYSA. I’m lost.",
-  ]
   return (
     <Section variant="canvas">
       <Container maxWidth="wide">
@@ -292,23 +296,67 @@ function Problem() {
         />
 
         <div className="mt-14 grid gap-5 md:grid-cols-3">
-          {quotes.map((q) => (
-            <div key={q} className="rounded-card border border-hairline bg-white p-6 shadow-card">
-              <div className="mb-1.5 text-[40px] font-extrabold leading-none text-brand-100">“</div>
-              <p className="text-[17px] font-semibold leading-snug text-ink">{q}</p>
+          {STATS.map((s) => (
+            <div key={s.n} className="rounded-card border border-brand-100 bg-brand-50 p-7">
+              <div className={cn("text-[44px] font-extrabold leading-none text-brand-700", NUM)}>{s.n}</div>
+              <p className="mt-3 text-[16px] leading-snug text-ink-soft">{s.t}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          {[
-            { n: "58%", t: "feel overwhelmed managing their money" },
-            { n: "43%", t: "quit money apps — they show data, never the next step" },
-          ].map((s) => (
-            <div key={s.n} className="flex items-center gap-5 rounded-[20px] border border-brand-100 bg-brand-50 px-6 py-5">
-              <div className={cn("text-[40px] font-extrabold leading-none text-brand-700", NUM)}>{s.n}</div>
-              <div className="text-[15.5px] leading-snug text-ink-soft">{s.t}</div>
-            </div>
+        <p className="mt-5 text-center text-[12.5px] leading-relaxed text-faint">
+          YNAB 2026 Money Mood Report, conducted online by The Harris Poll among 2,088 U.S. adults, November 2025.
+        </p>
+      </Container>
+    </Section>
+  )
+}
+
+/* ============================================================================
+   Research quotes — verbatim, from the moderated sessions
+   ========================================================================== */
+
+const VOICES = [
+  {
+    q: "A lot of times I know I should be doing more, but I don’t know exactly what.",
+    who: "Karen D.",
+    ctx: "Post-grad, already investing",
+  },
+  {
+    q: "This forces me to think about it as a reality instead of something I keep putting off.",
+    who: "Karen D.",
+    ctx: "On seeing her first Leap",
+  },
+  {
+    q: "It was like a coach.",
+    who: "Haily C.",
+    ctx: "Post-grad, first job",
+  },
+  {
+    q: "It meets you where you are.",
+    who: "Jackie C.",
+    ctx: "Intern, saving her first surplus",
+  },
+]
+
+function Voices() {
+  return (
+    <Section variant="canvas" className="pt-0">
+      <Container maxWidth="wide">
+        <SectionHead
+          eyebrow="From our research sessions"
+          title="What people said when they saw their first Leap."
+        />
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {VOICES.map((v) => (
+            <figure key={v.q} className="flex h-full flex-col rounded-card border border-hairline bg-white p-6 shadow-card">
+              <div className="mb-1.5 text-[40px] font-extrabold leading-none text-brand-100">“</div>
+              <blockquote className="flex-1 text-[16.5px] font-semibold leading-snug text-ink">{v.q}</blockquote>
+              <figcaption className="mt-4 border-t border-hairline pt-3.5">
+                <div className="text-[14px] font-bold text-brand-700">{v.who}</div>
+                <div className="text-[13px] text-faint">{v.ctx}</div>
+              </figcaption>
+            </figure>
           ))}
         </div>
       </Container>
@@ -1006,6 +1054,7 @@ export default function Component() {
     <PageShell className="bg-canvas">
       <Hero />
       <Problem />
+      <Voices />
       <How />
       <Leaps />
       <AskRibbit />
