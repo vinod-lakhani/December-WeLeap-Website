@@ -317,26 +317,45 @@ function Problem() {
    Research quotes — verbatim, from the moderated sessions
    ========================================================================== */
 
+// Verbatim, with the session timestamp each was pulled from so they can be
+// checked against the scorecards in weleap-advisor/docs/user-research.
+//   K.D. = C2 (screened ICP Builder) · H.C. = C1 (screened ICP Builder)
+//   J.C. = P3 (near-ICP)
+//
+// Rights: every participant signed the Home From College contractor
+// agreement, which assigns their session content to us as a Deliverable and
+// grants name/likeness use on a "perpetual, irrevocable" basis for advertising
+// (§5). Full names are therefore permitted — initials are our own choice, not
+// a legal limit, so this can be loosened later without re-papering anything.
+//
+// The sessions were paid, which is a material connection under the FTC
+// endorsement guides. The disclosure under the grid is required and should not
+// be removed. The amount is left unstated because the gig posting ($60) and
+// the signed agreement ($25) disagree.
 const VOICES = [
   {
     q: "A lot of times I know I should be doing more, but I don’t know exactly what.",
-    who: "Karen D.",
+    who: "K.D.",
     ctx: "Post-grad, already investing",
+    ref: "00:45:15",
   },
   {
     q: "This forces me to think about it as a reality instead of something I keep putting off.",
-    who: "Karen D.",
+    who: "K.D.",
     ctx: "On seeing her first Leap",
+    ref: "00:46:04",
   },
   {
-    q: "It was like a coach.",
-    who: "Haily C.",
-    ctx: "Post-grad, first job",
+    q: "Everyone I hear is just like “max out your account” — okay, but what does that even look like? … it was like a coach almost.",
+    who: "H.C.",
+    ctx: "Post-grad, working full-time",
+    ref: "00:47:48",
   },
   {
-    q: "It meets you where you are.",
-    who: "Jackie C.",
-    ctx: "Intern, saving her first surplus",
+    q: "It meets you where you are and explains where you could be if you put some steps in place.",
+    who: "J.C.",
+    ctx: "Final-year student, saves half her paycheck",
+    ref: "00:54:07",
   },
 ]
 
@@ -360,6 +379,10 @@ function Voices() {
             </figure>
           ))}
         </div>
+
+        <p className="mt-8 text-center text-[12.5px] leading-relaxed text-faint">
+          Verbatim from moderated 45-minute user research sessions. Participants were compensated for their time.
+        </p>
       </Container>
     </Section>
   )
