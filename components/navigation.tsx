@@ -27,14 +27,8 @@ export function Navigation() {
             >
               Home
             </Link>
-            <Link
-              href="/about"
-              className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
-                pathname === "/about" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              About Us
-            </Link>
+            {/* About Us intentionally lives in the footer, not the header —
+                the header stays on the product and the offering. */}
             <Link
               href="/product-features"
               className={`font-medium transition-colors duration-200 px-3 py-2 rounded-lg hover:bg-gray-50 whitespace-nowrap min-w-fit ${
@@ -102,15 +96,6 @@ export function Navigation() {
                 }`}
               >
                 Home
-              </Link>
-              <Link
-                href="/about"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`font-medium transition-colors duration-200 px-4 py-3 rounded-lg ${
-                  pathname === "/about" ? "text-brand-700 bg-brand-50" : "text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                About Us
               </Link>
               <Link
                 href="/product-features"
