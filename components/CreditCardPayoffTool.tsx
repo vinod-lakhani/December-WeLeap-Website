@@ -20,7 +20,8 @@ import {
   type CreditCard,
 } from '@/lib/creditCardPayoff/calculation';
 import { formatCurrency } from '@/lib/rounding';
-import { EarlyAccessDialog } from '@/components/early-access-dialog';
+import { AppCta } from '@/components/AppCta';
+import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
@@ -81,6 +82,14 @@ export function CreditCardPayoffTool() {
   const maxInterestSaved = baseResult.totalInterest;
   const interestSavedPct =
     maxInterestSaved > 0 ? (interestSaved / maxInterestSaved) * 100 : 0;
+
+  // The Leap here isn't the interest saved — it's what the payment becomes once
+  // the card is gone. Paying it off frees `freedMonthly` every month; the
+  // 30-year figure is what that same money does invested instead of servicing
+  // an APR. Same framing as the rent tool's cheaper-apartment spread.
+  const freedMonthly = minPaymentTotal + extraPayment;
+  const freedThirtyYear =
+    freedMonthly > 0 ? Math.round(computeInvestingImpact(freedMonthly, 0.07, 30)) : 0;
 
   const chartData = useMemo(() => {
     const baseMap = new Map(
@@ -404,22 +413,49 @@ export function CreditCardPayoffTool() {
             </CardContent>
           </Card>
 
-          {/* WeLeap Waitlist CTA */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardContent className="py-8 space-y-4">
-              <h3 className="text-xl font-bold text-[#111827]">
-                Want help actually getting there?
-              </h3>
-              <p className="text-base text-gray-600">
-                WeLeap tracks your money and tells you exactly what to do next — automatically.
+          {/* The Leap. This used to go through the early-access dialog: same
+              app destination, but an extra interstitial click, no prefill, and
+              no `tool_cta_clicked` event — so this tool never appeared in the
+              funnel at all. It now links straight through with the card
+              prefilled, and leads with what the payment is worth after the debt
+              is gone: the payoff date is the answer, this is the reason to act
+              on it. */}
+          {freedThirtyYear > 0 && (
+            <div className="rounded-2xl bg-[#3F6B42]/5 p-5">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
+                What that payment is worth once the card is gone
               </p>
-              <EarlyAccessDialog signupType="credit_card_payoff_tool" placement="tool">
-                <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-                  Create free account →
-                </Button>
-              </EarlyAccessDialog>
-            </CardContent>
-          </Card>
+              <p className="mt-1 text-[30px] font-extrabold leading-none tabular-nums text-[#111827]">
+                {formatCurrency(freedThirtyYear)}
+              </p>
+              <p className="mt-1.5 text-xs text-gray-500">
+                The {formatCurrency(freedMonthly)}/mo you free up, invested over 30 years at 7% a
+                year instead of servicing {card.apr}% APR.
+              </p>
+            </div>
+          )}
+
+          <AppCta
+            tool="credit_card_payoff"
+            prefill={{
+              debt_balance: Math.round(Number(card.balance) || 0),
+              debt_apr: card.apr,
+              extra_payment: extraPayment,
+            }}
+            headline="Want help actually getting there?"
+            body="A payoff date only helps if the extra payment actually happens every month. That's the part WeLeap keeps on track."
+            bullets={[
+              'Your payoff date, tracked as the balance actually moves',
+              'A plan that funds the extra payment without wrecking the rest',
+              'When the card clears, the payment gets redirected \u2014 not absorbed',
+            ]}
+            image={{
+              src: '/images/product/weekly-focus.jpg',
+              alt: 'WeLeap showing this week\u2019s focus and how the plan is tracking',
+              width: 1400,
+              height: 529,
+            }}
+          />
 
           <ToolFeedbackQuestionnaire
             page="/credit-card-payoff"

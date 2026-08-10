@@ -24,7 +24,7 @@ import {
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
-import { EarlyAccessDialog } from '@/components/early-access-dialog';
+import { AppCta } from '@/components/AppCta';
 
 const PAGE = '/emergency-fund-target';
 
@@ -500,22 +500,45 @@ export function EmergencyFundTool() {
             </CardContent>
           </Card>
 
-          {/* WeLeap Waitlist CTA */}
-          <Card className="border-[#D1D5DB] bg-white">
-            <CardContent className="py-8 space-y-4">
-              <h3 className="text-xl font-bold text-[#111827]">
-                Want help actually getting there?
-              </h3>
-              <p className="text-base text-gray-600">
-                WeLeap tracks your money and tells you exactly what to do next — automatically.
-              </p>
-              <EarlyAccessDialog signupType="emergency_fund_tool" placement="tool">
-                <Button className="bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90">
-                  Create free account →
-                </Button>
-              </EarlyAccessDialog>
-            </CardContent>
-          </Card>
+          {/* Was routed through the early-access dialog: same destination, but
+              an extra click and no `tool_cta_clicked` event, so this tool never
+              showed up in the funnel. Now links straight through with the
+              target and monthly amount prefilled, so the number they just
+              worked out becomes the goal rather than something to re-enter. */}
+          <AppCta
+            tool="emergency_fund"
+            prefill={{
+              ef_target: Math.round(displayTarget),
+              ef_months: displayMonths,
+              ef_current: Math.round(savingsNum),
+              ef_monthly: effectiveMonthlySavings > 0 ? Math.round(effectiveMonthlySavings) : undefined,
+            }}
+            headline={hasMetTarget ? 'Now put the next dollar to work' : 'Want help actually getting there?'}
+            body={
+              hasMetTarget
+                ? 'Your buffer is done. The money that was filling it is now free — where it goes next is the decision that compounds.'
+                : 'Knowing the target is the easy part. WeLeap makes sure the monthly amount actually leaves your account.'
+            }
+            bullets={
+              hasMetTarget
+                ? [
+                    'Your buffer tracked, so you know if it slips',
+                    'The freed-up monthly amount pointed at what matters next',
+                    'A savings, debt and retirement plan built around it',
+                  ]
+                : [
+                    'Your target tracked as the balance actually grows',
+                    'A plan that funds it without starving everything else',
+                    'Milestones that land before the full six months do',
+                  ]
+            }
+            image={{
+              src: '/images/product/confirm-goal.png',
+              alt: 'WeLeap confirming a savings goal and the monthly amount behind it',
+              width: 1400,
+              height: 1240,
+            }}
+          />
 
           {/* Milestone Progress */}
           <Card className="border-[#D1D5DB] bg-white">

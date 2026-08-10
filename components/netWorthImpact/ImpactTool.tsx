@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { NumberCard } from './NumberCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { EarlyAccessDialog } from '@/components/early-access-dialog';
+import { AppCta } from '@/components/AppCta';
 import { computeImpacts } from '@/lib/networthImpact/math';
 import type { ImpactInputs, UseCase } from '@/lib/networthImpact/types';
 import { formatCurrencySigned, formatPercent } from '@/lib/format';
@@ -238,7 +239,41 @@ export function ImpactTool() {
         </div>
       </div>
 
-      {/* Tool Feedback Questionnaire — Yes / Maybe opens Join Waitlist modal */}
+      {/* This tool had no call to action at all — the only route onward was the
+          dialog behind a "yes" on the feedback question, which most people
+          never answer. The CTA now sits directly under the answer, the way it
+          does on rent and offer, and carries the monthly amount forward so the
+          number they just chose becomes the plan. */}
+      {monthlyDelta !== 0 && (
+        <AppCta
+          tool="net_worth_impact"
+          prefill={{
+            monthly_delta: Math.round(monthlyDelta),
+            use_case: useCase,
+            debt_apr: useCase === 'debt' ? debtApr : undefined,
+          }}
+          eyebrow="Make it real"
+          headline={
+            monthlyDelta > 0
+              ? `Turn that ${formatCurrencySigned(monthlyDelta)}/month into a plan`
+              : 'See what that change does to the rest of your plan'
+          }
+          body="A number on a slider is a hypothetical. The same amount, set up once and tracked every month, is a Leap."
+          bullets={[
+            'This amount set up as a real, tracked monthly move',
+            'A savings, debt and retirement plan it fits inside',
+            'A weekly nudge when it slips, not a yearly reckoning',
+          ]}
+          image={{
+            src: '/images/product/weekly-focus.jpg',
+            alt: 'WeLeap showing this week\u2019s focus and how the plan is tracking',
+            width: 1400,
+            height: 529,
+          }}
+        />
+      )}
+
+      {/* Tool Feedback Questionnaire — Yes / Maybe opens the signup dialog */}
       <ToolFeedbackQuestionnaire
         page={NET_WORTH_IMPACT_PAGE}
         eventName="networth_tool_feedback_submitted"

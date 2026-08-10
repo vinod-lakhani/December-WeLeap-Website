@@ -37,6 +37,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { AppCta } from '@/components/AppCta';
 const PAGE = '/leap-impact-simulator';
 
 const US_STATES = [
@@ -729,25 +730,34 @@ export function LeapImpactTool() {
             </Card>
           )}
 
-          {/* 2.5. Build full stack CTA — moved up, primary action */}
+          {/* 2.5. Build full stack CTA — moved up, primary action.
+              This one already deep-linked into the allocator with a rich
+              prefill, so navigation still goes through handleUnlockFullStack
+              (it validates salary and can refuse to continue). What was missing
+              was the `tool_cta_clicked` funnel event and any sense of what's on
+              the other side — AppCta supplies both without touching the
+              allocator link. */}
           {!is401kMaxed && (
             <div ref={fullStackSectionRef}>
-              <Card className="border-2 border-[#3F6B42] bg-white">
-                <CardContent className="pt-6">
-                  <p className="text-sm text-gray-600 mb-2">
-                    There&apos;s more we can improve in your setup.
-                  </p>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Most people stop here. The real gains come from finishing your plan.
-                  </p>
-                  <Button
-                    onClick={() => handleUnlockFullStack(false)}
-                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                  >
-                    Build my full plan → (2 min)
-                  </Button>
-                </CardContent>
-              </Card>
+              <AppCta
+                tool="leap_impact"
+                onActivate={() => handleUnlockFullStack(false)}
+                headline="There's more we can improve in your setup."
+                body="Most people stop here. The real gains come from finishing your plan."
+                buttonLabel="Build my full plan → (2 min)"
+                bullets={[
+                  'This 401(k) change set up and tracked until it lands',
+                  'The rest of your stack — savings, debt, retirement — in one plan',
+                  'Your numbers carried over, so you start where you left off',
+                ]}
+                image={{
+                  src: '/images/product/setup-checklist.png',
+                  alt: 'WeLeap setup checklist showing the remaining steps in a plan',
+                  width: 1720,
+                  height: 680,
+                }}
+                footnote="Free \u00b7 2 minutes \u00b7 No credit card."
+              />
             </div>
           )}
 
