@@ -667,6 +667,30 @@ export function OfferAnalysisTool() {
       {/* ── Full package breakdown ─────────────────────────────────────────── */}
       {calc && (
         <div className="space-y-3 mb-3">
+          {/* THE ANSWER. The tool's whole premise is that an offer is worth more
+              than the base number — but that finding was rendering as
+              "+$15,200 more than base salary" in 12px white/30 at the bottom of
+              the breakdown card. It leads now; the breakdown below is the proof. */}
+          <div className="rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+              Your offer is actually worth
+            </p>
+            <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+              {fc(calc.totalPackage)}
+            </p>
+            {calc.totalPackage > salary && (
+              <p className="mt-3 text-[15px] text-subtle">
+                <span className="font-bold text-brand-700">
+                  +{Math.round(((calc.totalPackage - salary) / salary) * 100)}% more
+                </span>{' '}
+                than the {fc(salary)} base they quoted you
+              </p>
+            )}
+            <p className="mt-1.5 text-[13px] text-faint">
+              You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
+            </p>
+          </div>
+
           {/* Package card */}
           <div className="bg-[#1a2e1a] rounded-2xl px-6 py-5">
             <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-4">Your full package</div>
@@ -691,9 +715,6 @@ export function OfferAnalysisTool() {
               <span className="text-sm font-bold text-white">Total package</span>
               <span className="text-2xl font-black text-[#A7C957]">{fc(calc.totalPackage)}</span>
             </div>
-            {calc.totalPackage > salary && (
-              <p className="text-xs text-white/30 text-right mt-1">+{fc(calc.totalPackage - salary)} more than base salary</p>
-            )}
           </div>
 
           {/* 50/30/20 */}

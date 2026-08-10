@@ -38,8 +38,17 @@ export default function OfferAnalysisPage() {
         </Container>
       </Section>
 
-      {/* How it works */}
+      {/* Tool sits directly under the hero — same reasoning as the rent tool:
+          people arrive knowing what they want, so the input comes first and
+          the explainer becomes reinforcement below. */}
       <Section variant="canvas" className="pt-0">
+        <Container maxWidth="narrow">
+          <OfferAnalysisTool />
+        </Container>
+      </Section>
+
+      {/* How it works */}
+      <Section variant="white">
         <Container maxWidth="narrow">
           <h2 className="text-lg font-bold text-gray-900 text-center mb-6">The 7 numbers in your offer</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
@@ -60,13 +69,6 @@ export default function OfferAnalysisPage() {
               </div>
             ))}
           </div>
-        </Container>
-      </Section>
-
-      {/* Tool */}
-      <Section variant="white">
-        <Container maxWidth="narrow">
-          <OfferAnalysisTool />
         </Container>
       </Section>
 
