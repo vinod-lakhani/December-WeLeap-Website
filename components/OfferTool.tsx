@@ -18,6 +18,7 @@ import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
+import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { appLink } from '@/lib/app-link';
@@ -335,6 +336,15 @@ export function OfferTool() {
   const daysUntilStart = calculateDaysUntilStart(startDate);
   const budgetBreakdown = results ? calculateBudgetBreakdown(takeHomeMonthly) : null;
 
+  // What the rent decision is worth long-run. Derived from the REAL spread
+  // between the low and high end of their own range — not the 5%-of-take-home
+  // heuristic used for the "going above this range" line, which answers a
+  // different question and isn't tied to the choice we're asking them to make.
+  const leapMonthly = Math.max(0, rentRangeHigh - rentRangeLow);
+  const leapThirtyYear = leapMonthly > 0
+    ? Math.round(computeInvestingImpact(leapMonthly, 0.07, 30))
+    : 0;
+
   // Calculate upfront cash needed (for plan data)
   const calculateUpfrontCash = () => {
     if (!startDate || takeHomeMonthly === 0 || !rentRangeData) {
@@ -577,11 +587,26 @@ export function OfferTool() {
                   </p>
                   <h3 className="text-xl font-bold text-[#111827]">
                     Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
-                    <span className="text-[#3F6B42]">{formatCurrency(rentRangeHigh - rentRangeLow)}/mo</span>.
+                    <span className="text-[#3F6B42]">{formatCurrency(leapMonthly)}/mo</span>.
                   </h3>
+
+                  {leapThirtyYear > 0 && (
+                    <div className="rounded-2xl border border-[#3F6B42]/25 bg-white px-5 py-4">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
+                        What that&apos;s worth if you invest it
+                      </p>
+                      <p className="mt-1 text-[30px] font-extrabold leading-none text-[#111827] tabular-nums">
+                        {formatCurrency(leapThirtyYear)}
+                      </p>
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        Over 30 years at 7% a year. Same salary, same city — just the cheaper apartment.
+                      </p>
+                    </div>
+                  )}
+
                   <p className="text-sm text-gray-700">
-                    That&apos;s the whole decision — and it disappears into everyday spending unless something
-                    catches it. Create your free account and WeLeap shows you where that money should go first.
+                    That&apos;s the whole decision. Left alone it disappears into everyday spending — WeLeap
+                    makes sure it goes somewhere first.
                   </p>
                   <div>
                     <Button

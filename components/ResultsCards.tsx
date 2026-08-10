@@ -275,11 +275,6 @@ export function ResultsCards({
                 On {formatCurrency(takeHomeMonthly)}/mo take-home
                 <span className="text-faint"> · {formatCurrency(takeHomeAnnual)} a year after tax</span>
               </p>
-              {netWorthProtection > 0 && (
-                <p className="mt-2 text-sm font-semibold text-brand-700">
-                  Going above this range could cost ~{formatCurrency(netWorthProtection)} over time.
-                </p>
-              )}
             </div>
 
             {/* The reality check. This is the takeaway that turns an abstract
