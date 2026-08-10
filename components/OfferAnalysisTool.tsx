@@ -351,25 +351,19 @@ export function OfferAnalysisTool() {
   return (
     <div className="w-full max-w-[600px] mx-auto">
 
-      {/* Running total bar */}
+      {/* Running total: a PROGRESS indicator while filling the form, not the
+          conclusion. Deliberately drops the "+$X more" delta — that framing
+          belongs to the answer card below, and showing both spoiled the reveal
+          before the user reached it. Sticky, so it follows you through seven
+          sections of inputs. */}
       {hasResults && calc && (
-        <div className="bg-[#2d5a26] rounded-2xl px-5 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Base salary</div>
-              <div className="text-base font-bold text-white/80">{fc(salary)}</div>
-            </div>
-            <div className="text-white/30 text-lg">→</div>
-            <div>
-              <div className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Total package</div>
-              <div className="text-lg font-extrabold text-[#A7C957]">{fc(calc.totalPackage)}</div>
-            </div>
-          </div>
-          {calc.totalPackage > salary && (
-            <div className="bg-[#A7C957]/15 border border-[#A7C957]/30 rounded-lg px-3 py-1 text-xs font-bold text-[#A7C957]">
-              +{fc(calc.totalPackage - salary)} more
-            </div>
-          )}
+        <div className="sticky top-[86px] z-20 mb-4 flex items-center justify-between gap-3 rounded-xl bg-[#2d5a26] px-4 py-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+            Package so far
+          </span>
+          <span className="text-base font-extrabold text-[#A7C957] tabular-nums">
+            {fc(calc.totalPackage)}
+          </span>
         </div>
       )}
 
@@ -628,6 +622,21 @@ export function OfferAnalysisTool() {
               {calc.rentPct}% of take-home — {calc.rentPct <= 30 ? 'healthy range ✓' : calc.rentPct <= 35 ? 'a bit stretched' : 'over the 35% threshold'}
             </div>
 
+            {/* A warning with nowhere to go is just a scold. Over 35% we hand
+                them the rent tool, pre-filled with what they've already typed. */}
+            {calc.rentPct > 35 && (
+              <a
+                href={`/how-much-rent-can-i-afford?salary=${Math.round(salary)}`}
+                onClick={() => track('tool_cross_sell_clicked', { from: 'offer', to: 'rent' })}
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-3 transition hover:border-[#386641]"
+              >
+                <span className="text-sm text-gray-700">
+                  Find the rent you can actually afford on this offer
+                </span>
+                <span className="shrink-0 text-sm font-bold text-[#386641]">Open →</span>
+              </a>
+            )}
+
             {city && (
               <div className="border-t border-gray-100 pt-3 mt-3 space-y-2">
                 {loadingMarketRent ? (
@@ -689,6 +698,25 @@ export function OfferAnalysisTool() {
             <p className="mt-1.5 text-[13px] text-faint">
               You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
             </p>
+
+            {/* Share belongs with the number it's about — this is peak
+                "wait, really?". Five blocks later, past the CTA, it wasn't. */}
+            {calc.totalPackage > salary && (
+              <div className="mt-5 border-t border-hairline pt-4">
+                <OfferShareCard
+                  upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  trigger={
+                    <button
+                      type="button"
+                      onClick={() => track('offer_share_card_opened', { page: '/offer' })}
+                      className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+                    >
+                      Share this without showing your salary →
+                    </button>
+                  }
+                />
+              </div>
+            )}
           </div>
 
           {/* Package card */}
@@ -861,38 +889,9 @@ export function OfferAnalysisTool() {
                : 'Sign up free →'}
             </Button>
 
-            <div className="border-t border-gray-100 pt-4 mt-4">
-              <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-semibold mb-3">What you get after signing up</p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {['✓ Offer A vs B comparison', '✓ Monthly spending tracker', '✓ Savings & debt plan', '✓ Retirement projections', '✓ Net worth dashboard', '✓ Ribbit AI advisor'].map(item => (
-                  <div key={item} className="text-xs text-gray-500">{item}</div>
-                ))}
-              </div>
-              <p className="text-center text-xs text-gray-400 mt-3">Free · No credit card · ~2 minutes</p>
-            </div>
-
-            {/* Secondary action. The "+X% more than base" line is the most
-                shareable thing in the product and previously had nowhere to
-                go — the card carries the insight without the salary. */}
-            {calc.totalPackage > salary && (
-              <div className="border-t border-gray-100 pt-4 mt-4 text-center">
-                <p className="text-xs text-gray-500 mb-2">
-                  Know someone else weighing an offer?
-                </p>
-                <OfferShareCard
-                  upliftPct={((calc.totalPackage - salary) / salary) * 100}
-                  trigger={
-                    <button
-                      type="button"
-                      onClick={() => track('offer_share_card_opened', { page: '/offer' })}
-                      className="text-sm font-bold text-[#386641] underline underline-offset-4 hover:text-[#2d5a26]"
-                    >
-                      Share my 7 numbers →
-                    </button>
-                  }
-                />
-              </div>
-            )}
+            {/* A six-checkmark feature grid lived here. The Leap above does the
+                persuading now; a feature list only dilutes it. */}
+            <p className="text-center text-xs text-gray-400 mt-4">Free · No credit card · ~2 minutes</p>
           </div>
         </div>
       )}
