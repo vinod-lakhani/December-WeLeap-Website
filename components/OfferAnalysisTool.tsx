@@ -299,11 +299,14 @@ export function OfferAnalysisTool() {
   }, []);
 
   // ── CTA ──────────────────────────────────────────────────────────────────────
-  const handleSignUp = useCallback(() => {
+  const handleSignUp = useCallback((placement: 'button' | 'preview_tile' = 'button') => {
     if (!salary) return;
     // Phase 0 funnel event (mirrors the rent tool with tool: 'offer').
-    track('tool_cta_clicked', { tool: 'offer' });
-    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState });
+    // `placement` distinguishes the primary button from the clickable preview
+    // tile — without it both targets fire an identical event and we can't tell
+    // which one is doing the work.
+    track('tool_cta_clicked', { tool: 'offer', placement });
+    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
     const params = new URLSearchParams();
     params.set('src', 'offer_tool');
     params.set('salary', String(salary));
@@ -848,12 +851,21 @@ export function OfferAnalysisTool() {
                 on the other side. `intent` is no longer sent; the app link
                 already guarded for its absence, and the question is better
                 asked in onboarding where it can change something. */}
-            <Button onClick={handleSignUp}
+            <Button onClick={() => handleSignUp('button')}
               className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
               Get my first Leap →
             </Button>
 
-            <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            {/* The whole tile is the target, not just the button above it —
+                it already shows what you get, so clicking it to get it is the
+                natural gesture. A real button element so it stays keyboard-
+                reachable, with a hover lift so it reads as clickable. */}
+            <button
+              type="button"
+              onClick={() => handleSignUp('preview_tile')}
+              aria-label="Create your free account and get your first Leap"
+              className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
+            >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 What&apos;s waiting in the app
               </p>
@@ -877,7 +889,10 @@ export function OfferAnalysisTool() {
                   </div>
                 ))}
               </div>
-            </div>
+              <p className="mt-3 text-center text-xs font-bold text-[#386641] group-hover:underline">
+                Get all of this free →
+              </p>
+            </button>
 
             <p className="text-center text-xs text-gray-400 mt-4">Free · No credit card · ~2 minutes</p>
           </div>
