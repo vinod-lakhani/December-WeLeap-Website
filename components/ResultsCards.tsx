@@ -5,7 +5,7 @@
  * Displays rent tool results: take-home, safe rent range, timing pressure, upfront cash.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Accordion,
@@ -79,9 +79,13 @@ interface ResultsCardsProps {
   zoriAvailable?: boolean;
   taxBreakdown?: TaxBreakdown;
   planData?: PlanData;
+  /** Rendered immediately after the hero answer — the conversion moment
+   *  belongs next to the number, not after four more cards. */
+  afterHero?: ReactNode;
 }
 
 export function ResultsCards({
+  afterHero,
   takeHomeMonthly,
   takeHomeAnnual,
   rentRange,
@@ -253,97 +257,86 @@ export function ResultsCards({
 
   return (
     <div className="space-y-6">
-      {/* Card A: Monthly Take-Home */}
-      <Card className="border-[#D1D5DB] bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">Your actual monthly take-home</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-4xl font-bold text-[#111827]">{formatCurrency(takeHomeMonthly)}</p>
-              <p className="text-sm text-[#111827]/70">
-                {formatCurrency(takeHomeAnnual)} annually
+      {/* THE ANSWER. Previously the rent range was the second of seven
+          equal-weight cards, behind take-home — but the range is the question
+          people came to ask. Take-home is now a supporting line, and the tax
+          breakdown moved here as progressive disclosure. */}
+      <Card className="rounded-card border-hairline bg-white shadow-card">
+        <CardContent className="px-6 py-8 md:px-9 md:py-10">
+          <div className="space-y-5">
+            <div className="text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+                Rent you can afford
               </p>
-            </div>
-
-            {/* Tax Breakdown Accordion */}
-            {taxBreakdown && (
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="breakdown" className="border-t border-[#D1D5DB] pt-4">
-                  <AccordionTrigger className="text-sm text-[#111827]/80 hover:no-underline py-2">
-                    View breakdown (gross → take-home)
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2 space-y-3">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#111827]/70">Gross annual income</span>
-                        <span className="font-semibold text-[#111827]">
-                          {formatCurrency(taxBreakdown.grossAnnual)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-2 border-t border-[#D1D5DB]/50">
-                        <span className="text-[#111827]/70">Federal tax</span>
-                        <span className="text-[#111827]">
-                          -{formatCurrency(taxBreakdown.federalTaxAnnual)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#111827]/70">State tax</span>
-                        <span className="text-[#111827]">
-                          -{formatCurrency(taxBreakdown.stateTaxAnnual)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#111827]/70">FICA (Social Security + Medicare)</span>
-                        <span className="text-[#111827]">
-                          -{formatCurrency(taxBreakdown.ficaTaxAnnual)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-2 border-t border-[#D1D5DB]">
-                        <span className="font-semibold text-[#111827]/70">Total taxes</span>
-                        <span className="font-semibold text-[#111827]">
-                          -{formatCurrency(taxBreakdown.totalTaxAnnual)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-2 border-t-2 border-[#D1D5DB]">
-                        <span className="font-semibold text-[#111827]">Take-home (annual)</span>
-                        <span className="text-xl font-bold text-[#111827]">
-                          {formatCurrency(taxBreakdown.netIncomeAnnual)}
-                        </span>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card B: Safe Rent Range */}
-      <Card className="border-[#D1D5DB] bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">Rent range you can afford</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-4xl font-bold text-[#111827]">{rentRange}</p>
-              <p className="text-sm text-[#111827]/80">
-                Staying in this range gives you breathing room.
+              <p className="mt-2 text-[clamp(2.6rem,7vw,4rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                {rentRange}
+              </p>
+              <p className="mt-3 text-[15px] text-subtle">
+                On {formatCurrency(takeHomeMonthly)}/mo take-home
+                <span className="text-faint"> · {formatCurrency(takeHomeAnnual)} a year after tax</span>
               </p>
               {netWorthProtection > 0 && (
-                <p className="text-sm text-[#3F6B42] font-medium">
-                  Choosing rent above this range could cost ~{formatCurrency(netWorthProtection)} over time.
+                <p className="mt-2 text-sm font-semibold text-brand-700">
+                  Going above this range could cost ~{formatCurrency(netWorthProtection)} over time.
                 </p>
               )}
             </div>
+
+          {/* Tax Breakdown Accordion */}
+          {taxBreakdown && (
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="breakdown" className="border-t border-[#D1D5DB] pt-4">
+                <AccordionTrigger className="text-sm text-[#111827]/80 hover:no-underline py-2">
+                  View breakdown (gross → take-home)
+                </AccordionTrigger>
+                <AccordionContent className="pt-2 space-y-3">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#111827]/70">Gross annual income</span>
+                      <span className="font-semibold text-[#111827]">
+                        {formatCurrency(taxBreakdown.grossAnnual)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2 border-t border-[#D1D5DB]/50">
+                      <span className="text-[#111827]/70">Federal tax</span>
+                      <span className="text-[#111827]">
+                        -{formatCurrency(taxBreakdown.federalTaxAnnual)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#111827]/70">State tax</span>
+                      <span className="text-[#111827]">
+                        -{formatCurrency(taxBreakdown.stateTaxAnnual)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#111827]/70">FICA (Social Security + Medicare)</span>
+                      <span className="text-[#111827]">
+                        -{formatCurrency(taxBreakdown.ficaTaxAnnual)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2 border-t border-[#D1D5DB]">
+                      <span className="font-semibold text-[#111827]/70">Total taxes</span>
+                      <span className="font-semibold text-[#111827]">
+                        -{formatCurrency(taxBreakdown.totalTaxAnnual)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-2 border-t-2 border-[#D1D5DB]">
+                      <span className="font-semibold text-[#111827]">Take-home (annual)</span>
+                      <span className="text-xl font-bold text-[#111827]">
+                        {formatCurrency(taxBreakdown.netIncomeAnnual)}
+                      </span>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
 
             {/* Upfront cash — prominent */}
             {upfrontCash && (
@@ -445,6 +438,8 @@ export function ResultsCards({
           </div>
         </CardContent>
       </Card>
+
+      {afterHero}
 
       {/* Card C: When your first paycheck hits */}
       <Card className="border-[#D1D5DB] bg-white">

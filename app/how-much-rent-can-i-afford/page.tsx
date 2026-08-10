@@ -5,7 +5,6 @@ import { OfferTool } from '@/components/OfferTool';
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import { track } from '@/lib/analytics';
 import { fbqTrack } from '@/lib/meta-pixel';
 
@@ -62,20 +61,27 @@ export default function HowMuchRentCanIAffordPage() {
 
   return (
     <PageShell className="bg-canvas">
-      {/* Hero Section */}
-      <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
+      {/* Hero + tool. The form used to sit third on the page, behind a
+          four-step explainer — visitors arrive from social already knowing
+          what they want, so the input comes first now. */}
+      <Section variant="canvas" className="pt-28 md:pt-32 pb-10" isHero>
         <Container>
-          <h1 className={cn("text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink", "mb-6 md:mb-8")}>
-            Don't let rent break your first paycheck.
-          </h1>
-          <p className={cn(TYPOGRAPHY.body, "text-subtle leading-relaxed max-w-2xl mx-auto mb-5 md:mb-6")}>
-            Turn your job offer into a rent range you can afford — and see what life actually looks like before you sign a lease.
-          </p>
-          <p className={cn("text-xs md:text-sm text-faint mt-4 max-w-2xl mx-auto")}>
-            Most people stretch too thin on rent before they see what they actually take home.
-          </p>
-          <p className={cn("text-xs md:text-sm text-faint mt-6 md:mt-8 max-w-2xl mx-auto")}>
-            Built for when you're just starting out. Estimates only.
+          <div className="mx-auto max-w-3xl text-center">
+            <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
+              Don&apos;t let rent break your first paycheck.
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
+              Turn your job offer into a rent range you can actually afford — and see what life looks like
+              before you sign a lease.
+            </p>
+          </div>
+
+          <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
+            <OfferTool />
+          </div>
+
+          <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
+            Free · No account needed · Estimates only
           </p>
         </Container>
       </Section>
@@ -167,18 +173,6 @@ export default function HowMuchRentCanIAffordPage() {
             
             {/* Sentinel element for scroll tracking */}
             <div ref={howItWorksSentinelRef} className="absolute bottom-0 w-full h-1" />
-          </div>
-        </Container>
-      </Section>
-
-      {/* Calculator Section */}
-      <Section variant="canvas">
-        <Container>
-          <div id="calculator" className="max-w-3xl mx-auto scroll-mt-8">
-            <p className="text-center text-base md:text-lg text-gray-700 mb-6 md:mb-8 font-medium">
-              Enter your details to get your Day 1 guide
-            </p>
-            <OfferTool />
           </div>
         </Container>
       </Section>

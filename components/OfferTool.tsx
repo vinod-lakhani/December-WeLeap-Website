@@ -565,6 +565,54 @@ export function OfferTool() {
       {results && (
         <div className="space-y-8">
           <ResultsCards
+            afterHero={
+              <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">
+                <CardContent className="py-6 space-y-4">
+                  {/* Lead with the actual decision in front of them — the spread
+                      between the low and high end of their own range — not a
+                      generic "we'll build you a plan". The number is already
+                      computed; showing it is what makes signing up concrete. */}
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">
+                    Your first Leap
+                  </p>
+                  <h3 className="text-xl font-bold text-[#111827]">
+                    Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
+                    <span className="text-[#3F6B42]">{formatCurrency(rentRangeHigh - rentRangeLow)}/mo</span>.
+                  </h3>
+                  <p className="text-sm text-gray-700">
+                    That&apos;s the whole decision — and it disappears into everyday spending unless something
+                    catches it. Create your free account and WeLeap shows you where that money should go first.
+                  </p>
+                  <div>
+                    <Button
+                      onClick={() => {
+                        track('tool_cta_clicked', { tool: 'rent' });
+                        const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
+                        const extra: Record<string, string> = {};
+                        if (salary.trim()) extra.salary = String(Math.round(parseFloat(salary)));
+                        if (city) extra.city = city;
+                        if (stateCode) extra.state = stateCode;
+                        window.location.href = appLink('', extra);
+                      }}
+                      className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                    >
+                      Get my first Leap →
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Free · 2 minutes · No credit card.
+                    </p>
+                  </div>
+                  <div>
+                    <a
+                      href="#email-plan"
+                      className="text-sm text-gray-500 underline hover:text-gray-700"
+                    >
+                      Email me my plan instead
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            }
             takeHomeMonthly={takeHomeMonthly}
             takeHomeAnnual={takeHomeAnnual}
             rentRange={rentRange}
@@ -592,52 +640,6 @@ export function OfferTool() {
           {/* Primary bridge: create a free account (Phase 0 landing bridge).
               Personalized with the user's rent range. Email capture becomes the
               secondary action, not the terminus. */}
-          <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">
-            <CardContent className="py-6 space-y-4">
-              {/* Lead with the actual decision in front of them — the spread
-                  between the low and high end of their own range — not a
-                  generic "we'll build you a plan". The number is already
-                  computed; showing it is what makes signing up concrete. */}
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">
-                Your first Leap
-              </p>
-              <h3 className="text-xl font-bold text-[#111827]">
-                Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
-                <span className="text-[#3F6B42]">{formatCurrency(rentRangeHigh - rentRangeLow)}/mo</span>.
-              </h3>
-              <p className="text-sm text-gray-700">
-                That&apos;s the whole decision — and it disappears into everyday spending unless something
-                catches it. Create your free account and WeLeap shows you where that money should go first.
-              </p>
-              <div>
-                <Button
-                  onClick={() => {
-                    track('tool_cta_clicked', { tool: 'rent' });
-                    const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
-                    const extra: Record<string, string> = {};
-                    if (salary.trim()) extra.salary = String(Math.round(parseFloat(salary)));
-                    if (city) extra.city = city;
-                    if (stateCode) extra.state = stateCode;
-                    window.location.href = appLink('', extra);
-                  }}
-                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                >
-                  Get my first Leap →
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  Free · 2 minutes · No credit card.
-                </p>
-              </div>
-              <div>
-                <a
-                  href="#email-plan"
-                  className="text-sm text-gray-500 underline hover:text-gray-700"
-                >
-                  Email me my plan instead
-                </a>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">
