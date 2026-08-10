@@ -16,6 +16,7 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 import { getUtmParams } from '@/lib/utm-storage';
 import { fbqTrack } from '@/lib/meta-pixel';
 import posthog from 'posthog-js';
+import { OfferShareCard } from '@/components/OfferShareCard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -125,7 +126,10 @@ export function OfferAnalysisTool() {
   const savingsPct = Math.max(0, 100 - needsPct - wantsPct);
 
   // Intent CTA
-  const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>(null);
+  // Defaults to the most common case for our ICP (new grads) so the primary
+  // CTA is live on arrival. Requiring a selection first added a mandatory
+  // click before the main action and left the button greyed out.
+  const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>('first');
 
   // Metro/city options
   const [metroOptions, setMetroOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -764,8 +768,41 @@ export function OfferAnalysisTool() {
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">
-            <h3 className="text-base font-extrabold text-gray-900 text-center mb-1">What would you like to do next?</h3>
-            <p className="text-xs text-gray-400 text-center mb-5">Sign up free and we'll build the right analysis for you.</p>
+            {/* Lead with the match — it's the single most concrete, most
+                time-sensitive number in the whole analysis, and it was
+                previously buried in the breakdown while the CTA showed a
+                feature list. Falls back to total-package uplift when the
+                offer has no match. */}
+            {calc.annual401kMatch > 0 ? (
+              <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
+                  Your first Leap
+                </p>
+                <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+                  Capture the full {fc(calc.annual401kMatch)}/yr match
+                </p>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  You only get it if you contribute at least {matchUpToPct}%. Most plans let you change this
+                  any time — but it doesn&apos;t backdate.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
+                  Your first Leap
+                </p>
+                <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+                  Put {fc(calc.monthlyWealth)}/mo to work
+                </p>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  That&apos;s what this offer leaves you to build with. Where it goes first is the decision
+                  that compounds.
+                </p>
+              </div>
+            )}
+
+            <h3 className="text-base font-extrabold text-gray-900 text-center mb-1">Where should we start?</h3>
+            <p className="text-xs text-gray-400 text-center mb-5">Free account · No card · You approve every move.</p>
 
             <div className="space-y-2.5 mb-5">
               {([
@@ -812,6 +849,29 @@ export function OfferAnalysisTool() {
               </div>
               <p className="text-center text-xs text-gray-400 mt-3">Free · No credit card · ~2 minutes</p>
             </div>
+
+            {/* Secondary action. The "+X% more than base" line is the most
+                shareable thing in the product and previously had nowhere to
+                go — the card carries the insight without the salary. */}
+            {calc.totalPackage > salary && (
+              <div className="border-t border-gray-100 pt-4 mt-4 text-center">
+                <p className="text-xs text-gray-500 mb-2">
+                  Know someone else weighing an offer?
+                </p>
+                <OfferShareCard
+                  upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  trigger={
+                    <button
+                      type="button"
+                      onClick={() => track('offer_share_card_opened', { page: '/offer' })}
+                      className="text-sm font-bold text-[#386641] underline underline-offset-4 hover:text-[#2d5a26]"
+                    >
+                      Share my 7 numbers →
+                    </button>
+                  }
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

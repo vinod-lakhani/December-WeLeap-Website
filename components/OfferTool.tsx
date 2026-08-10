@@ -594,12 +594,20 @@ export function OfferTool() {
               secondary action, not the terminus. */}
           <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">
             <CardContent className="py-6 space-y-4">
+              {/* Lead with the actual decision in front of them — the spread
+                  between the low and high end of their own range — not a
+                  generic "we'll build you a plan". The number is already
+                  computed; showing it is what makes signing up concrete. */}
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">
+                Your first Leap
+              </p>
               <h3 className="text-xl font-bold text-[#111827]">
-                Your range is {rentRange}. See what that leaves for saving.
+                Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
+                <span className="text-[#3F6B42]">{formatCurrency(rentRangeHigh - rentRangeLow)}/mo</span>.
               </h3>
               <p className="text-sm text-gray-700">
-                Create your free account and WeLeap builds your full plan around this —
-                savings, debt, and investing. Takes about 2 minutes.
+                That&apos;s the whole decision — and it disappears into everyday spending unless something
+                catches it. Create your free account and WeLeap shows you where that money should go first.
               </p>
               <div>
                 <Button
@@ -614,7 +622,7 @@ export function OfferTool() {
                   }}
                   className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                 >
-                  Create my free account →
+                  Get my first Leap →
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
                   Free · 2 minutes · No credit card.
