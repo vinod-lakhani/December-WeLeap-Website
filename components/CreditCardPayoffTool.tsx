@@ -450,8 +450,11 @@ export function CreditCardPayoffTool() {
               'When the card clears, the payment gets redirected \u2014 not absorbed',
             ]}
             image={{
-              src: '/images/product/weekly-focus.jpg',
-              alt: 'WeLeap showing this week\u2019s focus and how the plan is tracking',
+              // The debt Leap, not the 401(k) match one — a match screenshot on a
+              // credit card page previews the wrong thing. Copy mirrors the
+              // liability_paydown leap the engine actually emits.
+              src: '/images/product/debt-payoff-leap.jpg',
+              alt: 'WeLeap showing this week\u2019s focus: pay down high-interest debt faster',
               width: 1400,
               height: 529,
             }}
