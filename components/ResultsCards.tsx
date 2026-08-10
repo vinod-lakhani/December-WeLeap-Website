@@ -282,6 +282,40 @@ export function ResultsCards({
               )}
             </div>
 
+            {/* The reality check. This is the takeaway that turns an abstract
+                range into a decision, and it was previously 12px grey text at
+                the bottom of the card where it got lost. */}
+            {zoriAvailable && marketRentData && (
+              <div className="rounded-2xl border border-hairline bg-canvas p-5 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-subtle">
+                  What rentals actually cost here
+                </p>
+                <p className="mt-1 text-[28px] font-extrabold leading-none text-ink tabular-nums">
+                  {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}
+                </p>
+                <p className="mt-2.5 inline-flex items-center rounded-full border px-3 py-1 text-[12.5px] font-bold"
+                  style={{
+                    borderColor: marketRentComparison === 'above' ? '#ff9f4055' : marketRentComparison === 'below' ? '#4bc0c055' : '#36a2eb55',
+                    background: marketRentComparison === 'above' ? '#fff1e2' : marketRentComparison === 'below' ? '#e3f6f4' : '#e7f2fd',
+                    color: marketRentComparison === 'above' ? '#b45309' : marketRentComparison === 'below' ? '#0f766e' : '#0369a1',
+                  }}
+                >
+                  {marketRentComparison === 'above'
+                    ? 'Runs higher than your range'
+                    : marketRentComparison === 'below'
+                    ? 'Below your range — room to save'
+                    : 'Overlaps your range'}
+                </p>
+                <p className="mt-2.5 text-[13px] leading-relaxed text-subtle">
+                  {marketRentComparison === 'above'
+                    ? 'Most people starting out get roommates or trade space for flexibility.'
+                    : marketRentComparison === 'below'
+                    ? 'You have more room than the average renter here — worth banking the difference.'
+                    : 'Plenty of options fit, but the top of the market will feel tight.'}
+                </p>
+              </div>
+            )}
+
           {/* Tax Breakdown Accordion */}
           {taxBreakdown && (
             <Accordion type="single" collapsible className="w-full">
@@ -338,21 +372,62 @@ export function ResultsCards({
             </Accordion>
           )}
 
-            {/* Upfront cash — prominent */}
+            {/* Upfront cash, with the start-date timing folded in behind a
+                disclosure. The number is the punch; the timing is the "why",
+                and it used to live in a separate card that repeated this same
+                figure further down the page. */}
             {upfrontCash && (
-              <div className="rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] p-4">
-                <p className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide mb-1">
-                  📦 Cash you need upfront
+              <div className="rounded-2xl border border-hairline bg-canvas p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-subtle">
+                  Cash you need upfront
                 </p>
-                <p className="text-2xl font-bold text-[#111827]">
+                <p className="mt-1 text-[28px] font-extrabold leading-none text-ink tabular-nums">
                   {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
                 </p>
-                <p className="text-xs text-[#6B7280] mt-1">
-                  Most people underestimate this number.
+                <p className="mt-2 text-[13px] leading-relaxed text-subtle">
+                  {getTimingMessage()}
                 </p>
-                <p className="text-xs text-[#6B7280] mt-0.5">
-                  Before your first paycheck — deposit, first month, moving costs.
-                </p>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="upfront" className="border-none">
+                    <AccordionTrigger className="py-2 text-[13px] font-semibold text-brand-700 hover:no-underline">
+                      What makes up this number
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-2 pt-1">
+                      <div className="space-y-2 text-[13px] text-subtle">
+                        <div className="flex items-center justify-between">
+                          <span>Security deposit</span>
+                          <span className="font-semibold text-ink tabular-nums">
+                            {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>First month&apos;s rent</span>
+                          <span className="font-semibold text-ink tabular-nums">
+                            {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Gap living costs (food/transport/etc.)</span>
+                          <span className="font-semibold text-ink tabular-nums">
+                            {formatCurrency(upfrontCash.gapLivingCosts)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Moving/setup costs</span>
+                          <span className="font-semibold text-ink tabular-nums">
+                            {formatCurrency(upfrontCash.movingSetup)}
+                          </span>
+                        </div>
+                      </div>
+                      {formattedStartDate && (
+                        <p className="border-t border-hairline pt-2 text-xs text-faint">
+                          Based on a {formattedStartDate} start date and typical move-in timing. This is where
+                          many new grads get squeezed.
+                        </p>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             )}
 
@@ -379,30 +454,6 @@ export function ResultsCards({
               Planning with someone? Share this range.
             </p>
 
-            {/* Market Reality - ZORI */}
-            {zoriAvailable && marketRentData && (
-              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
-                <p className="text-xs text-[#111827]/70 mb-2">
-                  What's out there: Typical rents in your area are around {formatCurrency(marketRentData.marketLow)}–{formatCurrency(marketRentData.marketHigh)}/month.
-                </p>
-                {marketRentComparison === 'above' && (
-                  <p className="text-xs text-[#111827]/80">
-                    Reality check: Typical rents run higher than what you can afford. Many people just starting out get roommates or trade space for flexibility.
-                  </p>
-                )}
-                {marketRentComparison === 'below' && (
-                  <p className="text-xs text-[#111827]/80">
-                    Reality check: Typical rents are below your range — you may have more room to save.
-                  </p>
-                )}
-                {marketRentComparison === 'overlap' && (
-                  <p className="text-xs text-[#111827]/80">
-                    Reality check: Typical rents overlap with your range — being intentional about tradeoffs matters.
-                  </p>
-                )}
-              </div>
-            )}
-            
             {/* Market Reality - Unavailable */}
             {!zoriAvailable && !hudRentRange && (
               <div className="border-t border-[#D1D5DB] pt-4 mt-4">
@@ -441,85 +492,6 @@ export function ResultsCards({
 
       {afterHero}
 
-      {/* Card C: When your first paycheck hits */}
-      <Card className="border-[#D1D5DB] bg-white">
-        <CardHeader>
-          <CardTitle className="text-lg text-[#111827]">When your first paycheck hits</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-2xl font-semibold text-[#111827]">
-                Start-date timing matters
-              </p>
-              <p className="text-sm text-[#111827]/70">
-                {getTimingMessage()}
-              </p>
-              {formattedStartDate && (
-                <p className="text-xs text-[#111827]/60 mt-2">
-                  Start date: {formattedStartDate}
-                </p>
-              )}
-              <p className="text-sm font-semibold text-[#111827] mt-2">
-                This is where many new grads get squeezed.
-              </p>
-            </div>
-
-            {/* Upfront Cash Needed */}
-            {upfrontCash && (
-              <div className="border-t border-[#D1D5DB] pt-4 mt-4">
-                <h4 className="text-base font-semibold text-[#111827] mb-2">
-                  Cash you need before your first paycheck
-                </h4>
-                <p className="text-3xl font-bold text-[#111827] mb-1">
-                  {formatCurrencyRange(upfrontCash.totalLow, upfrontCash.totalHigh)}
-                </p>
-                <p className="text-xs text-[#111827]/60 mb-1">
-                  Most people underestimate this number.
-                </p>
-                <p className="text-xs text-[#111827]/60 mb-3">
-                  Estimate based on start date and typical move-in timing.
-                </p>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="assumptions" className="border-none">
-                    <AccordionTrigger className="text-xs text-[#111827]/70 hover:no-underline py-2">
-                      How we figure it
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-2 space-y-2">
-                      <div className="space-y-2 text-xs text-[#111827]/70">
-                        <div className="flex justify-between items-center">
-                          <span>Security deposit</span>
-                          <span className="font-medium text-[#111827]">
-                            {formatCurrencyRange(upfrontCash.depositLow, upfrontCash.depositHigh)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span>First month's rent</span>
-                          <span className="font-medium text-[#111827]">
-                            {formatCurrencyRange(upfrontCash.firstMonthLow, upfrontCash.firstMonthHigh)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span>Gap living costs (food/transport/etc.)</span>
-                          <span className="font-medium text-[#111827]">
-                            {formatCurrency(upfrontCash.gapLivingCosts)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span>Moving/setup costs</span>
-                          <span className="font-medium text-[#111827]">
-                            {formatCurrency(upfrontCash.movingSetup)}
-                          </span>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
