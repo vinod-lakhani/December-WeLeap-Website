@@ -29,6 +29,7 @@ import { runTrajectory, costOfDelay, computeAnnualContributionIncrease401k } fro
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { buildAllocatorUrl, buildAllocatorPrefillUrl, type AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { formatCurrency } from '@/lib/rounding';
+import { formatPct } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import {
   Accordion,
@@ -37,6 +38,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { AppCta } from '@/components/AppCta';
 const PAGE = '/leap-impact-simulator';
 
 const US_STATES = [
@@ -608,7 +610,12 @@ export function LeapImpactTool() {
               {!is401kMaxed && (
                 <>
                   <p className="font-semibold text-[#111827]">
-                    Move from {current401kNum}% → {leap.optimized401kPct}% in your 401(k)
+                    {/* Both sides through formatPct — the optimized figure is derived
+                        from the IRS cap divided by salary, so it arrives as a raw
+                        float (27.647058823529413) and was rendering that way.
+                        formatPct is what leapDecision already uses for the same
+                        value in `summary`, so the screen and the email agree. */}
+                    Move from {formatPct(current401kNum)} → {formatPct(leap.optimized401kPct)} in your 401(k)
                   </p>
                   {leap.type === 'capture_match' && (
                     <p className="text-sm text-gray-600">
@@ -729,25 +736,37 @@ export function LeapImpactTool() {
             </Card>
           )}
 
-          {/* 2.5. Build full stack CTA — moved up, primary action */}
+          {/* 2.5. Build full stack CTA — moved up, primary action.
+              This one already deep-linked into the allocator with a rich
+              prefill, so navigation still goes through handleUnlockFullStack
+              (it validates salary and can refuse to continue). What was missing
+              was the `tool_cta_clicked` funnel event and any sense of what's on
+              the other side — AppCta supplies both without touching the
+              allocator link. */}
           {!is401kMaxed && (
             <div ref={fullStackSectionRef}>
-              <Card className="border-2 border-[#3F6B42] bg-white">
-                <CardContent className="pt-6">
-                  <p className="text-sm text-gray-600 mb-2">
-                    There&apos;s more we can improve in your setup.
-                  </p>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Most people stop here. The real gains come from finishing your plan.
-                  </p>
-                  <Button
-                    onClick={() => handleUnlockFullStack(false)}
-                    className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                  >
-                    Build my full plan → (2 min)
-                  </Button>
-                </CardContent>
-              </Card>
+              <AppCta
+                tool="leap_impact"
+                onActivate={() => handleUnlockFullStack(false)}
+                headline="There's more we can improve in your setup."
+                body="Most people stop here. The real gains come from finishing your plan."
+                buttonLabel="Build my full plan → (2 min)"
+                bullets={[
+                  'This 401(k) change set up and tracked until it lands',
+                  'The rest of your stack — savings, debt, retirement — in one plan',
+                  'Your numbers carried over, so you start where you left off',
+                ]}
+                image={{
+                  // The 401(k) match Leap is literally what this tool computes,
+                  // so it previews the real thing rather than a setup checklist.
+                  // Shared with the offer tool on purpose — same Leap, and the
+                  // offer tool surfaces the match as one of its seven numbers.
+                  src: '/images/product/weekly-focus.jpg',
+                  alt: 'WeLeap showing this week\u2019s focus: capture your full 401(k) match',
+                  width: 1400,
+                  height: 529,
+                }}
+              />
             </div>
           )}
 

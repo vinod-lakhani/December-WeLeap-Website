@@ -29,6 +29,13 @@ const nextConfig = {
         destination: '/#how-it-works',
         permanent: true,
       },
+      {
+        // Short alias for the share card and social bios. People retype these
+        // from a screenshot, so the long path is unusable there.
+        source: '/rent',
+        destination: '/how-much-rent-can-i-afford',
+        permanent: false,
+      },
     ]
   },
 

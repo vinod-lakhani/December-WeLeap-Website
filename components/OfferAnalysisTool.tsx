@@ -16,6 +16,7 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 import { getUtmParams } from '@/lib/utm-storage';
 import { fbqTrack } from '@/lib/meta-pixel';
 import posthog from 'posthog-js';
+import { OfferShareCard } from '@/components/OfferShareCard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -124,8 +125,6 @@ export function OfferAnalysisTool() {
   const [wantsPct, setWantsPct] = useState(30);
   const savingsPct = Math.max(0, 100 - needsPct - wantsPct);
 
-  // Intent CTA
-  const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>(null);
 
   // Metro/city options
   const [metroOptions, setMetroOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -294,20 +293,20 @@ export function OfferAnalysisTool() {
     });
   }, []);
 
-  const trackIntentSelect = useCallback((selectedIntent: typeof intent) => {
-    track('offer_tool_intent_selected', { intent: selectedIntent });
-  }, []);
 
   const trackEsppToggle = useCallback((isOpen: boolean) => {
     track('offer_tool_espp_toggled', { espp_expanded: isOpen });
   }, []);
 
   // ── CTA ──────────────────────────────────────────────────────────────────────
-  const handleSignUp = useCallback(() => {
+  const handleSignUp = useCallback((placement: 'button' | 'preview_tile' = 'button') => {
     if (!salary) return;
     // Phase 0 funnel event (mirrors the rent tool with tool: 'offer').
-    track('tool_cta_clicked', { tool: 'offer' });
-    track('offer_tool_cta_clicked', { intent, salary: Math.round(salary / 10000) * 10000, state: jobState });
+    // `placement` distinguishes the primary button from the clickable preview
+    // tile — without it both targets fire an identical event and we can't tell
+    // which one is doing the work.
+    track('tool_cta_clicked', { tool: 'offer', placement });
+    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
     const params = new URLSearchParams();
     params.set('src', 'offer_tool');
     params.set('salary', String(salary));
@@ -319,7 +318,6 @@ export function OfferAnalysisTool() {
     if (rsuAnnual) params.set('rsu', String(rsuAnnual));
     if (city) params.set('city', city);
     if (rentMonthly) params.set('rent', String(rentMonthly));
-    if (intent) params.set('intent', intent);
     // Carry attribution forward so the app can stitch identity across domains.
     const utm = getUtmParams();
     if (utm) new URLSearchParams(utm).forEach((value, key) => params.set(key, value));
@@ -330,7 +328,7 @@ export function OfferAnalysisTool() {
       // PostHog not ready — deep link still works without stitching.
     }
     window.location.href = `${APP_BASE_URL}/react/#analyze?${params.toString()}`;
-  }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly, intent]);
+  }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly]);
 
   const hasResults = !!calc;
 
@@ -347,25 +345,19 @@ export function OfferAnalysisTool() {
   return (
     <div className="w-full max-w-[600px] mx-auto">
 
-      {/* Running total bar */}
+      {/* Running total: a PROGRESS indicator while filling the form, not the
+          conclusion. Deliberately drops the "+$X more" delta — that framing
+          belongs to the answer card below, and showing both spoiled the reveal
+          before the user reached it. Sticky, so it follows you through seven
+          sections of inputs. */}
       {hasResults && calc && (
-        <div className="bg-[#2d5a26] rounded-2xl px-5 py-3 mb-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Base salary</div>
-              <div className="text-base font-bold text-white/80">{fc(salary)}</div>
-            </div>
-            <div className="text-white/30 text-lg">→</div>
-            <div>
-              <div className="text-[10px] text-white/50 font-semibold uppercase tracking-wide mb-0.5">Total package</div>
-              <div className="text-lg font-extrabold text-[#A7C957]">{fc(calc.totalPackage)}</div>
-            </div>
-          </div>
-          {calc.totalPackage > salary && (
-            <div className="bg-[#A7C957]/15 border border-[#A7C957]/30 rounded-lg px-3 py-1 text-xs font-bold text-[#A7C957]">
-              +{fc(calc.totalPackage - salary)} more
-            </div>
-          )}
+        <div className="sticky top-[86px] z-20 mb-4 flex items-center justify-between gap-3 rounded-xl bg-[#2d5a26] px-4 py-2.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
+            Package so far
+          </span>
+          <span className="text-base font-extrabold text-[#A7C957] tabular-nums">
+            {fc(calc.totalPackage)}
+          </span>
         </div>
       )}
 
@@ -624,6 +616,21 @@ export function OfferAnalysisTool() {
               {calc.rentPct}% of take-home — {calc.rentPct <= 30 ? 'healthy range ✓' : calc.rentPct <= 35 ? 'a bit stretched' : 'over the 35% threshold'}
             </div>
 
+            {/* A warning with nowhere to go is just a scold. Over 35% we hand
+                them the rent tool, pre-filled with what they've already typed. */}
+            {calc.rentPct > 35 && (
+              <a
+                href={`/how-much-rent-can-i-afford?salary=${Math.round(salary)}`}
+                onClick={() => track('tool_cross_sell_clicked', { from: 'offer', to: 'rent' })}
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-3 transition hover:border-[#386641]"
+              >
+                <span className="text-sm text-gray-700">
+                  Find the rent you can actually afford on this offer
+                </span>
+                <span className="shrink-0 text-sm font-bold text-[#386641]">Open →</span>
+              </a>
+            )}
+
             {city && (
               <div className="border-t border-gray-100 pt-3 mt-3 space-y-2">
                 {loadingMarketRent ? (
@@ -663,6 +670,49 @@ export function OfferAnalysisTool() {
       {/* ── Full package breakdown ─────────────────────────────────────────── */}
       {calc && (
         <div className="space-y-3 mb-3">
+          {/* THE ANSWER. The tool's whole premise is that an offer is worth more
+              than the base number — but that finding was rendering as
+              "+$15,200 more than base salary" in 12px white/30 at the bottom of
+              the breakdown card. It leads now; the breakdown below is the proof. */}
+          <div className="rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+              Your offer is actually worth
+            </p>
+            <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+              {fc(calc.totalPackage)}
+            </p>
+            {calc.totalPackage > salary && (
+              <p className="mt-3 text-[15px] text-subtle">
+                <span className="font-bold text-brand-700">
+                  +{Math.round(((calc.totalPackage - salary) / salary) * 100)}% more
+                </span>{' '}
+                than the {fc(salary)} base they quoted you
+              </p>
+            )}
+            <p className="mt-1.5 text-[13px] text-faint">
+              You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
+            </p>
+
+            {/* Share belongs with the number it's about — this is peak
+                "wait, really?". Five blocks later, past the CTA, it wasn't. */}
+            {calc.totalPackage > salary && (
+              <div className="mt-5 border-t border-hairline pt-4">
+                <OfferShareCard
+                  upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  trigger={
+                    <button
+                      type="button"
+                      onClick={() => track('offer_share_card_opened', { page: '/offer' })}
+                      className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+                    >
+                      Share this without showing your salary →
+                    </button>
+                  }
+                />
+              </div>
+            )}
+          </div>
+
           {/* Package card */}
           <div className="bg-[#1a2e1a] rounded-2xl px-6 py-5">
             <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-4">Your full package</div>
@@ -687,9 +737,6 @@ export function OfferAnalysisTool() {
               <span className="text-sm font-bold text-white">Total package</span>
               <span className="text-2xl font-black text-[#A7C957]">{fc(calc.totalPackage)}</span>
             </div>
-            {calc.totalPackage > salary && (
-              <p className="text-xs text-white/30 text-right mt-1">+{fc(calc.totalPackage - salary)} more than base salary</p>
-            )}
           </div>
 
           {/* 50/30/20 */}
@@ -764,54 +811,90 @@ export function OfferAnalysisTool() {
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">
-            <h3 className="text-base font-extrabold text-gray-900 text-center mb-1">What would you like to do next?</h3>
-            <p className="text-xs text-gray-400 text-center mb-5">Sign up free and we'll build the right analysis for you.</p>
+            {/* Lead with the match — it's the single most concrete, most
+                time-sensitive number in the whole analysis, and it was
+                previously buried in the breakdown while the CTA showed a
+                feature list. Falls back to total-package uplift when the
+                offer has no match. */}
+            {calc.annual401kMatch > 0 ? (
+              <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
+                  Your first Leap
+                </p>
+                <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+                  Capture the full {fc(calc.annual401kMatch)}/yr match
+                </p>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  You only get it if you contribute at least {matchUpToPct}%. Most plans let you change this
+                  any time — but it doesn&apos;t backdate.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
+                  Your first Leap
+                </p>
+                <p className="text-2xl font-extrabold text-gray-900 leading-tight">
+                  Put {fc(calc.monthlyWealth)}/mo to work
+                </p>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  That&apos;s what this offer leaves you to build with. Where it goes first is the decision
+                  that compounds.
+                </p>
+              </div>
+            )}
 
-            <div className="space-y-2.5 mb-5">
-              {([
-                { key: 'first' as const, emoji: '🎉', title: 'This is my first job offer', desc: 'Build a complete financial plan around this salary — savings, emergency fund, debt payoff, retirement.' },
-                { key: 'two-offers' as const, emoji: '⇄', title: 'I have another offer to compare', desc: 'Add Offer B and see side-by-side total comp, take-home, and 40-year wealth impact.' },
-                { key: 'current-job' as const, emoji: '📊', title: 'Compare to my current job', desc: 'See exactly how cash flow, wealth building, and net worth change if you make the switch.' },
-              ] as const).map(opt => (
-                <button key={opt.key} type="button" onClick={() => {
-                  setIntent(opt.key);
-                  trackIntentSelect(opt.key);
-                }}
-                  className={`w-full flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border-[1.5px] transition-all cursor-pointer ${
-                    intent === opt.key ? 'border-[#386641] bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                  }`}>
-                  <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-                    intent === opt.key ? 'border-[#386641] bg-[#386641]' : 'border-gray-300 bg-white'
-                  }`}>
-                    {intent === opt.key && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">{opt.emoji} {opt.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{opt.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <Button onClick={handleSignUp} disabled={!intent}
-              className={`w-full py-4 text-base font-bold rounded-xl transition-all ${
-                intent ? 'bg-[#386641] hover:bg-[#2d5a26] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}>
-              {intent === 'first' ? 'Build my financial plan →'
-               : intent === 'two-offers' ? 'Compare to another offer →'
-               : intent === 'current-job' ? 'Compare to my current job →'
-               : 'Sign up free →'}
+            {/* The three "where should we start?" options all led to the same
+                onboarding, so they promised a branch that doesn't exist — and
+                asked the user to choose before knowing what they were choosing
+                between. Replaced with one action plus what's actually waiting
+                on the other side. `intent` is no longer sent; the app link
+                already guarded for its absence, and the question is better
+                asked in onboarding where it can change something. */}
+            <Button onClick={() => handleSignUp('button')}
+              className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
+              Get my first Leap →
             </Button>
 
-            <div className="border-t border-gray-100 pt-4 mt-4">
-              <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest font-semibold mb-3">What you get after signing up</p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {['✓ Offer A vs B comparison', '✓ Monthly spending tracker', '✓ Savings & debt plan', '✓ Retirement projections', '✓ Net worth dashboard', '✓ Ribbit AI advisor'].map(item => (
-                  <div key={item} className="text-xs text-gray-500">{item}</div>
+            {/* The whole tile is the target, not just the button above it —
+                it already shows what you get, so clicking it to get it is the
+                natural gesture. A real button element so it stays keyboard-
+                reachable, with a hover lift so it reads as clickable. */}
+            <button
+              type="button"
+              onClick={() => handleSignUp('preview_tile')}
+              aria-label="Create your free account and get your first Leap"
+              className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
+            >
+              <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                What&apos;s waiting in the app
+              </p>
+              <img
+                src="/images/product/weekly-focus.jpg"
+                alt="WeLeap showing this week's focus: capture your full 401(k) match"
+                width={1400}
+                height={529}
+                loading="lazy"
+                className="mb-3 block h-auto w-full rounded-lg border border-gray-200"
+              />
+              <div className="space-y-1.5">
+                {[
+                  'Your match, tracked until you actually capture it',
+                  'A savings, debt and retirement plan built on this salary',
+                  'Add a second offer any time and compare side by side',
+                ].map(item => (
+                  <div key={item} className="flex items-start gap-2 text-xs text-gray-600">
+                    <span className="mt-[3px] shrink-0 text-[#386641]">✓</span>
+                    <span>{item}</span>
+                  </div>
                 ))}
               </div>
-              <p className="text-center text-xs text-gray-400 mt-3">Free · No credit card · ~2 minutes</p>
-            </div>
+              <p className="mt-3 text-center text-xs font-bold text-[#386641] group-hover:underline">
+                Get all of this free →
+              </p>
+            </button>
+
+            <p className="text-center text-xs text-gray-400 mt-4">Free · No credit card · ~2 minutes</p>
           </div>
         </div>
       )}
