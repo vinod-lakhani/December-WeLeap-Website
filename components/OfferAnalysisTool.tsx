@@ -125,11 +125,6 @@ export function OfferAnalysisTool() {
   const [wantsPct, setWantsPct] = useState(30);
   const savingsPct = Math.max(0, 100 - needsPct - wantsPct);
 
-  // Intent CTA
-  // Defaults to the most common case for our ICP (new grads) so the primary
-  // CTA is live on arrival. Requiring a selection first added a mandatory
-  // click before the main action and left the button greyed out.
-  const [intent, setIntent] = useState<'first' | 'two-offers' | 'current-job' | null>('first');
 
   // Metro/city options
   const [metroOptions, setMetroOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -298,9 +293,6 @@ export function OfferAnalysisTool() {
     });
   }, []);
 
-  const trackIntentSelect = useCallback((selectedIntent: typeof intent) => {
-    track('offer_tool_intent_selected', { intent: selectedIntent });
-  }, []);
 
   const trackEsppToggle = useCallback((isOpen: boolean) => {
     track('offer_tool_espp_toggled', { espp_expanded: isOpen });
@@ -311,7 +303,7 @@ export function OfferAnalysisTool() {
     if (!salary) return;
     // Phase 0 funnel event (mirrors the rent tool with tool: 'offer').
     track('tool_cta_clicked', { tool: 'offer' });
-    track('offer_tool_cta_clicked', { intent, salary: Math.round(salary / 10000) * 10000, state: jobState });
+    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState });
     const params = new URLSearchParams();
     params.set('src', 'offer_tool');
     params.set('salary', String(salary));
@@ -323,7 +315,6 @@ export function OfferAnalysisTool() {
     if (rsuAnnual) params.set('rsu', String(rsuAnnual));
     if (city) params.set('city', city);
     if (rentMonthly) params.set('rent', String(rentMonthly));
-    if (intent) params.set('intent', intent);
     // Carry attribution forward so the app can stitch identity across domains.
     const utm = getUtmParams();
     if (utm) new URLSearchParams(utm).forEach((value, key) => params.set(key, value));
@@ -334,7 +325,7 @@ export function OfferAnalysisTool() {
       // PostHog not ready — deep link still works without stitching.
     }
     window.location.href = `${APP_BASE_URL}/react/#analyze?${params.toString()}`;
-  }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly, intent]);
+  }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly]);
 
   const hasResults = !!calc;
 
@@ -850,47 +841,44 @@ export function OfferAnalysisTool() {
               </div>
             )}
 
-            <h3 className="text-base font-extrabold text-gray-900 text-center mb-1">Where should we start?</h3>
-            <p className="text-xs text-gray-400 text-center mb-5">Free account · No card · You approve every move.</p>
-
-            <div className="space-y-2.5 mb-5">
-              {([
-                { key: 'first' as const, emoji: '🎉', title: 'This is my first job offer', desc: 'Build a complete financial plan around this salary — savings, emergency fund, debt payoff, retirement.' },
-                { key: 'two-offers' as const, emoji: '⇄', title: 'I have another offer to compare', desc: 'Add Offer B and see side-by-side total comp, take-home, and 40-year wealth impact.' },
-                { key: 'current-job' as const, emoji: '📊', title: 'Compare to my current job', desc: 'See exactly how cash flow, wealth building, and net worth change if you make the switch.' },
-              ] as const).map(opt => (
-                <button key={opt.key} type="button" onClick={() => {
-                  setIntent(opt.key);
-                  trackIntentSelect(opt.key);
-                }}
-                  className={`w-full flex items-start gap-3 text-left px-4 py-3.5 rounded-xl border-[1.5px] transition-all cursor-pointer ${
-                    intent === opt.key ? 'border-[#386641] bg-green-50' : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                  }`}>
-                  <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-                    intent === opt.key ? 'border-[#386641] bg-[#386641]' : 'border-gray-300 bg-white'
-                  }`}>
-                    {intent === opt.key && <div className="w-2 h-2 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-gray-900">{opt.emoji} {opt.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{opt.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <Button onClick={handleSignUp} disabled={!intent}
-              className={`w-full py-4 text-base font-bold rounded-xl transition-all ${
-                intent ? 'bg-[#386641] hover:bg-[#2d5a26] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}>
-              {intent === 'first' ? 'Build my financial plan →'
-               : intent === 'two-offers' ? 'Compare to another offer →'
-               : intent === 'current-job' ? 'Compare to my current job →'
-               : 'Sign up free →'}
+            {/* The three "where should we start?" options all led to the same
+                onboarding, so they promised a branch that doesn't exist — and
+                asked the user to choose before knowing what they were choosing
+                between. Replaced with one action plus what's actually waiting
+                on the other side. `intent` is no longer sent; the app link
+                already guarded for its absence, and the question is better
+                asked in onboarding where it can change something. */}
+            <Button onClick={handleSignUp}
+              className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
+              Get my first Leap →
             </Button>
 
-            {/* A six-checkmark feature grid lived here. The Leap above does the
-                persuading now; a feature list only dilutes it. */}
+            <div className="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                What&apos;s waiting in the app
+              </p>
+              <img
+                src="/images/product/weekly-focus.jpg"
+                alt="WeLeap showing this week's focus: capture your full 401(k) match"
+                width={1400}
+                height={529}
+                loading="lazy"
+                className="mb-3 block h-auto w-full rounded-lg border border-gray-200"
+              />
+              <div className="space-y-1.5">
+                {[
+                  'Your match, tracked until you actually capture it',
+                  'A savings, debt and retirement plan built on this salary',
+                  'Add a second offer any time and compare side by side',
+                ].map(item => (
+                  <div key={item} className="flex items-start gap-2 text-xs text-gray-600">
+                    <span className="mt-[3px] shrink-0 text-[#386641]">✓</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <p className="text-center text-xs text-gray-400 mt-4">Free · No credit card · ~2 minutes</p>
           </div>
         </div>
