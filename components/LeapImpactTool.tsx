@@ -29,6 +29,7 @@ import { runTrajectory, costOfDelay, computeAnnualContributionIncrease401k } fro
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { buildAllocatorUrl, buildAllocatorPrefillUrl, type AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { formatCurrency } from '@/lib/rounding';
+import { formatPct } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import {
   Accordion,
@@ -609,7 +610,12 @@ export function LeapImpactTool() {
               {!is401kMaxed && (
                 <>
                   <p className="font-semibold text-[#111827]">
-                    Move from {current401kNum}% → {leap.optimized401kPct}% in your 401(k)
+                    {/* Both sides through formatPct — the optimized figure is derived
+                        from the IRS cap divided by salary, so it arrives as a raw
+                        float (27.647058823529413) and was rendering that way.
+                        formatPct is what leapDecision already uses for the same
+                        value in `summary`, so the screen and the email agree. */}
+                    Move from {formatPct(current401kNum)} → {formatPct(leap.optimized401kPct)} in your 401(k)
                   </p>
                   {leap.type === 'capture_match' && (
                     <p className="text-sm text-gray-600">
@@ -760,7 +766,6 @@ export function LeapImpactTool() {
                   width: 1400,
                   height: 529,
                 }}
-                footnote="Free \u00b7 2 minutes \u00b7 No credit card."
               />
             </div>
           )}
