@@ -751,10 +751,14 @@ export function LeapImpactTool() {
                   'Your numbers carried over, so you start where you left off',
                 ]}
                 image={{
-                  src: '/images/product/setup-checklist.png',
-                  alt: 'WeLeap setup checklist showing the remaining steps in a plan',
-                  width: 1720,
-                  height: 680,
+                  // The 401(k) match Leap is literally what this tool computes,
+                  // so it previews the real thing rather than a setup checklist.
+                  // Shared with the offer tool on purpose — same Leap, and the
+                  // offer tool surfaces the match as one of its seven numbers.
+                  src: '/images/product/weekly-focus.jpg',
+                  alt: 'WeLeap showing this week\u2019s focus: capture your full 401(k) match',
+                  width: 1400,
+                  height: 529,
                 }}
                 footnote="Free \u00b7 2 minutes \u00b7 No credit card."
               />

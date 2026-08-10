@@ -265,8 +265,11 @@ export function ImpactTool() {
             'A weekly nudge when it slips, not a yearly reckoning',
           ]}
           image={{
-            src: '/images/product/weekly-focus.jpg',
-            alt: 'WeLeap showing this week\u2019s focus and how the plan is tracking',
+            // Was the 401(k) match Leap, which has nothing to do with "what does
+            // one monthly change do". The net-worth tile with its what-if
+            // scenarios is the same question this tool asks.
+            src: '/images/product/net-worth-projection.jpg',
+            alt: 'WeLeap net worth today, the monthly increase, the 40-year projection and what-if scenarios',
             width: 1400,
             height: 529,
           }}

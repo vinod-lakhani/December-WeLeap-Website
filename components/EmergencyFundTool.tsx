@@ -533,10 +533,13 @@ export function EmergencyFundTool() {
                   ]
             }
             image={{
-              src: '/images/product/confirm-goal.png',
-              alt: 'WeLeap confirming a savings goal and the monthly amount behind it',
+              // The savings-path card, not the generic goal-confirmation one:
+              // this tool's whole output is a target and a timeline, and that's
+              // exactly what the app shows back.
+              src: '/images/product/savings-path.jpg',
+              alt: 'WeLeap savings path showing an emergency fund timeline and progress toward the target',
               width: 1400,
-              height: 1240,
+              height: 529,
             }}
           />
 
