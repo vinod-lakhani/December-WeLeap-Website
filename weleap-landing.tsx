@@ -321,7 +321,12 @@ function Problem() {
 // Each carries the session timestamp it was pulled from so it can be checked
 // against the scorecards in weleap-advisor/docs/user-research.
 //   K.D. = C2 (screened ICP Builder) · H.C. = C1 (screened ICP Builder)
-//   J.C. = P3 (near-ICP)
+//   J.C. = P3 (near-ICP) · K.M. = N3 (new-UI arm)
+//   N.B. = N4 (new-UI arm, screened Builder 3/3 — best ICP fit recruited)
+//
+// One card per person. N.B. had a second strong line ("…there are better ways
+// to save", 00:31:20) that is deliberately unused: running both would repeat
+// the same-person problem the K.D. pair created.
 //
 // These no longer claim to be "verbatim" on the page. The research kit holds
 // scorecards and synthesis only — there are no raw transcripts in it — so the
@@ -366,6 +371,22 @@ const VOICES = [
     ctx: "Final-year student, saves half her paycheck",
     ref: "00:54:07",
   },
+  {
+    q: "My thoughts were always I just put things in savings and then I didn’t know what to do with it after that…",
+    who: "K.M.",
+    ctx: "Job searching",
+    ref: "00:59:14",
+  },
+  {
+    // Runs in full, framing clause and all. Cut to start at "this is how much
+    // money I'm making" it reads as her own plea; in context she is completing
+    // "it's an easy way to say…", i.e. describing what the product does. Same
+    // words, different speaker — so the clause stays.
+    q: "This is a great way for someone like me — a young student who doesn’t really know much about investing. It’s just an easy way to say: this is how much money I’m making, I don’t know what to do with it, just help me figure out what to do with it.",
+    who: "N.B.",
+    ctx: "Final-year student, working full-time",
+    ref: "00:33:13",
+  },
 ]
 
 function Voices() {
@@ -374,11 +395,14 @@ function Voices() {
       <Container maxWidth="wide">
         <SectionHead
           eyebrow="From our research sessions"
-          title="What people said when they saw their first Leap."
+          title="What people said when they saw it."
         />
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 flex flex-wrap justify-center gap-5">
           {VOICES.map((v) => (
-            <figure key={v.q} className="flex h-full flex-col rounded-card border border-hairline bg-white p-6 shadow-card">
+            <figure
+              key={v.q}
+              className="flex basis-full flex-col rounded-card border border-hairline bg-white p-6 shadow-card sm:basis-[calc(50%-10px)] lg:basis-[calc(33.333%-13.34px)]"
+            >
               <div className="mb-1.5 text-[40px] font-extrabold leading-none text-brand-100">“</div>
               <blockquote className="flex-1 text-[16.5px] font-semibold leading-snug text-ink">{v.q}</blockquote>
               <figcaption className="mt-4 border-t border-hairline pt-3.5">
