@@ -378,11 +378,13 @@ const VOICES = [
     ref: "00:59:14",
   },
   {
-    // Runs in full, framing clause and all. Cut to start at "this is how much
-    // money I'm making" it reads as her own plea; in context she is completing
-    // "it's an easy way to say…", i.e. describing what the product does. Same
-    // words, different speaker — so the clause stays.
-    q: "This is a great way for someone like me — a young student who doesn’t really know much about investing. It’s just an easy way to say: this is how much money I’m making, I don’t know what to do with it, just help me figure out what to do with it.",
+    // Starts at the framing clause, which is the part that has to survive. Cut
+    // any later — at "this is how much money I'm making" — and it reads as her
+    // own plea, when in context she is completing "it's an easy way to say…",
+    // i.e. describing what the product does for her. Her scene-setting first
+    // sentence is dropped; like K.D.'s, this begins at a sentence boundary, so
+    // it takes no leading ellipsis.
+    q: "It’s just an easy way to say: this is how much money I’m making, I don’t know what to do with it, just help me figure out what to do with it.",
     who: "N.B.",
     ctx: "Final-year student, working full-time",
     ref: "00:33:13",
