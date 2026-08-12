@@ -315,13 +315,27 @@ function Problem() {
 }
 
 /* ============================================================================
-   Research quotes — verbatim, from the moderated sessions
+   Research quotes — from the moderated sessions
    ========================================================================== */
 
-// Verbatim, with the session timestamp each was pulled from so they can be
-// checked against the scorecards in weleap-advisor/docs/user-research.
+// Each carries the session timestamp it was pulled from so it can be checked
+// against the scorecards in weleap-advisor/docs/user-research.
 //   K.D. = C2 (screened ICP Builder) · H.C. = C1 (screened ICP Builder)
 //   J.C. = P3 (near-ICP)
+//
+// These no longer claim to be "verbatim" on the page. The research kit holds
+// scorecards and synthesis only — there are no raw transcripts in it — so the
+// claim isn't backed by anything we can check. The scorecards are themselves
+// derived from auto-generated transcripts that garbled "WeLeap" as "wheelie
+// pool" and "Ribbit" as "rivet", so they carry drift of their own. Restore the
+// word only after checking these four against the recordings.
+//
+// Only one K.D. quote runs. Two of the four cards used to be the same person,
+// which read as a thinner sample than we actually have.
+//
+// All three were checked against the timestamped quote blocks in their own
+// scorecards (not the synthesis workbook, which paraphrases). Where material
+// is dropped mid-quote the ellipsis is kept, so the cut is visible.
 //
 // Rights: every participant signed the Home From College contractor
 // agreement, which assigns their session content to us as a Deliverable and
@@ -341,19 +355,13 @@ const VOICES = [
     ref: "00:45:15",
   },
   {
-    q: "This forces me to think about it as a reality instead of something I keep putting off.",
-    who: "K.D.",
-    ctx: "On seeing her first Leap",
-    ref: "00:46:04",
-  },
-  {
     q: "Everyone I hear is just like “max out your account” — okay, but what does that even look like? … it was like a coach almost.",
     who: "H.C.",
     ctx: "Post-grad, working full-time",
     ref: "00:47:48",
   },
   {
-    q: "It meets you where you are and explains where you could be if you put some steps in place.",
+    q: "It meets you where you are and explains where you could be if you put some steps in place…",
     who: "J.C.",
     ctx: "Final-year student, saves half her paycheck",
     ref: "00:54:07",
@@ -368,7 +376,7 @@ function Voices() {
           eyebrow="From our research sessions"
           title="What people said when they saw their first Leap."
         />
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {VOICES.map((v) => (
             <figure key={v.q} className="flex h-full flex-col rounded-card border border-hairline bg-white p-6 shadow-card">
               <div className="mb-1.5 text-[40px] font-extrabold leading-none text-brand-100">“</div>
@@ -382,7 +390,7 @@ function Voices() {
         </div>
 
         <p className="mt-8 text-center text-[12.5px] leading-relaxed text-faint">
-          Verbatim from moderated 45-minute user research sessions. Participants were compensated for their time.
+          Quoted from moderated user research sessions. Participants were compensated for their time.
         </p>
       </Container>
     </Section>
