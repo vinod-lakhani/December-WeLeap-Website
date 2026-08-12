@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import Link from "next/link"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { FREE_TOOLS } from "@/lib/tools"
+import { ToolCard } from "@/components/ToolCard"
 
 export const metadata: Metadata = {
   title: "Free money tools — WeLeap",
@@ -33,17 +33,7 @@ export default function ToolsPage() {
         <Container maxWidth="wide">
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FREE_TOOLS.map((t) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                className="group flex h-full flex-col rounded-card border border-hairline bg-white p-7 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
-              >
-                <img src={t.icon} alt="" className="mb-5 h-12 w-12 object-contain" />
-                <h2 className="mb-2 text-[19px] font-extrabold tracking-[-0.018em] text-ink">{t.name}</h2>
-                <p className="mb-3 text-[15.5px] font-semibold leading-snug text-brand-700">“{t.question}”</p>
-                <p className="mb-5 flex-1 text-[14.5px] leading-relaxed text-subtle">{t.blurb}</p>
-                <span className="text-[13.5px] font-bold text-brand-700 group-hover:underline">Open tool →</span>
-              </Link>
+              <ToolCard key={t.href} tool={t} surface="tools_page" background="white" headingLevel="h2" />
             ))}
           </div>
 

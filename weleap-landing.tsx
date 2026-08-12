@@ -7,6 +7,7 @@ import { EarlyAccessDialog } from "./components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { cn } from "@/lib/utils"
 import { PRESENT_DAY_TOOLS } from "@/lib/tools"
+import { ToolCard } from "@/components/ToolCard"
 
 /* ============================================================================
    Shared bits
@@ -873,17 +874,7 @@ function Tools() {
             first two and stopped exploring." The rest live on /tools. */}
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           {PRESENT_DAY_TOOLS.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className="group flex h-full flex-col rounded-card border border-hairline bg-canvas p-7 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift"
-            >
-              <img src={t.icon} alt="" className="mb-5 h-12 w-12 object-contain" />
-              <h3 className="mb-2 text-[18.5px] font-extrabold tracking-[-0.018em] text-ink">{t.name}</h3>
-              <p className="mb-3 text-[15.5px] font-semibold leading-snug text-brand-700">&ldquo;{t.question}&rdquo;</p>
-              <p className="mb-5 flex-1 text-[14.5px] leading-relaxed text-subtle">{t.blurb}</p>
-              <span className="text-[13.5px] font-bold text-brand-700 group-hover:underline">Open tool →</span>
-            </Link>
+            <ToolCard key={t.href} tool={t} surface="homepage" background="canvas" headingLevel="h3" />
           ))}
         </div>
 
