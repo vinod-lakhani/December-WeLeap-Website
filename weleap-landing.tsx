@@ -255,10 +255,15 @@ function Hero() {
               </div>
             </div>
 
+            {/* Sits behind the Leap card (z-5 vs z-10) on purpose — the tuck gives
+                the hero depth. At -left-24 the card cut 24px into his silhouette,
+                clipping his raised hand. The PNG carries ~32px of transparent
+                padding on its right at this size, so -left-32 clears the artwork
+                by ~8px while the image box still overlaps: he tucks, nothing cuts. */}
             <img
               src="/images/ribbit.png"
               alt="Ribbit, the WeLeap financial sidekick"
-              className="absolute -bottom-8 -left-24 z-[5] hidden w-[152px] lg:block"
+              className="absolute -bottom-8 -left-32 z-[5] hidden w-[152px] lg:block"
               style={{ filter: "drop-shadow(0 18px 26px rgba(16,32,26,.22))" }}
             />
           </div>
