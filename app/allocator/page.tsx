@@ -113,6 +113,15 @@ function AllocatorContent() {
   const [wMatchCap, setWMatchCap] = useState('5');
   const [wMatchRate, setWMatchRate] = useState('100');
   const [wError, setWError] = useState<string | null>(null);
+  /**
+   * The simulator's whole value was the staged reveal: give us four numbers,
+   * here is free money you are not taking. Folding it into the allocator moved
+   * that moment behind three more questions, which turned "you're leaving
+   * $3,400 a year behind" into "401(k) contribution (target) 5%". This holds it
+   * back until the reveal has been seen.
+   */
+  const [wedgeLeap, setWedgeLeap] = useState<{ label: string; from: number; to: number; annual: number; thirtyYear: number; delay: number } | null>(null);
+  const [revealSeen, setRevealSeen] = useState(false);
 
   const prefillFromUrl = useMemo(() => searchParams ? parsePrefillFromSearchParams(searchParams) : null, [searchParams]);
 
@@ -316,6 +325,26 @@ function AllocatorContent() {
       intent: 'unlock_full_stack',
       source: 'allocator_direct',
     });
+    const trajInputs = {
+      grossAnnual: salary,
+      current401kPct: current401k,
+      optimized401kPct: leap.optimized401kPct,
+      matchPct: matchCap,
+      matchRatePct: matchRate,
+      hasEmployerMatch: wHasMatch,
+      realReturn: REAL_RETURN_DEFAULT,
+      years: 30,
+    };
+    if (leap.optimized401kPct > current401k) {
+      setWedgeLeap({
+        label: leap.label,
+        from: current401k,
+        to: leap.optimized401kPct,
+        annual: computeAnnualContributionIncrease401k(trajInputs),
+        thirtyYear: traj.delta30yr,
+        delay,
+      });
+    }
     track('allocator_wedge_completed', { salary: Math.round(salary / 10000) * 10000, state: wState, hasMatch: wHasMatch });
   }, [wSalary, wState, wCurrent401k, wHasMatch, wMatchCap, wMatchRate]);
 
@@ -444,7 +473,7 @@ function AllocatorContent() {
               : 'Complete your money plan. Enter your details below.'}
           </p>
 
-          {prefill && (
+          {prefill && !(wedgeLeap && !revealSeen) && (
             <Card className="border-[#D1D5DB] bg-white mb-8">
               <CardHeader>
                 <CardTitle className="text-lg text-[#111827]">Income & 401(k)</CardTitle>
@@ -487,7 +516,11 @@ function AllocatorContent() {
                   <Label className="text-[#111827]">401(k) contribution (target)</Label>
                   <p className="text-lg font-medium text-[#3F6B42]">{formatPct(prefill.recommended401kPct)}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    We prefilled your 401(k) target based on your Leap Impact result.
+                    {prefill.employerMatchEnabled && prefill.recommended401kPct <= (prefill.matchCapPct ?? 0) + 0.01
+                      ? `The point where your employer stops matching. Below this you leave their money behind.`
+                      : prefill.source === 'allocator_direct'
+                        ? 'Where we think your contribution should get to, based on what you told us.'
+                        : 'We prefilled your 401(k) target based on your Leap Impact result.'}
                   </p>
                 </div>
               </CardContent>
@@ -626,7 +659,60 @@ function AllocatorContent() {
             </Card>
           )}
 
-          {prefill && (
+          {/* Restores the moment the simulator led with. Cold start only —
+              anyone arriving with URL prefill came from a surface that already
+              showed them this. */}
+          {prefill && wedgeLeap && !revealSeen && (
+            <Card className="border-2 border-[#3F6B42] bg-white">
+              <CardContent className="pt-6">
+                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
+                  Your biggest money move right now
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-[#111827]">{wedgeLeap.label}</h2>
+                <p className="mt-2 text-base font-semibold text-[#111827]">
+                  Move from {formatPct(wedgeLeap.from)} → {formatPct(wedgeLeap.to)} in your 401(k)
+                </p>
+                {prefill.employerMatchEnabled && (
+                  <p className="mt-1 text-sm text-gray-600">
+                    That is the point your employer stops matching. Anything below it is their
+                    money you are choosing not to take.
+                  </p>
+                )}
+
+                {wedgeLeap.annual > 0 && (
+                  <p className="mt-4 text-3xl font-bold text-[#3F6B42]">
+                    +{formatCurrency(wedgeLeap.annual)} per year
+                  </p>
+                )}
+                {wedgeLeap.thirtyYear > 0 && (
+                  <p className="mt-1 text-sm text-gray-700">
+                    If invested consistently: ~{formatCurrency(wedgeLeap.thirtyYear)} over 30 years
+                  </p>
+                )}
+                {wedgeLeap.delay > 0 && (
+                  <p className="mt-1 text-sm text-red-700">
+                    Waiting 12 months could cost ~{formatCurrency(wedgeLeap.delay)}
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-gray-500">Assumes 7% real return.</p>
+
+                <Button
+                  onClick={() => {
+                    setRevealSeen(true);
+                    track('allocator_wedge_reveal_continued', {});
+                  }}
+                  className="mt-6 w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                >
+                  Now let&apos;s finish your plan →
+                </Button>
+                <p className="mt-2 text-xs text-gray-500">
+                  Three more questions and we will show you where every dollar should go.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {prefill && !(wedgeLeap && !revealSeen) && (
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
