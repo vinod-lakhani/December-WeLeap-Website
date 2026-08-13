@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
-import { FREE_TOOLS } from "@/lib/tools"
+import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
 
 export const metadata: Metadata = {
@@ -23,7 +23,7 @@ export default function ToolsPage() {
             Answer one money question in under a minute.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtle">
-            Six calculators, built for decisions you're actually facing. Nothing to sign up for — use them, get your
+            {TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)} calculators, built for decisions you're actually facing. Nothing to sign up for — use them, get your
             number, leave.
           </p>
         </Container>
@@ -31,9 +31,17 @@ export default function ToolsPage() {
 
       <Section variant="canvas" className="pt-0">
         <Container maxWidth="wide">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Centred wrap rather than a grid: seven cards in three columns left
+              an orphan hanging off the left of the last row. This centres the
+              trailing row and survives the count changing again. */}
+          <div className="flex flex-wrap justify-center gap-5">
             {FREE_TOOLS.map((t) => (
-              <ToolCard key={t.href} tool={t} surface="tools_page" background="white" headingLevel="h2" />
+              <div
+                key={t.href}
+                className="flex basis-full sm:basis-[calc(50%-10px)] lg:basis-[calc(33.333%-13.34px)]"
+              >
+                <ToolCard tool={t} surface="tools_page" background="white" headingLevel="h2" />
+              </div>
             ))}
           </div>
 

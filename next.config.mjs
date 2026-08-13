@@ -37,6 +37,12 @@ const nextConfig = {
         permanent: false,
       },
       {
+        // Aimed at social, where the URL gets read off a screenshot.
+        source: '/pay-now-or-later',
+        destination: '/smart-purchase-check',
+        permanent: false,
+      },
+      {
         // The Leap Impact Simulator was the 401(k) wedge in front of the
         // allocator, which now collects those inputs itself. Permanent so
         // search consolidates onto /allocator rather than splitting ranking
