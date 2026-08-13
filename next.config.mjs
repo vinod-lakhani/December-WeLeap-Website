@@ -36,6 +36,13 @@ const nextConfig = {
         destination: '/how-much-rent-can-i-afford',
         permanent: false,
       },
+      {
+        // Same reason as /rent — this one is aimed squarely at social, where
+        // the URL gets read off a screenshot rather than clicked.
+        source: '/bnpl',
+        destination: '/bnpl-reality-check',
+        permanent: false,
+      },
     ]
   },
 

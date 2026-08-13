@@ -57,6 +57,16 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
+    name: "Buy Now, Pay Later",
+    question: "How much do I actually owe across all these apps?",
+    blurb: "Klarna shows you Klarna. Add them all up and see the week they collide with payday.",
+    cta: "Add up what I owe →",
+    href: "/bnpl-reality-check",
+    icon: "/images/tool-icons/pay-later.png",
+    slug: "bnpl",
+    presentDay: true,
+  },
+  {
     name: "Credit Card Payoff",
     question: "When will I finally be debt-free?",
     blurb: "Your payoff date, and how much sooner extra payments get you there.",
@@ -99,3 +109,15 @@ export const FREE_TOOLS: FreeTool[] = [
 ]
 
 export const PRESENT_DAY_TOOLS = FREE_TOOLS.filter((t) => t.presentDay)
+
+
+/**
+ * Copy on three surfaces used to hardcode "Six calculators". Adding a seventh
+ * meant three separate edits, and missing one would have shipped a wrong count
+ * to a visitor who can see the grid. Derived instead.
+ */
+export const TOOL_COUNT = FREE_TOOLS.length
+export const TOOL_COUNT_WORD =
+  ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][
+    TOOL_COUNT
+  ] ?? String(TOOL_COUNT)
