@@ -157,6 +157,34 @@ export function dueBeforePayday(
   return sumBetween(payments, today, payday)
 }
 
+/**
+ * What these plans cost per month at today's run-rate.
+ *
+ * The Builder frame needs a monthly number, not a balance: the app allocates
+ * income monthly, and "how much of my month is already spoken for" is the
+ * question someone with a surplus is actually asking. Each plan is normalised
+ * to a 30-day equivalent so weekly, fortnightly and monthly cadences can be
+ * added together.
+ */
+export function monthlyRunRate(plans: BnplPlan[]): number {
+  return plans
+    .filter((p) => p.amount > 0 && p.installmentsLeft > 0)
+    .reduce((s, p) => s + p.amount * (30 / p.cadence), 0)
+}
+
+/** Date the last installment lands — when the run-rate becomes free again. */
+export function clearsOn(payments: ScheduledPayment[]): Date | null {
+  if (!payments.length) return null
+  return payments.reduce((a, b) => (a.date > b.date ? a : b)).date
+}
+
+/** Whole months from today until the last installment, rounded up. */
+export function monthsUntilClear(payments: ScheduledPayment[], today = startOfToday()): number {
+  const end = clearsOn(payments)
+  if (!end) return 0
+  return Math.max(1, Math.ceil((end.getTime() - today.getTime()) / DAY_MS / 30))
+}
+
 export interface CardInterest {
   /** Interest accrued from today until the last installment clears. */
   duringPlans: number
@@ -259,7 +287,7 @@ export function lateFeeExposure(
   }
 }
 
-export type Severity = 'steady' | 'stacking' | 'stretched' | 'overloaded'
+export type Severity = 'minor' | 'assignable' | 'slice' | 'crowding'
 
 export interface Verdict {
   severity: Severity
@@ -267,36 +295,38 @@ export interface Verdict {
   note: string
 }
 
-export function verdict(
-  claimPercent: number | null,
-  planCount: number,
-  providerCount: number
-): Verdict {
-  const c = claimPercent ?? -1
-  if (c >= 40 || planCount >= 5) {
+/**
+ * Framed around what share of a month is already committed, not around
+ * distress. The audience for this tool is someone with a surplus deciding
+ * where it goes — "Overloaded" is both the wrong diagnosis for them and a
+ * frame they will reject rather than act on.
+ */
+export function verdict(sharePercent: number | null, planCount: number): Verdict {
+  const c = sharePercent ?? -1
+  if (c >= 30) {
     return {
-      severity: 'overloaded',
-      label: 'Overloaded',
-      note: 'This is where late fees and overdrafts usually start. Worth pausing new plans.',
+      severity: 'crowding',
+      label: 'Crowding out the plan',
+      note: 'There is not much surplus left to assign once this comes out.',
     }
   }
-  if (c >= 25 || planCount === 4) {
+  if (c >= 15 || planCount >= 5) {
     return {
-      severity: 'stretched',
-      label: 'Stretched',
-      note: 'A large share of your pay is spent before it lands.',
+      severity: 'slice',
+      label: 'A real slice',
+      note: 'This is competing directly with your savings rate.',
     }
   }
-  if (c >= 15 || planCount === 3 || providerCount >= 2) {
+  if (c >= 5 || planCount >= 3) {
     return {
-      severity: 'stacking',
-      label: 'Stacking up',
-      note: 'Running plans across several apps is what makes one easy to lose track of.',
+      severity: 'assignable',
+      label: 'Worth assigning',
+      note: 'Enough to matter the moment it frees up.',
     }
   }
   return {
-    severity: 'steady',
-    label: 'Manageable',
-    note: "You're on top of it — just watch for due dates landing right before payday.",
+    severity: 'minor',
+    label: 'Minor',
+    note: 'Small enough that timing is the only thing worth watching.',
   }
 }

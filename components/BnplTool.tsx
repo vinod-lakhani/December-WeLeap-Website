@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { AppCta } from '@/components/AppCta'
+import { computeInvestingImpact } from '@/lib/networthImpact/math'
 import { track } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import { PROVIDERS, providerFee, providerNote, FEES_VERIFIED_ON } from '@/lib/bnpl/providers'
@@ -32,6 +33,9 @@ import {
   startOfToday,
   sumBetween,
   verdict,
+  monthlyRunRate,
+  clearsOn,
+  monthsUntilClear,
   DAY_MS,
   type BnplPlan,
   type Cadence,
@@ -44,10 +48,10 @@ const money = (n: number, dp = 0) =>
 
 /** Severity → the token pair used for the verdict banner and the meter. */
 const SEVERITY_STYLE: Record<string, { wash: string; dot: string; bar: string; track: string }> = {
-  steady: { wash: 'bg-brand-50', dot: 'bg-brand-700', bar: 'bg-brand-700', track: 'bg-brand-100' },
-  stacking: { wash: 'bg-amber-50', dot: 'bg-amber-500', bar: 'bg-amber-500', track: 'bg-amber-100' },
-  stretched: { wash: 'bg-orange-50', dot: 'bg-orange-500', bar: 'bg-orange-500', track: 'bg-orange-100' },
-  overloaded: { wash: 'bg-red-50', dot: 'bg-red-500', bar: 'bg-red-500', track: 'bg-red-100' },
+  minor: { wash: 'bg-brand-50', dot: 'bg-brand-700', bar: 'bg-brand-700', track: 'bg-brand-100' },
+  assignable: { wash: 'bg-brand-50', dot: 'bg-brand-700', bar: 'bg-brand-700', track: 'bg-brand-100' },
+  slice: { wash: 'bg-amber-50', dot: 'bg-amber-500', bar: 'bg-amber-500', track: 'bg-amber-100' },
+  crowding: { wash: 'bg-orange-50', dot: 'bg-orange-500', bar: 'bg-orange-500', track: 'bg-orange-100' },
 }
 
 interface Row {
@@ -145,10 +149,19 @@ export function BnplTool() {
     [schedule, onCard, cardApr, today]
   )
 
-  const v = useMemo(
-    () => verdict(claim?.percent ?? null, plans.length, providerCount),
-    [claim, plans.length, providerCount]
+  // The Builder-facing numbers: what this costs a month, when it stops, and
+  // what that monthly amount becomes once it's assignable again. Same shape as
+  // the credit-card tool's Leap — the payoff is the freed payment, not the
+  // balance.
+  const perMonth = useMemo(() => monthlyRunRate(plans), [plans])
+  const clearDate = useMemo(() => clearsOn(schedule), [schedule])
+  const monthsLeft = useMemo(() => monthsUntilClear(schedule, today), [schedule, today])
+  const freedThirtyYear = useMemo(
+    () => (perMonth > 0 ? Math.round(computeInvestingImpact(perMonth, 0.07, 30)) : 0),
+    [perMonth]
   )
+
+  const v = useMemo(() => verdict(claim?.percent ?? null, plans.length), [claim, plans.length])
   const sev = SEVERITY_STYLE[v.severity]
 
   const hasResults = plans.length > 0
@@ -415,9 +428,15 @@ export function BnplTool() {
 
           <Card className="border-hairline bg-white">
             <CardContent className="pt-6">
-              <div className="text-[14px] text-subtle">Still owed across all your plans</div>
+              <div className="text-[14px] text-subtle">
+                Assigned every month to things you&apos;ve already bought
+              </div>
               <div className="mt-1 text-[clamp(2.6rem,6vw,3.4rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-                {money(totalOwed, totalOwed < 1000 ? 2 : 0)}
+                {money(perMonth, perMonth < 1000 ? 2 : 0)}
+                <span className="text-[0.42em] font-semibold tracking-normal text-subtle">/mo</span>
+              </div>
+              <div className="mt-2 text-[14px] text-subtle">
+                {money(totalOwed, totalOwed < 1000 ? 2 : 0)} left in total
               </div>
               <div className="mt-2 text-[13px] text-faint">
                 {plans.length} plan{plans.length === 1 ? '' : 's'} · {providerCount} app
@@ -436,21 +455,22 @@ export function BnplTool() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="border-hairline bg-white">
               <CardContent className="pt-6">
-                <div className="text-[13.5px] text-subtle">Leaving your account in the next 14 days</div>
-                <div className="mt-1 text-[26px] font-extrabold tracking-[-0.02em] text-ink tabular-nums">
-                  {money(in14, 2)}
+                <div className="text-[13.5px] text-subtle">Yours again from</div>
+                <div className="mt-1 text-[26px] font-extrabold tracking-[-0.02em] text-ink">
+                  {clearDate
+                    ? clearDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    : '—'}
                 </div>
                 <div className="mt-1 text-[12.5px] text-faint">
-                  {in14Count > 0
-                    ? `${in14Count} separate autopay pull${in14Count === 1 ? '' : 's'}`
-                    : 'Nothing due in the next two weeks'}
+                  {monthsLeft} more month{monthsLeft === 1 ? '' : 's'} · {money(in14, 2)} of it in
+                  the next 14 days
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-hairline bg-white">
               <CardContent className="pt-6">
-                <div className="text-[13.5px] text-subtle">Of your next paycheck, already claimed</div>
+                <div className="text-[13.5px] text-subtle">Of your next paycheck, already assigned</div>
                 <div className="mt-1 text-[26px] font-extrabold tracking-[-0.02em] text-ink tabular-nums">
                   {claim ? `${Math.round(claim.percent)}%` : '—'}
                 </div>
@@ -462,12 +482,34 @@ export function BnplTool() {
                 </div>
                 <div className="mt-1.5 text-[12.5px] text-faint">
                   {claim
-                    ? `${money(claim.committed, 2)} of ${money(parseFloat(takeHome) || 0)} is promised to pay-later apps${claim.approximate ? ' (add your payday for an exact window)' : ''}`
+                    ? `${money(claim.committed, 2)} of ${money(parseFloat(takeHome) || 0)} is spoken for before it lands${claim.approximate ? ' (add your payday for an exact window)' : ''}`
                     : 'Add your paycheck above to see this'}
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* The Leap. Every other tool ends with one and this had none: it
+              stopped at a debt total. For someone with a surplus the payoff
+              isn't the balance, it's that these plans END — and the monthly
+              amount becomes assignable again. Same framing and the same helper
+              as the credit-card tool's freed payment. */}
+          {freedThirtyYear > 0 && (
+            <div className="rounded-card border-2 border-brand-700 bg-white p-6 md:p-7">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-brand-700">
+                Your Leap — what that {money(perMonth)}/mo is worth once it&apos;s yours
+              </p>
+              <p className="mt-2 text-[clamp(1.9rem,4.4vw,2.6rem)] font-extrabold leading-none tracking-[-0.028em] text-ink tabular-nums">
+                {money(freedThirtyYear)}
+              </p>
+              <p className="mt-2.5 text-[14px] leading-relaxed text-subtle">
+                In {monthsLeft} month{monthsLeft === 1 ? '' : 's'} these plans finish and that{' '}
+                {money(perMonth)} a month stops being spoken for. Invested from then, at 7% a year
+                over 30 years, that&apos;s what it becomes. Left unassigned it just becomes the next
+                thing you buy.
+              </p>
+            </div>
+          )}
 
           {/* 8-week timeline */}
           <Card className="border-hairline bg-white">
@@ -514,28 +556,6 @@ export function BnplTool() {
           <Card className="border-hairline bg-white">
             <CardContent className="space-y-6 pt-6">
               <div className="border-l-[3px] border-brand-700 pl-4">
-                <h3 className="text-[14.5px] font-bold text-ink">If you miss one payment</h3>
-                {fees.worst ? (
-                  <p className="mt-1 text-[14px] leading-relaxed text-subtle">
-                    Miss one on every plan that charges and it&apos;s{' '}
-                    <strong className="text-ink">{money(fees.ifOneMissedEverywhere, 2)}</strong> in fees.
-                    The steepest is <strong className="text-ink">{fees.worst.provider}</strong> —{' '}
-                    {providerNote(fees.worst.provider)} on a {money(fees.worst.installment, 2)} payment,
-                    which is <strong className="text-ink">{Math.round(fees.worst.percentOfInstallment)}%</strong>{' '}
-                    of that payment. Miss it every cycle and you&apos;d be paying the equivalent of{' '}
-                    {Math.round(fees.worst.annualisedEquivalent).toLocaleString()}% a year to defer it.
-                    A 0% plan stops being 0% the moment you slip.
-                  </p>
-                ) : (
-                  <p className="mt-1 text-[14px] leading-relaxed text-subtle">
-                    Your providers don&apos;t charge late fees — but a missed payment can still freeze
-                    your account and go to collections. On-time BNPL payments mostly don&apos;t build
-                    credit; late ones can still hurt it.
-                  </p>
-                )}
-              </div>
-
-              <div className="border-l-[3px] border-brand-700 pl-4">
                 <h3 className="text-[14.5px] font-bold text-ink">Paying these with a credit card?</h3>
                 <div className="mt-2.5 flex flex-wrap items-center gap-2.5 text-[14px] text-subtle">
                   <label className="inline-flex cursor-pointer items-center gap-2">
@@ -573,6 +593,30 @@ export function BnplTool() {
                     'Tick this if your BNPL payments come off a credit card you don’t clear in full.'
                   )}
                 </p>
+              </div>
+
+              {/* Demoted. Late fees were the emotional centre of the original,
+                  which speaks to someone who expects to slip. This audience
+                  mostly pays on time — it's a watch-out, not the headline. */}
+              <div className="border-t border-hairline pt-5">
+                <h3 className="text-[13px] font-bold uppercase tracking-[0.07em] text-faint">
+                  If a payment does slip
+                </h3>
+                {fees.worst ? (
+                  <p className="mt-2 text-[13.5px] leading-relaxed text-subtle">
+                    One missed payment on each plan that charges is{' '}
+                    {money(fees.ifOneMissedEverywhere, 2)}. The steepest is {fees.worst.provider} —{' '}
+                    {providerNote(fees.worst.provider)} on a {money(fees.worst.installment, 2)}{' '}
+                    payment, {Math.round(fees.worst.percentOfInstallment)}% of it. That is the point
+                    a 0% plan stops being 0%.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-[13.5px] leading-relaxed text-subtle">
+                    Your providers don&apos;t charge late fees — though a missed payment can still
+                    freeze the account. On-time payments mostly don&apos;t build credit; late ones
+                    can still hurt it.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
