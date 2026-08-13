@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
@@ -20,6 +19,7 @@ import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
 import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
+import { AppCta } from '@/components/AppCta';
 
 export interface AllocatorPrefillFromUrl {
   salaryAnnual: number;
@@ -96,11 +96,6 @@ function AllocatorContent() {
   const [hsaCoverageType, setHsaCoverageType] = useState<'single' | 'family'>('single');
   const prevNextLeapIdRef = useRef<string | null>(null);
   const leapStackRenderedTrackedRef = useRef(false);
-  const [earlyAccessModalOpen, setEarlyAccessModalOpen] = useState(false);
-  const [earlyAccessEmail, setEarlyAccessEmail] = useState('');
-  const [earlyAccessSubmitting, setEarlyAccessSubmitting] = useState(false);
-  const [earlyAccessError, setEarlyAccessError] = useState<string | null>(null);
-  const [earlyAccessSuccess, setEarlyAccessSuccess] = useState(false);
   const [actionIntent, setActionIntent] = useState<boolean | null>(null);
 
   const prefillFromUrl = useMemo(() => searchParams ? parsePrefillFromSearchParams(searchParams) : null, [searchParams]);
@@ -205,11 +200,6 @@ function AllocatorContent() {
       stateCode: prefill.state,
     });
   }, [prefill?.salaryAnnual, prefill?.state, effectiveTarget401kPct, prefill?.currentHsaAnnual, unlockData?.currentHsaAnnual]);
-
-  const monthlyCapitalAvailable = useMemo(() => {
-    const essentials = unlockData?.essentialMonthly ?? 0;
-    return Math.max(0, netTakeHomeMonthly - essentials);
-  }, [netTakeHomeMonthly, unlockData?.essentialMonthly]);
 
   const monthlyCapitalAtTarget401k = useMemo(() => {
     const essentials = unlockData?.essentialMonthly ?? 0;
@@ -333,91 +323,6 @@ function AllocatorContent() {
     return '';
   }, [nextLeapTitle, prefill?.current401kPct, prefill?.recommended401kPct, primaryResult]);
 
-  const handleMvpApplyClick = useCallback(() => {
-    track('mvp_apply_clicked', {});
-    track('early_access_modal_viewed', {});
-    setEarlyAccessError(null);
-    setEarlyAccessModalOpen(true);
-  }, []);
-
-  const handleEarlyAccessSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      setEarlyAccessError(null);
-      if (!earlyAccessEmail.trim() || !earlyAccessEmail.includes('@')) {
-        setEarlyAccessError('Please enter a valid email address.');
-        return;
-      }
-      setEarlyAccessSubmitting(true);
-      try {
-        const res = await fetch('/api/early-access-lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: earlyAccessEmail.trim(),
-            source: 'leap_stack',
-            referrer: typeof document !== 'undefined' ? document.referrer || '' : '',
-            salaryAnnual: prefill?.salaryAnnual,
-            state: prefill?.state,
-            employerMatchEnabled: prefill?.employerMatchEnabled,
-            matchPct: prefill?.employerMatchPct,
-            current401kPct: prefill?.current401kPct,
-            recommended401kPct: prefill?.recommended401kPct,
-            essentialsMonthly: unlockData?.essentialMonthly,
-            carriesBalance: unlockData?.carriesBalance,
-            debtAprRange: unlockData?.debtAprRange,
-            debtBalance: unlockData?.debtBalance,
-            retirementFocus: unlockData?.retirementFocus,
-            nextLeapTitle: nextMoveForEmail,
-            impactAtYear30: impact401kAtYear30 ?? undefined,
-            annualContributionIncrease: annualContributionIncrease401k ?? undefined,
-            costOfDelay12Mo: costOfDelay12Mo ?? undefined,
-            actionIntent: actionIntent ?? undefined,
-            leapTitles: leaps.map((l) => l.title),
-          }),
-        });
-        let data: { error?: string };
-        try {
-          data = await res.json();
-        } catch {
-          throw new Error(res.ok ? 'Invalid response' : 'Something went wrong. Please try again.');
-        }
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to submit');
-        }
-        track('plan_saved_or_waitlist_joined', { source: 'leap_stack' });
-        track('early_access_submitted', {
-          source: 'leap_stack',
-          actionIntent: actionIntent ?? undefined,
-          nextLeapTitle: nextMoveForEmail,
-          impactAtYear30: impact401kAtYear30 ?? undefined,
-        });
-        track('early_access_email_send_success', {});
-        setEarlyAccessSuccess(true);
-      } catch (err) {
-        const raw = err instanceof Error ? err.message : 'Something went wrong';
-        const message =
-          raw.toLowerCase().includes('fetch failed') || raw.toLowerCase().includes('network')
-            ? 'Network error. Please check your connection and try again.'
-            : raw;
-        setEarlyAccessError(message);
-        track('early_access_email_send_failed', { error: message });
-      } finally {
-        setEarlyAccessSubmitting(false);
-      }
-    },
-    [
-      earlyAccessEmail,
-      actionIntent,
-      prefill,
-      unlockData,
-      leaps,
-      nextMoveForEmail,
-      impact401kAtYear30,
-      costOfDelay12Mo,
-    ]
-  );
-
   const intent = prefill?.intent ?? null;
   const showBanner = !!prefill && !!intent;
 
@@ -469,17 +374,27 @@ function AllocatorContent() {
                     </p>
                   </div>
                   <div>
+                    {/* Shows take-home at the TARGET 401(k), because that is what the
+                        routing below actually spends. It previously showed take-home at
+                        the CURRENT rate while the summary routed the target — two correct
+                        numbers describing different scenarios on one screen, which read as
+                        a $100 arithmetic error to anyone who subtracted essentials from
+                        this figure. Raising the contribution genuinely lowers take-home, so
+                        the drop is stated rather than hidden. */}
                     <Label className="text-[#111827]">Estimated take-home (monthly)</Label>
                     <p className="text-lg font-medium text-[#111827]">
-                      {netTakeHomeMonthly > 0
-                        ? `$${Math.round(netTakeHomeMonthly).toLocaleString()}`
+                      {netTakeHomeAtTarget401k > 0
+                        ? `$${Math.round(netTakeHomeAtTarget401k).toLocaleString()}`
                         : prefill.estimatedNetMonthlyIncome != null
                           ? `$${Math.round(prefill.estimatedNetMonthlyIncome).toLocaleString()}`
                           : '—'}
                     </p>
-                    {netTakeHomeMonthly > 0 && (
+                    {netTakeHomeAtTarget401k > 0 && (
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Recalculated from your 401(k) and HSA. Updates when you change contributions.
+                        At your {formatPct(prefill.recommended401kPct)} 401(k) target
+                        {netTakeHomeMonthly > netTakeHomeAtTarget401k
+                          ? ` — $${Math.round(netTakeHomeMonthly - netTakeHomeAtTarget401k).toLocaleString()} less than today, because more of your pay goes in pre-tax.`
+                          : '.'}
                       </p>
                     )}
                   </div>
@@ -739,85 +654,38 @@ function AllocatorContent() {
                           <p className="text-sm text-gray-600">
                             Right now, this is just a recommendation. We can turn it into execution.
                           </p>
-                          <Button
-                            onClick={handleMvpApplyClick}
-                            className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                          >
-                            Put this on autopilot →
-                          </Button>
-                          <p className="text-xs text-gray-500">
-                            We&apos;ll recalculate when income or expenses change.
-                          </p>
+                          {/* Was an email capture promising "launching the MVP in ~2
+                              weeks" — a waitlist for an app that is already live, and the
+                              one place on the site with the deepest intent was firing
+                              mvp_apply_clicked instead of the shared funnel event. */}
+                          <AppCta
+                            tool="allocator"
+                            prefill={{
+                              salary: prefill ? Math.round(prefill.salaryAnnual) : undefined,
+                              state: prefill?.state,
+                              recommended_401k_pct: prefill?.recommended401kPct,
+                            }}
+                            headline="Put this on autopilot."
+                            body="We'll recalculate when your income or expenses change, and tell you when the next move is worth making."
+                            bullets={[
+                              'This plan carried over, so you start where you left off',
+                              'Your buffer, debt and retirement tracked as the balances actually move',
+                              'A weekly focus, so the next move is never the thing you forgot',
+                            ]}
+                            image={{
+                              src: '/images/product/setup-checklist.png',
+                              alt: 'WeLeap setup checklist showing a plan being built',
+                              width: 1720,
+                              height: 680,
+                            }}
+                            buttonLabel="Put this on autopilot →"
+                          />
                         </div>
                       }
                     />
                   </CardContent>
                 </Card>
 
-                <Dialog open={earlyAccessModalOpen} onOpenChange={setEarlyAccessModalOpen}>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="text-[#111827]">Execution is coming.</DialogTitle>
-                    </DialogHeader>
-                    {!earlyAccessSuccess ? (
-                      <form onSubmit={handleEarlyAccessSubmit} className="space-y-3">
-                        <p className="text-sm text-gray-600">
-                          We’re launching the MVP in ~2 weeks. Enter your email to get early access and apply this plan.
-                        </p>
-                        <Label htmlFor="allocator-early-access-email" className="text-[#111827]">
-                          Email
-                        </Label>
-                        <Input
-                          id="allocator-early-access-email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={earlyAccessEmail}
-                          onChange={(e) => setEarlyAccessEmail(e.target.value)}
-                          className="border-[#D1D5DB]"
-                        />
-                        {prefill?.employerMatchEnabled && prefill?.recommended401kPct != null && (
-                          <label className="flex items-start gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={actionIntent === true}
-                              onChange={(e) => setActionIntent(e.target.checked)}
-                              className="mt-1 accent-[#3F6B42]"
-                            />
-                            <span className="text-sm text-[#111827]">
-                              I would increase my 401(k) to {formatPct(prefill.recommended401kPct)} if this were automated.
-                            </span>
-                          </label>
-                        )}
-                        {earlyAccessError && (
-                          <p className="text-sm text-red-600">{earlyAccessError}</p>
-                        )}
-                        <Button
-                          type="submit"
-                          disabled={earlyAccessSubmitting}
-                          className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                        >
-                          {earlyAccessSubmitting ? 'Submitting...' : 'Get early access'}
-                        </Button>
-                      </form>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-[#111827] font-medium">You’re on the early access list.</p>
-                        <p className="text-sm text-gray-600">
-                          We’ll email you when execution goes live.
-                        </p>
-                        <Button
-                          onClick={() => {
-                            setEarlyAccessModalOpen(false);
-                            handleStackComplete();
-                          }}
-                          className="w-full bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                        >
-                          Done
-                        </Button>
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
               </>
             )}
           </div>
