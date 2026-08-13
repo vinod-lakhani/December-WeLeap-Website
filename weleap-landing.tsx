@@ -911,9 +911,18 @@ function Tools() {
         {/* Leads with the three present-day decisions. From the C2 session:
             "offer is present-day, retirement is hypothetical… I'd have seen the
             first two and stopped exploring." The rest live on /tools. */}
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Five present-day tools now. A four-column grid would leave the
+            fifth stranded on its own row, so this centres the trailing row the
+            way /tools does — 3 + 2 reads better than 4 + 1, and the layout
+            survives the count changing again. */}
+        <div className="mt-14 flex flex-wrap justify-center gap-5">
           {PRESENT_DAY_TOOLS.map((t) => (
-            <ToolCard key={t.href} tool={t} surface="homepage" background="canvas" headingLevel="h3" />
+            <div
+              key={t.href}
+              className="flex basis-full sm:basis-[calc(50%-10px)] lg:basis-[calc(33.333%-13.34px)]"
+            >
+              <ToolCard tool={t} surface="homepage" background="canvas" headingLevel="h3" />
+            </div>
           ))}
         </div>
 

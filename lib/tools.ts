@@ -90,9 +90,11 @@ export const FREE_TOOLS: FreeTool[] = [
     // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
     // rate and then handed off to /allocator for everything else. The
     // allocator can now start from nothing, so the two are one tool and this
-    // points at the full thing. presentDay stays false only because the
-    // homepage grid is three-up; flipping it is a one-line change once that
-    // grid takes four.
+    // points at the full thing.
+    //
+    // Present-day despite sounding like planning: it opens on "you are leaving
+    // $3,400 a year of your employer's money behind", which is a thing that is
+    // true today, not a projection.
     name: "Money Plan",
     question: "What should my money do, and in what order?",
     blurb: "Match, safety buffer, debt, retirement — and the single move worth making first.",
@@ -100,7 +102,7 @@ export const FREE_TOOLS: FreeTool[] = [
     href: "/allocator",
     icon: "/images/tool-icons/rocket.png",
     slug: "allocator",
-    presentDay: false,
+    presentDay: true,
   },
   {
     name: "Net Worth Impact",
