@@ -38,12 +38,16 @@ const nextConfig = {
       },
       {
         // The Leap Impact Simulator was the 401(k) wedge in front of the
-        // allocator, which can now collect those inputs itself. Temporary
-        // rather than permanent so this stays reversible — make it permanent
-        // once the merged flow has proven itself.
+        // allocator, which now collects those inputs itself. Permanent so
+        // search consolidates onto /allocator rather than splitting ranking
+        // across two URLs for one tool.
+        //
+        // Note if this ever needs undoing: 308s are cached hard by browsers,
+        // so anyone who has hit this path will keep being redirected until
+        // their cache clears, regardless of what the server says.
         source: '/leap-impact-simulator',
         destination: '/allocator',
-        permanent: false,
+        permanent: true,
       },
     ]
   },
