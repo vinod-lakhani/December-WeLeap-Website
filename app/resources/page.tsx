@@ -1,6 +1,7 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
+import { TOOL_COUNT_WORD } from "@/lib/tools"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditCard, Wallet } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
@@ -236,7 +237,7 @@ export default function ResourcesPage() {
                 Free · No signup
               </div>
               <h2 className="mb-2 text-balance text-[clamp(1.5rem,2.4vw,2rem)] font-extrabold leading-tight tracking-[-0.025em] text-ink">
-                Six calculators for the decision in front of you.
+                {TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)} calculators for the decision in front of you.
               </h2>
               <p className="max-w-xl text-[16px] leading-relaxed text-subtle">
                 Rent, offer letters, credit-card payoff, emergency fund and more — each answers one real question in

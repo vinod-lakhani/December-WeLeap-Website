@@ -36,6 +36,12 @@ const nextConfig = {
         destination: '/how-much-rent-can-i-afford',
         permanent: false,
       },
+      {
+        // Aimed at social, where the URL gets read off a screenshot.
+        source: '/pay-now-or-later',
+        destination: '/smart-purchase-check',
+        permanent: false,
+      },
     ]
   },
 
