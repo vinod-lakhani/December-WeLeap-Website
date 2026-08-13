@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { PageShell, Section, Container } from '@/components/layout';
+import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -327,34 +327,36 @@ function AllocatorContent() {
   const showBanner = !!prefill && !!intent;
 
   return (
-    <PageShell>
-      <Section variant="white" className="pt-28 md:pt-36 pb-8">
+    <PageShell className="bg-canvas">
+      <Section variant="canvas" className="pt-28 md:pt-36 pb-8">
         <Container maxWidth="narrow">
           {showBanner && (
             <div
               className={cn(
                 'rounded-xl border p-4 md:p-5 mb-8',
                 intent === 'lock_plan'
-                  ? 'bg-primary-50 border-primary-200'
-                  : 'bg-gray-50 border-gray-200'
+                  ? 'bg-brand-50 border-brand-100'
+                  : 'bg-canvas border-hairline'
               )}
             >
               {intent === 'lock_plan' ? (
                 <>
-                  <p className="font-semibold text-[#111827]">Your first Leap is locked: 401(k) match update</p>
-                  <p className="text-gray-600 mt-1">Now let’s finish your plan.</p>
+                  <p className="font-semibold text-ink">Your first Leap is locked: 401(k) match update</p>
+                  <p className="text-subtle mt-1">Now let’s finish your plan.</p>
                 </>
               ) : (
                 <>
-                  <p className="font-semibold text-[#111827]">Let’s finish your full plan.</p>
-                  <p className="text-gray-600 mt-1">Takes ~2 minutes.</p>
+                  <p className="font-semibold text-ink">Let’s finish your full plan.</p>
+                  <p className="text-subtle mt-1">Takes ~2 minutes.</p>
                 </>
               )}
             </div>
           )}
 
-          <h1 className={cn(TYPOGRAPHY.h1, 'text-[#111827] mb-2')}>Here&apos;s how your money should flow</h1>
-          <p className={cn(TYPOGRAPHY.body, 'text-gray-600 mb-8')}>
+          <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink mb-3">
+            Here&apos;s how your money should flow
+          </h1>
+          <p className={cn(TYPOGRAPHY.body, 'text-subtle leading-relaxed mb-8')}>
             {prefill
               ? 'Complete your money plan. We’ve prefilled what we know from your Leap Impact result.'
               : 'Complete your money plan. Enter your details below.'}
@@ -691,14 +693,16 @@ function AllocatorContent() {
           </div>
         </Container>
       </Section>
+
+      <SiteFooter />
     </PageShell>
   );
 }
 
 function AllocatorFallback() {
   return (
-    <PageShell>
-      <Section variant="white" className="pt-28 md:pt-36 pb-8">
+    <PageShell className="bg-canvas">
+      <Section variant="canvas" className="pt-28 md:pt-36 pb-8">
         <Container maxWidth="narrow">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-3/4" />
@@ -708,6 +712,8 @@ function AllocatorFallback() {
           </div>
         </Container>
       </Section>
+
+      <SiteFooter />
     </PageShell>
   );
 }
