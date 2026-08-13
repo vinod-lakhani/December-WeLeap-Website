@@ -60,13 +60,19 @@ interface Row {
 }
 
 let seq = 0
-const blankRow = (offsetDays = 7): Row => ({
+/**
+ * A blank row carries no date. The prototype pre-filled "today + 7", which
+ * renders exactly like a date the user picked — so the form couldn't be read
+ * as "here's what I told you" versus "here's what we guessed". Left empty, the
+ * schedule falls back to +7 days and the results say so out loud.
+ */
+const blankRow = (): Row => ({
   id: `r${++seq}`,
   provider: PROVIDERS[0].name,
   amount: '',
-  installmentsLeft: '3',
+  installmentsLeft: '',
   cadence: '14',
-  nextDue: localISODate(offsetDays),
+  nextDue: '',
 })
 
 export function BnplTool() {
@@ -74,6 +80,9 @@ export function BnplTool() {
   // first-time visitor saw invented numbers presented as their own — and every
   // pageview counted as an engaged session. "See an example" is opt-in instead.
   const [rows, setRows] = useState<Row[]>([blankRow()])
+  // Example figures are only safe if they can never be mistaken for the
+  // user's own. This drives a banner and a one-click reset.
+  const [isExample, setIsExample] = useState(false)
   const [takeHome, setTakeHome] = useState('')
   const [payFreq, setPayFreq] = useState('14')
   const [payDate, setPayDate] = useState('')
@@ -93,11 +102,14 @@ export function BnplTool() {
           id: r.id,
           provider: r.provider,
           amount: parseFloat(r.amount) || 0,
-          installmentsLeft: Math.max(1, parseInt(r.installmentsLeft) || 1),
+          installmentsLeft: parseInt(r.installmentsLeft) || 0,
           cadence: (parseInt(r.cadence) || 14) as Cadence,
           nextDue: parseDateInput(r.nextDue),
         }))
-        .filter((p) => p.amount > 0),
+        // Both numbers have to come from the user. Defaulting the count to 3
+        // moved the total by a third on a value nobody had entered, which is
+        // exactly the "is this mine or yours?" problem the blank date fixed.
+        .filter((p) => p.amount > 0 && p.installmentsLeft > 0),
     [rows]
   )
 
@@ -140,6 +152,9 @@ export function BnplTool() {
   const sev = SEVERITY_STYLE[v.severity]
 
   const hasResults = plans.length > 0
+  // Any plan without a date has its schedule guessed at +7 days. The number is
+  // only honest if the guess is visible.
+  const assumedDates = plans.filter((p) => p.nextDue === null).length
 
   useEffect(() => {
     if (hasResults && !resultsSeen.current) {
@@ -175,11 +190,23 @@ export function BnplTool() {
   const loadExample = () => {
     seq = 0
     setRows([
-      { ...blankRow(3), provider: 'Klarna', amount: '34.50', installmentsLeft: '3', cadence: '14' },
-      { ...blankRow(5), provider: 'Afterpay', amount: '22', installmentsLeft: '2', cadence: '14' },
-      { ...blankRow(12), provider: 'Affirm', amount: '48', installmentsLeft: '4', cadence: '30' },
+      { ...blankRow(), provider: 'Klarna', amount: '34.50', installmentsLeft: '3', cadence: '14', nextDue: localISODate(3) },
+      { ...blankRow(), provider: 'Afterpay', amount: '22', installmentsLeft: '2', cadence: '14', nextDue: localISODate(5) },
+      { ...blankRow(), provider: 'Affirm', amount: '48', installmentsLeft: '4', cadence: '30', nextDue: localISODate(12) },
     ])
+    setIsExample(true)
     track('bnpl_example_loaded', { page: PAGE })
+  }
+
+  const clearAll = () => {
+    seq = 0
+    setRows([blankRow()])
+    setIsExample(false)
+    setTakeHome('')
+    setPayDate('')
+    setOnCard(false)
+    resultsSeen.current = false
+    track('bnpl_example_cleared', { page: PAGE })
   }
 
   return (
@@ -189,8 +216,27 @@ export function BnplTool() {
         <CardContent className="pt-6">
           <h2 className="text-[17px] font-extrabold tracking-[-0.015em] text-ink">Your active plans</h2>
           <p className="mt-1 text-[13.5px] text-subtle">
-            One row per purchase you&apos;re still paying off. Rough guesses are fine.
+            One row per purchase you&apos;re still paying off. Tell us what you pay and how
+            many are left — leave the date blank and we&apos;ll assume next week, and say so.
           </p>
+
+          {/* Without this, example figures become indistinguishable from the
+              user's own the moment they load — which is the whole problem the
+              empty default was meant to avoid. */}
+          {isExample && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-[13.5px] font-semibold text-amber-900">
+                These are example numbers, not yours. Edit them, or start fresh.
+              </p>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="shrink-0 rounded-full border border-amber-300 bg-white px-4 py-1.5 text-[13px] font-bold text-amber-900 transition hover:bg-amber-100"
+              >
+                Clear and enter mine
+              </button>
+            </div>
+          )}
 
           <div className="mt-5 space-y-4">
             {rows.map((r, idx) => (
@@ -230,10 +276,10 @@ export function BnplTool() {
                       min="0"
                       step="0.01"
                       inputMode="decimal"
-                      placeholder="35"
+                      placeholder="e.g. 35"
                       value={r.amount}
                       onChange={(e) => update(r.id, { amount: e.target.value })}
-                      className="mt-1 border-hairline"
+                      className="mt-1 border-hairline placeholder:text-faint"
                     />
                   </div>
                   <div>
@@ -243,9 +289,10 @@ export function BnplTool() {
                       min="1"
                       max="36"
                       inputMode="numeric"
+                      placeholder="e.g. 3"
                       value={r.installmentsLeft}
                       onChange={(e) => update(r.id, { installmentsLeft: e.target.value })}
-                      className="mt-1 border-hairline"
+                      className="mt-1 border-hairline placeholder:text-faint"
                     />
                   </div>
                   <div>
@@ -261,12 +308,17 @@ export function BnplTool() {
                     </select>
                   </div>
                   <div className="sm:col-span-2 lg:col-span-2">
-                    <Label className="text-[12.5px] font-semibold text-ink">Next payment due</Label>
+                    <Label className="text-[12.5px] font-semibold text-ink">
+                      Next payment due{' '}
+                      <span className="font-normal text-faint">
+                        {r.nextDue ? '' : '— blank means next week'}
+                      </span>
+                    </Label>
                     <Input
                       type="date"
                       value={r.nextDue}
                       onChange={(e) => update(r.id, { nextDue: e.target.value })}
-                      className="mt-1 border-hairline"
+                      className="mt-1 border-hairline placeholder:text-faint"
                     />
                   </div>
                 </div>
@@ -277,7 +329,7 @@ export function BnplTool() {
           <div className="mt-4 flex flex-wrap gap-2.5">
             <button
               type="button"
-              onClick={() => setRows((rs) => [...rs, blankRow(7)])}
+              onClick={() => setRows((rs) => [...rs, blankRow()])}
               className="rounded-full border border-dashed border-brand-200 px-5 py-2.5 text-[14px] font-bold text-brand-700 transition hover:bg-brand-700/5"
             >
               + Add another plan
@@ -313,10 +365,10 @@ export function BnplTool() {
                 min="0"
                 step="50"
                 inputMode="decimal"
-                placeholder="2,100"
+                placeholder="e.g. 2,100"
                 value={takeHome}
                 onChange={(e) => setTakeHome(e.target.value)}
-                className="mt-1 border-hairline"
+                className="mt-1 border-hairline placeholder:text-faint"
               />
             </div>
             <div>
@@ -338,7 +390,7 @@ export function BnplTool() {
                 type="date"
                 value={payDate}
                 onChange={(e) => setPayDate(e.target.value)}
-                className="mt-1 border-hairline"
+                className="mt-1 border-hairline placeholder:text-faint"
               />
             </div>
           </div>
@@ -348,6 +400,12 @@ export function BnplTool() {
       {/* ── results ───────────────────────────────────────────── */}
       {hasResults && (
         <>
+          {isExample && (
+            <p className="rounded-card border border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-[13px] font-semibold text-amber-900">
+              Example numbers — these results aren&apos;t yours yet.
+            </p>
+          )}
+
           <div className={cn('flex items-start gap-3 rounded-card border border-hairline p-4', sev.wash)}>
             <span className={cn('mt-[7px] h-2.5 w-2.5 shrink-0 rounded-full', sev.dot)} />
             <p className="text-[15px] font-bold text-ink">
@@ -366,6 +424,12 @@ export function BnplTool() {
                 {providerCount === 1 ? '' : 's'} · {schedule.length} payment
                 {schedule.length === 1 ? '' : 's'} still to go
               </div>
+              {assumedDates > 0 && (
+                <p className="mt-2 text-[12.5px] text-faint">
+                  Dates assumed for {assumedDates} plan{assumedDates === 1 ? '' : 's'} (next
+                  payment in 7 days). Add the real dates to see the timing properly.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -491,7 +555,7 @@ export function BnplTool() {
                     inputMode="decimal"
                     value={cardApr}
                     onChange={(e) => setCardApr(e.target.value)}
-                    className="h-9 w-24 border-hairline"
+                    className="h-9 w-24 border-hairline placeholder:text-faint"
                   />
                   <span>% APR</span>
                 </div>
