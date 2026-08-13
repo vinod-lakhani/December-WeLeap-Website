@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "./components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { cn } from "@/lib/utils"
-import { PRESENT_DAY_TOOLS } from "@/lib/tools"
+import { PRESENT_DAY_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
 
 /* ============================================================================
@@ -911,7 +911,7 @@ function Tools() {
         {/* Leads with the three present-day decisions. From the C2 session:
             "offer is present-day, retirement is hypothetical… I'd have seen the
             first two and stopped exploring." The rest live on /tools. */}
-        <div className="mt-14 grid gap-5 md:grid-cols-3">
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {PRESENT_DAY_TOOLS.map((t) => (
             <ToolCard key={t.href} tool={t} surface="homepage" background="canvas" headingLevel="h3" />
           ))}
@@ -922,7 +922,7 @@ function Tools() {
             href="/tools"
             className="inline-flex items-center gap-2 rounded-full border border-brand-100 px-7 py-3.5 text-[16px] font-bold text-brand-700 transition hover:bg-brand-700/5"
           >
-            See all six tools →
+            See all {TOOL_COUNT_WORD} tools →
           </Link>
         </div>
       </Container>
