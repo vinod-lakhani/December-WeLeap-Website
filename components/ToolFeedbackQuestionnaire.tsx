@@ -72,7 +72,10 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
         <CardContent className="py-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-[#111827] mr-2">{question}</span>
-            <div className="flex gap-2">
+            {/* The outer row wraps but this inner group did not, so the three
+                buttons ran 35px past a 375px viewport and were clipped by the
+                shell's overflow-x-hidden. Only the allocator uses this variant. */}
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={selectedFeedback === 'yes' ? 'default' : 'outline'}
                 size="sm"
