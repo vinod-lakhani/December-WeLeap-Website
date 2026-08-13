@@ -6,12 +6,11 @@ import { FREE_TOOLS } from '@/lib/tools'
  * tools that are the top of the funnel — relied on being crawled by luck.
  *
  * Tools are pulled from FREE_TOOLS so a new one is listed the moment it is
- * registered, rather than depending on someone remembering this file.
+ * registered, rather than depending on someone remembering this file. That is
+ * also how /allocator gets listed — it is a registered tool now, not a special
+ * case.
  *
  * Deliberately excluded:
- *  - /allocator. It needs salary and state as prefill; arriving cold it cannot
- *    compute a capital figure or an allocation split, so it would be a poor
- *    landing page. List it once it can start from nothing.
  *  - /join, /early-access, /mvp-access, /sms-notifications — campaign and
  *    flow-entry pages, not destinations we want ranked.
  */

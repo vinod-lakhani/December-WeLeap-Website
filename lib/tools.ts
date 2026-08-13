@@ -77,13 +77,19 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: false,
   },
   {
-    name: "Leap Impact Simulator",
-    question: "What would one change actually do?",
-    blurb: "Pick a single move and watch it play out over thirty years.",
-    cta: "See what one move does →",
-    href: "/leap-impact-simulator",
+    // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
+    // rate and then handed off to /allocator for everything else. The
+    // allocator can now start from nothing, so the two are one tool and this
+    // points at the full thing. presentDay stays false only because the
+    // homepage grid is three-up; flipping it is a one-line change once that
+    // grid takes four.
+    name: "Money Plan",
+    question: "What should my money do, and in what order?",
+    blurb: "Match, safety buffer, debt, retirement — and the single move worth making first.",
+    cta: "Build my plan →",
+    href: "/allocator",
     icon: "/images/tool-icons/rocket.png",
-    slug: "leap_impact",
+    slug: "allocator",
     presentDay: false,
   },
   {

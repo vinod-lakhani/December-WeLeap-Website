@@ -36,6 +36,15 @@ const nextConfig = {
         destination: '/how-much-rent-can-i-afford',
         permanent: false,
       },
+      {
+        // The Leap Impact Simulator was the 401(k) wedge in front of the
+        // allocator, which can now collect those inputs itself. Temporary
+        // rather than permanent so this stays reversible — make it permanent
+        // once the merged flow has proven itself.
+        source: '/leap-impact-simulator',
+        destination: '/allocator',
+        permanent: false,
+      },
     ]
   },
 

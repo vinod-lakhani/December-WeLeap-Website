@@ -16,6 +16,10 @@ import { computeAnnualContributionIncrease401k, estimateHsaImpact30yr } from '@/
 import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
+import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
+import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
+import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
+import { US_STATES } from '@/lib/states';
 import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
@@ -97,6 +101,18 @@ function AllocatorContent() {
   const prevNextLeapIdRef = useRef<string | null>(null);
   const leapStackRenderedTrackedRef = useRef(false);
   const [actionIntent, setActionIntent] = useState<boolean | null>(null);
+
+  // Cold-start wedge. The allocator used to require prefill from the Leap
+  // simulator, so arriving directly gave a plan with no capital figure and an
+  // empty split. These collect the same four things that simulator asked for,
+  // so the page can start from nothing.
+  const [wSalary, setWSalary] = useState('');
+  const [wState, setWState] = useState('');
+  const [wCurrent401k, setWCurrent401k] = useState('0');
+  const [wHasMatch, setWHasMatch] = useState<boolean | null>(null);
+  const [wMatchCap, setWMatchCap] = useState('5');
+  const [wMatchRate, setWMatchRate] = useState('100');
+  const [wError, setWError] = useState<string | null>(null);
 
   const prefillFromUrl = useMemo(() => searchParams ? parsePrefillFromSearchParams(searchParams) : null, [searchParams]);
 
@@ -223,7 +239,9 @@ function AllocatorContent() {
   }, [leaps.length, nextLeapId]);
 
   useEffect(() => {
-    if (currentStep === 4 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
+    // Was `currentStep === 4`, but STACK_STEPS has four entries so the index
+    // caps at 3 — none of these summary events had ever fired.
+    if (currentStep === STACK_STEPS.length - 1 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
       leapStackRenderedTrackedRef.current = true;
       // Wait for gtag so Summary view events reach GA4
       track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' }, true);
@@ -236,6 +254,70 @@ function AllocatorContent() {
       track('leap_stack_summary_viewed', { numLeaps: leaps.length }, true);
     }
   }, [currentStep, leaps.length, hasUnlockData, nextLeapId, unlockData?.carriesBalance, unlockData?.retirementFocus]);
+
+  /**
+   * Turn the wedge answers into the same prefill object the URL params build,
+   * so everything downstream is identical whether you arrived from the Leap
+   * simulator or straight off a search result. recommended401kPct, the 30-year
+   * delta and the cost of delay all come from the same lib the simulator used —
+   * this is a new front door onto the existing engine, not a second engine.
+   */
+  const handleWedgeSubmit = useCallback(() => {
+    const salary = parseFloat(wSalary);
+    if (!salary || salary <= 0) { setWError('Enter your annual salary.'); return; }
+    if (!wState) { setWError('Pick your state so we can estimate tax.'); return; }
+    if (wHasMatch === null) { setWError('Let us know whether your employer matches.'); return; }
+    setWError(null);
+
+    const current401k = Math.max(0, parseFloat(wCurrent401k) || 0);
+    const matchCap = wHasMatch ? Math.max(0, parseFloat(wMatchCap) || 0) : 0;
+    const matchRate = wHasMatch ? Math.max(0, parseFloat(wMatchRate) || 100) : 0;
+
+    const leap = getRecommendedLeap(wHasMatch, matchCap, current401k, salary);
+    const traj = runTrajectory({
+      grossAnnual: salary,
+      current401kPct: current401k,
+      optimized401kPct: leap.optimized401kPct,
+      matchPct: matchCap,
+      matchRatePct: matchRate,
+      hasEmployerMatch: wHasMatch,
+      realReturn: REAL_RETURN_DEFAULT,
+      years: 30,
+    });
+    const delay = costOfDelay({
+      grossAnnual: salary,
+      current401kPct: current401k,
+      optimized401kPct: leap.optimized401kPct,
+      matchPct: matchCap,
+      matchRatePct: matchRate,
+      hasEmployerMatch: wHasMatch,
+      realReturn: REAL_RETURN_DEFAULT,
+      years: 30,
+    }, 12);
+
+    setPrefill({
+      salaryAnnual: salary,
+      state: wState,
+      payFrequency: 'monthly',
+      employerMatchEnabled: wHasMatch,
+      employerMatchPct: matchCap,
+      matchRatePct: matchRate,
+      matchCapPct: matchCap,
+      current401kPct: current401k,
+      recommended401kPct: leap.optimized401kPct,
+      estimatedNetMonthlyIncome: computeNetTakeHomeMonthly({
+        salaryAnnual: salary,
+        employee401kPct: leap.optimized401kPct,
+        currentHsaAnnual: 0,
+        stateCode: wState,
+      }),
+      leapDelta30yr: traj.delta30yr,
+      costOfDelay12Mo: delay,
+      intent: 'unlock_full_stack',
+      source: 'allocator_direct',
+    });
+    track('allocator_wedge_completed', { salary: Math.round(salary / 10000) * 10000, state: wState, hasMatch: wHasMatch });
+  }, [wSalary, wState, wCurrent401k, wHasMatch, wMatchCap, wMatchRate]);
 
   const stepToSpecName: Record<string, string> = {
     emergency_fund: 'safety',
@@ -412,6 +494,139 @@ function AllocatorContent() {
             </Card>
           )}
 
+          {/* Cold start. Everything below needs salary and state to compute a
+              capital figure or an allocation split, so we ask for them first
+              rather than rendering a plan full of blanks. Skipped entirely when
+              the Leap simulator has already sent them through the URL. */}
+          {!prefill && (
+            <Card className="border-[#D1D5DB] bg-white">
+              <CardHeader>
+                <CardTitle className="text-lg text-[#111827]">Start with your income</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="w-salary" className="text-[#111827]">Annual salary (USD)</Label>
+                    <Input
+                      id="w-salary"
+                      type="number"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="e.g. 85000"
+                      value={wSalary}
+                      onChange={(e) => setWSalary(e.target.value)}
+                      className="mt-1 border-[#D1D5DB] placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="w-state" className="text-[#111827]">State</Label>
+                    <select
+                      id="w-state"
+                      value={wState}
+                      onChange={(e) => setWState(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827]"
+                    >
+                      <option value="">Select state</option>
+                      {US_STATES.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="w-current" className="text-[#111827]">
+                    Your current 401(k) contribution (% of salary)
+                  </Label>
+                  <Input
+                    id="w-current"
+                    type="number"
+                    min="0"
+                    max="100"
+                    inputMode="decimal"
+                    value={wCurrent401k}
+                    onChange={(e) => setWCurrent401k(e.target.value)}
+                    className="mt-1 w-32 border-[#D1D5DB]"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[#111827]">Does your employer match?</Label>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      type="button"
+                      variant={wHasMatch === true ? 'default' : 'outline'}
+                      onClick={() => setWHasMatch(true)}
+                      className={wHasMatch === true ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90' : ''}
+                    >
+                      Yes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={wHasMatch === false ? 'default' : 'outline'}
+                      onClick={() => setWHasMatch(false)}
+                      className={wHasMatch === false ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90' : ''}
+                    >
+                      No
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { setWHasMatch(false); }}
+                      className="text-gray-600"
+                    >
+                      Not sure
+                    </Button>
+                  </div>
+                </div>
+
+                {wHasMatch === true && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="w-rate" className="text-[#111827]">They match (% of what you put in)</Label>
+                      <Input
+                        id="w-rate"
+                        type="number"
+                        min="0"
+                        max="200"
+                        inputMode="decimal"
+                        value={wMatchRate}
+                        onChange={(e) => setWMatchRate(e.target.value)}
+                        className="mt-1 border-[#D1D5DB]"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="w-cap" className="text-[#111827]">Up to (% of salary)</Label>
+                      <Input
+                        id="w-cap"
+                        type="number"
+                        min="0"
+                        max="100"
+                        inputMode="decimal"
+                        value={wMatchCap}
+                        onChange={(e) => setWMatchCap(e.target.value)}
+                        className="mt-1 border-[#D1D5DB]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {wError && <p className="text-sm text-red-600">{wError}</p>}
+
+                <Button
+                  onClick={handleWedgeSubmit}
+                  className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
+                >
+                  Continue →
+                </Button>
+                <p className="text-xs text-gray-500">
+                  Used to estimate your take-home and your match. Nothing leaves your browser.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {prefill && (
           <div className="space-y-6">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -691,6 +906,7 @@ function AllocatorContent() {
               </>
             )}
           </div>
+          )}
         </Container>
       </Section>
 
