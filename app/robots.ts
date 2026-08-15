@@ -18,7 +18,6 @@ export default function robots(): MetadataRoute.Robots {
           '/api/',
           '/join',
           '/early-access',
-          '/mvp-access',
           '/sms-notifications',
         ],
       },

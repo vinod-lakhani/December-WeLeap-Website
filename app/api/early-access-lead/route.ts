@@ -45,7 +45,7 @@ function getBaseUrl(request: NextRequest): string {
 
 /**
  * Store early access lead (waitlist) and send early access confirmation email.
- * No plan storage. No "return to plan" link. CTA to /mvp-access.
+ * No plan storage. No "return to plan" link.
  * No HSA.
  */
 export async function POST(request: NextRequest) {
