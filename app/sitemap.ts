@@ -11,8 +11,8 @@ import { FREE_TOOLS } from '@/lib/tools'
  * case.
  *
  * Deliberately excluded:
- *  - /join, /early-access, /mvp-access, /sms-notifications — campaign and
- *    flow-entry pages, not destinations we want ranked.
+ *  - /join, /early-access, /sms-notifications — campaign and flow-entry
+ *    pages, not destinations we want ranked.
  */
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.weleap.ai'
