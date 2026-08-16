@@ -9,6 +9,8 @@ import { PostHogProvider } from '@/components/posthog-provider'
 import { PostHogPageView } from '@/components/posthog-pageview'
 import { MetaPixel } from '@/components/meta-pixel'
 import { Suspense } from 'react'
+import { JsonLd } from '@/components/JsonLd'
+import { organizationSchema, websiteSchema } from '@/lib/structured-data'
 import './globals.css'
 
 // Plus Jakarta Sans is the product app's typeface. Geist reads as a developer
@@ -65,6 +67,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${jakarta.variable} ${GeistMono.variable}`}>
+      <head>
+        {/* Site-wide structured data. In <head> so it is in the initial HTML
+            for crawlers rather than appearing after hydration. */}
+        <JsonLd data={organizationSchema()} />
+        <JsonLd data={websiteSchema()} />
+      </head>
       <body className={jakarta.className}>
         <PostHogProvider>
           <UtmCapture />

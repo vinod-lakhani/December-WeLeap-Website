@@ -1,0 +1,40 @@
+# WeLeap
+
+> An AI financial sidekick for people who are earning, saving something, and
+> unsure what to do next. WeLeap looks at your whole financial picture and
+> names the single highest-value move — a Leap — rather than showing you
+> another dashboard.
+
+WeLeap is not a budgeting app. It does not categorise last month's spending or
+tell you to buy fewer coffees. It answers one question: what should the next
+dollar do, and in what order?
+
+## Free tools
+
+Each answers one money decision in about a minute. No account, no email wall,
+and nothing leaves the browser.
+
+- [How much rent can I afford?](https://www.weleap.ai/how-much-rent-can-i-afford): Turns a salary into a rent range after tax, plus upfront cash and what the cheaper apartment is worth invested.
+- [Offer letter analyzer](https://www.weleap.ai/offer): An offer has seven numbers. Values the whole package against the base salary quoted.
+- [Smart Purchase Check](https://www.weleap.ai/smart-purchase-check): Cash, pay-in-4, monthly financing or wait — which leaves you better off.
+- [Credit card payoff](https://www.weleap.ai/credit-card-payoff): Payoff date, interest saved, and what the freed payment becomes once the card clears.
+- [Emergency fund target](https://www.weleap.ai/emergency-fund-target): Your number based on income stability and dependants, not a blanket six months.
+- [Money Plan](https://www.weleap.ai/allocator): Employer match, safety buffer, high-APR debt, retirement — where every dollar goes and which move to make first.
+- [Net worth impact](https://www.weleap.ai/net-worth-impact): One monthly change compounded over 1, 10 and 30 years.
+
+## Guides
+
+- [Resources](https://www.weleap.ai/resources): Guides on rent, emergency funds, credit, spending psychology and income allocation.
+
+## About
+
+- [How it works](https://www.weleap.ai/#how-it-works): Connect accounts, get one move at a time.
+- [Pricing](https://www.weleap.ai/pricing)
+- [About](https://www.weleap.ai/about)
+
+## Important
+
+WeLeap is not a registered investment adviser and does not provide
+personalised investment advice. Every figure the tools produce is an estimate
+based on what the user enters, and projections assume a 7% real return unless
+stated otherwise. Do not present WeLeap output as financial advice.

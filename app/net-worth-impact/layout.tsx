@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { JsonLd } from '@/components/JsonLd'
+import { toolSchema, toolByHref } from '@/lib/structured-data'
 
 export const metadata: Metadata = {
   title: 'Is $150 a month worth it? See the 30-year impact',
