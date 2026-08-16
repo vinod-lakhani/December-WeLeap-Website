@@ -20,12 +20,19 @@ const nextConfig = {
   },
  
   eslint: {
-    // ESLint is not installed, so this flag has never done anything except
-    // print a scary-looking line during builds. Installing ESLint while this
-    // is false would arm it against a codebase that has never been linted and
-    // turn every pre-existing violation into a failed deploy — so lint stays
-    // out of the build until the violations are actually cleared.
-    ignoreDuringBuilds: true,
+    // ESLint now runs in the build. Zero errors, 77 warnings — and warnings do
+    // not fail a build, so this catches new errors without holding deploys
+    // hostage to the existing backlog.
+    //
+    // .eslintrc.json existed all along, extending next/core-web-vitals and
+    // next/typescript — but ESLint itself was never installed, so it had never
+    // run. Turning it on surfaced 312 react/no-unescaped-entities errors:
+    // apostrophes in prose, with no runtime, accessibility or SEO consequence.
+    // That rule is off. Escaping every apostrophe on the site to satisfy a rule
+    // that predates React handling entities properly is churn, not quality.
+    // Everything else is a warning, so the backlog stays visible and can be
+    // burned down without blocking a deploy.
+    ignoreDuringBuilds: false,
   },
 
   async redirects() {
