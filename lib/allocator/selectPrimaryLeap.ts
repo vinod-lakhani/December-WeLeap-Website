@@ -63,6 +63,17 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
 
   const matchNotCaptured = employerMatchEnabled && current401kPct < matchCapPct;
 
+  // The IRS cap check has to come first. Someone contributing above the annual
+  // employee limit cannot add more, even where the employer's match tops out
+  // higher than the limit does — telling them to "capture your full match"
+  // asks for something the law does not allow. This ordering only matters when
+  // matchCapPct is unusually high, but the advice it produced was impossible
+  // rather than merely suboptimal.
+  if (k401AtCap) {
+    const splitLeap = leaps.find((l) => l.category === 'retirement_split');
+    return { kind: 'growth_split', leap: splitLeap ?? null };
+  }
+
   if (matchNotCaptured) {
     const matchLeap = leaps.find((l) => l.category === 'match' && l.isPayroll);
     return { kind: 'match', leap: matchLeap ?? null };
@@ -71,12 +82,6 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
   if (hasActionableHsa(leaps)) {
     const hsaLeap = leaps.find((l) => l.category === 'hsa');
     return { kind: 'hsa', leap: hsaLeap ?? null };
-  }
-
-  // 401(k) at cap → skip retirement increase, go to brokerage
-  if (k401AtCap) {
-    const splitLeap = leaps.find((l) => l.category === 'retirement_split');
-    return { kind: 'growth_split', leap: splitLeap ?? null };
   }
 
   // Target = whatever % gets to IRS cap ($23,500), not fixed 15%

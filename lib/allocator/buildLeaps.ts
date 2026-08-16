@@ -104,7 +104,12 @@ export function buildLeaps(
   const matchRatePct = prefill?.matchRatePct ?? DEFAULT_MATCH_RATE_PCT;
   const recommended401k = prefill?.recommended401kPct ?? matchCapPct;
   const salaryAnnual = prefill?.salaryAnnual ?? 0;
-  const { matchCaptured, k401AtCap } = compute401kStatus({
+  // compute401kStatus returns `is401kMaxed`. Destructuring `k401AtCap`
+    // yielded undefined, so every `matchCaptured || k401AtCap` check below fell
+    // through and a user already at the IRS cap was still told to increase
+    // their contribution. Aliased rather than renamed to keep the nine
+    // downstream uses and the exported field name stable.
+    const { matchCaptured, is401kMaxed: k401AtCap } = compute401kStatus({
     salaryAnnual,
     current401kPct: prefill?.current401kPct ?? 0,
     hasEmployerMatch: !!prefill?.employerMatchEnabled,

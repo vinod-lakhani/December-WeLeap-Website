@@ -180,7 +180,7 @@ function PrimaryCard({
             Unlock your full employer match
           </p>
           <p className="mt-1 text-[#111827]">
-            Increase 401(k) from {formatPct(leap.currentValue)} → {formatPct(leap.targetValue)}
+            Increase 401(k) from {formatPct(leap.currentValue ?? 0)} → {formatPct(leap.targetValue ?? 0)}
           </p>
           <p className="mt-1 text-sm text-gray-600">
             Unlocks employer match — free money that compounds for decades.

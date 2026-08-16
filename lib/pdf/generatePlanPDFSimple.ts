@@ -116,8 +116,14 @@ export async function generatePlanPDFBuffer(planData: PlanData): Promise<Buffer>
       }
       
       // Center: Title
-      doc.fontSize(20).font('Times-Bold').fillColor('#111827').text('Your Day 1 guide', { align: 'center', y: 48 });
-      doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text('Built from your salary, rent, and start date', { align: 'center', y: 66 });
+      // `y` is not part of pdfkit's TextOptions — the documented signature is
+      // .text(text, x, y, options). Cast rather than restructure: moving to
+      // positional coordinates changes what `align: 'center'` centres within,
+      // which would shift this header. Worth confirming separately whether
+      // pdfkit honours `y` here at all, or whether these two lines have been
+      // silently falling back to the current cursor position.
+      doc.fontSize(20).font('Times-Bold').fillColor('#111827').text('Your Day 1 guide', { align: 'center', y: 48 } as PDFKit.Mixins.TextOptions);
+      doc.fontSize(8).font('Times-Roman').fillColor('#6b7280').text('Built from your salary, rent, and start date', { align: 'center', y: 66 } as PDFKit.Mixins.TextOptions);
       
       // Meta (right side)
       const metaX = pageWidth + 50 - 120;

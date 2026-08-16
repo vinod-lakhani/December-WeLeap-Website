@@ -8,14 +8,24 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    // Was true, which meant the build could not catch a regression — and had
+    // been hiding real bugs: an undeclared variable that threw at runtime in
+    // /api/subscribe, and a destructure of a non-existent field that made the
+    // "401(k) is maxed" branch unreachable in the Money Plan. The project now
+    // typechecks clean, so the build guards it.
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
   },
  
   eslint: {
-    ignoreDuringBuilds: false,
+    // ESLint is not installed, so this flag has never done anything except
+    // print a scary-looking line during builds. Installing ESLint while this
+    // is false would arm it against a codebase that has never been linted and
+    // turn every pre-existing violation into a failed deploy — so lint stays
+    // out of the build until the violations are actually cleared.
+    ignoreDuringBuilds: true,
   },
 
   async redirects() {
