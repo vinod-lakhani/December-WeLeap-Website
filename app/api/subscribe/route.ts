@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     // Log the subscription attempt with details for debugging
     console.log("[Subscribe API] Substack subscription:", {
       email,
-      encodedEmail,
       baseUrl,
       fullUrl: substackSubscribeUrl,
       timestamp: new Date().toISOString()

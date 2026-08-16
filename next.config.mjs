@@ -8,13 +8,30 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
-    ignoreBuildErrors: true,
+    // Was true, which meant the build could not catch a regression — and had
+    // been hiding real bugs: an undeclared variable that threw at runtime in
+    // /api/subscribe, and a destructure of a non-existent field that made the
+    // "401(k) is maxed" branch unreachable in the Money Plan. The project now
+    // typechecks clean, so the build guards it.
+    ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
   },
  
   eslint: {
+    // ESLint now runs in the build. Zero errors, 77 warnings — and warnings do
+    // not fail a build, so this catches new errors without holding deploys
+    // hostage to the existing backlog.
+    //
+    // .eslintrc.json existed all along, extending next/core-web-vitals and
+    // next/typescript — but ESLint itself was never installed, so it had never
+    // run. Turning it on surfaced 312 react/no-unescaped-entities errors:
+    // apostrophes in prose, with no runtime, accessibility or SEO consequence.
+    // That rule is off. Escaping every apostrophe on the site to satisfy a rule
+    // that predates React handling entities properly is churn, not quality.
+    // Everything else is a warning, so the backlog stays visible and can be
+    // burned down without blocking a deploy.
     ignoreDuringBuilds: false,
   },
 

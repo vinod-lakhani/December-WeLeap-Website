@@ -265,7 +265,7 @@ export default function ResourcesPage() {
             {blogPosts.sort((a, b) => {
               const dateA = new Date(a.date)
               const dateB = new Date(b.date)
-              return dateA - dateB
+              return dateA.getTime() - dateB.getTime()
             }).map((post) => {
               const IconComponent = post.icon
               return (
