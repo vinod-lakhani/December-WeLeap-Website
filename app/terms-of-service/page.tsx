@@ -1,8 +1,22 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Terms of service',
+  description:
+    'The terms that govern your use of WeLeap.',
+  alternates: { canonical: '/terms-of-service' },
+  openGraph: {
+    title: 'Terms of service | WeLeap',
+    description: 'The terms that govern your use of WeLeap.',
+    url: '/terms-of-service',
+  },
+}
+
 
 export default function TermsOfServicePage() {
   return (

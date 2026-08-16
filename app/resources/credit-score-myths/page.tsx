@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Credit score myths that cost you money',
+  description:
+    'The advice that sounds sensible, is repeated everywhere, and is quietly wrong.',
+  alternates: { canonical: '/resources/credit-score-myths' },
+  openGraph: {
+    title: 'Credit score myths that cost you money | WeLeap',
+    description: 'The advice that sounds sensible, is repeated everywhere, and is quietly wrong.',
+    url: '/resources/credit-score-myths',
+  },
+}
+
 
 export default function CreditScoreMythsPage() {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft } from 'lucide-react'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Featured',
+  description:
+    'A closer look at one money decision worth getting right.',
+  alternates: { canonical: '/resources/featured-article' },
+  openGraph: {
+    title: 'Featured | WeLeap',
+    description: 'A closer look at one money decision worth getting right.',
+    url: '/resources/featured-article',
+  },
+}
+
 
 export default function FeaturedArticlePage() {
   return (

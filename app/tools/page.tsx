@@ -6,9 +6,10 @@ import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
 
 export const metadata: Metadata = {
-  title: "Free money tools — WeLeap",
+  title: "Free money tools",
+  alternates: { canonical: "/tools" },
   description:
-    "Six free calculators that answer a real money question in under a minute. Rent affordability, offer letters, credit card payoff, emergency fund, and more. No account, no email wall.",
+    "Seven free calculators that answer a real money question in under a minute. Rent affordability, offer letters, pay-in-4 decisions, credit card payoff, emergency fund and more. No account, no email wall.",
 }
 
 export default function ToolsPage() {

@@ -1,8 +1,22 @@
+import type { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description:
+    'What WeLeap costs, and what you get for it. Start free — the tools need no account at all.',
+  alternates: { canonical: '/pricing' },
+  openGraph: {
+    title: 'Pricing | WeLeap',
+    description: 'What WeLeap costs, and what you get for it. Start free — the tools need no account at all.',
+    url: '/pricing',
+  },
+}
+
 
 const NOW = [
   "Your weekly Leap — the single move that does the most",
