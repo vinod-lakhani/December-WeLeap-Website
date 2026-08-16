@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'The psychology of spending',
+  description:
+    'Why the same amount feels different depending on how you pay, and what that costs you.',
+  alternates: { canonical: '/resources/psychology-of-spending' },
+  openGraph: {
+    title: 'The psychology of spending | WeLeap',
+    description: 'Why the same amount feels different depending on how you pay, and what that costs you.',
+    url: '/resources/psychology-of-spending',
+  },
+}
+
 
 export default function PsychologyOfSpendingPage() {
   return (

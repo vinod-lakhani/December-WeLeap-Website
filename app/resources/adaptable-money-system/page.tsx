@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Build a money system that adapts',
+  description:
+    'Budgets break the moment life changes. A system that adapts survives the raise, the move and the bad month.',
+  alternates: { canonical: '/resources/adaptable-money-system' },
+  openGraph: {
+    title: 'Build a money system that adapts | WeLeap',
+    description: 'Budgets break the moment life changes. A system that adapts survives the raise, the move and the bad month.',
+    url: '/resources/adaptable-money-system',
+  },
+}
+
 
 export default function AdaptableMoneySystemPage() {
   return (

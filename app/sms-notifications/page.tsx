@@ -7,7 +7,7 @@ import { SmsOptinForm } from "./sms-optin-form"
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'SMS Notifications | WeLeap',
+  title: 'SMS notifications',
   description: 'How WeLeap text-message notifications work, how you opt in, and how to stop them at any time.',
 }
 

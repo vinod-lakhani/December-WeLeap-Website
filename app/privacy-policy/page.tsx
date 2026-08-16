@@ -1,8 +1,22 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Privacy policy',
+  description:
+    'How WeLeap collects, uses and protects your information, including bank data via Plaid, email and SMS.',
+  alternates: { canonical: '/privacy-policy' },
+  openGraph: {
+    title: 'Privacy policy | WeLeap',
+    description: 'How WeLeap collects, uses and protects your information, including bank data via Plaid, email and SMS.',
+    url: '/privacy-policy',
+  },
+}
+
 
 export default function PrivacyPolicyPage() {
   return (

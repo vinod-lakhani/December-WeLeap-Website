@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Where should your income actually go?',
+  description:
+    'Needs, wants and savings is a starting point, not an answer. How to allocate income when you have a surplus.',
+  alternates: { canonical: '/resources/income-allocation' },
+  openGraph: {
+    title: 'Where should your income actually go? | WeLeap',
+    description: 'Needs, wants and savings is a starting point, not an answer. How to allocate income when you have a surplus.',
+    url: '/resources/income-allocation',
+  },
+}
+
 
 export default function IncomeAllocationPage() {
   return (

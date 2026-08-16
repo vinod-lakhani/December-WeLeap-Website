@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -6,6 +7,19 @@ import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'From awareness to action',
+  description:
+    'Knowing where your money goes changes nothing on its own. What turns awareness into a decision.',
+  alternates: { canonical: '/resources/awareness-to-action' },
+  openGraph: {
+    title: 'From awareness to action | WeLeap',
+    description: 'Knowing where your money goes changes nothing on its own. What turns awareness into a decision.',
+    url: '/resources/awareness-to-action',
+  },
+}
+
 
 export default function AwarenessToActionPage() {
   return (
