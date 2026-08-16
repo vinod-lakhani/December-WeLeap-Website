@@ -1,9 +1,23 @@
+import type { Metadata } from "next"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: 'About',
+  description:
+    'Why we built an AI financial sidekick that gives you one clear next move instead of another dashboard.',
+  alternates: { canonical: '/about' },
+  openGraph: {
+    title: 'About WeLeap | WeLeap',
+    description: 'Why we built an AI financial sidekick that gives you one clear next move instead of another dashboard.',
+    url: '/about',
+  },
+}
+
 
 // Force dynamic rendering to prevent static generation timeout
 export const dynamic = "force-dynamic"

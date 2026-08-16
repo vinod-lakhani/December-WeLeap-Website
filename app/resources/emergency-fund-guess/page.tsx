@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Stop guessing your emergency fund',
+  description:
+    'Three months, six months — the standard advice ignores the two things that actually decide your number.',
+  alternates: { canonical: '/resources/emergency-fund-guess' },
+  openGraph: {
+    title: 'Stop guessing your emergency fund | WeLeap',
+    description: 'Three months, six months — the standard advice ignores the two things that actually decide your number.',
+    url: '/resources/emergency-fund-guess',
+  },
+}
+
 
 export default function EmergencyFundGuessPage() {
   return (

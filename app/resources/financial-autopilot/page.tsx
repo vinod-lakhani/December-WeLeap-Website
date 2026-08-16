@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -6,6 +7,19 @@ import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'Put your money on autopilot',
+  description:
+    'The decisions worth automating, the ones worth keeping manual, and how to tell them apart.',
+  alternates: { canonical: '/resources/financial-autopilot' },
+  openGraph: {
+    title: 'Put your money on autopilot | WeLeap',
+    description: 'The decisions worth automating, the ones worth keeping manual, and how to tell them apart.',
+    url: '/resources/financial-autopilot',
+  },
+}
+
 
 export default function FinancialAutopilotPage() {
   return (

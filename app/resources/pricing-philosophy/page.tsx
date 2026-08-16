@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -5,6 +6,19 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'How we think about pricing',
+  description:
+    'Why WeLeap charges what it charges, and why the tools stay free.',
+  alternates: { canonical: '/resources/pricing-philosophy' },
+  openGraph: {
+    title: 'How we think about pricing | WeLeap',
+    description: 'Why WeLeap charges what it charges, and why the tools stay free.',
+    url: '/resources/pricing-philosophy',
+  },
+}
+
 
 export default function PricingPhilosophyPage() {
   return (

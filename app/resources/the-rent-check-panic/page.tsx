@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ArrowLeft } from 'lucide-react'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -6,6 +7,19 @@ import { Facebook, Twitter, Linkedin, Mail } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+
+export const metadata: Metadata = {
+  title: 'The rent check panic',
+  description:
+    'The gap between signing a lease and realising what it left you — and how to see it before you sign.',
+  alternates: { canonical: '/resources/the-rent-check-panic' },
+  openGraph: {
+    title: 'The rent check panic | WeLeap',
+    description: 'The gap between signing a lease and realising what it left you — and how to see it before you sign.',
+    url: '/resources/the-rent-check-panic',
+  },
+}
+
 
 export default function TheRentCheckPanicPage() {
   return (

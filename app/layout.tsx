@@ -20,11 +20,41 @@ const jakarta = Plus_Jakarta_Sans({
   variable: '--font-jakarta',
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.weleap.ai'
+
+/**
+ * Root metadata, and the defaults every page inherits.
+ *
+ * Two things were missing and both mattered. There was no metadataBase, so
+ * Open Graph and Twitter image paths resolved relative and social previews
+ * broke. And there was no title template, so the twenty-nine pages without
+ * their own metadata all rendered as the same title in search results —
+ * /offer, /how-much-rent-can-i-afford and every article were indistinguishable
+ * to Google.
+ *
+ * `title.template` means a page sets only its own name; `title.default` is
+ * what the homepage and anything still without metadata falls back to.
+ */
 export const metadata: Metadata = {
-  title: 'WeLeap - Your AI Financial Sidekick',
-  description: 'WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next step - a smart Leap - so you are never guessing what to do next.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'WeLeap — Your AI Financial Sidekick',
+    template: '%s | WeLeap',
+  },
+  description:
+    'WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next step — a Leap — so you are never guessing what to do next.',
+  applicationName: 'WeLeap',
   icons: {
     icon: '/images/Icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'WeLeap',
+    locale: 'en_US',
+    url: SITE_URL,
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
 }
 
