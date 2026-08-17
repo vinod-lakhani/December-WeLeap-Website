@@ -35,7 +35,8 @@
 
 ## Leap Tool (`/leap-impact-simulator`) — retired
 
-> These events no longer fire. The route 308s to `/allocator` and
+> These events no longer fire. The route 308s to
+> `/how-should-i-split-my-paycheck` and
 > `components/LeapImpactTool.tsx` has been deleted. Listed for historical
 > queries only. See `docs/ANALYTICS_RENT_AND_LEAP_TOOLS.md`.
 

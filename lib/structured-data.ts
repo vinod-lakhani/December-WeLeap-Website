@@ -102,9 +102,9 @@ export function toolSchema(tool: FreeTool) {
 /**
  * BreadcrumbList for a calculator route.
  *
- * The tools sit at top-level URLs — /allocator, not /tools/allocator — because
- * the slug
- * is the query and URL depth is a weak signal. The cost of that flatness is
+ * The tools sit at top-level URLs — /how-should-i-split-my-paycheck, not
+ * /tools/allocator — because the slug is the query and URL depth is a weak
+ * signal. The cost of that flatness is
  * that nothing in the URL says these seven pages belong together, so this is
  * the only machine-readable statement of the hierarchy.
  *

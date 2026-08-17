@@ -14,7 +14,10 @@ export const metadata: Metadata = {
     'Why we built an AI financial sidekick that gives you one clear next move instead of another dashboard.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About WeLeap | WeLeap',
+    // Kept byte-identical to what `title` renders through the root layout's
+    // `%s | WeLeap` template. `openGraph.title` does not inherit that template,
+    // so writing the brand in by hand here is how the two drift apart.
+    title: 'About | WeLeap',
     description: 'Why we built an AI financial sidekick that gives you one clear next move instead of another dashboard.',
     url: '/about',
     images: [DEFAULT_OG_IMAGE],

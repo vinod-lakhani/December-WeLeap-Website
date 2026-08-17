@@ -88,18 +88,27 @@ export const FREE_TOOLS: FreeTool[] = [
   },
   {
     // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
-    // rate and then handed off to /allocator for everything else. The
-    // allocator can now start from nothing, so the two are one tool and this
+    // rate and then handed off to the allocation engine for everything else.
+    // That engine can now start from nothing, so the two are one tool and this
     // points at the full thing.
     //
     // Present-day despite sounding like planning: it opens on "you are leaving
     // $3,400 a year of your employer's money behind", which is a thing that is
     // true today, not a projection.
     name: "Money Plan",
-    question: "What should my money do, and in what order?",
+    // Was "What should my money do, and in what order?". The ordering question
+    // is answered by prose — every list-shaped result already owns it — while
+    // the thing this tool alone does is take a real paycheck and split it. The
+    // card now asks the question the page is targeting, and the blurb below
+    // still says the order, so both signals survive on one card.
+    question: "How should I split my paycheck?",
     blurb: "Match, safety buffer, debt, retirement — and the single move worth making first.",
     cta: "Build my plan →",
-    href: "/allocator",
+    // Renamed from /allocator, which was the internal name for the engine and
+    // matched nothing anyone types. 308 in next.config.mjs. `slug` deliberately
+    // stayed "allocator": it is the analytics id, and every event and saved
+    // report keyed on it would otherwise lose its own history.
+    href: "/how-should-i-split-my-paycheck",
     icon: "/images/tool-icons/rocket.png",
     slug: "allocator",
     presentDay: true,

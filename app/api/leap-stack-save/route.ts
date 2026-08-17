@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         email: email.trim(),
         signupType: 'leap_stack_save',
+        // Identifiers, not URLs — see the note in /api/early-access-lead. The
+        // route is now /how-should-i-split-my-paycheck; these values stay put
+        // so the waitlist history joins across the rename.
         page: '/allocator',
         source: 'leap_stack_save|/allocator',
         referrer: request.headers.get('referer') || '',

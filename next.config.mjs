@@ -76,16 +76,35 @@ const nextConfig = {
         permanent: true,
       },
       {
+        // The money plan tool was at /allocator — the internal name for the
+        // allocation engine, which matches nothing anyone types and reads as
+        // jargon to a visitor. Same reasoning as /offer above: on a site whose
+        // tools sit at flat top-level routes, the slug is the strongest
+        // on-page signal, so it now says the query the page targets.
+        //
+        // No short-alias exception here, unlike /rent and /offer: nothing
+        // prints /allocator on a share card, so it has no retypeable job to
+        // keep doing.
+        source: '/allocator',
+        destination: '/how-should-i-split-my-paycheck',
+        permanent: true,
+      },
+      {
         // The Leap Impact Simulator was the 401(k) wedge in front of the
-        // allocator, which now collects those inputs itself. Permanent so
-        // search consolidates onto /allocator rather than splitting ranking
-        // across two URLs for one tool.
+        // allocation engine, which now collects those inputs itself. Permanent
+        // so search consolidates onto one URL rather than splitting ranking
+        // across two for one tool.
+        //
+        // Points at the final destination, not at /allocator: that would be a
+        // redirect to a redirect, which costs a round trip and dilutes the
+        // signal the 308 exists to pass. Whenever the destination below moves
+        // again, this line moves with it rather than being left to chain.
         //
         // Note if this ever needs undoing: 308s are cached hard by browsers,
         // so anyone who has hit this path will keep being redirected until
         // their cache clears, regardless of what the server says.
         source: '/leap-impact-simulator',
-        destination: '/allocator',
+        destination: '/how-should-i-split-my-paycheck',
         permanent: true,
       },
     ]

@@ -1,13 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { Section, Container } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
@@ -20,17 +19,26 @@ import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { US_STATES } from '@/lib/states';
-import {
-  K401_EMPLOYEE_CAP,
-  HSA_LIMIT_SINGLE,
-  HSA_LIMIT_FAMILY,
-  TAX_YEAR,
-} from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
-import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
-import { ToolPageView } from '@/components/ToolPageView';
+
+/**
+ * The money plan calculator — the interactive half of
+ * /how-should-i-split-my-paycheck, and nothing else.
+ *
+ * It was the whole of app/allocator/page.tsx, which made the route a client
+ * component: `metadata` had to live in a sibling layout.tsx, and the parts of
+ * the page that a crawler or an answer engine needs — the h1, the breadcrumb,
+ * the explanatory copy — were downstream of a `useSearchParams` call. Anything
+ * behind that Suspense boundary is replaced by the fallback in the served HTML,
+ * which is how the page came to serve no h1 at all.
+ *
+ * So the split is by rendering requirement rather than by size: state, the
+ * prefill and every event live here; the shell, the copy and the schema are
+ * server-rendered in page.tsx.
+ */
 
 export interface AllocatorPrefillFromUrl {
   salaryAnnual: number;
@@ -93,7 +101,7 @@ const STACK_STEPS = [
   { id: 'summary', name: 'Summary', title: 'Summary' },
 ] as const;
 
-function AllocatorContent() {
+export function AllocatorTool() {
   const searchParams = useSearchParams();
   const [prefill, setPrefill] = useState<AllocatorPrefillFromUrl | null>(null);
   const [prefillLoadedTracked, setPrefillLoadedTracked] = useState(false);
@@ -477,7 +485,12 @@ function AllocatorContent() {
 
   return (
     <>
-      <Section variant="canvas" className="pt-28 md:pt-36 pb-8">
+      {/* The hero above this — breadcrumb, h1, intro — is server-rendered, so
+          this section opens flush against it rather than re-applying the nav
+          offset it used to own. The `md:` duplicates are load-bearing: Section
+          applies `py-16 md:py-20`, and a bare `pt-0` is overridden by the
+          surviving `md:py-20` at desktop. */}
+      <Section variant="canvas" className="pt-0 md:pt-0 pb-8 md:pb-8">
         <Container maxWidth="narrow">
           {showBanner && (
             <div
@@ -502,13 +515,18 @@ function AllocatorContent() {
             </div>
           )}
 
-          <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink mb-3">
-            Here&apos;s how your money should flow
-          </h1>
-          <p className={cn(TYPOGRAPHY.body, 'text-subtle leading-relaxed mb-8')}>
+          {/* The <h1> and the page's opening paragraph live in the server
+              component now. Everything in this subtree sits behind a Suspense
+              boundary — it reads useSearchParams — so it is absent from the
+              served HTML, which is how /allocator ended up shipping a document
+              whose first heading was an <h2>. What stays here is the one line
+              that genuinely depends on the prefill and so cannot be
+              server-rendered. It is a paragraph, not a heading, so the page
+              keeps exactly one h1. */}
+          <p className="text-base md:text-lg text-subtle leading-relaxed mb-8">
             {prefill
-              ? 'Complete your money plan. We’ve prefilled what we know from your Leap Impact result.'
-              : 'Complete your money plan. Enter your details below.'}
+              ? 'We’ve prefilled what we know from your Leap Impact result. Check it, then finish the plan below.'
+              : 'Answer a few questions and your plan builds as you go.'}
           </p>
 
           {prefill && !(wedgeLeap && !revealSeen) && (
@@ -1037,84 +1055,22 @@ function AllocatorContent() {
   );
 }
 
-function AllocatorFallback() {
+/**
+ * What is served in place of the tool until hydration.
+ *
+ * It is a skeleton of the input card only. The heading and copy it used to
+ * stand in for are now above this boundary and always present, so this no
+ * longer has a page's worth of text to fake.
+ */
+export function AllocatorToolFallback() {
   return (
-    <Section variant="canvas" className="pt-28 md:pt-36 pb-8">
+    <Section variant="canvas" className="pt-0 md:pt-0 pb-8 md:pb-8">
       <Container maxWidth="narrow">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-3/4" />
-          <div className="h-4 bg-gray-100 rounded w-full" />
           <div className="h-4 bg-gray-100 rounded w-5/6" />
-          <div className="h-32 bg-gray-100 rounded mt-6" />
+          <div className="h-40 bg-gray-100 rounded mt-6" />
         </div>
       </Container>
     </Section>
-  );
-}
-
-/**
- * The ordering the tool applies, written out.
- *
- * "What order should my money go in" is one of the most-asked personal finance
- * questions there is, and this page — the tool that answers it — carried no
- * text answering it at all.
- */
-const STEPS: readonly MethodStep[] = [
-  {
-    t: 'Employer match first, because nothing else pays 100%',
-    d: 'A dollar-for-dollar 401(k) match up to 5% of salary is an immediate 100% return on the money you contribute. Contributing below the match cap is the only situation in a normal financial life where money is unambiguously being left behind, so it goes to the front of the queue regardless of everything else.',
-  },
-  {
-    t: 'Then a safety buffer, funded by 40% of what’s left',
-    d: 'Forty per cent of your monthly surplus goes to a three-month buffer until it is funded. Not because three months is magic, but because with no buffer at all, the next unexpected expense becomes credit card debt and undoes the step after this one.',
-  },
-  {
-    t: 'Then high-interest debt, funded by 40% of the remainder',
-    d: 'Clearing a balance at 22% APR is a guaranteed 22% return, which beats any expected market return. Forty per cent of what is left after the buffer goes here while any high-APR balance exists, and this step switches itself off once it is clear.',
-  },
-  {
-    t: 'Then tax-advantaged accounts — HSA, then retirement',
-    d: `An HSA is untaxed going in, untaxed as it grows and untaxed coming out for medical costs, which no other US account does. The ${TAX_YEAR} limits this tool uses are $${HSA_LIMIT_SINGLE.toLocaleString('en-US')} for self-only cover and $${HSA_LIMIT_FAMILY.toLocaleString('en-US')} for family, with the 401(k) employee deferral capped at $${K401_EMPLOYEE_CAP.toLocaleString('en-US')}.`,
-  },
-  {
-    t: 'Then whatever is left, split between retirement and investing',
-    d: 'Only at this point does the answer become "invest the rest", and by then the four higher-return moves above have already been made. The split is shown as percentages of your actual surplus, not of gross salary — two people on the same salary in different states with different rents have very different amounts to allocate.',
-  },
-];
-
-export default function AllocatorPage() {
-  return (
-    /* The tool reads useSearchParams, so its subtree is client-rendered and the
-       Suspense fallback is what a crawler gets on first paint. Everything
-       explanatory therefore sits outside the boundary, where it is in the
-       served HTML unconditionally. */
-    <PageShell className="bg-canvas">
-      {/* Step one of the funnel. This tool had no page-view event of any kind —
-          `allocator_prefill_loaded` and `leap_stack_started` only fire for
-          visitors arriving with URL prefill, so anyone landing from search or
-          /tools was invisible until they finished the stack. No `legacyEvent`
-          for the same reason: there is no prior per-tool page view to keep. */}
-      <ToolPageView tool="allocator" page="/allocator" />
-
-      <Suspense fallback={<AllocatorFallback />}>
-        <AllocatorContent />
-      </Suspense>
-
-      <MethodSteps
-        heading="What order should your money go in?"
-        intro="Five steps, applied in order of what each one returns. The tool runs them against your salary, state and current contributions; the logic itself is below so you can apply it without entering anything."
-        steps={STEPS}
-      />
-
-      <Caveat label="What this can’t see:">
-        the balances you actually hold, what you already contribute, and the goals you are part-way through. Those
-        change the order, and they need your real accounts rather than five answers. WeLeap is not a registered
-        investment adviser and nothing here is personalised advice.
-      </Caveat>
-
-      <ToolFaq href="/allocator" />
-
-      <SiteFooter />
-    </PageShell>
   );
 }
