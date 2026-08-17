@@ -92,12 +92,18 @@ This document describes all analytics events tracked in the December-WeLeap-Webs
 
 ---
 
-## Net Worth Impact (`/net-worth-impact`)
+## Net Worth Impact (`/what-is-saving-monthly-worth`)
+
+Route renamed from `/net-worth-impact` (308). Every identifier below stayed:
+the `tool` slug is still `net_worth_impact`, and the legacy events keep sending
+`page: "/net-worth-impact"` because that is the value their history is recorded
+under. The shared funnel events (`tool_viewed` and below) report the new route.
 
 | Event | When | Common Params |
 |-------|------|---------------|
-| `net_worth_impact_page_view` | Page load | `page`, `tool_version` |
+| `net_worth_impact_page_view` | Page load | `page` (legacy `/net-worth-impact`), `tool_version` |
 | `net_worth_impact_tool_start` | User starts the tool | (non-PII) |
+| `tool_completed` | An input moved off its default and the result held still for 800ms | `tool` |
 | `waitlist_modal_opened` | Waitlist modal is opened | `page`, `source`, `feedback` (when from feedback) |
 | `networth_tool_feedback_submitted` | User submits net worth feedback | `page`, `feedback` — from ToolFeedbackQuestionnaire |
 

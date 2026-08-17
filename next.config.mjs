@@ -57,8 +57,42 @@ const nextConfig = {
       },
       {
         // Aimed at social, where the URL gets read off a screenshot.
+        //
+        // Points at the final destination rather than at /smart-purchase-check,
+        // which is itself a 308 now: a redirect to a redirect costs a round
+        // trip and dilutes the signal the 308 exists to pass. Same rule as
+        // /leap-impact-simulator below.
         source: '/pay-now-or-later',
-        destination: '/smart-purchase-check',
+        destination: '/should-i-use-buy-now-pay-later',
+        permanent: true,
+      },
+      {
+        // The purchase tool was at /smart-purchase-check — the internal product
+        // name for the decision engine, which reads as a feature label rather
+        // than as anything a person types into a search box. Same reasoning as
+        // /offer and /allocator: the slug is the strongest on-page signal on a
+        // site whose tools sit at flat top-level routes, so it now says the
+        // query the page targets.
+        //
+        // No short-alias exception like /rent and /offer keep: this tool has no
+        // share card, so nothing prints the old path anywhere it gets retyped.
+        source: '/smart-purchase-check',
+        destination: '/should-i-use-buy-now-pay-later',
+        permanent: true,
+      },
+      {
+        // The compounding tool was at /net-worth-impact — the internal name for
+        // the projection, which is a phrase nobody types and which describes the
+        // output rather than the question. Same reasoning as /offer, /allocator
+        // and /smart-purchase-check: on a site whose tools sit at flat top-level
+        // routes, the slug is the strongest on-page signal, so it now says the
+        // query the page targets.
+        //
+        // The new slug deliberately carries no dollar figure. $150 is today's
+        // default, not the tool's subject, and a URL naming it would need
+        // another 308 the first time that default changed.
+        source: '/net-worth-impact',
+        destination: '/what-is-saving-monthly-worth',
         permanent: true,
       },
       {

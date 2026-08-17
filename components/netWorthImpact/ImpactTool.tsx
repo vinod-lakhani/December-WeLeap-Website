@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,17 @@ import { formatCurrencySigned, formatPercent } from '@/lib/format';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
+/**
+ * NOT the current route — the route is /what-is-saving-monthly-worth.
+ *
+ * This is the `page` value `net_worth_impact_tool_start`,
+ * `networth_tool_feedback_submitted` and this tool's `waitlist_modal_opened`
+ * have always sent, and all three predate the rename. Their history is recorded
+ * under this string, so a saved report filtering on it would quietly drop to
+ * zero if this moved. Same arrangement as `legacyPage` on ToolPageView and
+ * `PAGE` in SmartPurchaseTool: the shared funnel events report the real URL,
+ * the legacy per-tool events keep their own past.
+ */
 const NET_WORTH_IMPACT_PAGE = '/net-worth-impact';
 
 const MONTHLY_MIN = -1000;
@@ -23,6 +34,13 @@ const MONTHLY_DEFAULT = 150;
 const APR_MIN = 5;
 const APR_MAX = 30;
 const APR_DEFAULT = 18;
+
+/**
+ * How long an input has to hold still before the result counts as one the
+ * visitor chose. Long enough to swallow a slider drag and the keystrokes of a
+ * three-digit number, short enough that it fires while they are still reading.
+ */
+const RESULT_SETTLE_MS = 800;
 
 function getSentence(
   useCase: UseCase,
@@ -88,16 +106,6 @@ export function ImpactTool() {
    * shape its history was recorded in, and the use-of-funds control is an input
    * the funnel should count. Same guard style, its own ref.
    *
-   * There is deliberately no `tool_completed` on this tool. It computes
-   * synchronously from defaults — $150/month, invested, at 7% — so all three
-   * horizon cards are on screen, correct and final, before anyone touches
-   * anything. Firing "a real result rendered" on mount would put the whole
-   * tool_viewed population straight into the completed step and measure
-   * nothing, which is exactly the bug this funnel was rebuilt to remove. The
-   * honest fix is a product change rather than an analytics one: hold the
-   * cards back until the visitor has set their own amount (or start the amount
-   * empty), at which point "the result rendered" becomes a real moment and can
-   * be instrumented like every other tool here.
    */
   const engagedRef = useRef(false);
   const markEngaged = useCallback((field: string) => {
@@ -153,6 +161,47 @@ export function ImpactTool() {
   );
 
   const horizons = useMemo(() => computeImpacts(inputs), [inputs]);
+
+  /**
+   * Third step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+   * tool_cta_clicked -> cta_click_signup.
+   *
+   * This tool used to have no `tool_completed` at all, on the grounds that it
+   * computes synchronously from defaults — $150/month, invested — so all three
+   * horizon cards are correct and final before anyone touches anything. That
+   * reasoning was right about the moment it rejected and wrong to stop there:
+   * firing "a result rendered" on mount would have put the entire tool_viewed
+   * population into the completed step and measured nothing.
+   *
+   * The defaults are staying. They are what makes the page useful to a visitor
+   * who scrolled in from a search result and never interacts, and what puts a
+   * real answer in the served HTML. So completion is defined as the other
+   * honest moment available here: the visitor has moved at least one input off
+   * its default, and the recomputed result has been on screen long enough to
+   * read. That is genuinely narrower than `tool_engaged`, which fires on the
+   * first touch — focusing the amount field, or nudging the slider back to
+   * where it started, engages without ever producing a result that is theirs.
+   *
+   * The settle delay does real work rather than being a throttle. Typing "300"
+   * into the amount field passes through 0 and 30 on its way, and every one of
+   * those intermediate states differs from the default; without the delay the
+   * event would fire on the first keystroke and report an amount nobody chose.
+   * Each change cancels the pending timer, so what gets counted is a result
+   * that stopped moving.
+   */
+  const completedRef = useRef(false);
+  useEffect(() => {
+    if (completedRef.current) return;
+    const isDefault =
+      monthlyDelta === MONTHLY_DEFAULT && useCase === 'investing' && debtApr === APR_DEFAULT;
+    if (isDefault) return;
+
+    const timer = setTimeout(() => {
+      completedRef.current = true;
+      track('tool_completed', { tool: 'net_worth_impact' });
+    }, RESULT_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [monthlyDelta, useCase, debtApr]);
 
   return (
     <div className="space-y-8">
@@ -260,7 +309,11 @@ export function ImpactTool() {
 
       {/* Output: 3 NumberCards */}
       <div>
-        <h3 className="text-lg font-semibold text-[#111827] mb-4">Net worth impact</h3>
+        {/* h2, not h3: this is the calculator's answer, and it is the first
+            heading after the page H1. As an h3 it left the served document with
+            an h3 before any h2 — a structural gap for anything reading the page
+            by its outline. Styling is unchanged. */}
+        <h2 className="text-lg font-semibold text-[#111827] mb-4">Net worth impact</h2>
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
           {horizons.map((h) => (
             <NumberCard
@@ -330,9 +383,9 @@ export function ImpactTool() {
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
         <p className="font-medium text-[#111827] mb-1">Assumptions</p>
         <ul className="list-disc list-inside space-y-0.5 text-gray-600">
-          <li>Investing uses 7% real return (inflation-adjusted).</li>
+          <li>Investing assumes a 7% real (inflation-adjusted) return — an assumption, not a guarantee.</li>
           <li>Cash uses 0% real — no growth, just deposits.</li>
-          <li>Debt uses APR avoided (simplified estimate).</li>
+          <li>Debt uses APR avoided (simplified estimate, not a payoff schedule).</li>
         </ul>
         <p className="mt-2 text-xs text-gray-500">Estimates only. Not financial advice.</p>
       </div>

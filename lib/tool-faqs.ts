@@ -99,14 +99,29 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
-  '/smart-purchase-check': [
+  // Was keyed '/smart-purchase-check'. The key is the route, because ToolFaq
+  // and faqSchema both look up by href — it moves with the URL, unlike the
+  // analytics slug.
+  '/should-i-use-buy-now-pay-later': [
+    {
+      q: 'Should I use buy now, pay later?',
+      a: 'Use it when the plan is genuinely interest-free and the cash it preserves has a specific job in the next few months — finishing an emergency fund, holding a deposit, covering a bill you already know is coming. Skip it when you can cover the purchase outright and that money would otherwise sit idle, because the split then buys you nothing and adds four payment dates you have to not miss. The thing that makes it expensive is never the headline rate on an interest-free plan; it is the late fee and the credit consequence when one payment slips. This calculator compares splitting the payment against paying cash, taking a monthly plan and waiting, using the price, the cash you can actually reach and what you have spare in a normal month.',
+    },
     {
       q: 'Is 0% financing actually free?',
       a: 'A genuine 0% offer costs nothing in interest, so the money question is what the cash it frees up is doing instead. If that cash sits in a checking account, splitting the payment gains you nothing and adds four payment dates you have to not miss. If it is finishing an emergency fund or covering a deposit you need next month, the 0% offer is doing real work. The cost of 0% financing is not interest — it is the late fee and the credit damage if one payment slips.',
     },
     {
       q: 'Should I pay cash or use buy now, pay later?',
-      a: 'Pay cash when you can afford the purchase outright and the money would otherwise sit idle, because the simpler option is the one you will not mishandle. Split the payment when the cash it preserves has a specific job in the next few months and the plan is genuinely interest-free. Financing a purchase to earn a few dollars of savings interest is technically correct and practically pointless. This calculator compares cash, pay-in-4, monthly financing and waiting, and will recommend waiting when none of the three funding options fits.',
+      a: 'The deciding factor is what share of your reachable cash the purchase takes, not the price on the tag. A $900 purchase against $12,000 of savings is a rounding error and the simplest option wins; the same $900 against $2,000 is most of your buffer, and an interest-free split is worth the admin to avoid emptying it. This calculator draws that line at 15% of your cash when you are still building an emergency fund, paying down high-interest debt or saving for something specific, and at 35% when your emergency fund is already set. Below the line it says pay cash, because financing a purchase to earn a few dollars of savings interest is technically correct and practically pointless.',
+    },
+    {
+      q: 'Is pay in 4 better than a monthly payment plan?',
+      a: 'They are different commitments, and comparing them on the monthly figure hides that. Pay in 4 splits the price into four equal instalments a fortnight apart, so it is done in eight weeks and a quarter of the money leaves today — on a $900 purchase that is $225 now and $225 every two weeks. A monthly plan takes nothing today and spreads the price over its full term, which is longer, usually involves a credit check, and costs the sticker price plus interest unless the APR is genuinely 0%. Shorter and interest-free is the easier commitment to finish; longer and interest-bearing is the one that outlasts your enthusiasm for the thing you bought.',
+    },
+    {
+      q: 'Should I buy this now or wait?',
+      a: 'Wait when buying it now would set back something that matters more, and the two clearest versions of that are having no funding route that fits and being mid-way through clearing expensive debt. If neither the cash is there nor the repayments fit inside your normal monthly surplus, every option on offer is a stretch rather than a choice. If you are paying down a high-interest balance and cannot cover the purchase outright, adding a second commitment slows the first one down, and the delay costs nothing but time. Waiting also has a diagnostic use that no calculator can price: things you still want in a month are a different category from things you wanted for an evening.',
     },
     {
       q: 'Does buy now, pay later affect your credit score?',
@@ -164,14 +179,25 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
-  '/net-worth-impact': [
+  // Was keyed '/net-worth-impact'. The key is the route, because ToolFaq and
+  // faqSchema both look up by href — it moves with the URL, unlike the
+  // analytics slug.
+  '/what-is-saving-monthly-worth': [
     {
-      q: 'What is $150 a month actually worth over 30 years?',
-      a: 'Invested consistently at a 7% real return, $150 a month comes to roughly $1,859 after one year, about $25,963 after ten years, and about $182,996 after thirty — of which around $128,000 is growth rather than the $54,000 you paid in. The gap between the ten-year and thirty-year figures is the entire argument for starting early: the last decade contributes more than the first two combined. These are this calculator\'s own figures and they assume the contribution never stops and the return is smooth, which no real market is.',
+      q: 'How much will saving $150 a month be worth?',
+      a: 'Invested consistently at an assumed 7% real return, $150 a month comes to roughly $1,859 after one year, about $25,963 after ten years, and about $182,996 after thirty — of which about $129,000 is growth rather than the $54,000 you paid in. The gap between the ten-year and thirty-year figures is the entire argument for starting early: the last decade contributes more than the first two combined. Held as cash instead, the same $150 a month is $1,800, $18,000 and $54,000 — the deposits and nothing more. These are this calculator\'s own figures, and they assume the contribution never stops and the return arrives smoothly, which no real market does.',
+    },
+    {
+      q: 'Is saving a small amount each month worth it?',
+      a: 'Small amounts do most of their work through time rather than size, so the answer depends far more on how long the money is left alone than on how much it is. At an assumed 7% real return, $25 a month is about $4,327 after ten years and about $30,499 after thirty; $50 a month is about $8,654 and about $60,999. Both end up several times what was paid in. Starting ten years later is what costs: $25 a month for twenty years is about $13,023, so a third less contributed produces well under half the result. The version of this that is genuinely not worth it is a small amount saved while a credit card at 20%-plus is running, because the interest on that balance is larger and guaranteed.',
     },
     {
       q: 'Why do you use 7%?',
-      a: '7% is used here as a long-run real (inflation-adjusted) return for a diversified stock portfolio, which is the convention most retirement projections use. It is a planning assumption, not a prediction and not a product: no single year looks like 7%, and any thirty-year window can land meaningfully above or below it. Treat the output as a sense of scale rather than a number to plan a specific date around.',
+      a: '7% is used here as a long-run real (inflation-adjusted) return for a diversified stock portfolio, which is the convention most retirement projections use. It is a planning assumption, not a prediction and not a product being offered: no single year looks like 7%, and any thirty-year window can land meaningfully above or below it. A projection is only ever as good as its rate, so treat the output as a sense of scale rather than a number to plan a specific date around.',
+    },
+    {
+      q: 'Are these figures adjusted for inflation?',
+      a: 'Yes. The 7% used here is a real return, meaning inflation has already been taken out of it, so the results are expressed in today\'s purchasing power rather than in the larger dollar figure that would show on a statement decades from now. That is why you should not subtract inflation from these numbers a second time — and why a projection built on a nominal rate of 9% or 10% will look bigger while describing the same outcome.',
     },
     {
       q: 'What about market crashes?',
@@ -179,7 +205,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'Is it better to invest, save cash, or pay off debt?',
-      a: 'It depends on the rate attached to each. Paying off a balance at 22% APR is a guaranteed 22% return, which beats an expected 7% from investing; cash held in an account earning nothing loses value to inflation but is the only option that is available instantly. This calculator models all three separately — compound growth for investing, no growth for cash, and interest avoided for debt — so the same monthly amount can be compared across them.',
+      a: 'It depends on the rate attached to each, and only one of the three rates is certain. Paying off a balance at 22% APR avoids 22% guaranteed, which beats an expected 7% from investing precisely because it is not an expectation; cash earning nothing loses value to inflation but is the only one of the three available on the day you need it. That is the usual ordering: a small cash buffer first, then high-interest debt, then investing. This calculator models all three separately — compound growth for investing, deposits only for cash, and interest avoided for debt — so one monthly amount can be compared across them. The debt figure is a rough estimate rather than a payoff schedule, and it overstates long horizons, because a real balance eventually clears and stops charging interest.',
     },
     {
       q: 'Is this financial advice?',

@@ -13,7 +13,7 @@ Stack: Next.js 14.2.26 App Router, TypeScript, Tailwind 3.4, shadcn/ui on Radix,
 Confirm three things with the user. Do not guess.
 
 1. **The target query.** One primary query per page, phrased the way a real person types it. If you cannot name it, the page has no reason to exist. Say so rather than building anyway.
-2. **The route.** Tools live at **top-level routes**, not nested under `/tools/`. Live today: `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/smart-purchase-check`, `/credit-card-payoff`, `/emergency-fund-target`, `/how-should-i-split-my-paycheck`, `/net-worth-impact`. `app/tools/page.tsx` is purely an index mapping over `FREE_TOOLS`. Read `FREE_TOOLS` rather than trusting this list — it is the source of truth and this list is a convenience copy.
+2. **The route.** Tools live at **top-level routes**, not nested under `/tools/`. Live today: `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/should-i-use-buy-now-pay-later`, `/credit-card-payoff`, `/emergency-fund-target`, `/how-should-i-split-my-paycheck`, `/what-is-saving-monthly-worth`. `app/tools/page.tsx` is purely an index mapping over `FREE_TOOLS`. Read `FREE_TOOLS` rather than trusting this list — it is the source of truth and this list is a convenience copy.
 
    **Never migrate an existing tool route.** Flat is deliberate and correct — URL depth is a weak signal and `/how-much-rent-can-i-afford` is the query verbatim. Moving it under `/tools/` would gain nothing and cost 301s.
 
@@ -59,8 +59,10 @@ Files created or changed, the target query, the schema types emitted, the funnel
 
 ## Slug naming
 
-Two live slugs are still internal product names rather than search language — `/smart-purchase-check` and `/net-worth-impact`. Nobody types those. `/how-much-rent-can-i-afford` is the model to follow, `/offer` → `/what-is-my-job-offer-worth` and `/allocator` → `/how-should-i-split-my-paycheck` have already been done on that principle.
+**Every tool slug is now query-shaped.** `/offer`, `/allocator`, `/smart-purchase-check` and `/net-worth-impact` were all internal product names and have been renamed, each on this agent's own recommendation and each backed by a 308. `/how-much-rent-can-i-afford` was the model.
 
-Renaming is cheapest right now: metadata landed only in PR #21/#22, so these pages have close to zero accumulated organic equity and a rename costs one 308 and nothing else. That cost only rises. If you are building or substantially reworking one of these pages, raise the naming question with the user in the same pass — but never rename unilaterally, and never rename a page that has started ranking.
+There is nothing left to rename. If a *new* tool is added, its slug should read as the query someone types, and the bar is whether a stranger could guess what the page does from the URL alone.
+
+A rename costs one 308 and nothing else while a page has no accumulated organic equity, and that cost only rises. If you are building or substantially reworking a page whose slug is wrong, raise the naming question with the user in the same pass — but never rename unilaterally, and never rename a page that has started ranking.
 
 When a rename does happen, the analytics identifiers do not move with it. `slug` in `FREE_TOOLS`, the `tool` property on funnel events, and any legacy per-tool event name and its `page` value all stay as they were — they are the join keys for historical data, and rewriting them splits every saved report at the deploy boundary. Short human-facing aliases printed on share cards also stay short and stay backed by the redirect; nobody retypes `/what-is-my-job-offer-worth` off a screenshot.
