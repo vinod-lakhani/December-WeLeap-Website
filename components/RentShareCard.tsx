@@ -10,11 +10,20 @@ import { formatCurrency, formatCurrencyRange } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 
 /**
- * Short, retypeable URL shown on the card — people photograph these, so the
- * link has to be short enough to type from memory. `/rent` redirects to
+ * Two URLs, because the card has two audiences and they want opposite things.
+ *
+ * PRINTED_URL is what a human reads off a screenshot, so it has to be short
+ * enough to retype from memory. `/rent` redirects to
  * /how-much-rent-can-i-afford (see next.config.mjs).
+ *
+ * CANONICAL_URL is what goes into `navigator.share`, where nobody types it and
+ * a machine follows it. The short form cost two redirects there — apex 307s to
+ * www, then /rent 307s to the real path — which loses referrer data on some
+ * clients and passes nothing on to the destination. The full canonical URL
+ * lands in one hop.
  */
-const SHARE_URL = 'https://weleap.ai/rent'
+const PRINTED_URL = 'weleap.ai/rent'
+const CANONICAL_URL = 'https://www.weleap.ai/how-much-rent-can-i-afford'
 
 interface RentShareCardProps {
   rentRange: string;
@@ -87,7 +96,7 @@ export function RentShareCard({
       const shareData: ShareData = {
         title: 'My rent range',
         text: "I worked out the rent I can actually afford on my salary — after tax, not before. Took 60 seconds:",
-        url: `${SHARE_URL}?ref=rent_card`,
+        url: `${CANONICAL_URL}?ref=rent_card`,
         files: [file],
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
@@ -149,7 +158,7 @@ export function RentShareCard({
                 actually travels, and without it the card is a dead end for
                 anyone who sees it second-hand. */}
             <div className="mt-5 border-t border-[#E5E7EB] pt-3">
-              <p className="text-sm font-bold text-[#3F6B42]">weleap.ai/rent</p>
+              <p className="text-sm font-bold text-[#3F6B42]">{PRINTED_URL}</p>
               <p className="text-xs text-[#9CA3AF]">Find your range free in 60 seconds</p>
             </div>
           </div>

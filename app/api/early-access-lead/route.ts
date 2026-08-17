@@ -117,7 +117,9 @@ export async function POST(request: NextRequest) {
         : null;
 
     const baseUrl = getBaseUrl(request);
-    const leapToolUrl = `${baseUrl}/leap-impact-simulator`;
+    // Was /leap-impact-simulator, which 308s to /allocator — a redirect hop in
+    // a link we send by email, and now a route that no longer exists.
+    const leapToolUrl = `${baseUrl}/allocator`;
 
     // Filter out redundant items (e.g. "Brokerage (part of split above)")
     const planTitles = leapTitles.filter((t) => !t.toLowerCase().includes('brokerage (part of split'));

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
@@ -13,8 +12,12 @@ import { JsonLd } from '@/components/JsonLd'
 import { organizationSchema, websiteSchema } from '@/lib/structured-data'
 import './globals.css'
 
-// Plus Jakarta Sans is the product app's typeface. Geist reads as a developer
-// tool, which was a large part of why the site felt B2B.
+// Plus Jakarta Sans is the product app's typeface, and the only one the site
+// uses. Geist reads as a developer tool, which was a large part of why the site
+// felt B2B. GeistMono was still being downloaded here long after that switch,
+// but nothing could reach it: tailwind.config.ts extends only `sans`, so
+// `font-mono` resolves to Tailwind's default system stack — which is what the
+// six `font-mono` usages have been rendering in all along. Dropped.
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
@@ -46,14 +49,21 @@ export const metadata: Metadata = {
   description:
     'WeLeap is your AI financial sidekick. It looks at your full financial picture and gives you one clear next step — a Leap — so you are never guessing what to do next.',
   applicationName: 'WeLeap',
-  icons: {
-    icon: '/images/Icon.png',
-  },
+  // No `icons` block: the favicon is `app/icon.png`, the App Router file
+  // convention, which emits the link tag with the right type and dimensions
+  // and cannot drift from a hand-written path. Declaring both would emit two
+  // competing <link rel="icon"> tags.
+  //
+  // Likewise no `openGraph.images` / `twitter.images`: `app/opengraph-image.tsx`
+  // is the sitewide card and the seven tool routes override it with their own,
+  // all resolved per-route by Next.
   openGraph: {
     type: 'website',
     siteName: 'WeLeap',
     locale: 'en_US',
-    url: SITE_URL,
+    // `url` deliberately absent. It was set to SITE_URL here, which is only
+    // correct for the homepage — every route that defined no openGraph block
+    // of its own inherited an og:url pointing at "/". Each route sets its own.
   },
   twitter: {
     card: 'summary_large_image',
@@ -66,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={jakarta.variable}>
       <head>
         {/* Site-wide structured data. In <head> so it is in the initial HTML
             for crawlers rather than appearing after hydration. */}

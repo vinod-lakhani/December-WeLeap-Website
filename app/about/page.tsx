@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
     title: 'About WeLeap | WeLeap',
     description: 'Why we built an AI financial sidekick that gives you one clear next move instead of another dashboard.',
     url: '/about',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
     title: 'Put your money on autopilot | WeLeap',
     description: 'The decisions worth automating, the ones worth keeping manual, and how to tell them apart.',
     url: '/resources/financial-autopilot',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

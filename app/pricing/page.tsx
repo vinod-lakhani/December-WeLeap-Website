@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     title: 'Pricing | WeLeap',
     description: 'What WeLeap costs, and what you get for it. Start free — the tools need no account at all.',
     url: '/pricing',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Build a money system that adapts | WeLeap',
     description: 'Budgets break the moment life changes. A system that adapts survives the raise, the move and the bad month.',
     url: '/resources/adaptable-money-system',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

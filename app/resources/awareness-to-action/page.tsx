@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
     title: 'From awareness to action | WeLeap',
     description: 'Knowing where your money goes changes nothing on its own. What turns awareness into a decision.',
     url: '/resources/awareness-to-action',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

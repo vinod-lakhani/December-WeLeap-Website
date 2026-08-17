@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 
 /**
  * Metadata for /resources. It lives here rather than in page.tsx because that
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
     title: 'Resources — money guides for people who are earning and unsure | WeLeap',
     description: 'Practical guides on rent, emergency funds, credit, spending and where your surplus should actually go.',
     url: '/resources',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

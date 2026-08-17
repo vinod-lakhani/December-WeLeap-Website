@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Stop guessing your emergency fund | WeLeap',
     description: 'Three months, six months — the standard advice ignores the two things that actually decide your number.',
     url: '/resources/emergency-fund-guess',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

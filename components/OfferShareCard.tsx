@@ -15,8 +15,13 @@ import { useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { track } from '@/lib/analytics';
 
-/** Short, retypeable URL — people photograph these. */
-const SHARE_URL = 'https://weleap.ai/offer';
+/**
+ * Two URLs. PRINTED_URL is short because people photograph the card and retype
+ * it; CANONICAL_URL is what `navigator.share` hands to a machine, where the
+ * apex host only costs a 307 to www and nothing is gained by being short.
+ */
+const PRINTED_URL = 'weleap.ai/offer';
+const CANONICAL_URL = 'https://www.weleap.ai/offer';
 
 interface OfferShareCardProps {
   /** Total package as a % above the quoted base, e.g. 23 for +23%. */
@@ -75,7 +80,7 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
       const shareData: ShareData = {
         title: 'My offer, all 7 numbers',
         text: `My offer is worth ${Math.round(upliftPct)}% more than the base they quoted. Turns out an offer has 7 numbers and most people only read one:`,
-        url: `${SHARE_URL}?ref=offer_card`,
+        url: `${CANONICAL_URL}?ref=offer_card`,
         files: [file],
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
@@ -118,7 +123,7 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
 
             {/* URL lives in the image: a screenshot is how this actually travels. */}
             <div className="mt-5 border-t border-[#E5E7EB] pt-3">
-              <p className="text-sm font-bold text-[#386641]">weleap.ai/offer</p>
+              <p className="text-sm font-bold text-[#386641]">{PRINTED_URL}</p>
               <p className="text-xs text-[#9CA3AF]">Check yours free in 60 seconds</p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import Link from "next/link"
 import { ArrowLeft } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     title: 'Privacy policy | WeLeap',
     description: 'How WeLeap collects, uses and protects your information, including bank data via Plaid, email and SMS.',
     url: '/privacy-policy',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

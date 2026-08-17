@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from 'lucide-react'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
     title: 'The rent check panic | WeLeap',
     description: 'The gap between signing a lease and realising what it left you — and how to see it before you sign.',
     url: '/resources/the-rent-check-panic',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

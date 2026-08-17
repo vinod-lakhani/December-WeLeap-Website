@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from 'lucide-react'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Featured | WeLeap',
     description: 'A closer look at one money decision worth getting right.',
     url: '/resources/featured-article',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

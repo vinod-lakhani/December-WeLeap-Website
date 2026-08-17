@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'How we think about pricing | WeLeap',
     description: 'Why WeLeap charges what it charges, and why the tools stay free.',
     url: '/resources/pricing-philosophy',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

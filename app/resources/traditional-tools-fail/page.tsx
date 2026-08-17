@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Why traditional money tools fail | WeLeap',
     description: 'Budgeting apps tell you what happened. They almost never tell you what to do next.',
     url: '/resources/traditional-tools-fail',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Credit score myths that cost you money | WeLeap',
     description: 'The advice that sounds sensible, is repeated everywhere, and is quietly wrong.',
     url: '/resources/credit-score-myths',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

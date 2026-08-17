@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'The emergency fund, properly explained | WeLeap',
     description: 'What it is for, how big it should be, where to keep it, and when to stop adding to it.',
     url: '/resources/emergency-fund',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

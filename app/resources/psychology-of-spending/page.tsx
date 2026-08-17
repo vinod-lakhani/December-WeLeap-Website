@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'The psychology of spending | WeLeap',
     description: 'Why the same amount feels different depending on how you pay, and what that costs you.',
     url: '/resources/psychology-of-spending',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

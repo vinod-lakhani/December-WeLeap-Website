@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Where should your income actually go? | WeLeap',
     description: 'Needs, wants and savings is a starting point, not an answer. How to allocate income when you have a surplus.',
     url: '/resources/income-allocation',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

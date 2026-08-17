@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/tools" },
   description:
     "Seven free calculators that answer a real money question in under a minute. Rent affordability, offer letters, pay-in-4 decisions, credit card payoff, emergency fund and more. No account, no email wall.",
+  openGraph: {
+    title: "Free money tools | WeLeap",
+    description:
+      "Seven free calculators that answer a real money question in under a minute. No account, no email wall.",
+    url: "/tools",
+    images: [DEFAULT_OG_IMAGE],
+  },
 }
 
 export default function ToolsPage() {
