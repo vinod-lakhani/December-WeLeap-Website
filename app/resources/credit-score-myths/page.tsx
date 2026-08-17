@@ -7,6 +7,7 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Credit score myths that cost you money',
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
 export default function CreditScoreMythsPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/credit-score-myths" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { JsonLd } from '@/components/JsonLd'
-import { toolSchema, toolByHref } from '@/lib/structured-data'
+import { ToolJsonLd } from '@/components/ToolJsonLd'
 
 export const metadata: Metadata = {
   title: 'Is $150 a month worth it? See the 30-year impact',
@@ -15,20 +14,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function NetWorthImpactLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const tool = toolByHref('/net-worth-impact')
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      {/* WebApplication markup for this calculator, derived from the
-          tools registry so it cannot drift from the card copy. The helpers
-          were imported here but never called, so this was the one tool route
-          shipping no structured data. */}
-      {tool && <JsonLd data={toolSchema(tool)} />}
+      {/* WebApplication + FAQPage markup for this route. */}
+      <ToolJsonLd href="/net-worth-impact" />
       {children}
     </>
-  );
+  )
 }

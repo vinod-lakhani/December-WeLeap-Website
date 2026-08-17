@@ -7,6 +7,7 @@ import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
 import { fbqTrack } from '@/lib/meta-pixel';
+import { ToolFaq } from '@/components/ToolExplainer';
 
 export default function HowMuchRentCanIAffordPage() {
   // Track page view on mount - wait for gtag to be available
@@ -73,6 +74,12 @@ export default function HowMuchRentCanIAffordPage() {
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
               Turn your job offer into a rent range you can actually afford — and see what life looks like
               before you sign a lease.
+            </p>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
+              The usual rule of thumb is to keep rent at or under 30% of income. This free calculator applies it to
+              take-home pay rather than gross salary — rent comes out of what lands in your account, not out of the
+              number in the offer letter — and then shows the cash you need upfront, which is typically two to three
+              months&apos; rent before you have bought any furniture.
             </p>
           </div>
 
@@ -176,6 +183,8 @@ export default function HowMuchRentCanIAffordPage() {
           </div>
         </Container>
       </Section>
+
+      <ToolFaq href="/how-much-rent-can-i-afford" />
 
       {/* Footer */}
       <SiteFooter />

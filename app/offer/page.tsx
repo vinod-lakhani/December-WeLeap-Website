@@ -5,6 +5,31 @@ import { OfferAnalysisTool } from '@/components/OfferAnalysisTool';
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { track } from '@/lib/analytics';
 import { fbqTrack } from '@/lib/meta-pixel';
+import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+
+/**
+ * The seven-number grid below already existed, but a grid of labels tells a
+ * reader (or a model) that seven numbers exist without saying what any of them
+ * are worth or how they combine. These steps are the missing half.
+ */
+const STEPS: readonly MethodStep[] = [
+  {
+    t: 'It starts from take-home, not base salary',
+    d: 'We estimate federal income tax, your state’s income tax and FICA, then show what actually lands each month. For most salaries between $60,000 and $150,000 that is somewhere between roughly 65% and 78% of gross, and the state you work in moves it more than almost anything else in the offer.',
+  },
+  {
+    t: 'Then it prices the six things that aren’t salary',
+    d: 'Bonus target, employer 401(k) match, health and HSA contributions, equity, and paid time off. A dollar-for-dollar match up to 5% of an $80,000 salary is $4,000 a year you only receive if you contribute — that is a bigger swing than most negotiated salary increases.',
+  },
+  {
+    t: 'It puts housing next to the offer',
+    d: 'A market rent estimate for the city goes beside your take-home, because the same salary buys very different lives in different places. Comparing two offers on base salary alone is comparing the one number that varies least.',
+  },
+  {
+    t: 'And it shows the total against the number in the letter',
+    d: 'Base salary is typically 70% to 90% of what an offer is worth. The gap between the two figures is what you would be giving up by taking the higher base — or what you would be gaining by taking the lower one.',
+  },
+];
 
 export default function OfferAnalysisPage() {
   useEffect(() => {
@@ -34,6 +59,12 @@ export default function OfferAnalysisPage() {
           <p className="mx-auto max-w-md text-lg leading-relaxed text-subtle">
             Enter your offer details below. We&apos;ll show you what the full package is actually worth
             — and what you&apos;ll keep each month.
+          </p>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-subtle">
+            This free offer letter calculator turns base salary, bonus, 401(k) match, benefits, equity, time off and
+            local housing costs into one annual figure and one monthly take-home figure. Base salary is usually only
+            70% to 90% of what an offer is worth, which is why two offers that look a few thousand apart often
+            aren&apos;t.
           </p>
         </Container>
       </Section>
@@ -71,6 +102,16 @@ export default function OfferAnalysisPage() {
           </div>
         </Container>
       </Section>
+
+      <MethodSteps heading="How we value an offer" steps={STEPS} />
+
+      <Caveat label="What this can’t see:">
+        your existing savings, what you already contribute, and whether the equity is worth anything. Public-company
+        RSUs have a price; private-company options have a scenario. We show equity as its own line rather than folding
+        it into a total, so it never quietly inflates the number you plan your rent against.
+      </Caveat>
+
+      <ToolFaq href="/offer" />
 
       <SiteFooter />
     </PageShell>

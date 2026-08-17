@@ -8,6 +8,7 @@ import { Facebook, Twitter, Linkedin, Mail } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'The rent check panic',
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
 export default function TheRentCheckPanicPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/the-rent-check-panic" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">

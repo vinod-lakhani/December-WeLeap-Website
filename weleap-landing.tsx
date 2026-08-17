@@ -8,6 +8,7 @@ import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { cn } from "@/lib/utils"
 import { PRESENT_DAY_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
+import { HOME_FAQS } from "@/lib/home-faqs"
 
 /* ============================================================================
    Shared bits
@@ -998,15 +999,6 @@ function Trust() {
    FAQ
    ========================================================================== */
 
-const FAQS = [
-  { q: "What if I’m bad with money?", a: "Then you’re exactly who this is for. Ribbit doesn’t grade your spending or lecture you about takeout. It looks at where you actually are and tells you the next useful thing to do." },
-  { q: "Do you move my money for me?", a: "Never without your say-so. Ribbit finds the move and shows you the math behind it — you decide whether it happens. Nothing is automatic." },
-  { q: "Is my bank data safe?", a: "We connect through Plaid with read-only access — the same infrastructure your other financial apps use. We don’t store your bank login, and we don’t sell your data to anyone." },
-  { q: "Are you financial advisors?", a: "No. WeLeap isn’t a registered investment adviser and doesn’t give personalised investment advice. We show you the math on your own numbers so you can make your own call — and we tell you when something is worth asking a professional about." },
-  { q: "What if I’m still paying off debt?", a: "Then debt is probably your best move on the board. A 22% credit card beats almost any investment return, and Ribbit will say so instead of pushing you toward a portfolio." },
-  { q: "How long does setup take?", a: "About two minutes to connect an account, and your first Leap shows up right after. There’s no long questionnaire and no budget to build." },
-]
-
 function Faq() {
   const [open, setOpen] = useState<number | null>(0)
   return (
@@ -1014,7 +1006,7 @@ function Faq() {
       <Container maxWidth="wide">
         <SectionHead eyebrow="Questions" title="The stuff you’re actually wondering." />
         <div className="mx-auto mt-12 max-w-[780px]">
-          {FAQS.map((f, n) => {
+          {HOME_FAQS.map((f, n) => {
             const isOpen = open === n
             return (
               <div key={f.q} className="border-b border-hairline">
@@ -1037,7 +1029,26 @@ function Faq() {
                     <path d="m6 9 6 6 6-6" />
                   </svg>
                 </button>
-                {isOpen && <p className="mb-5 max-w-[660px] pr-10 text-base leading-relaxed text-subtle">{f.a}</p>}
+                {/* Collapsed with a grid row rather than `isOpen && …`. The
+                    conditional meant five of the six answers were never in the
+                    served HTML — invisible to a crawler, to an answer engine,
+                    and to anyone reading with JavaScript off. The text is now
+                    always in the DOM and the open/closed state is purely
+                    visual. */}
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+                  )}
+                >
+                  {/* overflow-hidden establishes a block formatting context, so
+                      the paragraph's bottom margin stays inside the collapsing
+                      row instead of leaving a 20px gap under every closed
+                      question. */}
+                  <div className="overflow-hidden" aria-hidden={!isOpen}>
+                    <p className="mb-5 max-w-[660px] pr-10 text-base leading-relaxed text-subtle">{f.a}</p>
+                  </div>
+                </div>
               </div>
             )
           })}

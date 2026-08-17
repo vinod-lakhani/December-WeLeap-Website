@@ -20,6 +20,38 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * The category comparison.
+ *
+ * Nowhere on the site said, in crawlable text, what category WeLeap belongs to
+ * or how it differs from the two things a reader will assume it is. "Not a
+ * budgeting app" appeared as a rhetorical line in a few places; the actual
+ * distinction — budgeting apps report backwards, robo-advisers manage one
+ * account forwards, this does neither — was never written down. A model cannot
+ * infer positioning that only exists in a founder's head, and a table is the
+ * form this comparison is actually in.
+ */
+const CATEGORIES = [
+  {
+    what: 'Budgeting apps',
+    examples: 'Mint-style spend trackers, envelope apps',
+    does: 'Categorises money you already spent and shows it back to you',
+    misses: 'It tells you what happened, not what to do next',
+  },
+  {
+    what: 'Robo-advisers',
+    examples: 'Automated investing platforms',
+    does: 'Manages an investment account for you, for a fee on assets',
+    misses: 'It only sees the account it manages — not your debt, cash or 401(k)',
+  },
+  {
+    what: 'WeLeap',
+    examples: 'Ribbit, plus these free calculators',
+    does: 'Reads the whole picture and names the single next move, which you approve',
+    misses: 'It does not move money on its own and it does not manage investments',
+  },
+] as const
+
 export default function ToolsPage() {
   return (
     <PageShell className="bg-canvas">
@@ -70,6 +102,53 @@ export default function ToolsPage() {
               </EarlyAccessDialog>
             </div>
             <p className="mt-4 text-[13.5px] text-faint">Free to start · No card · You approve every move</p>
+          </div>
+
+          <div className="mx-auto mt-16 max-w-4xl">
+            <h2 className="mb-4 text-balance text-[clamp(1.6rem,2.6vw,2.1rem)] font-extrabold leading-tight tracking-[-0.025em] text-ink">
+              What is WeLeap?
+            </h2>
+            <p className="mb-4 max-w-3xl text-[16.5px] leading-relaxed text-subtle">
+              WeLeap is a personal finance app built around <strong className="font-semibold text-ink">Ribbit</strong>,
+              an AI financial sidekick for people in their twenties and early thirties. You connect your accounts
+              through Plaid with read-only access, and Ribbit reads the whole picture — cash, debt, 401(k), goals —
+              then names the single highest-value move to make next. That move is called a Leap. You approve it before
+              anything happens; nothing is automatic and no money moves on its own.
+            </p>
+            <p className="mb-8 max-w-3xl text-[16.5px] leading-relaxed text-subtle">
+              WeLeap is free during early access and needs no card. The {TOOL_COUNT_WORD} calculators above are free
+              permanently and need no account at all. WeLeap is not a registered investment adviser, does not provide
+              personalised investment advice, and does not sell your data.
+            </p>
+
+            <h3 className="mb-4 text-lg font-bold tracking-[-0.015em] text-ink">
+              How WeLeap differs from budgeting apps and robo-advisers
+            </h3>
+            <div className="overflow-x-auto rounded-card border border-hairline bg-white">
+              <table className="w-full min-w-[680px] border-collapse text-left text-[15px]">
+                <caption className="sr-only">
+                  Comparison of budgeting apps, robo-advisers and WeLeap: what each one does and what it does not do.
+                </caption>
+                <thead>
+                  <tr className="border-b border-hairline bg-canvas">
+                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">Category</th>
+                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">Examples</th>
+                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">What it does</th>
+                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">What it doesn&apos;t</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CATEGORIES.map((c) => (
+                    <tr key={c.what} className="border-b border-hairline last:border-b-0">
+                      <th scope="row" className="px-5 py-4 align-top font-semibold text-ink">{c.what}</th>
+                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.examples}</td>
+                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.does}</td>
+                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.misses}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <p className="mt-10 text-center text-[13px] leading-relaxed text-faint">

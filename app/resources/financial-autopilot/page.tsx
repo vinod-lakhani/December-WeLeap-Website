@@ -8,6 +8,7 @@ import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Put your money on autopilot',
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
 export default function FinancialAutopilotPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/financial-autopilot" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">

@@ -1,5 +1,8 @@
 import type { Metadata } from "next"
 import Component from "../weleap-landing"
+import { JsonLd } from "@/components/JsonLd"
+import { faqSchema } from "@/lib/structured-data"
+import { HOME_FAQS } from "@/lib/home-faqs"
 
 /**
  * The homepage rendered as a passthrough with no metadata of its own, which
@@ -21,5 +24,14 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <Component />
+  return (
+    <>
+      {/* FAQPage built from the same array the landing page renders. The
+          answers are now in the served HTML whether or not a question is open,
+          which is the condition that makes this markup honest — previously
+          only the first of six was. */}
+      <JsonLd data={faqSchema(HOME_FAQS, "/")} />
+      <Component />
+    </>
+  )
 }

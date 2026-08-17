@@ -7,6 +7,7 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'The emergency fund, properly explained',
@@ -25,6 +26,7 @@ export const metadata: Metadata = {
 export default function EmergencyFundPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/emergency-fund" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">

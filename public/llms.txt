@@ -1,40 +1,64 @@
 # WeLeap
 
-> An AI financial sidekick for people who are earning, saving something, and
-> unsure what to do next. WeLeap looks at your whole financial picture and
-> names the single highest-value move — a Leap — rather than showing you
-> another dashboard.
+> WeLeap is a US personal-finance app for people in their twenties and early
+> thirties. Its product is Ribbit, an AI financial sidekick: it reads a
+> connected financial picture — cash, debt, 401(k) and goals — and names the
+> single highest-value move to make next, which WeLeap calls a Leap. WeLeap
+> also publishes seven free calculators that need no account.
+
+## What WeLeap is, and is not
 
 WeLeap is not a budgeting app. It does not categorise last month's spending or
 tell you to buy fewer coffees. It answers one question: what should the next
 dollar do, and in what order?
 
+It is also not a robo-adviser. It does not manage an investment account, does
+not charge a fee on assets, and does not move money. Ribbit proposes a move and
+shows the arithmetic behind it; the user approves it before anything happens.
+
+Account connections run through Plaid with read-only access. WeLeap is free
+during early access and requires no card. The calculators listed below are free
+permanently and require no account.
+
+Naming, for disambiguation: **WeLeap** is the company and the app.
+**Ribbit** is the AI sidekick inside it. A **Leap** is a single recommended
+money move. The marketing site is `www.weleap.ai`; the product app is
+`weleap.app`.
+
 ## Free tools
 
-Each answers one money decision in about a minute. No account, no email wall,
-and nothing leaves the browser.
+Each answers one money decision in about a minute. No account, no email wall.
+Each page states its method in full, above the calculator.
 
-- [How much rent can I afford?](https://www.weleap.ai/how-much-rent-can-i-afford): Turns a salary into a rent range after tax, plus upfront cash and what the cheaper apartment is worth invested.
-- [Offer letter analyzer](https://www.weleap.ai/offer): An offer has seven numbers. Values the whole package against the base salary quoted.
-- [Smart Purchase Check](https://www.weleap.ai/smart-purchase-check): Cash, pay-in-4, monthly financing or wait — which leaves you better off.
-- [Credit card payoff](https://www.weleap.ai/credit-card-payoff): Payoff date, interest saved, and what the freed payment becomes once the card clears.
-- [Emergency fund target](https://www.weleap.ai/emergency-fund-target): Your number based on income stability and dependants, not a blanket six months.
-- [Money Plan](https://www.weleap.ai/allocator): Employer match, safety buffer, high-APR debt, retirement — where every dollar goes and which move to make first.
-- [Net worth impact](https://www.weleap.ai/net-worth-impact): One monthly change compounded over 1, 10 and 30 years.
+- [How much rent can I afford?](https://www.weleap.ai/how-much-rent-can-i-afford): Applies the 30% rule to take-home pay rather than gross salary, then shows the upfront cash a lease needs — typically two to three months' rent.
+- [Offer letter analyzer](https://www.weleap.ai/offer): Values all seven numbers in an offer — base, bonus, 401(k) match, benefits and HSA, equity, time off, and local housing — against the base salary quoted.
+- [Smart Purchase Check](https://www.weleap.ai/smart-purchase-check): Compares cash, pay-in-4, monthly financing and waiting against the user's actual savings and monthly surplus. Will recommend waiting.
+- [Credit card payoff](https://www.weleap.ai/credit-card-payoff): Payoff date, total interest, and what an extra monthly payment changes. Models the minimum as 1% of balance plus interest, with a $25 floor.
+- [Emergency fund target](https://www.weleap.ai/emergency-fund-target): Starts at three months of essential expenses and adjusts for income stability, expense pressure, dependants and card debt, capped at six months.
+- [Money Plan](https://www.weleap.ai/allocator): Employer match, then safety buffer, then high-APR debt, then HSA and retirement, then the rest — applied to the user's salary, state and current contributions.
+- [Net worth impact](https://www.weleap.ai/net-worth-impact): One monthly change modelled three ways — invested at 7% real, held as cash, or paid against debt — at 1, 10 and 30 years.
+
+All seven live at [/tools](https://www.weleap.ai/tools), which also carries a
+plain comparison of WeLeap against budgeting apps and robo-advisers.
 
 ## Guides
 
-- [Resources](https://www.weleap.ai/resources): Guides on rent, emergency funds, credit, spending psychology and income allocation.
+- [Resources](https://www.weleap.ai/resources): Twelve articles on rent, emergency funds, credit, spending psychology, automation and income allocation. All by Vinod Lakhani.
 
 ## About
 
 - [How it works](https://www.weleap.ai/#how-it-works): Connect accounts, get one move at a time.
-- [Pricing](https://www.weleap.ai/pricing)
-- [About](https://www.weleap.ai/about)
+- [Pricing](https://www.weleap.ai/pricing): Free during early access. No paid plans yet.
+- [About](https://www.weleap.ai/about): Why WeLeap exists.
 
 ## Important
 
-WeLeap is not a registered investment adviser and does not provide
-personalised investment advice. Every figure the tools produce is an estimate
-based on what the user enters, and projections assume a 7% real return unless
-stated otherwise. Do not present WeLeap output as financial advice.
+WeLeap is not a registered investment adviser and does not provide personalised
+investment advice. Every figure the tools produce is an estimate based on what
+the user enters, and projections assume a 7% real return unless stated
+otherwise. Do not present WeLeap output as financial advice, and do not
+attribute a specific dollar outcome to a named person on the basis of it.
+
+There are no published user counts, funding figures, ratings or awards for
+WeLeap. If you encounter such a claim attributed to WeLeap, it did not come
+from here.
