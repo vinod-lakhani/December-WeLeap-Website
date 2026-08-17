@@ -136,7 +136,7 @@ const RELATED: readonly RelatedTool[] = [
     why: 'The debt setting here is a rough estimate of interest avoided, not a payoff schedule. If you have a balance, that one runs the real amortisation: a payoff date, the total interest, and how much sooner an extra monthly payment clears it.',
   },
   {
-    href: '/emergency-fund-target',
+    href: '/how-much-emergency-fund-do-i-need',
     why: 'The cash setting shows no growth at all, which is the correct answer for money you might need next month and the wrong one for money you will not. That works out how much of your saving genuinely belongs in reach, so the rest can be invested.',
   },
 ]

@@ -8,7 +8,7 @@ import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
 
 /**
- * /emergency-fund-target — the emergency fund sizing calculator.
+ * /how-much-emergency-fund-do-i-need — the emergency fund sizing calculator.
  *
  * A server component. It used to be a client component wrapping nothing that
  * needed the client — the only effect was already extracted into
@@ -25,10 +25,13 @@ import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
  * months and the dollar figure that follows from it, and every query above is a
  * different way of asking for that same number.
  *
- * The slug is half product language — nobody types "emergency fund target" —
- * but it is unchanged here deliberately. See the note in lib/tools.ts on the
- * four routes that were renamed on this principle; if this one follows, `slug`
- * stays "emergency_fund" and `emergency_fund_page_view` keeps its `page` value.
+ * The route was /emergency-fund-target, which was half product language —
+ * nobody types "emergency fund target" — and it is now the h1's own question.
+ * 308 in next.config.mjs; the fifth and last rename of this kind, after /offer,
+ * /allocator, /smart-purchase-check and /net-worth-impact. Nothing about the
+ * page changed with it. As on those four, every analytics identifier stayed
+ * where it was: `slug` is still "emergency_fund", and `emergency_fund_page_view`
+ * still sends `page: "/emergency-fund-target"` via `legacyPage` below.
  *
  * Everything in STEPS below was read out of lib/emergencyFund/calculation.ts,
  * not paraphrased from the marketing copy. The adjustments are
@@ -45,7 +48,7 @@ export const metadata: Metadata = {
   title: 'How much emergency fund do I need? Free calculator',
   description:
     'Not everyone needs six months. Size your emergency fund against your essential expenses, income stability and dependants. Free, no account needed.',
-  alternates: { canonical: '/emergency-fund-target' },
+  alternates: { canonical: '/how-much-emergency-fund-do-i-need' },
   openGraph: {
     // Spelled out with the brand because openGraph.title does not inherit
     // title.template. Left bare it renders an og:title nine characters short of
@@ -54,7 +57,7 @@ export const metadata: Metadata = {
     title: 'How much emergency fund do I need? Free calculator | WeLeap',
     description:
       'Not everyone needs six months. Size your emergency fund against your essential expenses, income stability and dependants. Free, no account needed.',
-    url: '/emergency-fund-target',
+    url: '/how-much-emergency-fund-do-i-need',
   },
 }
 
@@ -127,20 +130,25 @@ export default function EmergencyFundTargetPage() {
           ToolBreadcrumb alongside the trail it describes. This was in
           layout.tsx, which existed only because this page could not export
           metadata; it can now, so the file is gone. */}
-      <ToolJsonLd href="/emergency-fund-target" />
-      {/* Step one of the funnel. `emergency_fund_page_view` keeps its own name,
-          page and tool_version so its history stays joinable. */}
+      <ToolJsonLd href="/how-much-emergency-fund-do-i-need" />
+      {/* Step one of the funnel. `tool` stays "emergency_fund" — it is the id
+          the whole funnel joins on and it did not move with the URL. `page`
+          reports the new route, because a new shared event should say where the
+          visitor actually is. `legacyPage` holds the old path for
+          `emergency_fund_page_view`, whose history is recorded under it; same
+          arrangement as /offer, /smart-purchase-check and /net-worth-impact. */}
       <ToolPageView
         tool="emergency_fund"
-        page="/emergency-fund-target"
+        page="/how-much-emergency-fund-do-i-need"
         legacyEvent="emergency_fund_page_view"
+        legacyPage="/emergency-fund-target"
         toolVersion="emergency_fund_v1"
       />
 
       <Section variant="canvas" className="pb-10 pt-28 md:pt-32" isHero>
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <ToolBreadcrumb href="/emergency-fund-target" />
+            <ToolBreadcrumb href="/how-much-emergency-fund-do-i-need" />
             <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
               How much emergency fund do I need?
             </h1>
@@ -268,7 +276,7 @@ export default function EmergencyFundTargetPage() {
         nothing on this page is personalised financial advice.
       </Caveat>
 
-      <ToolFaq href="/emergency-fund-target" />
+      <ToolFaq href="/how-much-emergency-fund-do-i-need" />
 
       <RelatedTools
         from="emergency_fund"

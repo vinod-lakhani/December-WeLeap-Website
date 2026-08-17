@@ -26,6 +26,19 @@ import { track } from '@/lib/analytics';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { AppCta } from '@/components/AppCta';
 
+/**
+ * NOT the current route — the route is /how-much-emergency-fund-do-i-need.
+ *
+ * This is the `page` value `emergency_fund_form_start`,
+ * `emergency_fund_cta_click`, `emergency_fund_calculated`,
+ * `emergency_fund_results_viewed`, `emergency_fund_scenario_slider_changed`,
+ * `emergency_fund_recalculate_clicked` and `emergency_fund_feedback_submitted`
+ * have always sent, and all seven predate the rename. Their history is recorded
+ * under this string, so a saved report filtering on it would quietly drop to
+ * zero if this moved. Same arrangement as `legacyPage` on ToolPageView and as
+ * `PAGE` in SmartPurchaseTool and ImpactTool: the shared funnel events report
+ * the real URL, the legacy per-tool events keep their own past.
+ */
 const PAGE = '/emergency-fund-target';
 
 const INCOME_STABILITY_OPTIONS: { value: IncomeStability; label: string }[] = [

@@ -92,7 +92,26 @@ export const FREE_TOOLS: FreeTool[] = [
     question: "How much do I actually need saved?",
     blurb: "Not everyone needs six months. Find the number that fits your situation.",
     cta: "Find my target →",
-    href: "/emergency-fund-target",
+    // Renamed from /emergency-fund-target, which was half product language:
+    // "emergency fund" is what people type, "target" is ours, and nobody
+    // searches the pair. 308 in next.config.mjs. Same reasoning as /offer,
+    // /allocator, /smart-purchase-check and /net-worth-impact above — on a site
+    // whose tools sit at flat top-level routes, the slug is the strongest
+    // on-page signal, so it now says the query the page targets, which is the
+    // question the h1 was already asking before the URL caught up.
+    //
+    // `slug` deliberately stayed "emergency_fund": it is the analytics id every
+    // event in this tool's funnel joins on, and it did not move with the URL.
+    // The per-tool events keep the old path too — `emergency_fund_page_view`
+    // via `legacyPage` on ToolPageView, the six in EmergencyFundTool via the
+    // annotated `PAGE` const there — because that is the value their history is
+    // recorded under.
+    //
+    // `name` stayed as well. It is the card label, the breadcrumb leaf, the OG
+    // eyebrow and the schema `name`, it is an accurate noun phrase for the
+    // tool, and the card renders `question` directly beneath it — a question in
+    // both slots would print near enough the same sentence twice.
+    href: "/how-much-emergency-fund-do-i-need",
     icon: "/images/tool-icons/lock.png",
     slug: "emergency_fund",
     presentDay: false,

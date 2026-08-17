@@ -167,7 +167,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
-  '/emergency-fund-target': [
+  '/how-much-emergency-fund-do-i-need': [
     {
       q: 'How much should I have in my emergency fund?',
       a: 'The conventional answer is three to six months of expenses, but that range is wide enough to be useless on its own and the right end of it depends on how predictable your income is. A salaried employee with stable pay and no dependants sits near the bottom of the range; someone freelancing, or supporting other people, or spending most of their income on essentials, sits near the top. This calculator starts everyone at three months and adjusts up from there based on income stability, expense pressure, dependants and credit card debt, then caps the answer at six months.',

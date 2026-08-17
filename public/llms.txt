@@ -34,7 +34,7 @@ Each page states its method in full, above the calculator.
 - [Offer letter analyzer](https://www.weleap.ai/what-is-my-job-offer-worth): Values all seven numbers in an offer — base, bonus, 401(k) match, benefits and HSA, equity, time off, and local housing — against the base salary quoted.
 - [Smart Purchase Check](https://www.weleap.ai/should-i-use-buy-now-pay-later): Answers "should I use buy now, pay later?" — compares cash, pay-in-4, monthly financing and waiting against the user's actual savings and monthly surplus. Will recommend waiting.
 - [Credit card payoff](https://www.weleap.ai/credit-card-payoff): Payoff date, total interest, and what an extra monthly payment changes. Models the minimum as 1% of balance plus interest, with a $25 floor.
-- [Emergency fund target](https://www.weleap.ai/emergency-fund-target): Starts at three months of essential expenses and adjusts for income stability, expense pressure, dependants and card debt, capped at six months.
+- [Emergency fund target](https://www.weleap.ai/how-much-emergency-fund-do-i-need): Starts at three months of essential expenses and adjusts for income stability, expense pressure, dependants and card debt, capped at six months.
 - [Money Plan](https://www.weleap.ai/how-should-i-split-my-paycheck): Employer match, then safety buffer, then high-APR debt, then HSA and retirement, then the rest — applied to the user's salary, state and current contributions.
 - [Net worth impact](https://www.weleap.ai/what-is-saving-monthly-worth): Answers "what is saving monthly worth?" — one monthly amount modelled three ways at 1, 10 and 30 years: invested at an assumed 7% real return, held as cash with no growth, or put against debt. The rate is a stated assumption, not a forecast.
 

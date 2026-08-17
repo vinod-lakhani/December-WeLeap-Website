@@ -98,7 +98,7 @@ const STEPS: readonly MethodStep[] = [
  */
 const RELATED: readonly RelatedTool[] = [
   {
-    href: '/emergency-fund-target',
+    href: '/how-much-emergency-fund-do-i-need',
     why: 'Step two of the plan above is a safety buffer, and this page assumes three months of essentials. This one works out how many months your own situation actually calls for — a stable salary and a cheap lease is not the same problem as variable income.',
   },
   {
@@ -219,7 +219,7 @@ export default function AllocatorPage() {
               </Link>
               . To size the buffer that comes before it, use the{' '}
               <Link
-                href="/emergency-fund-target"
+                href="/how-much-emergency-fund-do-i-need"
                 className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-800"
               >
                 emergency fund target calculator

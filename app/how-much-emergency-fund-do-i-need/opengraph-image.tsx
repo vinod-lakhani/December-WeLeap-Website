@@ -1,7 +1,7 @@
 import { ogContentType, ogSize, toolOgAlt, toolOgImage } from '@/lib/og'
 
 /** Social card for this tool. Copy comes from FREE_TOOLS — see lib/og.tsx. */
-const HREF = '/emergency-fund-target'
+const HREF = '/how-much-emergency-fund-do-i-need'
 
 export const alt = toolOgAlt(HREF)
 export const size = ogSize

@@ -103,7 +103,7 @@ const STEPS: readonly MethodStep[] = [
  */
 const RELATED: readonly RelatedTool[] = [
   {
-    href: '/emergency-fund-target',
+    href: '/how-much-emergency-fund-do-i-need',
     why: 'The extra payment and a cash buffer compete for the same dollars, and clearing a card with nothing behind it usually means the next unexpected bill goes straight back onto it. This sizes the buffer against your essential expenses rather than a blanket three-to-six-month rule, so you can see what has to exist alongside the payoff plan.',
   },
   {
