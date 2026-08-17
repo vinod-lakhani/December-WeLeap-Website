@@ -177,6 +177,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
       q: 'Where should I keep my emergency fund?',
       a: 'Somewhere you can reach within a day or two and where the balance does not move — that generally means a savings account separate from the one you spend from, not an investment account. The purpose of this money is availability rather than return, and money invested in the market can be worth less exactly when you need it, because job losses and market falls tend to arrive together.',
     },
+    {
+      q: 'What counts as an emergency?',
+      a: 'An expense that is unexpected, necessary and urgent — all three at once. A car repair that stops you getting to work, an insurance excess after an accident, a medical bill, a flight home for a family crisis, or the weeks between one job and the next. A holiday is none of the three. An annual insurance premium or a known car service is necessary but not unexpected, so it belongs in a separate pot you top up monthly rather than in the emergency fund. The distinction is what keeps the fund intact: a buffer that gets drained for predictable costs is never there for the unpredictable one.',
+    },
+    {
+      q: 'How long does it take to build an emergency fund?',
+      a: 'It is the gap between what you have and your target, divided by what you can put aside each month — and for most people that is a project measured in years rather than months. If your essentials are $2,900 and your target is four months, the full figure is $11,600; at $300 a month from a standing start that is 39 months. The first milestone, one month of expenses, arrives in 10. This calculator reports both dates separately for that reason, and suggests a monthly amount of 10% of whatever is left after your essentials, rounded to the nearest $25, if you do not have a figure in mind.',
+    },
   ],
 
   // Was keyed '/net-worth-impact'. The key is the route, because ToolFaq and
