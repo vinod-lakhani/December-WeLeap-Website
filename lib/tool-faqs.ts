@@ -40,7 +40,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
   '/how-much-rent-can-i-afford': [
     {
       q: 'How much rent can I afford on my salary?',
-      a: 'A common starting point is the 30% rule: keep rent at or under 30% of income. The version worth using applies it to take-home pay rather than gross salary, because rent is paid out of what lands in your account, not out of what the offer letter says. On a $70,000 salary, gross-based maths allows about $1,750 a month; take-home-based maths usually lands nearer $1,300–$1,450 depending on your state. This calculator does the second one.',
+      a: 'A common starting point is the 30% rule: keep rent at or under 30% of income. The version worth using applies it to take-home pay rather than gross salary, because rent is paid out of what lands in your account, not out of what the offer letter says. On a $70,000 salary the gross-based version allows about $1,750 a month. This calculator applies a 28–35% band to take-home instead, which for someone losing roughly a quarter of their salary to tax works out at about $1,225 to $1,530 — and lower again in a high-tax state, or if you have monthly debt payments.',
     },
     {
       q: 'Is the 30% rule on gross or net income?',
@@ -53,6 +53,18 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     {
       q: 'Should I count my bonus when working out what rent I can afford?',
       a: 'Rent is a fixed monthly obligation and a bonus is not a fixed monthly payment, so sizing rent against a bonus means committing guaranteed money against money that is discretionary for your employer. The usual approach is to size rent against base salary alone and treat any bonus as a separate decision once it actually arrives.',
+    },
+    {
+      q: 'Do landlords use gross or net income to approve you for an apartment?',
+      a: 'Gross, almost always. The common US screening rule is that your gross monthly income should be at least three times the monthly rent, and some markets — New York most visibly — use the equivalent annual version of forty times the monthly rent. Those are landlord conventions rather than legal or lending requirements, and they are more generous than a take-home-based band, so being approved for an apartment and being able to carry it comfortably are two different tests. A rent figure built on net income will normally sit below what a landlord would sign off.',
+    },
+    {
+      q: 'Do student loans and car payments change how much rent I can afford?',
+      a: 'Yes, and by more than most people expect. Monthly minimum payments come out of take-home pay before any rent percentage is applied, so they reduce the pool the band is calculated from rather than being absorbed by it. When rent is set at 28–35% of what is left, every $100 a month of minimum payments removes $28 to $35 from the rent range. A $400 monthly student loan payment therefore costs roughly $112 to $140 a month of rent budget, not $400.',
+    },
+    {
+      q: 'What if nothing in my city is inside my rent range?',
+      a: 'This is the normal outcome in expensive metros, and it means the arithmetic is working rather than failing. The levers people usually reach for are a roommate, which splits the rent line without splitting the income; a neighbourhood further out, trading rent for commuting cost and time; a smaller or older unit; or a later move-in date that gives the upfront cash more time to build. Going above the top of the band is also a choice, but it is a choice to run with no slack — which is worth making deliberately rather than by default.',
     },
   ],
 
