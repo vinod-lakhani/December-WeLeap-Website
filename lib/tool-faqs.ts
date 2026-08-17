@@ -1,4 +1,7 @@
 import {
+  DEBT_ALLOC_PCT,
+  EF_ALLOC_PCT,
+  EF_TARGET_MONTHS,
   HSA_LIMIT_FAMILY,
   HSA_LIMIT_SINGLE,
   K401_EMPLOYEE_CAP,
@@ -154,6 +157,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
       q: 'What happens to that money once the card is paid off?',
       a: 'The payment does not disappear — it becomes the largest reliable monthly surplus most people ever get, arriving all at once. The moment a card clears is the single easiest time to redirect money, because the cash flow is already gone from your budget and nothing feels lost. This calculator shows the freed-up payment as its own figure for that reason.',
     },
+    {
+      q: 'How much extra should I pay on my credit card each month?',
+      a: 'The arithmetic works better backwards from a date than forwards from an amount. Running $5,000 at 22% APR through this calculator, clearing it inside three years takes about $113 a month on top of the minimum, two years takes about $182, and one year takes about $389. The early dollars do most of the work: going from nothing extra to $10 a month cuts the term from about 230 months to 150 and removes roughly $2,350 of interest, while going from $100 to $150 cuts it from 40 months to 29 and removes about $473 — five times the money for a fifth of the effect. The projection assumes the extra arrives every month until the balance is gone, so the figure worth entering is one that survives a bad month.',
+    },
+    {
+      q: 'Why is it taking longer to pay off my card than the calculator says?',
+      a: 'Usually because the balance has not stopped moving. A payoff projection holds a balance and an APR fixed and assumes nothing new is charged to the card, so any spending after you run it restarts part of the timeline, and annual or late fees are added to the balance without appearing in the projection. The other common causes are a promotional 0% rate ending and the balance reverting to a standard APR, and a variable APR rising. A payoff date is a projection from the numbers entered, not a schedule an issuer has agreed to — your statement is the authority on the minimum payment and the rate you are actually being charged.',
+    },
   ],
 
   '/emergency-fund-target': [
@@ -176,6 +187,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     {
       q: 'Where should I keep my emergency fund?',
       a: 'Somewhere you can reach within a day or two and where the balance does not move — that generally means a savings account separate from the one you spend from, not an investment account. The purpose of this money is availability rather than return, and money invested in the market can be worth less exactly when you need it, because job losses and market falls tend to arrive together.',
+    },
+    {
+      q: 'What counts as an emergency?',
+      a: 'An expense that is unexpected, necessary and urgent — all three at once. A car repair that stops you getting to work, an insurance excess after an accident, a medical bill, a flight home for a family crisis, or the weeks between one job and the next. A holiday is none of the three. An annual insurance premium or a known car service is necessary but not unexpected, so it belongs in a separate pot you top up monthly rather than in the emergency fund. The distinction is what keeps the fund intact: a buffer that gets drained for predictable costs is never there for the unpredictable one.',
+    },
+    {
+      q: 'How long does it take to build an emergency fund?',
+      a: 'It is the gap between what you have and your target, divided by what you can put aside each month — and for most people that is a project measured in years rather than months. If your essentials are $2,900 and your target is four months, the full figure is $11,600; at $300 a month from a standing start that is 39 months. The first milestone, one month of expenses, arrives in 10. This calculator reports both dates separately for that reason, and suggests a monthly amount of 10% of whatever is left after your essentials, rounded to the nearest $25, if you do not have a figure in mind.',
     },
   ],
 
@@ -229,6 +248,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     {
       q: 'What is an HSA and should I use one?',
       a: `A Health Savings Account is available if you are enrolled in a qualifying high-deductible health plan, and it is the only US account that is untaxed on the way in, untaxed while it grows, and untaxed on the way out when used for qualified medical expenses. That triple treatment is why it sits high in the ordering — above general investing and, for many people, above additional retirement contributions beyond the match. The ${TAX_YEAR} contribution limits this tool uses are $${HSA_LIMIT_SINGLE.toLocaleString('en-US')} for self-only coverage and $${HSA_LIMIT_FAMILY.toLocaleString('en-US')} for family coverage.`,
+    },
+    {
+      q: 'What if my employer does not offer a 401(k) match?',
+      a: `Then the first step of the order simply does not apply to you, and the sequence starts at the safety buffer instead. The match sits at the front only because a dollar-for-dollar match is an immediate 100% return on the money you put in, and nothing else available to a normal earner pays that. With no match on offer there is nothing to capture, so there is no reason to prioritise retirement contributions above a buffer or above high-interest debt — a card at 22% APR is a guaranteed 22% return, which beats any expected market return. The rest of the order is unchanged.`,
+    },
+    {
+      q: 'Should I save or pay off debt first?',
+      a: `Both, in a fixed proportion, and in that order. This tool routes ${EF_ALLOC_PCT * 100}% of your monthly surplus to a ${EF_TARGET_MONTHS}-month safety buffer until it is funded, then ${DEBT_ALLOC_PCT * 100}% of what remains at high-interest debt while any high-APR balance exists. The buffer comes first not because it earns more — it earns far less than clearing a 22% card — but because with no buffer at all the next unexpected expense goes back onto the card and undoes the debt payment you just made. Once the buffer is funded that step switches off and more of the surplus flows to the debt.`,
     },
     {
       q: 'Does WeLeap move my money for me?',
