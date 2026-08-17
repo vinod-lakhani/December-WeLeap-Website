@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'The emergency fund, properly explained',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'The emergency fund, properly explained | WeLeap',
     description: 'What it is for, how big it should be, where to keep it, and when to stop adding to it.',
     url: '/resources/emergency-fund',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function EmergencyFundPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/emergency-fund" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -56,10 +61,14 @@ export default function EmergencyFundPage() {
           </p>
 
           <div className="my-6 md:my-8">
-            <img
+            <Image
               src="/safety-net-financial-security.jpg"
               alt="Safety net representing financial security"
-              className="w-full rounded-lg shadow-lg"
+              width={1024}
+              height={1024}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-auto rounded-lg shadow-lg"
             />
           </div>
         </Container>

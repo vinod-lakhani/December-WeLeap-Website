@@ -2,6 +2,30 @@
  * Analytics Event Tracking Utility
  * Tracks events to both Google Analytics 4 (GA4) and Vercel Analytics
  *
+ * The free-tool funnel, in order. Every step carries the same `tool` slug from
+ * FREE_TOOLS so the five events join as one sequence rather than five counts:
+ * - tool_viewed (tool, page)          — landed on the calculator
+ * - tool_engaged (tool, first_field)  — touched the first input, fires once
+ * - tool_completed (tool)             — a real result rendered, fires once
+ * - tool_cta_clicked (tool, placement)— clicked through to weleap.app
+ * - cta_click_signup (...)            — signup started
+ * Plus tool_card_clicked (tool, surface) upstream on /tools and the homepage,
+ * and tool_cross_sell_clicked (from, to, surface) between calculators.
+ *
+ * All seven free tools emit the sequence. What counts as "a real result" is
+ * decided per tool, from that tool's own state machine, because firing it at
+ * the same moment as tool_engaged makes the step between them measure nothing:
+ * - offer            — the tax lookup resolves (take-home stops being a 72% stub)
+ * - rent             — the tax API returns and the range renders
+ * - smart_purchase   — price, cash and surplus all present, so a recommendation exists
+ * - credit_card_payoff — balance AND APR both real (APR 0 passes validation but
+ *                      is not an answer this calculator is being asked for)
+ * - emergency_fund   — the form advances to the results step
+ * - allocator        — the summary step renders with a built stack
+ * - net_worth_impact — no tool_completed. It computes from defaults, so the
+ *                      result is on screen before anyone touches it; see
+ *                      components/netWorthImpact/ImpactTool.tsx.
+ *
  * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click
@@ -68,7 +92,10 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics';
-import posthog from 'posthog-js';
+// Not a static `posthog-js` import: this module is pulled in by every tool
+// page, so importing the SDK here would keep it in the initial bundle no
+// matter how the provider loads it. See lib/posthog-lazy.ts.
+import { getPostHog } from '@/lib/posthog-lazy';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -148,8 +175,11 @@ export async function track(eventName: string, params?: Record<string, any>, wai
   // PostHog is initialized in components/posthog-provider.tsx; capturing here
   // means funnel events (tool_completed, tool_cta_clicked, cta_click_signup,
   // etc.) land in PostHog alongside GA4/Vercel.
+  //
+  // Before the SDK finishes loading this queues rather than drops, so events
+  // fired during hydration still arrive. See lib/posthog-lazy.ts.
   try {
-    posthog.capture(eventName, params || {});
+    getPostHog().capture(eventName, params || {});
   } catch (error) {
     if (DEBUG_ANALYTICS) {
       console.error('[Analytics] Error tracking to PostHog:', eventName, error);

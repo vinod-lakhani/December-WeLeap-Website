@@ -7,20 +7,18 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { track } from '@/lib/analytics';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
-import { getUtmParams } from '@/lib/utm-storage';
+import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
-import posthog from 'posthog-js';
 import { OfferShareCard } from '@/components/OfferShareCard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://weleap.app';
 
 const NO_INCOME_TAX_STATES = new Set(['AK', 'FL', 'NV', 'NH', 'SD', 'TN', 'TX', 'WA', 'WY']);
 
@@ -285,7 +283,21 @@ export function OfferAnalysisTool() {
   }, [city, jobState, calc, rentMonthly]);
 
   // ── Analytics helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+   * tool_cta_clicked -> cta_click_signup.
+   *
+   * `offer_tool_field_changed` fires on every keystroke, which measures effort
+   * but cannot be a funnel step — a funnel needs one event per person per step.
+   * This fires once, on the first field anyone touches.
+   */
+  const engagedRef = useRef(false);
   const trackFieldChange = useCallback((field: string, value: any) => {
+    if (!engagedRef.current) {
+      engagedRef.current = true;
+      track('tool_engaged', { tool: 'offer', first_field: field });
+    }
     track('offer_tool_field_changed', {
       field,
       value_type: typeof value === 'number' ? 'number' : 'string',
@@ -307,40 +319,45 @@ export function OfferAnalysisTool() {
     // which one is doing the work.
     track('tool_cta_clicked', { tool: 'offer', placement });
     track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
-    const params = new URLSearchParams();
-    params.set('src', 'offer_tool');
-    params.set('salary', String(salary));
-    if (jobState) params.set('state', jobState);
-    if (bonusPct) params.set('bonus', String(bonusPct));
-    if (matchRatePct) params.set('matchRate', String(matchRatePct));
-    if (matchUpToPct) params.set('matchUpTo', String(matchUpToPct));
-    if (hsaMonthly) params.set('hsa', String(hsaMonthly));
-    if (rsuAnnual) params.set('rsu', String(rsuAnnual));
-    if (city) params.set('city', city);
-    if (rentMonthly) params.set('rent', String(rentMonthly));
-    // Carry attribution forward so the app can stitch identity across domains.
-    const utm = getUtmParams();
-    if (utm) new URLSearchParams(utm).forEach((value, key) => params.set(key, value));
-    try {
-      const did = posthog?.get_distinct_id?.();
-      if (did) params.set('ph_did', did);
-    } catch {
-      // PostHog not ready — deep link still works without stitching.
-    }
-    window.location.href = `${APP_BASE_URL}/react/#analyze?${params.toString()}`;
+    // appLink() owns the cross-domain attribution: stored first-touch UTMs plus
+    // the PostHog distinct_id as ph_did, so weleap.app can identify() the same
+    // person rather than counting them twice. This used to rebuild that logic
+    // inline, which meant a change to attribution would have silently missed
+    // the tool with the deepest link.
+    window.location.href = appLink('/react/#analyze', {
+      src: 'offer_tool',
+      salary: String(salary),
+      state: jobState,
+      bonus: bonusPct ? String(bonusPct) : '',
+      matchRate: matchRatePct ? String(matchRatePct) : '',
+      matchUpTo: matchUpToPct ? String(matchUpToPct) : '',
+      hsa: hsaMonthly ? String(hsaMonthly) : '',
+      rsu: rsuAnnual ? String(rsuAnnual) : '',
+      city,
+      rent: rentMonthly ? String(rentMonthly) : '',
+    });
   }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly]);
 
   const hasResults = !!calc;
 
-  // Fire tool_completed once when results first render (Phase 0 funnel).
+  /**
+   * Fourth step of the funnel, fired once.
+   *
+   * `hasResults` alone is true the instant the first digit of a salary is
+   * typed, which made tool_completed and tool_engaged the same moment and the
+   * funnel step between them meaningless. It now waits for the tax lookup to
+   * resolve, which is the point the package total and the take-home figure stop
+   * being the 72% placeholder and become an actual answer worth reading.
+   */
+  const analysisComplete = hasResults && !!taxResult;
   const toolCompletedRef = useRef(false);
   useEffect(() => {
-    if (hasResults && !toolCompletedRef.current) {
+    if (analysisComplete && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
       track('tool_completed', { tool: 'offer' });
       fbqTrack('Lead', { content_name: 'offer_tool' });
     }
-  }, [hasResults]);
+  }, [analysisComplete]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">
@@ -869,12 +886,13 @@ export function OfferAnalysisTool() {
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 What&apos;s waiting in the app
               </p>
-              <img
+              <Image
                 src="/images/product/weekly-focus.jpg"
                 alt="WeLeap showing this week's focus: capture your full 401(k) match"
                 width={1400}
                 height={529}
                 loading="lazy"
+                sizes="(max-width: 768px) 100vw, 640px"
                 className="mb-3 block h-auto w-full rounded-lg border border-gray-200"
               />
               <div className="space-y-1.5">

@@ -78,14 +78,43 @@ export function ImpactTool() {
     }
   }, []);
 
+  /**
+   * Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+   * tool_cta_clicked -> cta_click_signup. Fires once per visit, on the first
+   * input touched, carrying that field.
+   *
+   * Kept separate from `net_worth_impact_tool_start` rather than folded into
+   * it: that event's triggers (the two sliders and the amount field) are the
+   * shape its history was recorded in, and the use-of-funds control is an input
+   * the funnel should count. Same guard style, its own ref.
+   *
+   * There is deliberately no `tool_completed` on this tool. It computes
+   * synchronously from defaults — $150/month, invested, at 7% — so all three
+   * horizon cards are on screen, correct and final, before anyone touches
+   * anything. Firing "a real result rendered" on mount would put the whole
+   * tool_viewed population straight into the completed step and measure
+   * nothing, which is exactly the bug this funnel was rebuilt to remove. The
+   * honest fix is a product change rather than an analytics one: hold the
+   * cards back until the visitor has set their own amount (or start the amount
+   * empty), at which point "the result rendered" becomes a real moment and can
+   * be instrumented like every other tool here.
+   */
+  const engagedRef = useRef(false);
+  const markEngaged = useCallback((field: string) => {
+    if (engagedRef.current) return;
+    engagedRef.current = true;
+    track('tool_engaged', { tool: 'net_worth_impact', first_field: field });
+  }, []);
+
   const clampMonthly = useCallback((v: number) => {
     return Math.max(MONTHLY_MIN, Math.min(MONTHLY_MAX, Math.round(v / MONTHLY_STEP) * MONTHLY_STEP));
   }, []);
 
   const handleMonthlyInputFocus = useCallback(() => {
+    markEngaged('monthly_delta');
     trackToolStart();
     setMonthlyInputStr(String(monthlyDelta));
-  }, [monthlyDelta]);
+  }, [monthlyDelta, markEngaged, trackToolStart]);
 
   const handleMonthlyInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,6 +175,7 @@ export function ImpactTool() {
                 step={MONTHLY_STEP}
                 value={monthlyDelta}
                 onChange={(e) => {
+                  markEngaged('monthly_delta');
                   trackToolStart();
                   setMonthlyDelta(Number(e.target.value));
                 }}
@@ -181,7 +211,10 @@ export function ImpactTool() {
                 <button
                   key={uc}
                   type="button"
-                  onClick={() => setUseCase(uc)}
+                  onClick={() => {
+                    markEngaged('use_case');
+                    setUseCase(uc);
+                  }}
                   className={cn(
                     'px-4 py-2 text-sm font-medium rounded-md transition-colors',
                     useCase === uc
@@ -212,6 +245,7 @@ export function ImpactTool() {
                   step={1}
                   value={debtApr}
                   onChange={(e) => {
+                    markEngaged('debt_apr');
                     trackToolStart();
                     setDebtApr(Number(e.target.value));
                   }}

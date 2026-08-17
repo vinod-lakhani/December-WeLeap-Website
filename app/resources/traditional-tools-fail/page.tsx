@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Why traditional money tools fail',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'Why traditional money tools fail | WeLeap',
     description: 'Budgeting apps tell you what happened. They almost never tell you what to do next.',
     url: '/resources/traditional-tools-fail',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function TraditionalToolsFailPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/traditional-tools-fail" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -55,9 +60,13 @@ export default function TraditionalToolsFailPage() {
           </p>
 
           <div className="mt-6 md:mt-8">
-            <img
+            <Image
               src="/images/traditional-tools-fail.png"
               alt="Plan, Act, Adapt cycle illustration"
+              width={1040}
+              height={545}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-auto rounded-2xl shadow-lg"
             />
           </div>

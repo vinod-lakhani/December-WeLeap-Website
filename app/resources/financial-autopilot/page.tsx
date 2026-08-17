@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -7,6 +9,7 @@ import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Put your money on autopilot',
@@ -17,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Put your money on autopilot | WeLeap',
     description: 'The decisions worth automating, the ones worth keeping manual, and how to tell them apart.',
     url: '/resources/financial-autopilot',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -24,6 +28,7 @@ export const metadata: Metadata = {
 export default function FinancialAutopilotPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/financial-autopilot" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -42,7 +47,14 @@ export default function FinancialAutopilotPage() {
           <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • July 28, 2025 • 8 min read</div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img src="/images/financial-autopilot.jpg" alt="Financial Autopilot" className="w-full h-full object-cover" />
+            <Image
+              src="/images/financial-autopilot.jpg"
+              alt="Financial Autopilot"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-full object-cover"
+            />
           </div>
         </Container>
       </Section>

@@ -5,7 +5,14 @@
  * - Monthly interest = balance × (APR / 100 / 12)
  * - Min payment = max($25, (balance × 0.01) + interest), capped at balance + interest
  * - New balance = balance + interest - payment
- * - Extra payment: avalanche (highest balance first)
+ * - Extra payment: avalanche (highest APR first)
+ *
+ * The extra payment used to be applied to the highest *balance*, which is
+ * neither of the two named strategies — avalanche targets the highest APR,
+ * snowball the smallest balance. Highest-balance-first is dominated by both:
+ * it pays more interest than avalanche and clears no card sooner than
+ * snowball. The docstring said avalanche, so the sort was the side that was
+ * wrong. See calculation.test.ts for the case where the two diverge.
  */
 
 const FIXED_MIN = 25;
@@ -93,10 +100,13 @@ export function runPayoffScenario(
       payments.set(card.id, pay);
     }
 
-    // Apply extra to highest balance (avalanche)
+    // Apply extra to highest APR (avalanche). Ties break to the smaller
+    // balance, which clears a card sooner and frees its minimum payment.
     if (remainingExtra > 0) {
       const sorted = [...validCards].sort(
-        (a, b) => (balances.get(b.id) ?? 0) - (balances.get(a.id) ?? 0)
+        (a, b) =>
+          b.apr - a.apr ||
+          (balances.get(a.id) ?? 0) - (balances.get(b.id) ?? 0)
       );
       for (const card of sorted) {
         if (remainingExtra <= 0) break;

@@ -71,6 +71,21 @@ export function SmartPurchaseTool() {
 
   const seen = useRef(false)
 
+  /**
+   * Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+   * tool_cta_clicked -> cta_click_signup.
+   *
+   * Fires once per visit, on the first input touched, carrying that field —
+   * not per keystroke. This tool had no engagement event at all, so the only
+   * thing between "landed" and "clicked the CTA" was silence.
+   */
+  const engagedRef = useRef(false)
+  const markEngaged = useCallback((field: string) => {
+    if (engagedRef.current) return
+    engagedRef.current = true
+    track('tool_engaged', { tool: 'smart_purchase', first_field: field })
+  }, [])
+
   const priceNum = parseFloat(price) || 0
   const cashNum = parseFloat(cash) || 0
   const surplusNum = parseFloat(surplus) || 0
@@ -93,9 +108,21 @@ export function SmartPurchaseTool() {
     })
   }, [ready, priceNum, cashNum, surplusNum, context, hasPayIn4, hasMonthly, months, apr])
 
+  /**
+   * Third step of the funnel, fired once.
+   *
+   * `ready` is the tool's own definition of a real answer: price, cash on hand
+   * and monthly surplus all present and positive. Nothing renders below the
+   * inputs until then — no placeholder recommendation, no defaults standing in
+   * for what the user has not said — so the first moment `result` is non-null
+   * is the first moment a recommendation exists on screen. That is genuinely
+   * later than engagement, which is the whole point: the first field typed and
+   * the answer appearing are three fields apart.
+   */
   useEffect(() => {
     if (result && !seen.current) {
       seen.current = true
+      track('tool_completed', { tool: 'smart_purchase' })
       track('purchase_result_viewed', { page: PAGE, choice: result.choice })
     }
   }, [result])
@@ -120,7 +147,10 @@ export function SmartPurchaseTool() {
                 inputMode="decimal"
                 placeholder="e.g. 900"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => {
+                  markEngaged('price')
+                  setPrice(e.target.value)
+                }}
                 className="mt-1 border-hairline placeholder:text-faint"
               />
             </div>
@@ -134,7 +164,10 @@ export function SmartPurchaseTool() {
               <input
                 type="checkbox"
                 checked={hasPayIn4}
-                onChange={(e) => setHasPayIn4(e.target.checked)}
+                onChange={(e) => {
+                  markEngaged('has_pay_in_4')
+                  setHasPayIn4(e.target.checked)
+                }}
                 className="h-4 w-4 accent-[#2d6a4f]"
               />
               Interest-free &ldquo;pay in 4&rdquo; is offered
@@ -143,7 +176,10 @@ export function SmartPurchaseTool() {
               <input
                 type="checkbox"
                 checked={hasMonthly}
-                onChange={(e) => setHasMonthly(e.target.checked)}
+                onChange={(e) => {
+                  markEngaged('has_monthly_plan')
+                  setHasMonthly(e.target.checked)
+                }}
                 className="h-4 w-4 accent-[#2d6a4f]"
               />
               A monthly payment plan is offered
@@ -156,7 +192,10 @@ export function SmartPurchaseTool() {
                   max="60"
                   inputMode="numeric"
                   value={months}
-                  onChange={(e) => setMonths(e.target.value)}
+                  onChange={(e) => {
+                    markEngaged('plan_months')
+                    setMonths(e.target.value)
+                  }}
                   className="h-9 w-20 border-hairline"
                 />
                 <span>months at</span>
@@ -167,7 +206,10 @@ export function SmartPurchaseTool() {
                   step="0.01"
                   inputMode="decimal"
                   value={apr}
-                  onChange={(e) => setApr(e.target.value)}
+                  onChange={(e) => {
+                    markEngaged('plan_apr')
+                    setApr(e.target.value)
+                  }}
                   className="h-9 w-24 border-hairline"
                 />
                 <span>% APR — 0 if it&apos;s a 0% offer</span>
@@ -198,7 +240,10 @@ export function SmartPurchaseTool() {
                 inputMode="decimal"
                 placeholder="e.g. 4,500"
                 value={cash}
-                onChange={(e) => setCash(e.target.value)}
+                onChange={(e) => {
+                  markEngaged('cash_available')
+                  setCash(e.target.value)
+                }}
                 className="mt-1 border-hairline placeholder:text-faint"
               />
             </div>
@@ -213,7 +258,10 @@ export function SmartPurchaseTool() {
                 inputMode="decimal"
                 placeholder="e.g. 1,200"
                 value={surplus}
-                onChange={(e) => setSurplus(e.target.value)}
+                onChange={(e) => {
+                  markEngaged('monthly_surplus')
+                  setSurplus(e.target.value)
+                }}
                 className="mt-1 border-hairline placeholder:text-faint"
               />
             </div>
@@ -224,7 +272,10 @@ export function SmartPurchaseTool() {
             </Label>
             <select
               value={context}
-              onChange={(e) => setContext(e.target.value as PurchaseContext)}
+              onChange={(e) => {
+                markEngaged('context')
+                setContext(e.target.value as PurchaseContext)
+              }}
               className="mt-1 w-full rounded-lg border border-hairline bg-white px-3 py-2 text-[14.5px] text-ink sm:max-w-sm"
             >
               {CONTEXTS.map((c) => (

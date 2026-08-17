@@ -114,9 +114,15 @@ export function EmergencyFundTool() {
       ? monthsToReach(savingsNum, firstMilestone.targetDollars, savingsRateNum)
       : null;
 
-  const handleFormStart = useCallback(() => {
+  // Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+  // tool_cta_clicked -> cta_click_signup. `emergency_fund_form_start` already
+  // fired once per visit but under a tool-specific name, so it could not be the
+  // middle step of a funnel keyed on the shared events. Both fire from the same
+  // guard, so the counts stay identical.
+  const handleFormStart = useCallback((field: string) => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
+      track('tool_engaged', { tool: 'emergency_fund', first_field: field });
       track('emergency_fund_form_start', { page: PAGE, tool_version: 'emergency_fund_v1' });
     }
   }, []);
@@ -126,10 +132,18 @@ export function EmergencyFundTool() {
     setStep('form');
   }, []);
 
-  // Track results viewed (once when user first sees results)
+  // Track results viewed (once when user first sees results).
+  //
+  // This is also the third step of the funnel. The tool is an explicit
+  // landing -> form -> results machine: nothing is computed from defaults and
+  // the results step is only reached through handleCalculate, which refuses to
+  // advance until income and expenses are both real. So `step === 'results'`
+  // with a non-null `result` is exactly "a target rendered", several fields
+  // after engagement.
   useEffect(() => {
     if (step === 'results' && result && !resultsViewedRef.current) {
       resultsViewedRef.current = true;
+      track('tool_completed', { tool: 'emergency_fund' });
       track('emergency_fund_results_viewed', {
         page: PAGE,
         tool_version: 'emergency_fund_v1',
@@ -205,9 +219,9 @@ export function EmergencyFundTool() {
                 value={monthlyIncome}
                 onChange={(e) => {
                   setMonthlyIncome(e.target.value);
-                  handleFormStart();
+                  handleFormStart('monthly_income');
                 }}
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('monthly_income')}
                 className="border-[#D1D5DB] placeholder:text-gray-400"
               />
             </div>
@@ -226,9 +240,9 @@ export function EmergencyFundTool() {
                 value={monthlyExpenses}
                 onChange={(e) => {
                   setMonthlyExpenses(e.target.value);
-                  handleFormStart();
+                  handleFormStart('monthly_expenses');
                 }}
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('monthly_expenses')}
                 className="border-[#D1D5DB] placeholder:text-gray-400"
               />
             </div>
@@ -239,10 +253,13 @@ export function EmergencyFundTool() {
                 value={incomeStability}
                 onValueChange={(v) => {
                   setIncomeStability(v as IncomeStability);
-                  handleFormStart();
+                  handleFormStart('income_stability');
                 }}
               >
-                <SelectTrigger className="border-[#D1D5DB]" onFocus={handleFormStart}>
+                <SelectTrigger
+                  className="border-[#D1D5DB]"
+                  onFocus={() => handleFormStart('income_stability')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -261,10 +278,13 @@ export function EmergencyFundTool() {
                 value={hasDependents}
                 onValueChange={(v) => {
                   setHasDependents(v as 'yes' | 'no');
-                  handleFormStart();
+                  handleFormStart('has_dependents');
                 }}
               >
-                <SelectTrigger className="border-[#D1D5DB]" onFocus={handleFormStart}>
+                <SelectTrigger
+                  className="border-[#D1D5DB]"
+                  onFocus={() => handleFormStart('has_dependents')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,9 +305,9 @@ export function EmergencyFundTool() {
                 value={currentSavings}
                 onChange={(e) => {
                   setCurrentSavings(e.target.value);
-                  handleFormStart();
+                  handleFormStart('current_savings');
                 }}
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('current_savings')}
                 className="border-[#D1D5DB] placeholder:text-gray-400"
               />
             </div>
@@ -300,10 +320,13 @@ export function EmergencyFundTool() {
                 value={creditCardDebt}
                 onValueChange={(v) => {
                   setCreditCardDebt(v as CreditCardDebt);
-                  handleFormStart();
+                  handleFormStart('credit_card_debt');
                 }}
               >
-                <SelectTrigger className="border-[#D1D5DB]" onFocus={handleFormStart}>
+                <SelectTrigger
+                  className="border-[#D1D5DB]"
+                  onFocus={() => handleFormStart('credit_card_debt')}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

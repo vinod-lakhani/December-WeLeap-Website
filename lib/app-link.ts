@@ -11,7 +11,9 @@
  * The app side reads these on load, before signup. See the Phase 0 spec.
  */
 
-import posthog from "posthog-js"
+// Lazy accessor rather than a static SDK import — this module is imported by
+// every CTA on the site. See lib/posthog-lazy.ts.
+import { getPostHog } from "@/lib/posthog-lazy"
 import { getUtmParams } from "@/lib/utm-storage"
 
 /** Base URL of the WeLeap app. Env-driven so dev/prod can differ. */
@@ -44,7 +46,7 @@ export function appLink(path = "", extraParams?: Record<string, string>): string
   // 2) PostHog distinct_id -> lets the app stitch identity across domains.
   if (typeof window !== "undefined") {
     try {
-      const did = posthog?.get_distinct_id?.()
+      const did = getPostHog()?.get_distinct_id?.()
       if (did) params.set("ph_did", did)
     } catch {
       // PostHog not ready yet — links still work without stitching.

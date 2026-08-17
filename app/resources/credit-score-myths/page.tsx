@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Credit score myths that cost you money',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'Credit score myths that cost you money | WeLeap',
     description: 'The advice that sounds sensible, is repeated everywhere, and is quietly wrong.',
     url: '/resources/credit-score-myths',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function CreditScoreMythsPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/credit-score-myths" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -54,10 +59,14 @@ export default function CreditScoreMythsPage() {
           </p>
 
           <div className="my-6 md:my-8">
-            <img
+            <Image
               src="/credit-score-chart-myths.jpg"
               alt="Credit score chart debunking common myths"
-              className="w-full rounded-lg shadow-lg"
+              width={1024}
+              height={1024}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-auto rounded-lg shadow-lg"
             />
           </div>
         </Container>

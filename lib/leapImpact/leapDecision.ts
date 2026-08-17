@@ -9,7 +9,7 @@
  *     Leap = "Increase retirement contribution" (target = % to hit $23,500 cap)
  */
 
-import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 import { compute401kStatus } from './leverPriority';
 
 function formatPct(value: number): string {
@@ -42,7 +42,7 @@ export function getRecommendedLeap(
   if (hasEmployerMatch && current401kPct < matchPct) {
     let optimizedPct = matchPct;
     if (salaryAnnual > 0) {
-      const capPct = (K401_EMPLOYEE_CAP_2025 / salaryAnnual) * 100;
+      const capPct = (K401_EMPLOYEE_CAP / salaryAnnual) * 100;
       optimizedPct = Math.min(matchPct, capPct);
     }
     return {
@@ -73,7 +73,7 @@ export function getRecommendedLeap(
   // Target = whatever % gets to the cap (e.g. 23.5% for 100k, 11.75% for 200k)
   let targetPct: number;
   if (salaryAnnual > 0) {
-    const capPct = (K401_EMPLOYEE_CAP_2025 / salaryAnnual) * 100;
+    const capPct = (K401_EMPLOYEE_CAP / salaryAnnual) * 100;
     targetPct = Math.min(capPct, 100); // Cap at 100% for very low salaries
   } else {
     targetPct = 15; // Fallback when no salary

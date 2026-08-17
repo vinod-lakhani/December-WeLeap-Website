@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -7,6 +9,7 @@ import { Facebook, Twitter, Linkedin, Mail } from "lucide-react"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'From awareness to action',
@@ -17,6 +20,7 @@ export const metadata: Metadata = {
     title: 'From awareness to action | WeLeap',
     description: 'Knowing where your money goes changes nothing on its own. What turns awareness into a decision.',
     url: '/resources/awareness-to-action',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -24,6 +28,7 @@ export const metadata: Metadata = {
 export default function AwarenessToActionPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/awareness-to-action" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -42,9 +47,12 @@ export default function AwarenessToActionPage() {
           <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • July 7, 2025 • 6 min read</div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img
+            <Image
               src="/images/awareness-to-action.jpg"
               alt="Person looking at a pie chart, symbolizing budgeting"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-full object-cover"
             />
           </div>

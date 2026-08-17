@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'The psychology of spending',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'The psychology of spending | WeLeap',
     description: 'Why the same amount feels different depending on how you pay, and what that costs you.',
     url: '/resources/psychology-of-spending',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function PsychologyOfSpendingPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/psychology-of-spending" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -54,10 +59,14 @@ export default function PsychologyOfSpendingPage() {
           </p>
 
           <div className="my-6 md:my-8">
-            <img
+            <Image
               src="/images/image.png"
               alt="Savings allocation diagram showing checking account flowing into emergency fund, pay off debt, employer match, and long-term wealth jars"
-              className="w-full rounded-lg shadow-lg"
+              width={1456}
+              height={971}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-auto rounded-lg shadow-lg"
             />
           </div>
         </Container>

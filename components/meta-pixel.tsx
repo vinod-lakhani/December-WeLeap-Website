@@ -32,6 +32,10 @@ export function MetaPixel() {
         `}
       </Script>
       <noscript>
+        {/* Must stay a raw <img>: this is the Meta tracking pixel, and it has to
+            be a plain 1x1 request to facebook.com that fires without JS.
+            next/image would rewrite it through the image optimizer. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           height="1"
           width="1"

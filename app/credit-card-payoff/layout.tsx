@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import { JsonLd } from '@/components/JsonLd'
-import { toolSchema, toolByHref } from '@/lib/structured-data'
+import { ToolJsonLd } from '@/components/ToolJsonLd'
 
 /**
  * Metadata for /credit-card-payoff. It lives here rather than in page.tsx because that
@@ -20,12 +19,10 @@ export const metadata: Metadata = {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const tool = toolByHref('/credit-card-payoff')
   return (
     <>
-      {/* WebApplication markup for this calculator, derived from the
-          tools registry so it cannot drift from the card copy. */}
-      {tool && <JsonLd data={toolSchema(tool)} />}
+      {/* WebApplication + FAQPage markup for this route. */}
+      <ToolJsonLd href="/credit-card-payoff" />
       {children}
     </>
   )

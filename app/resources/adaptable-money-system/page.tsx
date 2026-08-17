@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'Build a money system that adapts',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'Build a money system that adapts | WeLeap',
     description: 'Budgets break the moment life changes. A system that adapts survives the raise, the move and the bad month.',
     url: '/resources/adaptable-money-system',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function AdaptableMoneySystemPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/adaptable-money-system" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -54,9 +59,13 @@ export default function AdaptableMoneySystemPage() {
           </p>
 
           <div className="mb-6 md:mb-8">
-            <img
-              src="/images/adaptable-money-full.png"
+            <Image
+              src="/images/adaptable-money-full.jpg"
               alt="Illustration showing the journey from outdated budgets to financial freedom through emergency fund, debt payoff, and home savings"
+              width={1456}
+              height={971}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-auto object-contain rounded-lg shadow-lg"
             />
           </div>

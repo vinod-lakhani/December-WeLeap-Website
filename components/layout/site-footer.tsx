@@ -1,5 +1,7 @@
+import Image from "next/image"
 import Link from "next/link"
 import { Container } from "./container"
+import { FREE_TOOLS } from "@/lib/tools"
 
 /**
  * Shared site footer.
@@ -7,6 +9,14 @@ import { Container } from "./container"
  * Every page previously carried its own inline copy of a footer (27 of them),
  * which is why the legal disclaimer and nav links drifted. One component now,
  * so a change lands everywhere.
+ *
+ * The "Free tools" column is derived from FREE_TOOLS, the same registry the
+ * sitemap and structured data read. Hardcoding it had already gone wrong twice
+ * over: it listed four of seven tools, and the one it did list for the Money
+ * Plan was /leap-impact-simulator — a route that 308s to /allocator, so the
+ * site's only sitewide internal link block was spending link equity on a
+ * redirect. All seven are listed; this is the main internal-linking surface for
+ * the acquisition pages, so a tall column beats a truncated one.
  */
 export function SiteFooter() {
   const columns = [
@@ -20,12 +30,7 @@ export function SiteFooter() {
     },
     {
       h: "Free tools",
-      links: [
-        { t: "Rent affordability", u: "/how-much-rent-can-i-afford" },
-        { t: "Offer analyzer", u: "/offer" },
-        { t: "Leap simulator", u: "/leap-impact-simulator" },
-        { t: "Emergency fund", u: "/emergency-fund-target" },
-      ],
+      links: FREE_TOOLS.map((t) => ({ t: t.name, u: t.href })),
     },
     {
       h: "Company",
@@ -43,7 +48,14 @@ export function SiteFooter() {
       <Container maxWidth="wide">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <img src="/images/weleap-logo.png" alt="WeLeap" className="mb-3.5 h-7 w-auto" />
+            <Image
+              src="/images/weleap-logo.png"
+              alt="WeLeap"
+              width={2972}
+              height={845}
+              sizes="99px"
+              className="mb-3.5 h-7 w-auto"
+            />
             <p className="max-w-[260px] text-[14.5px] leading-relaxed text-subtle">
               One clear money move at a time — so you always know what to do next.
             </p>

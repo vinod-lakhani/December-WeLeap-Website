@@ -15,6 +15,7 @@
  * card click -> tool CTA -> app is one joinable funnel.
  */
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
 import type { FreeTool } from '@/lib/tools'
@@ -51,8 +52,7 @@ export function ToolCard({
         background === 'canvas' ? 'bg-canvas' : 'bg-white'
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={tool.icon} alt="" className="mb-5 h-12 w-12 object-contain" />
+      <Image src={tool.icon} alt="" width={48} height={48} className="mb-5 h-12 w-12 object-contain" />
       <Heading className="mb-2 text-[18.5px] font-extrabold tracking-[-0.018em] text-ink">
         {tool.name}
       </Heading>

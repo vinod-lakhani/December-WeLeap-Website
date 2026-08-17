@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useSearchParams } from 'next/navigation'
-import { usePostHog } from 'posthog-js/react'
+import { usePostHog } from 'posthog-js/react/slim'
 import { useEffect } from 'react'
 
 export function PostHogPageView() {

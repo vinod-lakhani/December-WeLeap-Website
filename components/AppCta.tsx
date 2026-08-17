@@ -21,6 +21,8 @@
  * time, so attribution and prefill are current rather than render-stale.
  */
 
+import Image from 'next/image';
+
 import { Button } from '@/components/ui/button';
 import { track } from '@/lib/analytics';
 import { appLink } from '@/lib/app-link';
@@ -111,13 +113,13 @@ export function AppCta({
           What&apos;s waiting in the app
         </p>
         {image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={image.src}
             alt={image.alt}
             width={image.width}
             height={image.height}
             loading="lazy"
+            sizes="(max-width: 768px) 100vw, 640px"
             className="mb-3 block h-auto w-full rounded-lg border border-gray-200"
           />
         )}

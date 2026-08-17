@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from 'lucide-react'
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -7,6 +9,7 @@ import { Facebook, Twitter, Linkedin, Mail } from 'lucide-react'
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'The rent check panic',
@@ -17,6 +20,7 @@ export const metadata: Metadata = {
     title: 'The rent check panic | WeLeap',
     description: 'The gap between signing a lease and realising what it left you — and how to see it before you sign.',
     url: '/resources/the-rent-check-panic',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -24,6 +28,7 @@ export const metadata: Metadata = {
 export default function TheRentCheckPanicPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/the-rent-check-panic" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -43,9 +48,12 @@ export default function TheRentCheckPanicPage() {
           </div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img
+            <Image
               src="/images/rent-check-panic.jpeg"
               alt="Person looking stressed at a laptop with bills and financial documents"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-full object-cover"
             />
           </div>

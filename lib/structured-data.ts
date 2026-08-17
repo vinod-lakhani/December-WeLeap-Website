@@ -5,13 +5,23 @@
  * hand-written per page, so a new tool gets structured data the moment it is
  * registered — the same reason the sitemap reads from the registry.
  *
- * Scope is deliberately narrow. Organization and WebSite site-wide, and
- * WebApplication on the calculators. We do not emit FAQPage, HowTo or Review
- * markup: Google requires those to describe content actually visible on the
- * page, and inventing them is the kind of thing that earns a manual action.
+ * Scope is deliberately narrow. Organization and WebSite site-wide,
+ * WebApplication and BreadcrumbList on the calculators, BlogPosting on the
+ * articles, and FAQPage only where real question-and-answer content is
+ * rendered.
+ *
+ * FAQPage used to be declined outright here, on the grounds that Google
+ * requires it to describe content actually visible on the page. That rule has
+ * not changed and is not being bent: `faqSchema` is fed from TOOL_FAQS, the
+ * same array the page renders visibly and without JavaScript, so the markup
+ * cannot describe questions a visitor could not read. HowTo and Review are
+ * still not emitted — there is nothing on the site they would honestly
+ * describe.
  */
 
 import { FREE_TOOLS, type FreeTool } from '@/lib/tools'
+import type { Article } from '@/lib/articles'
+import type { FaqItem } from '@/lib/tool-faqs'
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.weleap.ai'
 
@@ -29,8 +39,26 @@ export function organizationSchema() {
       '@type': 'ImageObject',
       url: `${SITE_URL}/images/Icon.png`,
     },
+    // How an answer engine ties this site to the same entity described
+    // elsewhere. Only profiles WeLeap actually controls belong here — a wrong
+    // or aspirational URL asserts an identity that isn't ours, which is worse
+    // than omitting the field. Add others as they go live.
+    sameAs: ['https://www.linkedin.com/company/weleap'],
     description:
-      'WeLeap is an AI financial sidekick. It looks at your full financial picture and gives you one clear next step — a Leap.',
+      'WeLeap is a consumer personal-finance company. Its product is Ribbit, an AI financial sidekick for people in their twenties and early thirties: it reads a connected financial picture — cash, debt, 401(k) and goals — and names the single highest-value next move, called a Leap. WeLeap also publishes seven free calculators that need no account. It is not a budgeting app, not a robo-adviser, and not a registered investment adviser.',
+    // Named explicitly because a model cannot infer from prose alone that
+    // "Ribbit" and "WeLeap" are the assistant and the company rather than two
+    // unrelated products. The site says both names constantly and had defined
+    // neither in machine-readable form.
+    brand: {
+      '@type': 'Brand',
+      name: 'Ribbit',
+      description:
+        'Ribbit is WeLeap’s AI financial sidekick. It answers money questions in plain English using the user’s own connected accounts and proposes one move at a time, which the user approves before anything happens.',
+    },
+    // Deliberately no `sameAs`, `address` or `foundingDate`: nothing on this
+    // site states them, and structured data asserting facts the pages do not
+    // is exactly the drift this file exists to avoid.
   }
 }
 
@@ -68,6 +96,85 @@ export function toolSchema(tool: FreeTool) {
       priceCurrency: 'USD',
     },
     publisher: { '@id': ORG_ID },
+  }
+}
+
+/**
+ * BreadcrumbList for a calculator route.
+ *
+ * The tools sit at top-level URLs — /allocator, not /tools/allocator — because
+ * the slug
+ * is the query and URL depth is a weak signal. The cost of that flatness is
+ * that nothing in the URL says these seven pages belong together, so this is
+ * the only machine-readable statement of the hierarchy.
+ *
+ * Emitted by `ToolBreadcrumb`, which renders the same three items as a visible
+ * trail in the same component. Do not emit it without that trail: the markup
+ * and the page have to describe the same path for the same reason FAQPage and
+ * TOOL_FAQS read from one object.
+ */
+export function breadcrumbSchema(tool: FreeTool) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    '@id': `${SITE_URL}${tool.href}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Free money tools', item: `${SITE_URL}/tools` },
+      { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}${tool.href}` },
+    ],
+  }
+}
+
+/**
+ * FAQPage for a route.
+ *
+ * Callers pass the same array the page renders, so the markup and the visible
+ * text cannot diverge. Do not call this with questions that are not on screen.
+ */
+export function faqSchema(items: readonly FaqItem[], path: string) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': `${SITE_URL}${path}#faq`,
+    url: `${SITE_URL}${path}`,
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.a,
+      },
+    })),
+  }
+}
+
+/**
+ * BlogPosting for a /resources article.
+ *
+ * `publisher` chains onto the Organization node emitted in the root layout
+ * rather than repeating it, which is the point of giving that node an @id.
+ *
+ * `datePublished` is omitted when the article carries no byline date, instead
+ * of being back-filled from a git timestamp or a guess. An article with a
+ * wrong publication date is worse than one with none.
+ */
+export function articleSchema(article: Article) {
+  const url = `${SITE_URL}${article.href}`
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    '@id': `${url}#article`,
+    headline: article.title,
+    description: article.description,
+    url,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    image: `${SITE_URL}${article.image}`,
+    author: { '@type': 'Person', name: article.author },
+    publisher: { '@id': ORG_ID },
+    isPartOf: { '@id': SITE_ID },
+    inLanguage: 'en-US',
+    ...(article.datePublished ? { datePublished: article.datePublished } : {}),
   }
 }
 

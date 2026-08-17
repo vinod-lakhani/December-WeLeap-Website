@@ -5,10 +5,17 @@ import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 import { SmsOptinForm } from "./sms-optin-form"
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 
 export const metadata: Metadata = {
   title: 'SMS notifications',
   description: 'How WeLeap text-message notifications work, how you opt in, and how to stop them at any time.',
+  openGraph: {
+    title: 'SMS notifications | WeLeap',
+    description: 'How WeLeap text-message notifications work, how you opt in, and how to stop them at any time.',
+    url: '/sms-notifications',
+    images: [DEFAULT_OG_IMAGE],
+  },
 }
 
 export default function SmsNotificationsPage() {

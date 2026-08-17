@@ -15,10 +15,12 @@ const nextConfig = {
     // typechecks clean, so the build guards it.
     ignoreBuildErrors: false,
   },
-  images: {
-    unoptimized: true,
-  },
- 
+  // `images: { unoptimized: true }` was removed here. It was a leftover — there
+  // is no `output: 'export'`, so nothing needed it, and every image on the site
+  // was a raw <img> anyway, which the flag does not touch. The components now
+  // use next/image, so the Vercel optimizer resizes and re-encodes to
+  // WebP/AVIF. No `images` block is needed: the defaults are what we want.
+
   eslint: {
     // ESLint now runs in the build. Zero errors, 77 warnings — and warnings do
     // not fail a build, so this catches new errors without holding deploys
@@ -51,13 +53,27 @@ const nextConfig = {
         // from a screenshot, so the long path is unusable there.
         source: '/rent',
         destination: '/how-much-rent-can-i-afford',
-        permanent: false,
+        permanent: true,
       },
       {
         // Aimed at social, where the URL gets read off a screenshot.
         source: '/pay-now-or-later',
         destination: '/smart-purchase-check',
-        permanent: false,
+        permanent: true,
+      },
+      {
+        // The offer tool was at /offer, a bare noun that matches nothing
+        // anyone types and reads as "discount" rather than "job offer". The
+        // slug is the strongest on-page signal on a site whose tools sit at
+        // flat top-level routes, so it now says the query.
+        //
+        // /offer keeps working as the short alias — it is what the share card
+        // prints, because people photograph that card and retype it, and
+        // /what-is-my-job-offer-worth is not retypeable. Same role as /rent
+        // above.
+        source: '/offer',
+        destination: '/what-is-my-job-offer-worth',
+        permanent: true,
       },
       {
         // The Leap Impact Simulator was the 401(k) wedge in front of the

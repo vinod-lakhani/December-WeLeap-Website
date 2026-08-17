@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
+import { TOOL_COUNT } from "@/lib/tools"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -14,6 +16,7 @@ export const metadata: Metadata = {
     title: 'Pricing | WeLeap',
     description: 'What WeLeap costs, and what you get for it. Start free — the tools need no account at all.',
     url: '/pricing',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -22,7 +25,9 @@ const NOW = [
   "Your weekly Leap — the single move that does the most",
   "Full picture: cash, debt, 401(k), goals",
   "Ask Ribbit anything, in plain English",
-  "All six planning tools",
+  // Was hardcoded "six" while the site shipped seven, on the one page whose
+  // job is to say accurately what you get.
+  `All ${TOOL_COUNT} planning tools`,
 ]
 
 const FOUNDING = [

@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { compute401kStatus, K401_EMPLOYEE_MAX } from './leverPriority';
 import { getRecommendedLeap } from './leapDecision';
+import { K401_EMPLOYEE_CAP, TAX_YEAR } from '@/lib/allocator/constants';
+
+/**
+ * The boundary cases below are written against `K401_EMPLOYEE_CAP` rather than
+ * a literal. They previously hardcoded 23,500 and broke the moment the 2026
+ * IRS figures landed — which tested the constant's value, not the boundary
+ * logic they were named for. The one place the literal genuinely belongs is
+ * the pin below, where failing on an IRS refresh is the point.
+ */
+
+/** Salary chosen so the cap lands on a clean percentage. */
+const SALARY_AT_CAP = 100_000;
+const CAP_PCT = (K401_EMPLOYEE_CAP / SALARY_AT_CAP) * 100;
 
 describe('compute401kStatus', () => {
   it('salary=100k, 401k%=15% => annual=15k not maxed', () => {
@@ -26,43 +39,60 @@ describe('compute401kStatus', () => {
     expect(result.is401kMaxed).toBe(true);
   });
 
-  it('boundary: annual=23499 => not maxed', () => {
-    // 23499 / 23500 = 9.9996% of salary for 235k
+  it('boundary: one dollar under the cap => not maxed', () => {
     const salary = 235_000;
-    const pct = (23_499 / salary) * 100; // ~10%
+    const pct = ((K401_EMPLOYEE_CAP - 1) / salary) * 100;
     const result = compute401kStatus({
       salaryAnnual: salary,
       current401kPct: pct,
       hasEmployerMatch: false,
       matchCapPct: 5,
     });
-    expect(result.current401kAnnual).toBeCloseTo(23_499, 0);
+    expect(result.current401kAnnual).toBeCloseTo(K401_EMPLOYEE_CAP - 1, 0);
     expect(result.is401kMaxed).toBe(false);
   });
 
-  it('boundary: annual=23500 => maxed', () => {
+  it('boundary: exactly at the cap => maxed', () => {
     const result = compute401kStatus({
-      salaryAnnual: 100_000,
-      current401kPct: 23.5, // 100k * 23.5% = 23,500
+      salaryAnnual: SALARY_AT_CAP,
+      current401kPct: CAP_PCT,
       hasEmployerMatch: false,
       matchCapPct: 5,
     });
-    expect(result.current401kAnnual).toBe(23_500);
+    expect(result.current401kAnnual).toBe(K401_EMPLOYEE_CAP);
     expect(result.is401kMaxed).toBe(true);
   });
 
-  it('K401_EMPLOYEE_MAX is 23500', () => {
-    expect(K401_EMPLOYEE_MAX).toBe(23_500);
+  it('re-exports the cap from the single source of truth', () => {
+    // Guards the re-export wiring without pinning a value — the value itself
+    // is pinned once, below.
+    expect(K401_EMPLOYEE_MAX).toBe(K401_EMPLOYEE_CAP);
+  });
+});
+
+describe('IRS limits', () => {
+  /**
+   * Deliberately a literal. This test SHOULD fail when someone refreshes the
+   * constants for a new tax year — that failure is the review gate, forcing
+   * the new figure to be checked against the IRS notice rather than typed from
+   * memory. These numbers are quoted to users in the allocator copy and FAQ.
+   *
+   * Current source: IRS Notice 2025-67 (2026 amounts).
+   * https://www.irs.gov/pub/irs-drop/n-25-67.pdf
+   */
+  it('matches the published figures for the stated tax year', () => {
+    expect(TAX_YEAR).toBe(2026);
+    expect(K401_EMPLOYEE_CAP).toBe(24_500);
   });
 });
 
 describe('getRecommendedLeap', () => {
-  it('salary=100k, 401k%=15% => not at cap, recommends increase toward 23.5%', () => {
-    const leap = getRecommendedLeap(true, 5, 15, 100_000);
-    // 15% of 100k = 15k, below 23,500 cap. Cap % = 23.5%. Should recommend increase.
+  it('salary=100k, 401k%=15% => not at cap, recommends increase toward the cap', () => {
+    const leap = getRecommendedLeap(true, 5, 15, SALARY_AT_CAP);
+    // 15% of 100k = 15k, below the cap. Should recommend increasing to CAP_PCT.
     expect(leap.type).toBe('increase_contribution');
-    expect(leap.optimized401kPct).toBe(23.5);
-    expect(leap.summary).toContain('23.5%');
+    expect(leap.optimized401kPct).toBe(CAP_PCT);
+    expect(leap.summary).toContain(`${CAP_PCT}%`);
   });
 
   it('salary=200k, 401k%=15% => at_cap (maxed)', () => {

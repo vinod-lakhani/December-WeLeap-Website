@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
+import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
 export const metadata: Metadata = {
   title: 'How we think about pricing',
@@ -16,6 +19,7 @@ export const metadata: Metadata = {
     title: 'How we think about pricing | WeLeap',
     description: 'Why WeLeap charges what it charges, and why the tools stay free.',
     url: '/resources/pricing-philosophy',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
@@ -23,6 +27,7 @@ export const metadata: Metadata = {
 export default function PricingPhilosophyPage() {
   return (
     <PageShell>
+      <ArticleJsonLd href="/resources/pricing-philosophy" />
       {/* Hero Section */}
       <Section variant="white" isHero>
         <Container maxWidth="narrow">
@@ -54,9 +59,13 @@ export default function PricingPhilosophyPage() {
           </p>
 
           <div className="mb-6 md:mb-8">
-            <img
-              src="/images/Pricing.png"
+            <Image
+              src="/images/Pricing.jpg"
               alt="Comparison diagram showing Old Model vs WeLeap Model with aligned incentives"
+              width={2000}
+              height={1091}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-auto object-contain rounded-lg shadow-lg"
             />
           </div>

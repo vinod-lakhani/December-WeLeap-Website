@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -15,7 +16,14 @@ export function Navigation() {
       <div className="rounded-[28px] border border-hairline bg-white/85 shadow-[0_4px_22px_rgba(17,63,36,.07)] backdrop-blur-md md:rounded-full">
         <div className="container mx-auto max-w-6xl py-3 sm:py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center">
-            <img src="/images/weleap-logo.png" alt="WeLeap" className="h-10 w-auto" />
+            <Image
+              src="/images/weleap-logo.png"
+              alt="WeLeap"
+              width={2972}
+              height={845}
+              sizes="141px"
+              className="h-10 w-auto"
+            />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
