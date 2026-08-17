@@ -51,7 +51,7 @@ export const FREE_TOOLS: FreeTool[] = [
     question: "Is this offer as good as it sounds?",
     blurb: "Seven numbers hide in an offer letter. See what the package is really worth.",
     cta: "Analyze my offer →",
-    href: "/offer",
+    href: "/what-is-my-job-offer-worth",
     icon: "/images/tool-icons/trophy.png",
     slug: "offer",
     presentDay: true,

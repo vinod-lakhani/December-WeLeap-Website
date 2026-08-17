@@ -133,12 +133,39 @@ export function CreditCardPayoffTool() {
   const hasValidInput = validCards.length > 0;
   const hasBalance = validCards.some((c) => c.balance > 0);
 
-  const handleFormStart = useCallback(() => {
+  // Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+  // tool_cta_clicked -> cta_click_signup. `credit_card_payoff_form_start`
+  // already fired once per visit but under a tool-specific name, so it could
+  // not be the middle step of a funnel keyed on the shared events. Both fire
+  // from the same guard, so the counts stay identical.
+  const handleFormStart = useCallback((field: string) => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
+      track('tool_engaged', { tool: 'credit_card_payoff', first_field: field });
       track('credit_card_payoff_form_start', { page: PAGE, tool_version: 'credit_card_payoff_v1' });
     }
   }, []);
+
+  /**
+   * Third step of the funnel, fired once.
+   *
+   * Deliberately NOT `hasValidInput`, which is what
+   * `credit_card_payoff_calculated` uses: an APR of 0 passes validation, so
+   * that condition is already true on the first digit of the balance — the same
+   * moment as engagement, and showing a payoff date computed at 0% interest,
+   * which is not this calculator's answer. A payoff date and a total-interest
+   * figure only mean anything once both the balance and the rate are real, so
+   * that is the gate here. The legacy event keeps its own (looser) condition so
+   * its history stays comparable.
+   */
+  const payoffResultReady = hasBalance && (Number(card.apr) || 0) > 0;
+  const toolCompletedRef = useRef(false);
+  useEffect(() => {
+    if (payoffResultReady && !toolCompletedRef.current) {
+      toolCompletedRef.current = true;
+      track('tool_completed', { tool: 'credit_card_payoff' });
+    }
+  }, [payoffResultReady]);
 
   useEffect(() => {
     if (hasValidInput && hasBalance && validCards[0] && !resultsViewedRef.current) {
@@ -178,9 +205,9 @@ export function CreditCardPayoffTool() {
                 value={card.balance || ''}
                 onChange={(e) => {
                   updateCard('balance', parseFloat(e.target.value) || 0);
-                  handleFormStart();
+                  handleFormStart('balance');
                 }}
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('balance')}
                 className="border-[#D1D5DB]"
               />
             </div>
@@ -194,9 +221,9 @@ export function CreditCardPayoffTool() {
                 value={card.apr || ''}
                 onChange={(e) => {
                   updateCard('apr', parseFloat(e.target.value) || 0);
-                  handleFormStart();
+                  handleFormStart('apr');
                 }}
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('apr')}
                 className="border-[#D1D5DB]"
               />
             </div>

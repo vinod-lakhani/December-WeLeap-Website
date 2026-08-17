@@ -49,7 +49,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
-  '/offer': [
+  '/what-is-my-job-offer-worth': [
     {
       q: 'How do I know if a job offer is good?',
       a: 'A good offer has to clear three separate bars, and the number in the letter only speaks to one of them. Is it competitive for that role, level and location — a market-rate question that needs benchmark data from a site collecting reported salaries. Is the whole package bigger or smaller than the headline — base salary is usually only 70% to 90% of what an offer is worth, with the rest in the bonus target, the employer 401(k) match, health and HSA contributions, equity and paid time off. And what does it leave you each month where the job actually is, after that state\'s income tax and that city\'s rent. This calculator answers the second and third questions; it does not benchmark your offer against what other people in the same role are paid.',
@@ -110,7 +110,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'Is it better to pay off the smallest balance or the highest interest rate first?',
-      a: 'Paying the highest APR first — the avalanche method — costs the least in total interest, and is the mathematically optimal order. Paying the smallest balance first — the snowball method — clears individual cards sooner and is easier for many people to stick with. Across typical balances the difference between the two is usually tens or low hundreds of dollars, so the method you actually keep doing beats the one that is optimal on paper. This calculator applies your extra payment to your largest balance first.',
+      a: 'Paying the highest APR first — the avalanche method — costs the least in total interest, and is the mathematically optimal order. Paying the smallest balance first — the snowball method — clears individual cards sooner and is easier for many people to stick with. This calculator uses avalanche: your extra payment goes to the card with the highest APR. Worth knowing that the cheapest order is not always the fastest one, because clearing a small card early also removes its minimum payment — so the method you actually keep doing beats the one that is optimal on paper.',
     },
     {
       q: 'Is a balance transfer worth it?',

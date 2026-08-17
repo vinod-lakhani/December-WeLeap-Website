@@ -31,7 +31,7 @@ Each answers one money decision in about a minute. No account, no email wall.
 Each page states its method in full, above the calculator.
 
 - [How much rent can I afford?](https://www.weleap.ai/how-much-rent-can-i-afford): Applies the 30% rule to take-home pay rather than gross salary, then shows the upfront cash a lease needs — typically two to three months' rent.
-- [Offer letter analyzer](https://www.weleap.ai/offer): Values all seven numbers in an offer — base, bonus, 401(k) match, benefits and HSA, equity, time off, and local housing — against the base salary quoted.
+- [Offer letter analyzer](https://www.weleap.ai/what-is-my-job-offer-worth): Values all seven numbers in an offer — base, bonus, 401(k) match, benefits and HSA, equity, time off, and local housing — against the base salary quoted.
 - [Smart Purchase Check](https://www.weleap.ai/smart-purchase-check): Compares cash, pay-in-4, monthly financing and waiting against the user's actual savings and monthly surplus. Will recommend waiting.
 - [Credit card payoff](https://www.weleap.ai/credit-card-payoff): Payoff date, total interest, and what an extra monthly payment changes. Models the minimum as 1% of balance plus interest, with a $25 floor.
 - [Emergency fund target](https://www.weleap.ai/emergency-fund-target): Starts at three months of essential expenses and adjusts for income stability, expense pressure, dependants and card debt, capped at six months.

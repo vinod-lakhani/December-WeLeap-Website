@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
 import { ImpactTool } from '@/components/netWorthImpact/ImpactTool';
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
-import { track } from '@/lib/analytics';
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+import { ToolPageView } from '@/components/ToolPageView';
 
 /**
  * The three models in lib/networthImpact/math.ts, described rather than
@@ -34,19 +33,17 @@ const STEPS: readonly MethodStep[] = [
 ];
 
 export default function NetWorthImpactPage() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      track(
-        'net_worth_impact_page_view',
-        { page: '/net-worth-impact', tool_version: 'net_worth_impact_v1' },
-        true
-      );
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <PageShell className="bg-canvas">
+      {/* Step one of the funnel. `net_worth_impact_page_view` keeps its own
+          name, page and tool_version so its history stays joinable. */}
+      <ToolPageView
+        tool="net_worth_impact"
+        page="/net-worth-impact"
+        legacyEvent="net_worth_impact_page_view"
+        toolVersion="net_worth_impact_v1"
+      />
+
       {/* Hero */}
       <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>

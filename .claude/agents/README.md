@@ -47,4 +47,6 @@ Separate from the sequence above. `/tools` is the acquisition funnel, so each to
 
 It will refuse to build without a named target query, and it will tell you when a tool is a commodity that can't win against NerdWallet or Bankrate rather than building the page anyway. It also won't generate thin variant pages — that pattern is a manual-action risk, not a growth hack.
 
-Tools are **top-level routes**, not nested under `/tools/` — `/how-much-rent-can-i-afford`, `/offer`, `/allocator`, and so on, with `app/tools/page.tsx` as a pure index over `FREE_TOOLS`. That is deliberate and the agent will not migrate them. Because the URLs are flat, internal linking is the only thing grouping them topically, so the agent treats it as load-bearing rather than decorative.
+Tools are **top-level routes**, not nested under `/tools/` — `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/allocator`, and so on, with `app/tools/page.tsx` as a pure index over `FREE_TOOLS`. That is deliberate and the agent will not migrate them. Because the URLs are flat, internal linking is the only thing grouping them topically, so the agent treats it as load-bearing rather than decorative.
+
+`/offer` was renamed to `/what-is-my-job-offer-worth` on the agent's own recommendation, backed by a 308. `/allocator`, `/smart-purchase-check` and `/net-worth-impact` are still internal product names and are the remaining rename candidates.

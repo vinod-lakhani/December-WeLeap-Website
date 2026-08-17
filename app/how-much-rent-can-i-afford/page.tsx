@@ -6,25 +6,14 @@ import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
-import { fbqTrack } from '@/lib/meta-pixel';
 import { ToolFaq } from '@/components/ToolExplainer';
+import { ToolPageView } from '@/components/ToolPageView';
 
 export default function HowMuchRentCanIAffordPage() {
-  // Track page view on mount - wait for gtag to be available
-  useEffect(() => {
-    // Use a small delay to ensure GA4 script has loaded
-    const timer = setTimeout(() => {
-      track('rent_tool_page_view', {
-        page: '/how-much-rent-can-i-afford',
-        tool_version: 'rent_tool_v1',
-      }, true); // true = wait for gtag to load (up to 3 seconds)
-    }, 500); // Give GA4 a bit more time to initialize
-
-    // Meta Pixel: ViewContent on tool page (Phase 0).
-    fbqTrack('ViewContent', { content_name: 'rent_tool' });
-
-    return () => clearTimeout(timer);
-  }, []);
+  // The page-view effect (rent_tool_page_view + the Meta ViewContent pixel) now
+  // lives in <ToolPageView> below, which also fires `tool_viewed` — step one of
+  // the shared funnel. Without it this tool had no denominator: every later step
+  // was counted against nothing.
 
   // Track scroll past "How it works" section
   const howItWorksSentinelRef = useRef<HTMLDivElement>(null);
@@ -62,6 +51,16 @@ export default function HowMuchRentCanIAffordPage() {
 
   return (
     <PageShell className="bg-canvas">
+      {/* `tool` is the FREE_TOOLS slug, and the legacy event keeps its own name
+          and params so saved GA4 reports don't drop to zero. */}
+      <ToolPageView
+        tool="rent"
+        page="/how-much-rent-can-i-afford"
+        legacyEvent="rent_tool_page_view"
+        toolVersion="rent_tool_v1"
+        pixelContentName="rent_tool"
+      />
+
       {/* Hero + tool. The form used to sit third on the page, behind a
           four-step explainer — visitors arrive from social already knowing
           what they want, so the input comes first now. */}

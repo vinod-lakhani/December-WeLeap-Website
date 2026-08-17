@@ -60,6 +60,20 @@ const nextConfig = {
         permanent: true,
       },
       {
+        // The offer tool was at /offer, a bare noun that matches nothing
+        // anyone types and reads as "discount" rather than "job offer". The
+        // slug is the strongest on-page signal on a site whose tools sit at
+        // flat top-level routes, so it now says the query.
+        //
+        // /offer keeps working as the short alias — it is what the share card
+        // prints, because people photograph that card and retype it, and
+        // /what-is-my-job-offer-worth is not retypeable. Same role as /rent
+        // above.
+        source: '/offer',
+        destination: '/what-is-my-job-offer-worth',
+        permanent: true,
+      },
+      {
         // The Leap Impact Simulator was the 401(k) wedge in front of the
         // allocator, which now collects those inputs itself. Permanent so
         // search consolidates onto /allocator rather than splitting ranking

@@ -8,7 +8,7 @@ import { breadcrumbSchema, toolByHref } from '@/lib/structured-data'
  * different paths.
  *
  * It earns its place twice. The tools live at flat top-level URLs, so nothing
- * else on the page or in the address bar says /offer sits under /tools; and it
+ * else on the page or in the address bar says a tool sits under /tools; and it
  * is the link back to the index, which on a flat site is the only structural
  * signal that the seven calculators are one set.
  *

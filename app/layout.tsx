@@ -34,7 +34,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.weleap.ai'
  * Open Graph and Twitter image paths resolved relative and social previews
  * broke. And there was no title template, so the twenty-nine pages without
  * their own metadata all rendered as the same title in search results —
- * /offer, /how-much-rent-can-i-afford and every article were indistinguishable
+ * the tool pages and every article were indistinguishable
  * to Google.
  *
  * `title.template` means a page sets only its own name; `title.default` is

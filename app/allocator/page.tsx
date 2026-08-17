@@ -25,6 +25,7 @@ import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+import { ToolPageView } from '@/components/ToolPageView';
 
 export interface AllocatorPrefillFromUrl {
   salaryAnnual: number;
@@ -102,6 +103,26 @@ function AllocatorContent() {
   const prevNextLeapIdRef = useRef<string | null>(null);
   const leapStackRenderedTrackedRef = useRef(false);
   const [actionIntent, setActionIntent] = useState<boolean | null>(null);
+
+  /**
+   * Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+   * tool_cta_clicked -> cta_click_signup.
+   *
+   * Fires once per visit, on the first input anyone touches, with the field
+   * that got them started. Every per-step event this tool already has
+   * (`leap_stack_step_completed` and friends) fires on the Next button, which
+   * is a different question — those measure progress through the stack, this
+   * measures whether anyone started it at all.
+   *
+   * Wired to both the cold-start wedge and the stack questions, because
+   * visitors arriving with URL prefill never see the wedge.
+   */
+  const engagedRef = useRef(false);
+  const markEngaged = useCallback((field: string) => {
+    if (engagedRef.current) return;
+    engagedRef.current = true;
+    track('tool_engaged', { tool: 'allocator', first_field: field });
+  }, []);
 
   // Cold-start wedge. The allocator used to require prefill from the Leap
   // simulator, so arriving directly gave a plan with no capital figure and an
@@ -253,6 +274,17 @@ function AllocatorContent() {
     // caps at 3 — none of these summary events had ever fired.
     if (currentStep === STACK_STEPS.length - 1 && leaps.length > 0 && !leapStackRenderedTrackedRef.current) {
       leapStackRenderedTrackedRef.current = true;
+      /**
+       * Third step of the funnel, fired once.
+       *
+       * The plan is this tool's only real output, and this is the one place it
+       * exists: the summary step, with a built stack behind it. Everything
+       * earlier is either an input screen or — for the cold-start path — the
+       * single-Leap reveal, which is a teaser for the plan rather than the
+       * plan. Both entry paths (URL prefill and the wedge) converge here, so
+       * one condition covers both.
+       */
+      track('tool_completed', { tool: 'allocator' });
       // Wait for gtag so Summary view events reach GA4
       track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' }, true);
       track('leap_stack_plan_viewed', {
@@ -548,7 +580,7 @@ function AllocatorContent() {
                       inputMode="decimal"
                       placeholder="e.g. 85000"
                       value={wSalary}
-                      onChange={(e) => setWSalary(e.target.value)}
+                      onChange={(e) => { markEngaged('salary'); setWSalary(e.target.value); }}
                       className="mt-1 border-[#D1D5DB] placeholder:text-gray-400"
                     />
                   </div>
@@ -557,7 +589,7 @@ function AllocatorContent() {
                     <select
                       id="w-state"
                       value={wState}
-                      onChange={(e) => setWState(e.target.value)}
+                      onChange={(e) => { markEngaged('state'); setWState(e.target.value); }}
                       className="mt-1 w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827]"
                     >
                       <option value="">Select state</option>
@@ -579,7 +611,7 @@ function AllocatorContent() {
                     max="100"
                     inputMode="decimal"
                     value={wCurrent401k}
-                    onChange={(e) => setWCurrent401k(e.target.value)}
+                    onChange={(e) => { markEngaged('current_401k_pct'); setWCurrent401k(e.target.value); }}
                     className="mt-1 w-32 border-[#D1D5DB]"
                   />
                 </div>
@@ -590,7 +622,7 @@ function AllocatorContent() {
                     <Button
                       type="button"
                       variant={wHasMatch === true ? 'default' : 'outline'}
-                      onClick={() => setWHasMatch(true)}
+                      onClick={() => { markEngaged('has_match'); setWHasMatch(true); }}
                       className={wHasMatch === true ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90' : ''}
                     >
                       Yes
@@ -598,7 +630,7 @@ function AllocatorContent() {
                     <Button
                       type="button"
                       variant={wHasMatch === false ? 'default' : 'outline'}
-                      onClick={() => setWHasMatch(false)}
+                      onClick={() => { markEngaged('has_match'); setWHasMatch(false); }}
                       className={wHasMatch === false ? 'bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90' : ''}
                     >
                       No
@@ -606,7 +638,7 @@ function AllocatorContent() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => { setWHasMatch(false); }}
+                      onClick={() => { markEngaged('has_match'); setWHasMatch(false); }}
                       className="text-gray-600"
                     >
                       Not sure
@@ -625,7 +657,7 @@ function AllocatorContent() {
                         max="200"
                         inputMode="decimal"
                         value={wMatchRate}
-                        onChange={(e) => setWMatchRate(e.target.value)}
+                        onChange={(e) => { markEngaged('match_rate_pct'); setWMatchRate(e.target.value); }}
                         className="mt-1 border-[#D1D5DB]"
                       />
                     </div>
@@ -638,7 +670,7 @@ function AllocatorContent() {
                         max="100"
                         inputMode="decimal"
                         value={wMatchCap}
-                        onChange={(e) => setWMatchCap(e.target.value)}
+                        onChange={(e) => { markEngaged('match_cap_pct'); setWMatchCap(e.target.value); }}
                         className="mt-1 border-[#D1D5DB]"
                       />
                     </div>
@@ -751,7 +783,7 @@ function AllocatorContent() {
                       type="number"
                       placeholder="e.g. 3500"
                       value={efMonthly}
-                      onChange={(e) => setEfMonthly(e.target.value)}
+                      onChange={(e) => { markEngaged('essential_monthly'); setEfMonthly(e.target.value); }}
                       className="border-[#D1D5DB] max-w-xs"
                     />
                   </div>
@@ -791,7 +823,7 @@ function AllocatorContent() {
                         type="radio"
                         name="highApr"
                         checked={hasHighAprDebt === true}
-                        onChange={() => setHasHighAprDebt(true)}
+                        onChange={() => { markEngaged('has_high_apr_debt'); setHasHighAprDebt(true); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>Yes</span>
@@ -801,7 +833,7 @@ function AllocatorContent() {
                         type="radio"
                         name="highApr"
                         checked={hasHighAprDebt === false}
-                        onChange={() => setHasHighAprDebt(false)}
+                        onChange={() => { markEngaged('has_high_apr_debt'); setHasHighAprDebt(false); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>No</span>
@@ -815,7 +847,7 @@ function AllocatorContent() {
                         type="number"
                         placeholder="e.g. 5000"
                         value={debtBalance}
-                        onChange={(e) => setDebtBalance(e.target.value)}
+                        onChange={(e) => { markEngaged('debt_balance'); setDebtBalance(e.target.value); }}
                         className="border-[#D1D5DB] max-w-xs"
                       />
                     </div>
@@ -849,7 +881,7 @@ function AllocatorContent() {
                         type="radio"
                         name="hsaEligible"
                         checked={hsaEligible === true}
-                        onChange={() => setHsaEligible(true)}
+                        onChange={() => { markEngaged('hsa_eligible'); setHsaEligible(true); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>Yes</span>
@@ -859,7 +891,7 @@ function AllocatorContent() {
                         type="radio"
                         name="hsaEligible"
                         checked={hsaEligible === false}
-                        onChange={() => setHsaEligible(false)}
+                        onChange={() => { markEngaged('hsa_eligible'); setHsaEligible(false); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>No</span>
@@ -875,7 +907,7 @@ function AllocatorContent() {
                           type="number"
                           placeholder="e.g. 2000"
                           value={currentHsaAnnual}
-                          onChange={(e) => setCurrentHsaAnnual(e.target.value)}
+                          onChange={(e) => { markEngaged('current_hsa_annual'); setCurrentHsaAnnual(e.target.value); }}
                           className="border-[#D1D5DB] max-w-xs"
                         />
                       </div>
@@ -887,7 +919,7 @@ function AllocatorContent() {
                             variant={hsaCoverageType === 'single' ? 'default' : 'outline'}
                             size="sm"
                             className={hsaCoverageType === 'single' ? 'bg-[#3F6B42] hover:bg-[#3F6B42]/90' : ''}
-                            onClick={() => setHsaCoverageType('single')}
+                            onClick={() => { markEngaged('hsa_coverage_type'); setHsaCoverageType('single'); }}
                           >
                             Single ($4,300 limit)
                           </Button>
@@ -896,7 +928,7 @@ function AllocatorContent() {
                             variant={hsaCoverageType === 'family' ? 'default' : 'outline'}
                             size="sm"
                             className={hsaCoverageType === 'family' ? 'bg-[#3F6B42] hover:bg-[#3F6B42]/90' : ''}
-                            onClick={() => setHsaCoverageType('family')}
+                            onClick={() => { markEngaged('hsa_coverage_type'); setHsaCoverageType('family'); }}
                           >
                             Family ($8,550 limit)
                           </Button>
@@ -1052,6 +1084,13 @@ export default function AllocatorPage() {
        explanatory therefore sits outside the boundary, where it is in the
        served HTML unconditionally. */
     <PageShell className="bg-canvas">
+      {/* Step one of the funnel. This tool had no page-view event of any kind —
+          `allocator_prefill_loaded` and `leap_stack_started` only fire for
+          visitors arriving with URL prefill, so anyone landing from search or
+          /tools was invisible until they finished the stack. No `legacyEvent`
+          for the same reason: there is no prior per-tool page view to keep. */}
+      <ToolPageView tool="allocator" page="/allocator" />
+
       <Suspense fallback={<AllocatorFallback />}>
         <AllocatorContent />
       </Suspense>

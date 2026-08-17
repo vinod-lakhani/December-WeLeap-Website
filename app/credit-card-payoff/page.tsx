@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
 import { CreditCardPayoffTool } from '@/components/CreditCardPayoffTool';
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
-import { track } from '@/lib/analytics';
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+import { ToolPageView } from '@/components/ToolPageView';
 
 /**
  * What the calculator does, stated once and in the order it does it. The
@@ -25,7 +24,7 @@ const STEPS: readonly MethodStep[] = [
   },
   {
     t: 'Then you add whatever you can pay on top',
-    d: 'Every dollar above the minimum goes entirely to principal, which is why the slider moves the payoff date so violently. This calculator applies your extra payment to your largest balance first, and shows the new debt-free date and the interest you avoid.',
+    d: 'Every dollar above the minimum goes entirely to principal, which is why the slider moves the payoff date so violently. This calculator applies your extra payment to your highest-APR card first — the avalanche method — and shows the new debt-free date and the interest you avoid.',
   },
   {
     t: 'And we show what the payment becomes once the card clears',
@@ -34,18 +33,16 @@ const STEPS: readonly MethodStep[] = [
 ];
 
 export default function CreditCardPayoffPage() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      track('credit_card_payoff_page_view', {
-        page: '/credit-card-payoff',
-        tool_version: 'credit_card_payoff_v1',
-      }, true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <PageShell className="bg-canvas">
+      {/* Step one of the funnel. `credit_card_payoff_page_view` keeps its own
+          name, page and tool_version so its history stays joinable. */}
+      <ToolPageView
+        tool="credit_card_payoff"
+        page="/credit-card-payoff"
+        legacyEvent="credit_card_payoff_page_view"
+        toolVersion="credit_card_payoff_v1"
+      />
       <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn("text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink", "mb-6 md:mb-8")}>

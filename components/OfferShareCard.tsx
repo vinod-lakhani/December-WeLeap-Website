@@ -16,12 +16,19 @@ import * as Popover from '@radix-ui/react-popover';
 import { track } from '@/lib/analytics';
 
 /**
- * Two URLs. PRINTED_URL is short because people photograph the card and retype
- * it; CANONICAL_URL is what `navigator.share` hands to a machine, where the
- * apex host only costs a 307 to www and nothing is gained by being short.
+ * Two URLs, and they deliberately no longer point at the same path.
+ *
+ * PRINTED_URL is short because people photograph the card and retype it. The
+ * tool now lives at /what-is-my-job-offer-worth, which is a fine slug and an
+ * impossible thing to retype off a phone screen, so the card keeps printing
+ * /offer — that path is a permanent redirect to the new one (see the redirects
+ * block in next.config.mjs), exactly the role /rent plays for the rent tool.
+ *
+ * CANONICAL_URL is what `navigator.share` hands to a machine, so it points
+ * straight at the real route and skips the redirect hop.
  */
 const PRINTED_URL = 'weleap.ai/offer';
-const CANONICAL_URL = 'https://www.weleap.ai/offer';
+const CANONICAL_URL = 'https://www.weleap.ai/what-is-my-job-offer-worth';
 
 interface OfferShareCardProps {
   /** Total package as a % above the quoted base, e.g. 23 for +23%. */

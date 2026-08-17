@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
 import { SmartPurchaseTool } from '@/components/SmartPurchaseTool'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
-import { track } from '@/lib/analytics'
-import { fbqTrack } from '@/lib/meta-pixel'
 import { ToolFaq } from '@/components/ToolExplainer'
+import { ToolPageView } from '@/components/ToolPageView'
 
 /**
  * A real table, because this is a real comparison and a comparison rendered as
@@ -44,16 +42,18 @@ const OPTIONS = [
 ] as const
 
 export default function SmartPurchaseCheckPage() {
-  useEffect(() => {
-    const t = setTimeout(() => {
-      track('purchase_tool_page_view', { page: '/smart-purchase-check', tool_version: 'purchase_v1' }, true)
-    }, 500)
-    fbqTrack('ViewContent', { content_name: 'smart_purchase_tool' })
-    return () => clearTimeout(t)
-  }, [])
-
   return (
     <PageShell className="bg-canvas">
+      {/* Step one of the funnel. `purchase_tool_page_view` and the Meta
+          ViewContent pixel keep firing exactly as they did, alongside the
+          shared `tool_viewed` that gives the tool a denominator. */}
+      <ToolPageView
+        tool="smart_purchase"
+        page="/smart-purchase-check"
+        legacyEvent="purchase_tool_page_view"
+        toolVersion="purchase_v1"
+        pixelContentName="smart_purchase_tool"
+      />
       <Section variant="canvas" className="pb-10 pt-28 md:pt-32" isHero>
         <Container>
           <div className="mx-auto max-w-3xl text-center">

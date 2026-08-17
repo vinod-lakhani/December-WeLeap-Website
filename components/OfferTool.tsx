@@ -83,7 +83,7 @@ export function OfferTool() {
   const toolCompletedRef = useRef(false);
 
   // Fire tool_completed once when results first render (Phase 0 funnel).
-  // Mirrors the same event on /offer with tool: 'offer'.
+  // Mirrors the same event on /what-is-my-job-offer-worth with tool: 'offer'.
   useEffect(() => {
     if (results && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
@@ -211,10 +211,17 @@ export function OfferTool() {
     }
   }, [city, otherState, otherMetro]);
 
-  // Track form start on first focus/input
-  const handleFormStart = () => {
+  // Track form start on first focus/input.
+  //
+  // Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
+  // tool_cta_clicked -> cta_click_signup. `rent_form_start` already fired once
+  // per visit here but under a rent-only name, so it could not be the middle of
+  // a funnel keyed on the shared events. Both fire now, from the same guard, so
+  // the count is identical and the old event keeps its history.
+  const handleFormStart = (field: string) => {
     if (!formStartedRef.current) {
       formStartedRef.current = true;
+      track('tool_engaged', { tool: 'rent', first_field: field });
       track('rent_form_start', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
@@ -417,9 +424,9 @@ export function OfferTool() {
               value={salary}
               onChange={(e) => {
                 setSalary(e.target.value);
-                handleFormStart();
+                handleFormStart('salary');
               }}
-              onFocus={handleFormStart}
+              onFocus={() => handleFormStart('salary')}
               className="border-[#D1D5DB] !placeholder:text-[#111827]/40"
             />
           </div>
@@ -431,12 +438,12 @@ export function OfferTool() {
             </Label>
             <Select value={city} onValueChange={(value) => {
               setCity(value);
-              handleFormStart();
+              handleFormStart('city');
             }}>
               <SelectTrigger
                 id="city"
                 className="border-[#D1D5DB]"
-                onFocus={handleFormStart}
+                onFocus={() => handleFormStart('city')}
               >
                 <SelectValue placeholder="Select a location" />
               </SelectTrigger>
@@ -531,9 +538,9 @@ export function OfferTool() {
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
-                handleFormStart();
+                handleFormStart('start_date');
               }}
-              onFocus={handleFormStart}
+              onFocus={() => handleFormStart('start_date')}
               className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left w-full pr-10"
               style={{
                 WebkitAppearance: 'none',

@@ -8,7 +8,7 @@ import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
 
 /**
- * /offer — the total-compensation calculator.
+ * /what-is-my-job-offer-worth — the total-compensation calculator.
  *
  * A server component. It used to be a client component wrapping one analytics
  * effect, which meant `metadata` had to live in a sibling layout.tsx and the
@@ -27,12 +27,12 @@ export const metadata: Metadata = {
   title: 'What is my job offer really worth? Free calculator',
   description:
     'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
-  alternates: { canonical: '/offer' },
+  alternates: { canonical: '/what-is-my-job-offer-worth' },
   openGraph: {
     title: 'What is my job offer really worth? | WeLeap',
     description:
       'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
-    url: '/offer',
+    url: '/what-is-my-job-offer-worth',
   },
 }
 
@@ -87,11 +87,15 @@ export default function OfferAnalysisPage() {
     <PageShell className="bg-canvas">
       {/* WebApplication + FAQPage for this route. BreadcrumbList is emitted by
           ToolBreadcrumb alongside the trail it describes. */}
-      <ToolJsonLd href="/offer" />
+      <ToolJsonLd href="/what-is-my-job-offer-worth" />
+      {/* `tool`, the legacy event name and its `page` value are analytics
+          identifiers, not URLs. The route moved from /offer; these did not, so
+          the funnel and every saved report keep joining to their own history. */}
       <ToolPageView
         tool="offer"
-        page="/offer"
+        page="/what-is-my-job-offer-worth"
         legacyEvent="offer_analysis_page_view"
+        legacyPage="/offer"
         toolVersion="offer_tool_v1"
         pixelContentName="offer_tool"
       />
@@ -99,7 +103,7 @@ export default function OfferAnalysisPage() {
       {/* Hero */}
       <Section variant="canvas" isHero className="text-center">
         <Container maxWidth="narrow">
-          <ToolBreadcrumb href="/offer" />
+          <ToolBreadcrumb href="/what-is-my-job-offer-worth" />
 
           {/* lime on the old dark hero; on the warm canvas it needs brand green to stay legible */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 text-sm font-semibold text-brand-700">
@@ -294,7 +298,7 @@ export default function OfferAnalysisPage() {
         it into a total, so it never quietly inflates the number you plan your rent against.
       </Caveat>
 
-      <ToolFaq href="/offer" />
+      <ToolFaq href="/what-is-my-job-offer-worth" />
 
       <RelatedTools
         from="offer"

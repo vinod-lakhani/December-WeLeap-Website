@@ -12,6 +12,20 @@
  * Plus tool_card_clicked (tool, surface) upstream on /tools and the homepage,
  * and tool_cross_sell_clicked (from, to, surface) between calculators.
  *
+ * All seven free tools emit the sequence. What counts as "a real result" is
+ * decided per tool, from that tool's own state machine, because firing it at
+ * the same moment as tool_engaged makes the step between them measure nothing:
+ * - offer            — the tax lookup resolves (take-home stops being a 72% stub)
+ * - rent             — the tax API returns and the range renders
+ * - smart_purchase   — price, cash and surplus all present, so a recommendation exists
+ * - credit_card_payoff — balance AND APR both real (APR 0 passes validation but
+ *                      is not an answer this calculator is being asked for)
+ * - emergency_fund   — the form advances to the results step
+ * - allocator        — the summary step renders with a built stack
+ * - net_worth_impact — no tool_completed. It computes from defaults, so the
+ *                      result is on screen before anyone touches it; see
+ *                      components/netWorthImpact/ImpactTool.tsx.
+ *
  * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click

@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
 import { EmergencyFundTool } from '@/components/EmergencyFundTool';
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
-import { track } from '@/lib/analytics';
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+import { ToolPageView } from '@/components/ToolPageView';
 
 /**
  * The actual algorithm from lib/emergencyFund/calculation.ts, written out.
@@ -40,18 +39,16 @@ const STEPS: readonly MethodStep[] = [
 ];
 
 export default function EmergencyFundTargetPage() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      track('emergency_fund_page_view', {
-        page: '/emergency-fund-target',
-        tool_version: 'emergency_fund_v1',
-      }, true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <PageShell className="bg-canvas">
+      {/* Step one of the funnel. `emergency_fund_page_view` keeps its own name,
+          page and tool_version so its history stays joinable. */}
+      <ToolPageView
+        tool="emergency_fund"
+        page="/emergency-fund-target"
+        legacyEvent="emergency_fund_page_view"
+        toolVersion="emergency_fund_v1"
+      />
       <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
           <h1 className={cn("text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink", "mb-6 md:mb-8")}>
