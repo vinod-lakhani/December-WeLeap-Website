@@ -5,6 +5,7 @@ import { PageShell, Section, Container, SiteFooter } from '@/components/layout';
 import { TYPOGRAPHY } from '@/lib/layout-constants';
 import { cn } from '@/lib/utils';
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer';
+import { ToolBreadcrumb } from '@/components/ToolBreadcrumb';
 import { ToolPageView } from '@/components/ToolPageView';
 
 /**
@@ -47,6 +48,7 @@ export default function NetWorthImpactPage() {
       {/* Hero */}
       <Section variant="canvas" className="text-center pt-28 md:pt-36 pb-14 md:pb-18" isHero>
         <Container>
+          <ToolBreadcrumb href="/net-worth-impact" />
           <h1 className={cn("text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink", "mb-6 md:mb-8")}>
             What is $150/month worth?
           </h1>

@@ -3,6 +3,7 @@
 import { SmartPurchaseTool } from '@/components/SmartPurchaseTool'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { ToolFaq } from '@/components/ToolExplainer'
+import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolPageView } from '@/components/ToolPageView'
 
 /**
@@ -57,6 +58,7 @@ export default function SmartPurchaseCheckPage() {
       <Section variant="canvas" className="pb-10 pt-28 md:pt-32" isHero>
         <Container>
           <div className="mx-auto max-w-3xl text-center">
+            <ToolBreadcrumb href="/smart-purchase-check" />
             <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
               Pay now or pay in 4? Find the smarter move.
             </h1>
