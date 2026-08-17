@@ -313,7 +313,10 @@ export function ImpactTool() {
             heading after the page H1. As an h3 it left the served document with
             an h3 before any h2 — a structural gap for anything reading the page
             by its outline. Styling is unchanged. */}
-        <h2 className="text-lg font-semibold text-[#111827] mb-4">Net worth impact</h2>
+        {/* "Net worth impact" was the pre-rename route name leaking into a
+            heading on /what-is-saving-monthly-worth. Headings are read as page
+            vocabulary, so this one now describes its section. */}
+        <h2 className="text-lg font-semibold text-[#111827] mb-4">What this is worth over time</h2>
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
           {horizons.map((h) => (
             <NumberCard

@@ -39,7 +39,12 @@ export const metadata: Metadata = {
     'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys. Free, no signup.',
   alternates: { canonical: '/how-much-rent-can-i-afford' },
   openGraph: {
-    title: 'How much rent can I afford? | WeLeap',
+    // Byte-identical to what `title` renders through the root layout's
+    // `%s | WeLeap` template. `openGraph.title` does not inherit that template,
+    // so a hand-written brand suffix silently drifts from the <title>. This
+    // page had drifted: it was branched before the sweep that fixed the same
+    // bug elsewhere, so it reintroduced it on the highest-volume route.
+    title: 'How much rent can I afford? Free calculator | WeLeap',
     description:
       'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys.',
     url: '/how-much-rent-can-i-afford',
