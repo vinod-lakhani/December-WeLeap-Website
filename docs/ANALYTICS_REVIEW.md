@@ -55,11 +55,17 @@
 
 ---
 
-## Emergency Fund Tool (`/emergency-fund-target`)
+## Emergency Fund Tool (`/how-much-emergency-fund-do-i-need`)
+
+Route renamed from `/emergency-fund-target` (308 in `next.config.mjs`). Every
+identifier below stayed: the `tool` slug is still `emergency_fund`, and all
+eight events keep sending `page: "/emergency-fund-target"`, because that is the
+value their history is recorded under. Only the shared funnel events
+(`tool_viewed` and below) report the new route.
 
 | Event | Location |
 |-------|----------|
-| `emergency_fund_page_view` | `app/emergency-fund-target/page.tsx` |
+| `emergency_fund_page_view` | `app/how-much-emergency-fund-do-i-need/page.tsx` |
 | `emergency_fund_cta_click` | `components/EmergencyFundTool.tsx` |
 | `emergency_fund_form_start` | `components/EmergencyFundTool.tsx` |
 | `emergency_fund_calculated` | `components/EmergencyFundTool.tsx` |

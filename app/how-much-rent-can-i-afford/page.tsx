@@ -99,7 +99,7 @@ const RELATED: readonly RelatedTool[] = [
     why: 'Debt minimums come off your take-home before the rent band is applied, so every $100 of minimum payments costs you $28 to $35 of monthly rent budget. This shows what clearing a balance would actually take, and what the payment turns into once the card is gone.',
   },
   {
-    href: '/emergency-fund-target',
+    href: '/how-much-emergency-fund-do-i-need',
     why: 'The cash you need to get keys and the cash you need for an emergency are two different pots, and move-in costs empty the first one on day one. This sizes the second against your essential expenses rather than against a blanket three-to-six-month rule.',
   },
 ]

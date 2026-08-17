@@ -96,6 +96,21 @@ const nextConfig = {
         permanent: true,
       },
       {
+        // The emergency fund tool was at /emergency-fund-target — half product
+        // language, in that "emergency fund" is what people type and "target"
+        // is ours, and the pair is searched by nobody. Same reasoning as the
+        // four renames around it: on a site whose tools sit at flat top-level
+        // routes, the slug is the strongest on-page signal, so it now says the
+        // query the page targets. The h1 had been asking that exact question
+        // since the page was rebuilt; only the URL was still behind.
+        //
+        // No short-alias exception like /rent and /offer keep: this tool has no
+        // share card, so nothing prints the old path anywhere it gets retyped.
+        source: '/emergency-fund-target',
+        destination: '/how-much-emergency-fund-do-i-need',
+        permanent: true,
+      },
+      {
         // The offer tool was at /offer, a bare noun that matches nothing
         // anyone types and reads as "discount" rather than "job offer". The
         // slug is the strongest on-page signal on a site whose tools sit at

@@ -13,7 +13,7 @@ Stack: Next.js 14.2.26 App Router, TypeScript, Tailwind 3.4, shadcn/ui on Radix,
 Confirm three things with the user. Do not guess.
 
 1. **The target query.** One primary query per page, phrased the way a real person types it. If you cannot name it, the page has no reason to exist. Say so rather than building anyway.
-2. **The route.** Tools live at **top-level routes**, not nested under `/tools/`. Live today: `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/should-i-use-buy-now-pay-later`, `/credit-card-payoff`, `/emergency-fund-target`, `/how-should-i-split-my-paycheck`, `/what-is-saving-monthly-worth`. `app/tools/page.tsx` is purely an index mapping over `FREE_TOOLS`. Read `FREE_TOOLS` rather than trusting this list — it is the source of truth and this list is a convenience copy.
+2. **The route.** Tools live at **top-level routes**, not nested under `/tools/`. Live today: `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/should-i-use-buy-now-pay-later`, `/credit-card-payoff`, `/how-much-emergency-fund-do-i-need`, `/how-should-i-split-my-paycheck`, `/what-is-saving-monthly-worth`. `app/tools/page.tsx` is purely an index mapping over `FREE_TOOLS`. Read `FREE_TOOLS` rather than trusting this list — it is the source of truth and this list is a convenience copy.
 
    **Never migrate an existing tool route.** Flat is deliberate and correct — URL depth is a weak signal and `/how-much-rent-can-i-afford` is the query verbatim. Moving it under `/tools/` would gain nothing and cost 301s.
 
@@ -59,7 +59,7 @@ Files created or changed, the target query, the schema types emitted, the funnel
 
 ## Slug naming
 
-**Every tool slug is now query-shaped.** `/offer`, `/allocator`, `/smart-purchase-check` and `/net-worth-impact` were all internal product names and have been renamed, each on this agent's own recommendation and each backed by a 308. `/how-much-rent-can-i-afford` was the model.
+**Every tool slug is now query-shaped.** `/offer`, `/allocator`, `/smart-purchase-check`, `/net-worth-impact` and `/emergency-fund-target` were all product language and have been renamed, each on this agent's own recommendation and each backed by a 308. `/how-much-rent-can-i-afford` was the model.
 
 There is nothing left to rename. If a *new* tool is added, its slug should read as the query someone types, and the bar is whether a stranger could guess what the page does from the URL alone.
 

@@ -283,7 +283,7 @@ export default function EmergencyFundPage() {
 
               <p className="font-semibold">
                 👉 Ready to build your financial safety net?{' '}
-                <Link href="/emergency-fund-target" className="text-brand-700 hover:text-brand-800 underline">
+                <Link href="/how-much-emergency-fund-do-i-need" className="text-brand-700 hover:text-brand-800 underline">
                   Find your personalized emergency fund target
                 </Link>
                 {' '}— or join the WeLeap waitlist at www.weleap.ai to start securing your future today.

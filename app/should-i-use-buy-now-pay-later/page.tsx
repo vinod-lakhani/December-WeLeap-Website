@@ -95,7 +95,7 @@ const STEPS: readonly MethodStep[] = [
  */
 const RELATED: readonly RelatedTool[] = [
   {
-    href: '/emergency-fund-target',
+    href: '/how-much-emergency-fund-do-i-need',
     why: 'If you told this calculator you are still building an emergency fund, that is what dropped the threshold to 15% of your cash and made an interest-free split worth taking. This works out how many months your own situation actually calls for, rather than assuming the blanket three-to-six.',
   },
   {

@@ -155,7 +155,7 @@ export default function EmergencyFundGuessPage() {
               </p>
 
               <p className="font-semibold">
-                <Link href="/emergency-fund-target" className="text-brand-700 hover:text-brand-800 underline">
+                <Link href="/how-much-emergency-fund-do-i-need" className="text-brand-700 hover:text-brand-800 underline">
                   👉 See your emergency fund plan
                 </Link>
               </p>
