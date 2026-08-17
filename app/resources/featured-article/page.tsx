@@ -10,14 +10,22 @@ import { TYPOGRAPHY } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
 import { ArticleJsonLd } from '@/components/ArticleJsonLd'
 
+/**
+ * The title was 'Featured' and the description "A closer look at one money
+ * decision worth getting right" — neither of which describes this article, and
+ * "Featured" carries no query signal at all. Both now say what the piece is.
+ */
 export const metadata: Metadata = {
-  title: 'Featured',
+  title: 'Why we built WeLeap',
   description:
-    'A closer look at one money decision worth getting right.',
+    'We did not set out to build another budgeting app. Why the tools that track your spending never tell you what to actually do next.',
   alternates: { canonical: '/resources/featured-article' },
   openGraph: {
-    title: 'Featured | WeLeap',
-    description: 'A closer look at one money decision worth getting right.',
+    // Byte-identical to what `title` renders through the root layout's
+    // `%s | WeLeap` template — openGraph.title does not inherit it.
+    title: 'Why we built WeLeap | WeLeap',
+    description:
+      'We did not set out to build another budgeting app. Why the tools that track your spending never tell you what to actually do next.',
     url: '/resources/featured-article',
     images: [DEFAULT_OG_IMAGE],
   },

@@ -10,6 +10,12 @@ import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 export const metadata: Metadata = {
   title: 'SMS notifications',
   description: 'How WeLeap text-message notifications work, how you opt in, and how to stop them at any time.',
+  // robots.txt already disallows this route, but Disallow blocks crawling
+  // rather than indexing: a disallowed URL can still be indexed URL-only if
+  // something links to it, and the disallow is exactly what stops Google
+  // reading a noindex. Stating it here makes the directive readable, and the
+  // Disallow can be dropped later if that matters.
+  robots: { index: false, follow: false },
   openGraph: {
     title: 'SMS notifications | WeLeap',
     description: 'How WeLeap text-message notifications work, how you opt in, and how to stop them at any time.',

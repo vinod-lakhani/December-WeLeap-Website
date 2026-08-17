@@ -57,7 +57,7 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
-    name: "Smart Purchase Check",
+    name: "Buy Now, Pay Later",
     question: "Should I use buy now, pay later?",
     blurb: "Cash, pay in 4, or monthly financing — see which one actually leaves you better off.",
     cta: "Find the smarter move →",
@@ -69,9 +69,14 @@ export const FREE_TOOLS: FreeTool[] = [
     //
     // `slug` deliberately stayed "smart_purchase" — it is the analytics id
     // every event in this tool's funnel joins on, and it did not move with the
-    // URL. `name` stayed too: it is the card label, the breadcrumb leaf, the OG
-    // card headline and the schema `name`, and "Offer Letter Analyzer" on
-    // /what-is-my-job-offer-worth is the same arrangement.
+    // URL.
+    //
+    // `name` did move, from "Smart Purchase Check". It is the card label, the
+    // breadcrumb leaf, the OG card headline and the schema `name`, and it named
+    // the internal decision engine rather than the thing the page is about — so
+    // the breadcrumb read "Smart Purchase Check" on a URL about buy now, pay
+    // later. It stays a noun phrase rather than becoming the question, because
+    // the card renders `question` directly beneath it.
     href: "/should-i-use-buy-now-pay-later",
     icon: "/images/tool-icons/smart-purchase.png",
     slug: "smart_purchase",
@@ -125,7 +130,7 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
-    name: "Net Worth Impact",
+    name: "Monthly Saving Impact",
     // Was "Is $150 a month even worth it?". The amount is this tool's default,
     // not its subject — it is a slider — and the card, the OG card headline and
     // the H1 all had to be re-edited together every time someone thought about
@@ -142,8 +147,11 @@ export const FREE_TOOLS: FreeTool[] = [
     //
     // `slug` deliberately stayed "net_worth_impact": it is the analytics id
     // every event in this tool's funnel joins on, and it did not move with the
-    // URL. `name` stayed too — it is the card label, the breadcrumb leaf and
-    // the schema `name`.
+    // URL.
+    //
+    // `name` did move, from "Net Worth Impact". Like the slug it described the
+    // output of the projection rather than the subject, so the breadcrumb leaf
+    // named a concept the URL, the H1 and the FAQ had all stopped using.
     href: "/what-is-saving-monthly-worth",
     icon: "/images/tool-icons/sparkles.png",
     slug: "net_worth_impact",
