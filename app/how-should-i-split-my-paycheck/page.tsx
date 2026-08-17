@@ -147,9 +147,18 @@ export default function AllocatorPage() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand-700" />
             Free · No account required
           </div>
+          {/* The H1 restates the query the route was renamed to target. It used
+              to read "Here's how your money should flow", which is the better
+              line but contains none of "split" or "paycheck" — so the rename
+              moved the URL to the query and left the strongest on-page signal
+              pointing somewhere else. The original line is kept immediately
+              below rather than dropped. */}
           <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink mb-4">
-            Here&apos;s how your money should flow
+            How should I split my paycheck?
           </h1>
+          <p className="mb-4 text-balance text-lg font-semibold text-ink md:text-xl">
+            Here&apos;s how your money should flow.
+          </p>
           <p className="max-w-2xl text-base leading-relaxed text-subtle md:text-lg">
             This free money plan calculator puts your dollars in order: employer 401(k) match first, then a safety
             buffer, then high-interest debt, then tax-advantaged accounts, then whatever is left. It takes your salary,
