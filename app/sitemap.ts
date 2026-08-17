@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { FREE_TOOLS } from '@/lib/tools'
+import { ARTICLES } from '@/lib/articles'
 
 /**
  * The site had no sitemap at all, so every page — including the seven free
@@ -27,29 +28,34 @@ const CORE: { path: string; priority: number; freq: MetadataRoute.Sitemap[number
   { path: '/terms-of-service', priority: 0.3, freq: 'yearly' },
 ]
 
-/** Long-form articles under /resources. */
-const ARTICLES = [
-  '/resources/adaptable-money-system',
-  '/resources/awareness-to-action',
-  '/resources/credit-score-myths',
-  '/resources/emergency-fund',
-  '/resources/emergency-fund-guess',
-  '/resources/featured-article',
-  '/resources/financial-autopilot',
-  '/resources/income-allocation',
-  '/resources/pricing-philosophy',
-  '/resources/psychology-of-spending',
-  '/resources/the-rent-check-panic',
-  '/resources/traditional-tools-fail',
-]
+/**
+ * Articles come from lib/articles.ts rather than a list maintained here.
+ *
+ * This file used to carry its own copy of the twelve routes, which is the same
+ * duplication that had already let the /resources cards drift out of step with
+ * the articles' own bylines. One registry, one place to add an article.
+ */
 
+/**
+ * `lastModified` is set only where a real date exists.
+ *
+ * Every URL previously carried `new Date()` at build time, so all 26 shared one
+ * timestamp that changed on every deploy whether or not the page had. That is
+ * the pattern Google discounts lastmod for, and it cost the articles — the one
+ * place here with genuine publication dates — the freshness signal they should
+ * have had. Google's guidance is to omit the field rather than supply a value
+ * that isn't accurate, so the core pages and tools now omit it.
+ *
+ * If tools ever need a real one, it should come from a date stored alongside
+ * the tool in FREE_TOOLS, not from the clock.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date()
-
   return [
     ...CORE.map((c) => ({
-      url: `${SITE}${c.path}`,
-      lastModified: now,
+      // The homepage canonical resolves to the bare origin with no trailing
+      // slash, so the sitemap has to say the same thing — otherwise the two
+      // nominally describe different URLs.
+      url: c.path === '/' ? SITE : `${SITE}${c.path}`,
       changeFrequency: c.freq,
       priority: c.priority,
     })),
@@ -57,13 +63,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // homepage and above everything else.
     ...FREE_TOOLS.map((t) => ({
       url: `${SITE}${t.href}`,
-      lastModified: now,
       changeFrequency: 'monthly' as const,
       priority: 0.8,
     })),
     ...ARTICLES.map((a) => ({
-      url: `${SITE}${a}`,
-      lastModified: now,
+      url: `${SITE}${a.href}`,
+      ...(a.datePublished ? { lastModified: a.datePublished } : {}),
       changeFrequency: 'monthly' as const,
       priority: 0.4,
     })),
