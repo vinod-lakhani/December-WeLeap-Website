@@ -133,11 +133,17 @@ export function breadcrumbSchema(tool: FreeTool) {
  * text cannot diverge. Do not call this with questions that are not on screen.
  */
 export function faqSchema(items: readonly FaqItem[], path: string) {
+  // The homepage is passed as '/', which would otherwise emit a trailing slash
+  // while its canonical and sitemap entry both use the bare origin — three
+  // signals describing two nominally different URLs. Normalised here rather
+  // than at the call site so it cannot be reintroduced by the next caller.
+  const url = path === '/' ? SITE_URL : `${SITE_URL}${path}`
+
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    '@id': `${SITE_URL}${path}#faq`,
-    url: `${SITE_URL}${path}`,
+    '@id': `${url}#faq`,
+    url,
     mainEntity: items.map((item) => ({
       '@type': 'Question',
       name: item.q,
