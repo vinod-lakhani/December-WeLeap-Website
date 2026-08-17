@@ -20,7 +20,12 @@ import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { US_STATES } from '@/lib/states';
-import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
+import {
+  K401_EMPLOYEE_CAP,
+  HSA_LIMIT_SINGLE,
+  HSA_LIMIT_FAMILY,
+  TAX_YEAR,
+} from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
@@ -218,8 +223,8 @@ function AllocatorContent() {
     const matchNotCaptured = prefill?.employerMatchEnabled && current401kPct < matchCapPct;
     if (matchNotCaptured) return matchCapPct;
     const current401kAnnual = (prefill.salaryAnnual * current401kPct) / 100;
-    if (current401kAnnual >= K401_EMPLOYEE_CAP_2025) return current401kPct;
-    const capPct = (K401_EMPLOYEE_CAP_2025 / prefill.salaryAnnual) * 100;
+    if (current401kAnnual >= K401_EMPLOYEE_CAP) return current401kPct;
+    const capPct = (K401_EMPLOYEE_CAP / prefill.salaryAnnual) * 100;
     // Prefill from Leap Impact has recommended401kPct (e.g. 23.5%); use it instead of capping at 15%
     if (prefill?.recommended401kPct != null && prefill.recommended401kPct > current401kPct) {
       return Math.min(prefill.recommended401kPct, capPct);
@@ -1069,7 +1074,7 @@ const STEPS: readonly MethodStep[] = [
   },
   {
     t: 'Then tax-advantaged accounts — HSA, then retirement',
-    d: 'An HSA is untaxed going in, untaxed as it grows and untaxed coming out for medical costs, which no other US account does. The 2025 limits this tool uses are $4,300 for self-only cover and $8,550 for family, with the 401(k) employee deferral capped at $23,500.',
+    d: `An HSA is untaxed going in, untaxed as it grows and untaxed coming out for medical costs, which no other US account does. The ${TAX_YEAR} limits this tool uses are $${HSA_LIMIT_SINGLE.toLocaleString('en-US')} for self-only cover and $${HSA_LIMIT_FAMILY.toLocaleString('en-US')} for family, with the 401(k) employee deferral capped at $${K401_EMPLOYEE_CAP.toLocaleString('en-US')}.`,
   },
   {
     t: 'Then whatever is left, split between retirement and investing',

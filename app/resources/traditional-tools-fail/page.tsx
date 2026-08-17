@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -59,9 +60,13 @@ export default function TraditionalToolsFailPage() {
           </p>
 
           <div className="mt-6 md:mt-8">
-            <img
+            <Image
               src="/images/traditional-tools-fail.png"
               alt="Plan, Act, Adapt cycle illustration"
+              width={1040}
+              height={545}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-auto rounded-2xl shadow-lg"
             />
           </div>

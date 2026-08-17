@@ -3,10 +3,10 @@
  * Used by Leap Impact Simulator and Full Leap (allocator) for consistent behavior.
  */
 
-import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 
 /** IRS 401(k) employee deferral limit (2025). Alias for shared use. */
-export const K401_EMPLOYEE_MAX = K401_EMPLOYEE_CAP_2025;
+export const K401_EMPLOYEE_MAX = K401_EMPLOYEE_CAP;
 
 export interface Compute401kStatusInputs {
   salaryAnnual: number;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, User } from 'lucide-react'
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -35,6 +36,20 @@ export default function FeaturedArticlePage() {
             Back to Resources
           </Link>
 
+          <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+            <div className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              December 18, 2025
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />6 min read
+            </div>
+            <div className="flex items-center gap-1">
+              <User className="w-4 h-4" />
+              Vinod Lakhani
+            </div>
+          </div>
+
           <h1 className={cn(TYPOGRAPHY.h1, "text-gray-900 mb-4 md:mb-6")}>
             Real Finance for Real Life: Why We Built WeLeap
           </h1>
@@ -44,9 +59,12 @@ export default function FeaturedArticlePage() {
           </p>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img
+            <Image
               src="/images/financial-growth.jpeg"
               alt="Plant growing from coins, symbolizing financial growth"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-full object-cover"
             />
           </div>

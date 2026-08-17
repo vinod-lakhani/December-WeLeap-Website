@@ -1,3 +1,10 @@
+import {
+  HSA_LIMIT_FAMILY,
+  HSA_LIMIT_SINGLE,
+  K401_EMPLOYEE_CAP,
+  TAX_YEAR,
+} from '@/lib/allocator/constants'
+
 /**
  * Question-and-answer copy for the calculator routes.
  *
@@ -179,11 +186,11 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'How much should I contribute to my 401(k)?',
-      a: 'At minimum, enough to receive your full employer match — contributing below the match cap forfeits money your employer has already budgeted for you. Beyond that the answer is bounded by the IRS employee deferral limit, which this tool applies at the 2025 figure of $23,500. Between those two points the right number depends on what else your money has to do, which is what this tool is working out.',
+      a: `At minimum, enough to receive your full employer match — contributing below the match cap forfeits money your employer has already budgeted for you. Beyond that the answer is bounded by the IRS employee deferral limit, which this tool applies at the ${TAX_YEAR} figure of $${K401_EMPLOYEE_CAP.toLocaleString('en-US')}. Between those two points the right number depends on what else your money has to do, which is what this tool is working out.`,
     },
     {
       q: 'What is an HSA and should I use one?',
-      a: 'A Health Savings Account is available if you are enrolled in a qualifying high-deductible health plan, and it is the only US account that is untaxed on the way in, untaxed while it grows, and untaxed on the way out when used for qualified medical expenses. That triple treatment is why it sits high in the ordering — above general investing and, for many people, above additional retirement contributions beyond the match. The 2025 contribution limits this tool uses are $4,300 for self-only coverage and $8,550 for family coverage.',
+      a: `A Health Savings Account is available if you are enrolled in a qualifying high-deductible health plan, and it is the only US account that is untaxed on the way in, untaxed while it grows, and untaxed on the way out when used for qualified medical expenses. That triple treatment is why it sits high in the ordering — above general investing and, for many people, above additional retirement contributions beyond the match. The ${TAX_YEAR} contribution limits this tool uses are $${HSA_LIMIT_SINGLE.toLocaleString('en-US')} for self-only coverage and $${HSA_LIMIT_FAMILY.toLocaleString('en-US')} for family coverage.`,
     },
     {
       q: 'Does WeLeap move my money for me?',

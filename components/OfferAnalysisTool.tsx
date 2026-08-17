@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -885,12 +886,13 @@ export function OfferAnalysisTool() {
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                 What&apos;s waiting in the app
               </p>
-              <img
+              <Image
                 src="/images/product/weekly-focus.jpg"
                 alt="WeLeap showing this week's focus: capture your full 401(k) match"
                 width={1400}
                 height={529}
                 loading="lazy"
+                sizes="(max-width: 768px) 100vw, 640px"
                 className="mb-3 block h-auto w-full rounded-lg border border-gray-200"
               />
               <div className="space-y-1.5">

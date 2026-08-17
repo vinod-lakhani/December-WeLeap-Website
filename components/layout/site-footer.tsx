@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 import { Container } from "./container"
 import { FREE_TOOLS } from "@/lib/tools"
@@ -47,7 +48,14 @@ export function SiteFooter() {
       <Container maxWidth="wide">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <img src="/images/weleap-logo.png" alt="WeLeap" className="mb-3.5 h-7 w-auto" />
+            <Image
+              src="/images/weleap-logo.png"
+              alt="WeLeap"
+              width={2972}
+              height={845}
+              sizes="99px"
+              className="mb-3.5 h-7 w-auto"
+            />
             <p className="max-w-[260px] text-[14.5px] leading-relaxed text-subtle">
               One clear money move at a time — so you always know what to do next.
             </p>

@@ -618,7 +618,12 @@ export function OfferTool() {
                   <div>
                     <Button
                       onClick={() => {
-                        track('tool_cta_clicked', { tool: 'rent' });
+                        // `placement` matches the CtaPlacement union every
+                        // AppCta-based tool sends. Without it this CTA was the
+                        // one tool_cta_clicked that could not be split by
+                        // target, which breaks the funnel comparison across
+                        // tools rather than just losing a dimension here.
+                        track('tool_cta_clicked', { tool: 'rent', placement: 'button' });
                         const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
                         const extra: Record<string, string> = {};
                         if (salary.trim()) extra.salary = String(Math.round(parseFloat(salary)));

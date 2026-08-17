@@ -5,7 +5,7 @@
  */
 
 import type { Leap } from './leapModel';
-import { K401_EMPLOYEE_CAP_2025 } from './constants';
+import { K401_EMPLOYEE_CAP } from './constants';
 
 const TARGET_RETIREMENT_PCT = 15;
 
@@ -87,7 +87,7 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
   // Target = whatever % gets to IRS cap ($23,500), not fixed 15%
   const capPct =
     (inputs.salaryAnnual ?? 0) > 0
-      ? Math.min((K401_EMPLOYEE_CAP_2025 / inputs.salaryAnnual!) * 100, 100)
+      ? Math.min((K401_EMPLOYEE_CAP / inputs.salaryAnnual!) * 100, 100)
       : TARGET_RETIREMENT_PCT;
   if (current401kPct < capPct) {
     return {

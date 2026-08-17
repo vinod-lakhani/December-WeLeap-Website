@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -58,10 +59,14 @@ export default function IncomeAllocationPage() {
           </p>
 
           <div className="my-6 md:my-8">
-            <img
-              src="/images/income-allocation-cover.png"
+            <Image
+              src="/images/income-allocation-cover.jpg"
               alt="Paycheck allocation diagram showing money flowing from paycheck into three buckets: Fixed expenses, Variable expenses, and Growth"
-              className="w-full rounded-lg shadow-lg"
+              width={1536}
+              height={1024}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-auto rounded-lg shadow-lg"
             />
           </div>
         </Container>

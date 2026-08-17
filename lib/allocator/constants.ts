@@ -1,16 +1,30 @@
 /**
  * Capital Allocation Framework — constants.
- * IRS 2025 limits. Match defaults for UI.
+ *
+ * IRS limits, kept current. These were stamped 2025 and went stale silently;
+ * the name carried the year (`K401_EMPLOYEE_CAP_2025`) so every call site had
+ * to be edited to refresh a number, which is why nobody did. The year now
+ * lives in one place, `TAX_YEAR`, and the names are year-agnostic.
+ *
+ * Refresh each autumn when the IRS publishes the cost-of-living notice for
+ * the following year, and update `TAX_YEAR` with it — the UI copy and the
+ * FAQ both quote these figures with the year attached.
+ *
+ * Current source: IRS Notice 2025-67 (2026 amounts).
+ * https://www.irs.gov/pub/irs-drop/n-25-67.pdf
  */
 
-/** 401(k) employee deferral cap (2025). */
-export const K401_EMPLOYEE_CAP_2025 = 23500;
+/** Tax year the limits below are drawn from. Quoted in user-facing copy. */
+export const TAX_YEAR = 2026;
 
-/** HSA max contribution, self-only (2025). */
-export const HSA_LIMIT_SINGLE = 4300;
+/** 401(k) employee deferral cap. */
+export const K401_EMPLOYEE_CAP = 24500;
 
-/** HSA max contribution, family (2025). */
-export const HSA_LIMIT_FAMILY = 8550;
+/** HSA max contribution, self-only. */
+export const HSA_LIMIT_SINGLE = 4400;
+
+/** HSA max contribution, family. */
+export const HSA_LIMIT_FAMILY = 8750;
 
 /** Default employer match rate (X): 100% = dollar-for-dollar. */
 export const DEFAULT_MATCH_RATE_PCT = 100;

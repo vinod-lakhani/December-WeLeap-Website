@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -55,10 +56,14 @@ export default function EmergencyFundGuessPage() {
           </h1>
 
           <div className="my-6 md:my-8">
-            <img
+            <Image
               src="/images/emergency-fund-illustration.png"
               alt="Emergency fund — find your personalized target"
-              className="w-full rounded-lg shadow-lg object-cover"
+              width={1024}
+              height={558}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
+              className="w-full h-auto rounded-lg shadow-lg object-cover"
             />
           </div>
         </Container>

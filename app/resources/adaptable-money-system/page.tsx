@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft, Calendar, Clock, User } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -58,9 +59,13 @@ export default function AdaptableMoneySystemPage() {
           </p>
 
           <div className="mb-6 md:mb-8">
-            <img
-              src="/images/adaptable-money-full.png"
+            <Image
+              src="/images/adaptable-money-full.jpg"
               alt="Illustration showing the journey from outdated budgets to financial freedom through emergency fund, debt payoff, and home savings"
+              width={1456}
+              height={971}
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-auto object-contain rounded-lg shadow-lg"
             />
           </div>

@@ -6,7 +6,7 @@ import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
-import { usePostHog } from 'posthog-js/react'
+import { usePostHog } from 'posthog-js/react/slim'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -242,9 +242,16 @@ function SeriesCard({ video, onClick }: { video: Video; onClick: () => void }) {
       <div className="relative aspect-video bg-[#386641]">
         {/* Thumbnail or fallback gradient */}
         {video.thumbnail ? (
+          // Deliberately a raw <img>: these thumbnails live on Vercel Blob, and
+          // routing them through next/image would mean adding that host to
+          // images.remotePatterns. Blob URLs are already served from the CDN,
+          // and this page sits behind early access, so it is not a public LCP
+          // path worth widening the config for.
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={video.thumbnail}
             alt={video.title}
+            loading="lazy"
             className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (

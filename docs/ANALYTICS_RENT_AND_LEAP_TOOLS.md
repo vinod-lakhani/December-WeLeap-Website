@@ -69,6 +69,19 @@ Reference for all analytics events tracked in the Rent Tool (`/how-much-rent-can
 
 ## Leap Tool Events
 
+> **Retired — none of the events in this section fire any more.**
+>
+> The Leap Impact Simulator was folded into `/allocator`. `/leap-impact-simulator`
+> now 308s there (`next.config.mjs`), the route was deleted, and
+> `components/LeapImpactTool.tsx` was removed once nothing imported it. The
+> calculation itself lives on in `lib/leapImpact/`, which the allocator and the
+> plan-email API routes still use — only the tool's own UI and its events are
+> gone.
+>
+> Kept as a record of what these event names meant, since historical data under
+> them is still queryable. Do not treat any row below as a live event, and do
+> not build a new report on one.
+
 ### Page & Calculation
 
 | Event | When | Params | Location |

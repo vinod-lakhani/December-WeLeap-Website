@@ -39,6 +39,11 @@ export function organizationSchema() {
       '@type': 'ImageObject',
       url: `${SITE_URL}/images/Icon.png`,
     },
+    // How an answer engine ties this site to the same entity described
+    // elsewhere. Only profiles WeLeap actually controls belong here — a wrong
+    // or aspirational URL asserts an identity that isn't ours, which is worse
+    // than omitting the field. Add others as they go live.
+    sameAs: ['https://www.linkedin.com/company/weleap'],
     description:
       'WeLeap is a consumer personal-finance company. Its product is Ribbit, an AI financial sidekick for people in their twenties and early thirties: it reads a connected financial picture — cash, debt, 401(k) and goals — and names the single highest-value next move, called a Leap. WeLeap also publishes seven free calculators that need no account. It is not a budgeting app, not a robo-adviser, and not a registered investment adviser.',
     // Named explicitly because a model cannot infer from prose alone that

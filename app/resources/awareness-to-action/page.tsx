@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -46,9 +47,12 @@ export default function AwarenessToActionPage() {
           <div className={cn(TYPOGRAPHY.subtext, "text-gray-500 mb-8")}>By Vinod Lakhani • July 7, 2025 • 6 min read</div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img
+            <Image
               src="/images/awareness-to-action.jpg"
               alt="Person looking at a pie chart, symbolizing budgeting"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-full object-cover"
             />
           </div>

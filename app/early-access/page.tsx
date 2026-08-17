@@ -6,7 +6,7 @@ import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
-import { usePostHog } from 'posthog-js/react'
+import { usePostHog } from 'posthog-js/react/slim'
 
 // ── Data ────────────────────────────────────────────────────────────────────
 

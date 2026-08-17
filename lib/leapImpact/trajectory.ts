@@ -7,7 +7,7 @@
  * - Growth: compound at monthly real return.
  */
 
-import { K401_EMPLOYEE_CAP_2025 } from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 
 const MONTHS_PER_YEAR = 12;
 
@@ -53,7 +53,7 @@ function runPath(
   years: number
 ): number[] {
   const monthlyRate = realReturn / MONTHS_PER_YEAR;
-  const employeeAnnual = Math.min((grossAnnual * contributionPct) / 100, K401_EMPLOYEE_CAP_2025);
+  const employeeAnnual = Math.min((grossAnnual * contributionPct) / 100, K401_EMPLOYEE_CAP);
   const employeeMonthly = employeeAnnual / MONTHS_PER_YEAR;
   const effectivePctForMatch = grossAnnual > 0 ? (employeeAnnual / grossAnnual) * 100 : 0;
   const matchMonthly = hasMatch
@@ -159,7 +159,7 @@ export function costOfDelay(
   const matchRatePct = inputs.matchRatePct ?? 100;
   const employeeBaselineAnnual = Math.min(
     (inputs.grossAnnual * inputs.current401kPct) / 100,
-    K401_EMPLOYEE_CAP_2025
+    K401_EMPLOYEE_CAP
   );
   const employeeBaseline = employeeBaselineAnnual / MONTHS_PER_YEAR;
   const baselinePctForMatch = inputs.grossAnnual > 0 ? (employeeBaselineAnnual / inputs.grossAnnual) * 100 : 0;
@@ -170,7 +170,7 @@ export function costOfDelay(
 
   const employeeOptAnnual = Math.min(
     (inputs.grossAnnual * inputs.optimized401kPct) / 100,
-    K401_EMPLOYEE_CAP_2025
+    K401_EMPLOYEE_CAP
   );
   const employeeOpt = employeeOptAnnual / MONTHS_PER_YEAR;
   const optPctForMatch = inputs.grossAnnual > 0 ? (employeeOptAnnual / inputs.grossAnnual) * 100 : 0;
@@ -198,8 +198,8 @@ export function costOfDelay(
  */
 export function computeAnnualContributionIncrease401k(inputs: TrajectoryInputs): number {
   const matchRatePct = inputs.matchRatePct ?? 100;
-  const empCurAnnual = Math.min((inputs.grossAnnual * inputs.current401kPct) / 100, K401_EMPLOYEE_CAP_2025);
-  const empOptAnnual = Math.min((inputs.grossAnnual * inputs.optimized401kPct) / 100, K401_EMPLOYEE_CAP_2025);
+  const empCurAnnual = Math.min((inputs.grossAnnual * inputs.current401kPct) / 100, K401_EMPLOYEE_CAP);
+  const empOptAnnual = Math.min((inputs.grossAnnual * inputs.optimized401kPct) / 100, K401_EMPLOYEE_CAP);
   const curPctForMatch = inputs.grossAnnual > 0 ? (empCurAnnual / inputs.grossAnnual) * 100 : 0;
   const optPctForMatch = inputs.grossAnnual > 0 ? (empOptAnnual / inputs.grossAnnual) * 100 : 0;
   const matchCur = inputs.hasEmployerMatch

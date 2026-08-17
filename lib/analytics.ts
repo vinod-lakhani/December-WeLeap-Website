@@ -92,7 +92,10 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics';
-import posthog from 'posthog-js';
+// Not a static `posthog-js` import: this module is pulled in by every tool
+// page, so importing the SDK here would keep it in the initial bundle no
+// matter how the provider loads it. See lib/posthog-lazy.ts.
+import { getPostHog } from '@/lib/posthog-lazy';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -172,8 +175,11 @@ export async function track(eventName: string, params?: Record<string, any>, wai
   // PostHog is initialized in components/posthog-provider.tsx; capturing here
   // means funnel events (tool_completed, tool_cta_clicked, cta_click_signup,
   // etc.) land in PostHog alongside GA4/Vercel.
+  //
+  // Before the SDK finishes loading this queues rather than drops, so events
+  // fired during hydration still arrive. See lib/posthog-lazy.ts.
   try {
-    posthog.capture(eventName, params || {});
+    getPostHog().capture(eventName, params || {});
   } catch (error) {
     if (DEBUG_ANALYTICS) {
       console.error('[Analytics] Error tracking to PostHog:', eventName, error);

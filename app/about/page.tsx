@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -83,9 +84,12 @@ export default function AboutPage() {
             <div className={cn(CARD_STYLES.base, CARD_STYLES.padding, CARD_STYLES.white)}>
               <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 mx-auto sm:mx-0">
-                  <img
+                  <Image
                     src="/images/vinod-lakhani.png"
                     alt="Vinod Lakhani"
+                    width={258}
+                    height={262}
+                    sizes="96px"
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
@@ -123,9 +127,12 @@ export default function AboutPage() {
             <div className={cn(CARD_STYLES.base, CARD_STYLES.padding, CARD_STYLES.white)}>
               <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 mx-auto sm:mx-0">
-                  <img
+                  <Image
                     src="/images/shubha.jpeg"
                     alt="Shubhashree Venkatesh"
+                    width={400}
+                    height={400}
+                    sizes="96px"
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
@@ -189,9 +196,12 @@ export default function AboutPage() {
             <div className={cn(CARD_STYLES.base, CARD_STYLES.padding, CARD_STYLES.muted)}>
               <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start">
                 <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 mx-auto sm:mx-0">
-                  <img
+                  <Image
                     src="/images/maurizio-greco.png"
                     alt="Maurizio Greco"
+                    width={258}
+                    height={262}
+                    sizes="96px"
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>

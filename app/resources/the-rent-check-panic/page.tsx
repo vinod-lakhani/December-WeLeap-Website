@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
 import { ArrowLeft } from 'lucide-react'
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
@@ -47,9 +48,12 @@ export default function TheRentCheckPanicPage() {
           </div>
 
           <div className="relative w-full h-[300px] md:h-[400px] rounded-xl overflow-hidden mb-8 md:mb-12">
-            <img
+            <Image
               src="/images/rent-check-panic.jpeg"
               alt="Person looking stressed at a laptop with bills and financial documents"
+              fill
+              priority
+              sizes="(max-width: 896px) 100vw, 848px"
               className="w-full h-full object-cover"
             />
           </div>

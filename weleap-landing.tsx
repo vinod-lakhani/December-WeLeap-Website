@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { EarlyAccessDialog } from "./components/early-access-dialog"
@@ -120,7 +121,13 @@ function Hero() {
           {/* copy */}
           <div>
             <div className="mb-7 inline-flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1.5 pl-2 pr-4 shadow-sm">
-              <img src="/images/ribbit.png" alt="" className="h-[26px] w-[26px] object-contain" />
+              <Image
+                src="/images/ribbit.png"
+                alt=""
+                width={26}
+                height={26}
+                className="h-[26px] w-[26px] object-contain"
+              />
               <span className="text-[13.5px] font-semibold text-ink-soft">Meet Ribbit — your financial sidekick</span>
             </div>
 
@@ -261,9 +268,12 @@ function Hero() {
                 clipping his raised hand. The PNG carries ~32px of transparent
                 padding on its right at this size, so -left-32 clears the artwork
                 by ~8px while the image box still overlaps: he tucks, nothing cuts. */}
-            <img
+            <Image
               src="/images/ribbit.png"
               alt="Ribbit, the WeLeap financial sidekick"
+              width={152}
+              height={152}
+              priority
               className="absolute -bottom-8 -left-32 z-[5] hidden w-[152px] lg:block"
               style={{ filter: "drop-shadow(0 18px 26px rgba(16,32,26,.22))" }}
             />
@@ -494,12 +504,13 @@ function How() {
               </div>
 
               <div className={i % 2 === 1 ? "lg:order-1" : ""}>
-                <img
+                <Image
                   src={s.shot}
                   alt={s.alt}
                   width={s.w}
                   height={s.h}
                   loading="lazy"
+                  sizes="(max-width: 1024px) 100vw, 600px"
                   className="block h-auto w-full rounded-[20px] border border-hairline bg-canvas shadow-card"
                 />
               </div>
@@ -628,7 +639,13 @@ function AskRibbit() {
             </div>
 
             <div className="flex items-start gap-3">
-              <img src="/images/ribbit.png" alt="" className="h-10 w-10 shrink-0 rounded-full bg-brand-50 p-[3px] object-contain" />
+              <Image
+                src="/images/ribbit.png"
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-full bg-brand-50 p-[3px] object-contain"
+              />
               <div
                 className="min-h-[96px] rounded-[18px] rounded-bl-[4px] border border-hairline bg-white px-[18px] py-3.5 text-[15.5px] leading-relaxed text-ink-soft transition-opacity duration-200"
                 style={{ opacity: fading ? 0 : 1 }}
@@ -874,7 +891,13 @@ function NetWorthReveal() {
             className="mt-9 flex items-center justify-center gap-4 rounded-[20px] border border-brand-100 bg-brand-50 px-6 py-5 transition-opacity duration-500"
             style={{ opacity: done ? 1 : 0 }}
           >
-            <img src="/images/ribbit.png" alt="" className="h-11 w-11 shrink-0 object-contain" />
+            <Image
+              src="/images/ribbit.png"
+              alt=""
+              width={44}
+              height={44}
+              className="h-11 w-11 shrink-0 object-contain"
+            />
             <div>
               <p className="text-[17.5px] font-bold leading-snug text-ink">
                 You put in <span className="text-brand-700">{compact(contributed)}</span>. Compounding does the other{" "}
@@ -981,9 +1004,11 @@ function Trust() {
               </div>
             </div>
             <div className="hidden justify-center lg:flex">
-              <img
+              <Image
                 src="/images/ribbit.png"
                 alt=""
+                width={260}
+                height={260}
                 className="w-[260px]"
                 style={{ filter: "drop-shadow(0 26px 40px rgba(0,0,0,.35))" }}
               />

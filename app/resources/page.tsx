@@ -8,6 +8,7 @@ import { Calendar, Clock, ArrowRight, TrendingUp, DollarSign, PiggyBank, CreditC
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TYPOGRAPHY, CARD_STYLES, SPACING } from "@/lib/layout-constants"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 import Link from "next/link"
 
 /**
@@ -79,9 +80,12 @@ export default function ResourcesPage() {
                     </Button>
                   </div>
                   <div className="relative min-h-[200px] md:min-h-[300px] lg:min-h-[400px]">
-                    <img
+                    <Image
                       src="/images/financial-growth.jpeg"
                       alt="Plant growing from coins, symbolizing financial growth"
+                      fill
+                      priority
+                      sizes="(max-width: 1024px) 100vw, 600px"
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
@@ -137,10 +141,12 @@ export default function ResourcesPage() {
                 <Link href={post.href} key={post.href} className="h-full">
                   <Card className={cn("bg-white border-0 shadow-lg shadow-gray-900/5 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-gray-900/10 transition-all duration-300 group cursor-pointer h-full flex flex-col")}>
                     <CardContent className="p-0 flex flex-col flex-1">
-                      <div className="relative overflow-hidden">
-                        <img
-                          src={post.image || "/placeholder.svg"}
+                      <div className="relative h-48 overflow-hidden">
+                        <Image
+                          src={post.image}
                           alt={post.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px"
                           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         <div className="absolute top-4 left-4">

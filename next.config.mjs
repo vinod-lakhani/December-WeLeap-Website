@@ -15,10 +15,12 @@ const nextConfig = {
     // typechecks clean, so the build guards it.
     ignoreBuildErrors: false,
   },
-  images: {
-    unoptimized: true,
-  },
- 
+  // `images: { unoptimized: true }` was removed here. It was a leftover — there
+  // is no `output: 'export'`, so nothing needed it, and every image on the site
+  // was a raw <img> anyway, which the flag does not touch. The components now
+  // use next/image, so the Vercel optimizer resizes and re-encodes to
+  // WebP/AVIF. No `images` block is needed: the defaults are what we want.
+
   eslint: {
     // ESLint now runs in the build. Zero errors, 77 warnings — and warnings do
     // not fail a build, so this catches new errors without holding deploys
