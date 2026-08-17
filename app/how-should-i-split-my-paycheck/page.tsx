@@ -106,7 +106,7 @@ const RELATED: readonly RelatedTool[] = [
     why: 'Step three sends 40% of what is left at a high-interest balance. This turns that monthly amount into a payoff date, and shows how much sooner the balance clears when you send more.',
   },
   {
-    href: '/net-worth-impact',
+    href: '/what-is-saving-monthly-worth',
     why: 'The split above is a monthly number. This compounds any monthly amount out to one, ten and thirty years, which is the honest way to see what the last step of the order is doing while the first four get the attention.',
   },
 ];

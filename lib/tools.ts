@@ -58,10 +58,21 @@ export const FREE_TOOLS: FreeTool[] = [
   },
   {
     name: "Smart Purchase Check",
-    question: "What's the smartest way to pay for this?",
+    question: "Should I use buy now, pay later?",
     blurb: "Cash, pay in 4, or monthly financing — see which one actually leaves you better off.",
     cta: "Find the smarter move →",
-    href: "/smart-purchase-check",
+    // Renamed from /smart-purchase-check, which was the internal product name
+    // for the decision engine and matches nothing anyone types. 308 in
+    // next.config.mjs. Same reasoning as /offer and /allocator above: on a site
+    // whose tools sit at flat top-level routes, the slug is the strongest
+    // on-page signal, so it now says the query the page targets.
+    //
+    // `slug` deliberately stayed "smart_purchase" — it is the analytics id
+    // every event in this tool's funnel joins on, and it did not move with the
+    // URL. `name` stayed too: it is the card label, the breadcrumb leaf, the OG
+    // card headline and the schema `name`, and "Offer Letter Analyzer" on
+    // /what-is-my-job-offer-worth is the same arrangement.
+    href: "/should-i-use-buy-now-pay-later",
     icon: "/images/tool-icons/smart-purchase.png",
     slug: "smart_purchase",
     presentDay: true,
@@ -115,10 +126,25 @@ export const FREE_TOOLS: FreeTool[] = [
   },
   {
     name: "Net Worth Impact",
-    question: "Is $150 a month even worth it?",
+    // Was "Is $150 a month even worth it?". The amount is this tool's default,
+    // not its subject — it is a slider — and the card, the OG card headline and
+    // the H1 all had to be re-edited together every time someone thought about
+    // changing it. The question now says the thing that does not move, and is
+    // one of the phrasings the page targets.
+    question: "Is saving a small amount worth it?",
     blurb: "One monthly change, compounded out to 1, 10 and 30 years.",
     cta: "See what it’s worth →",
-    href: "/net-worth-impact",
+    // Renamed from /net-worth-impact, the internal name for the projection:
+    // it describes the output rather than the question, and nobody types it.
+    // 308 in next.config.mjs. Same reasoning as /offer, /allocator and
+    // /smart-purchase-check above. No dollar figure in the slug, deliberately —
+    // the default amount can change without costing another redirect.
+    //
+    // `slug` deliberately stayed "net_worth_impact": it is the analytics id
+    // every event in this tool's funnel joins on, and it did not move with the
+    // URL. `name` stayed too — it is the card label, the breadcrumb leaf and
+    // the schema `name`.
+    href: "/what-is-saving-monthly-worth",
     icon: "/images/tool-icons/sparkles.png",
     slug: "net_worth_impact",
     presentDay: false,

@@ -82,7 +82,7 @@ const RELATED: readonly RelatedTool[] = [
     why: 'The match this page priced is the first move, not the whole plan. This puts the match, a safety buffer, high-interest debt and retirement in order for the salary you just entered.',
   },
   {
-    href: '/net-worth-impact',
+    href: '/what-is-saving-monthly-worth',
     why: 'An offer’s 401(k) match is a monthly amount. This compounds any monthly amount out to one, ten and thirty years, which is the honest way to see what capturing a match is worth over a career.',
   },
 ]

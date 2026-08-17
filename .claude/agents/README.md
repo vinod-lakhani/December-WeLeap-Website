@@ -49,4 +49,6 @@ It will refuse to build without a named target query, and it will tell you when 
 
 Tools are **top-level routes**, not nested under `/tools/` — `/how-much-rent-can-i-afford`, `/what-is-my-job-offer-worth`, `/how-should-i-split-my-paycheck`, and so on, with `app/tools/page.tsx` as a pure index over `FREE_TOOLS`. That is deliberate and the agent will not migrate them. Because the URLs are flat, internal linking is the only thing grouping them topically, so the agent treats it as load-bearing rather than decorative.
 
-`/offer` → `/what-is-my-job-offer-worth` and `/allocator` → `/how-should-i-split-my-paycheck` were both renamed on the agent's own recommendation, each backed by a 308, with analytics identifiers deliberately left in place. `/smart-purchase-check` and `/net-worth-impact` are the remaining candidates.
+All four jargon slugs have now been renamed, each on the agent's own recommendation and each backed by a 308: `/offer` → `/what-is-my-job-offer-worth`, `/allocator` → `/how-should-i-split-my-paycheck`, `/smart-purchase-check` → `/should-i-use-buy-now-pay-later`, `/net-worth-impact` → `/what-is-saving-monthly-worth`.
+
+Analytics identifiers deliberately did not move with any of them. `slug`, the `tool` property on funnel events, and every legacy per-tool event name and its `page` value are join keys for historical data — rewriting them splits saved reports at the deploy boundary. Several `page:` values in the tree still read as old routes for exactly this reason and are annotated in place; they are event identifiers, not URLs.

@@ -27,6 +27,16 @@ import {
   type OptionOutcome,
 } from '@/lib/purchase/decision'
 
+/**
+ * NOT the current route — the route is /should-i-use-buy-now-pay-later.
+ *
+ * This is the `page` value `purchase_result_viewed` has always sent, and that
+ * event predates the rename. Its history is recorded under this string, so a
+ * saved report filtering on it would quietly drop to zero if this moved. Same
+ * arrangement as `legacyPage` on ToolPageView and as `page: '/offer'` in the
+ * offer share card: the new shared-funnel events report the real URL, the
+ * legacy per-tool events keep their own past.
+ */
 const PAGE = '/smart-purchase-check'
 
 const money = (n: number, dp?: number) =>

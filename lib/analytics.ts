@@ -22,9 +22,11 @@
  *                      is not an answer this calculator is being asked for)
  * - emergency_fund   — the form advances to the results step
  * - allocator        — the summary step renders with a built stack
- * - net_worth_impact — no tool_completed. It computes from defaults, so the
- *                      result is on screen before anyone touches it; see
- *                      components/netWorthImpact/ImpactTool.tsx.
+ * - net_worth_impact — an input has been moved off its default and the
+ *                      recomputed result has held still for 800ms. This tool
+ *                      computes from defaults, so a result is on screen before
+ *                      anyone touches it; "the visitor's own result" is the
+ *                      only completion here that is not just tool_viewed again.
  *
  * Event Names:
  * - rent_tool_page_view
