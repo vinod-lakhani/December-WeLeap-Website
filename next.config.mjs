@@ -51,13 +51,13 @@ const nextConfig = {
         // from a screenshot, so the long path is unusable there.
         source: '/rent',
         destination: '/how-much-rent-can-i-afford',
-        permanent: false,
+        permanent: true,
       },
       {
         // Aimed at social, where the URL gets read off a screenshot.
         source: '/pay-now-or-later',
         destination: '/smart-purchase-check',
-        permanent: false,
+        permanent: true,
       },
       {
         // The Leap Impact Simulator was the 401(k) wedge in front of the

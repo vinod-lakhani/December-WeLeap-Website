@@ -51,6 +51,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
 
   '/offer': [
     {
+      q: 'How do I know if a job offer is good?',
+      a: 'A good offer has to clear three separate bars, and the number in the letter only speaks to one of them. Is it competitive for that role, level and location — a market-rate question that needs benchmark data from a site collecting reported salaries. Is the whole package bigger or smaller than the headline — base salary is usually only 70% to 90% of what an offer is worth, with the rest in the bonus target, the employer 401(k) match, health and HSA contributions, equity and paid time off. And what does it leave you each month where the job actually is, after that state\'s income tax and that city\'s rent. This calculator answers the second and third questions; it does not benchmark your offer against what other people in the same role are paid.',
+    },
+    {
+      q: 'What is total compensation?',
+      a: 'Total compensation is everything an employer gives you for the year, not just the salary line. It normally means base salary plus target bonus, the employer 401(k) match you would receive if you contribute enough to capture it, employer contributions to health cover or an HSA, and the annual vesting value of any equity — minus what you pay for benefits. Paid time off above the market norm has a dollar value too, though it is usually quoted separately. The gap between total compensation and base salary is the part of an offer people most often fail to price and most often fail to negotiate.',
+    },
+    {
       q: 'How do I work out what a job offer is actually worth?',
       a: 'Base salary is usually somewhere between 70% and 90% of what an offer is worth, so comparing two offers on base alone compares the wrong number. The full package is base salary, bonus target, employer 401(k) match, health and HSA contributions, equity, and paid time off — plus the cost of living where the job is. This calculator takes those seven inputs and turns them into one annual figure and one monthly take-home figure.',
     },

@@ -2,6 +2,16 @@
  * Analytics Event Tracking Utility
  * Tracks events to both Google Analytics 4 (GA4) and Vercel Analytics
  *
+ * The free-tool funnel, in order. Every step carries the same `tool` slug from
+ * FREE_TOOLS so the five events join as one sequence rather than five counts:
+ * - tool_viewed (tool, page)          — landed on the calculator
+ * - tool_engaged (tool, first_field)  — touched the first input, fires once
+ * - tool_completed (tool)             — a real result rendered, fires once
+ * - tool_cta_clicked (tool, placement)— clicked through to weleap.app
+ * - cta_click_signup (...)            — signup started
+ * Plus tool_card_clicked (tool, surface) upstream on /tools and the homepage,
+ * and tool_cross_sell_clicked (from, to, surface) between calculators.
+ *
  * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click

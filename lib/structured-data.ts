@@ -6,8 +6,9 @@
  * registered — the same reason the sitemap reads from the registry.
  *
  * Scope is deliberately narrow. Organization and WebSite site-wide,
- * WebApplication on the calculators, BlogPosting on the articles, and FAQPage
- * only where real question-and-answer content is rendered.
+ * WebApplication and BreadcrumbList on the calculators, BlogPosting on the
+ * articles, and FAQPage only where real question-and-answer content is
+ * rendered.
  *
  * FAQPage used to be declined outright here, on the grounds that Google
  * requires it to describe content actually visible on the page. That rule has
@@ -90,6 +91,32 @@ export function toolSchema(tool: FreeTool) {
       priceCurrency: 'USD',
     },
     publisher: { '@id': ORG_ID },
+  }
+}
+
+/**
+ * BreadcrumbList for a calculator route.
+ *
+ * The tools sit at top-level URLs — /offer, not /tools/offer — because the slug
+ * is the query and URL depth is a weak signal. The cost of that flatness is
+ * that nothing in the URL says these seven pages belong together, so this is
+ * the only machine-readable statement of the hierarchy.
+ *
+ * Emitted by `ToolBreadcrumb`, which renders the same three items as a visible
+ * trail in the same component. Do not emit it without that trail: the markup
+ * and the page have to describe the same path for the same reason FAQPage and
+ * TOOL_FAQS read from one object.
+ */
+export function breadcrumbSchema(tool: FreeTool) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    '@id': `${SITE_URL}${tool.href}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Free money tools', item: `${SITE_URL}/tools` },
+      { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}${tool.href}` },
+    ],
   }
 }
 
