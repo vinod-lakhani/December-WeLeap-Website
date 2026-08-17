@@ -21,10 +21,20 @@ export const metadata: Metadata = {
   },
 }
 
-
-// Force dynamic rendering to prevent static generation timeout
-export const dynamic = "force-dynamic"
-
+/**
+ * Deliberately NOT `force-dynamic`.
+ *
+ * That flag was added in 2103301 alongside the removal of an `onError` handler
+ * that was being passed from a server component — which is what actually broke
+ * static generation. The flag was belt-and-braces for a problem the same commit
+ * had already fixed, and it has made this page a per-request serverless
+ * function ever since. In production that function returned 500 on every
+ * request while the identical build served the page locally in 0.1s.
+ *
+ * Nothing here is request-dependent: no cookies, headers, searchParams or
+ * fetches. It is static JSX, so it should prerender at build time, where it
+ * cannot fail per-request.
+ */
 export default function AboutPage() {
   return (
     <PageShell className="bg-canvas">
