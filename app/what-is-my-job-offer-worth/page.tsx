@@ -29,7 +29,12 @@ export const metadata: Metadata = {
     'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
   alternates: { canonical: '/what-is-my-job-offer-worth' },
   openGraph: {
-    title: 'What is my job offer really worth? | WeLeap',
+    // Brand spelled out, and kept byte-identical to `title` above. `openGraph`
+    // does not inherit the root layout's `%s | WeLeap` template, so a title
+    // written here that omits the suffix renders shorter than the <title> and
+    // the share card says something different from the tab. That divergence
+    // was a real audit finding on this page.
+    title: 'What is my job offer really worth? Free calculator | WeLeap',
     description:
       'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
     url: '/what-is-my-job-offer-worth',
@@ -73,7 +78,7 @@ const RELATED: readonly RelatedTool[] = [
     why: 'You entered a city and a rent figure above. This works the other way round: it takes the salary and returns the rent range that fits it, plus the cash you need upfront before you get keys.',
   },
   {
-    href: '/allocator',
+    href: '/how-should-i-split-my-paycheck',
     why: 'The match this page priced is the first move, not the whole plan. This puts the match, a safety buffer, high-interest debt and retirement in order for the salary you just entered.',
   },
   {

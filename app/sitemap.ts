@@ -7,8 +7,8 @@ import { FREE_TOOLS } from '@/lib/tools'
  *
  * Tools are pulled from FREE_TOOLS so a new one is listed the moment it is
  * registered, rather than depending on someone remembering this file. That is
- * also how /allocator gets listed — it is a registered tool now, not a special
- * case.
+ * also how the money plan tool gets listed — it is a registered tool now, not
+ * a special case, and its URL moved once already without this file changing.
  *
  * Deliberately excluded:
  *  - /join, /early-access, /sms-notifications — campaign and flow-entry

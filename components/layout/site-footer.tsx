@@ -13,7 +13,7 @@ import { FREE_TOOLS } from "@/lib/tools"
  * The "Free tools" column is derived from FREE_TOOLS, the same registry the
  * sitemap and structured data read. Hardcoding it had already gone wrong twice
  * over: it listed four of seven tools, and the one it did list for the Money
- * Plan was /leap-impact-simulator — a route that 308s to /allocator, so the
+ * Plan was /leap-impact-simulator — a route that 308s to the live tool, so the
  * site's only sitewide internal link block was spending link equity on a
  * redirect. All seven are listed; this is the main internal-linking surface for
  * the acquisition pages, so a tall column beats a truncated one.

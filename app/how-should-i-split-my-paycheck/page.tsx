@@ -16,7 +16,7 @@ import {
 } from '@/lib/allocator/constants';
 
 /**
- * /allocator — the money plan tool.
+ * /how-should-i-split-my-paycheck — the money plan tool.
  *
  * A server component. It was a client component wrapping the calculator, which
  * had two consequences: `metadata` had to live in a sibling layout.tsx, and the
@@ -26,23 +26,35 @@ import {
  * every block of copy are now rendered here, above the boundary; only the
  * calculator is a client leaf.
  *
- * Target query is "what order should I save money in" and the ordering cluster
- * around it — "how should I split my paycheck", "should I pay off debt or
- * invest first". That is what the tool computes: it sequences match, buffer,
- * debt, HSA and retirement by rate of return and routes a real monthly surplus
- * through them.
+ * Primary query is "how should I split my paycheck", and the route was renamed
+ * from /allocator to say it. The ordering question — "what order should I save
+ * money in" — is the secondary, and it is answered by the H2 and the first FAQ
+ * rather than by the title: a list-shaped question is already owned by
+ * list-shaped results, whereas splitting a specific paycheck needs the
+ * calculator, which is the part nothing else on that SERP has. "Should I pay
+ * off debt or invest first" has its own H2 for the same reason.
+ *
+ * The tool sequences match, buffer, debt, HSA and retirement by rate of return
+ * and routes a real monthly surplus through them, so all three questions are
+ * one computation seen from different angles — one page, not three.
  */
 
 export const metadata: Metadata = {
-  title: 'Money plan — what should my money do, and in what order?',
+  // Query first, brand last: the root layout appends " | WeLeap" via
+  // title.template, so this string plus nine characters is what renders.
+  title: 'How should I split my paycheck? Free calculator',
   description:
-    'Employer match, safety buffer, debt, retirement. See where every dollar should go and the single move worth making first.',
-  alternates: { canonical: '/allocator' },
+    'Turn your paycheck into a plan: employer match, safety buffer, high-interest debt, then retirement. See what share each one gets, and what to do first.',
+  alternates: { canonical: '/how-should-i-split-my-paycheck' },
   openGraph: {
-    title: 'Money plan — what should my money do, and in what order? | WeLeap',
+    // Spelled out with the brand because openGraph.title does not inherit
+    // title.template. Left bare it would render an og:title nine characters
+    // short of the <title>, which is exactly the drift found on
+    // /what-is-my-job-offer-worth. These two must stay in step.
+    title: 'How should I split my paycheck? Free calculator | WeLeap',
     description:
-      'Employer match, safety buffer, debt, retirement. See where every dollar should go and the single move worth making first.',
-    url: '/allocator',
+      'Turn your paycheck into a plan: employer match, safety buffer, high-interest debt, then retirement. See what share each one gets, and what to do first.',
+    url: '/how-should-i-split-my-paycheck',
   },
 };
 
@@ -106,13 +118,19 @@ export default function AllocatorPage() {
           ToolBreadcrumb alongside the trail it describes. Both were previously
           in layout.tsx, which existed only because this page could not export
           metadata; it can now, so the file is gone. */}
-      <ToolJsonLd href="/allocator" />
+      <ToolJsonLd href="/how-should-i-split-my-paycheck" />
       {/* Step one of the funnel. This tool had no page-view event of any kind —
           `allocator_prefill_loaded` and `leap_stack_started` only fire for
           visitors arriving with URL prefill, so anyone landing from search or
           /tools was invisible until they finished the stack. No `legacyEvent`
-          for the same reason: there is no prior per-tool page view to keep. */}
-      <ToolPageView tool="allocator" page="/allocator" />
+          for the same reason: there is no prior per-tool page view to keep.
+
+          `tool` stays "allocator" — it is the analytics id the whole funnel
+          joins on, and it did not move with the URL. `page` reports the new
+          route, because a new event should report where the visitor actually
+          is; the events that predate the rename keep their own `page` values
+          where they are sent, for the same reason /offer's did. */}
+      <ToolPageView tool="allocator" page="/how-should-i-split-my-paycheck" />
 
       {/* Hero. Server-rendered, and deliberately outside the Suspense boundary
           below: the h1 and this paragraph are the only things on the page that
@@ -123,7 +141,7 @@ export default function AllocatorPage() {
           merge otherwise and reopens the gap at desktop. */}
       <Section variant="canvas" isHero className="pb-6 md:pb-6">
         <Container maxWidth="narrow">
-          <ToolBreadcrumb href="/allocator" />
+          <ToolBreadcrumb href="/how-should-i-split-my-paycheck" />
 
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-1.5 text-sm font-semibold text-brand-700">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-brand-700" />
@@ -209,7 +227,7 @@ export default function AllocatorPage() {
         investment adviser and nothing here is personalised advice.
       </Caveat>
 
-      <ToolFaq href="/allocator" />
+      <ToolFaq href="/how-should-i-split-my-paycheck" />
 
       <RelatedTools
         from="allocator"

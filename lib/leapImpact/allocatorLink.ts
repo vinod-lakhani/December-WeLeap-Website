@@ -1,7 +1,13 @@
 /**
  * Deep link to the Full Allocation Engine.
  * When NEXT_PUBLIC_ALLOCATOR_URL is set, use that (external app).
- * Otherwise use same-site /allocator with full prefill params.
+ * Otherwise use same-site /how-should-i-split-my-paycheck with full prefill
+ * params.
+ *
+ * The path is a constant below rather than inline in three places, which is
+ * what made the /allocator rename a one-line change here. These URLs go out in
+ * email, where a redirect hop is a real cost — the links have to point at the
+ * live route, not at the 308.
  */
 
 export type AllocatorIntent = 'lock_plan' | 'unlock_full_stack';
@@ -34,7 +40,7 @@ export interface AllocatorPrefillPayload {
   source: string;
 }
 
-const ALLOCATOR_PATH = '/allocator';
+const ALLOCATOR_PATH = '/how-should-i-split-my-paycheck';
 
 function getAllocatorBase(): string {
   if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ALLOCATOR_URL) {

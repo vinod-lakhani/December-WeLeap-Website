@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
     await submitToWaitlist({
       email: email.trim(),
       signupType: 'early_access_leap_stack',
+      // Lead identifiers, not URLs. The route moved from /allocator to
+      // /how-should-i-split-my-paycheck; these did not, so rows written before
+      // and after the rename stay one segment. Same call made for /offer.
       page: '/allocator',
       source: `early_access_leap_stack|${source}|/allocator`,
       referrer: httpReferrer,
@@ -117,9 +120,10 @@ export async function POST(request: NextRequest) {
         : null;
 
     const baseUrl = getBaseUrl(request);
-    // Was /leap-impact-simulator, which 308s to /allocator — a redirect hop in
-    // a link we send by email, and now a route that no longer exists.
-    const leapToolUrl = `${baseUrl}/allocator`;
+    // Was /leap-impact-simulator, which 308s — a redirect hop in a link we send
+    // by email, and a route that no longer exists. Built from the live path so
+    // the email link never lands on a redirect.
+    const leapToolUrl = `${baseUrl}/how-should-i-split-my-paycheck`;
 
     // Filter out redundant items (e.g. "Brokerage (part of split above)")
     const planTitles = leapTitles.filter((t) => !t.toLowerCase().includes('brokerage (part of split'));

@@ -25,8 +25,8 @@ import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary'
 import { AppCta } from '@/components/AppCta';
 
 /**
- * The /allocator calculator — the interactive half of the page, and nothing
- * else.
+ * The money plan calculator — the interactive half of
+ * /how-should-i-split-my-paycheck, and nothing else.
  *
  * It was the whole of app/allocator/page.tsx, which made the route a client
  * component: `metadata` had to live in a sibling layout.tsx, and the parts of

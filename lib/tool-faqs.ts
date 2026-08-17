@@ -175,7 +175,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
-  '/allocator': [
+  '/how-should-i-split-my-paycheck': [
     {
       q: 'What order should I put my money in?',
       a: 'The widely used ordering is: contribute enough to your 401(k) to capture the full employer match, build a small emergency buffer, clear high-interest debt, then fill tax-advantaged accounts such as an HSA and the rest of your retirement contribution, and invest the remainder. The logic is rate of return: an employer match is an immediate 100% return, a 22% credit card is a guaranteed 22%, and the stock market historically returns around 7% real — so the order follows the numbers rather than preference. This tool applies that ordering to your salary, state and current contributions.',

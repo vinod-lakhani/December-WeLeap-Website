@@ -636,7 +636,10 @@ function MoneyStructureSummary({
           </div>
         )}
 
-        {/* Survey — in collapsed view, at bottom below CTA */}
+        {/* Survey — in collapsed view, at bottom below CTA.
+            `page` is the feedback event's own identifier, not the URL. The
+            route moved to /how-should-i-split-my-paycheck; this stayed, so
+            responses before and after the rename are one series. */}
         {!breakdownExpanded && (
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500 mb-2">Optional</p>

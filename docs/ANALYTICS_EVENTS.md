@@ -29,7 +29,12 @@ This document describes all analytics events tracked in the December-WeLeap-Webs
 
 ---
 
-## Allocator / Leap Stack (`/allocator`)
+## Allocator / Leap Stack (`/how-should-i-split-my-paycheck`)
+
+> The route was renamed from `/allocator` (308 in `next.config.mjs`). Every
+> event name below, the `tool: "allocator"` funnel id and the `page:
+> "/allocator"` values sent by the waitlist and feedback calls stayed as they
+> were, so these series are continuous across the rename.
 
 | Event | When | Common Params |
 |-------|------|---------------|

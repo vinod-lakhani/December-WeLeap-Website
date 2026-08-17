@@ -9,9 +9,9 @@ import { track } from '@/lib/analytics'
  * Contextual links from one calculator to two or three others.
  *
  * The tools are at flat top-level routes, so internal linking is doing all the
- * work that URL nesting would otherwise do: without it, /what-is-my-job-offer-worth
- * and /allocator
- * are seven unrelated pages that happen to share a footer. The `why` line is
+ * work that URL nesting would otherwise do: without it,
+ * /what-is-my-job-offer-worth and /how-should-i-split-my-paycheck are seven
+ * unrelated pages that happen to share a footer. The `why` line is
  * per-page rather than reused from the tool's blurb, because the reason to go
  * from an offer to the rent calculator is not the reason to go there from the
  * homepage, and a link whose anchor explains the specific next step is the only
