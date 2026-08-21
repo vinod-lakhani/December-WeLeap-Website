@@ -23,6 +23,21 @@ import { OG_CONTENT_TYPE, OG_SIZE } from '@/lib/og-image'
  */
 
 export const ogSize = OG_SIZE
+
+/**
+ * The portrait card people actually post.
+ *
+ * 1080x1350 is Instagram's 4:5 — the tallest ratio a feed post accepts, so it
+ * fits exactly there and merely letterboxes in Stories. 9:16 is the reverse
+ * trade: exact in Stories, cropped hard in feed, and awkward in the other
+ * places the share sheet reaches (WhatsApp, iMessage, Slack). 4:5 is the one
+ * that is never wrong.
+ *
+ * The width matters as much as the ratio. Instagram wants 1080 and upscales
+ * anything narrower, which is the other half of why the previous card looked
+ * soft: it was an html2canvas screenshot of a 400px popover.
+ */
+export const shareSize = { width: 1080, height: 1350 }
 export const ogContentType = OG_CONTENT_TYPE
 
 /** Brand tokens, mirrored from tailwind.config.ts. */
@@ -39,7 +54,17 @@ interface CardProps {
   footnote: string
 }
 
-function OgCard({ eyebrow, headline, footnote }: CardProps) {
+function OgCard({ eyebrow, headline, footnote, portrait = false }: CardProps & { portrait?: boolean }) {
+  /**
+   * One composition, two shapes. The portrait card is not a different design —
+   * same wordmark, eyebrow, headline and footnote in the same order — it just
+   * has more vertical room and less horizontal, so the headline goes up and
+   * the measure comes in.
+   */
+  const t = portrait
+    ? { pad: '84px 72px', wordmark: 38, eyebrow: 26, headline: 82, footnote: 30, measure: 940 }
+    : { pad: '68px 76px', wordmark: 34, eyebrow: 24, headline: 72, footnote: 27, measure: 1000 }
+
   return (
     <div
       style={{
@@ -48,7 +73,7 @@ function OgCard({ eyebrow, headline, footnote }: CardProps) {
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: '68px 76px',
+        padding: t.pad,
         backgroundColor: BRAND_700,
         backgroundImage: `linear-gradient(135deg, ${BRAND_700} 0%, ${BRAND_900} 100%)`,
         color: '#ffffff',
@@ -66,14 +91,14 @@ function OgCard({ eyebrow, headline, footnote }: CardProps) {
             marginRight: 14,
           }}
         />
-        <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.5px' }}>WeLeap</div>
+        <div style={{ fontSize: t.wordmark, fontWeight: 800, letterSpacing: '-0.5px' }}>WeLeap</div>
       </div>
 
       {/* The question */}
-      <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 1000 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', maxWidth: t.measure }}>
         <div
           style={{
-            fontSize: 24,
+            fontSize: t.eyebrow,
             fontWeight: 600,
             letterSpacing: '2.6px',
             textTransform: 'uppercase',
@@ -85,7 +110,7 @@ function OgCard({ eyebrow, headline, footnote }: CardProps) {
         </div>
         <div
           style={{
-            fontSize: 72,
+            fontSize: t.headline,
             fontWeight: 800,
             lineHeight: 1.1,
             letterSpacing: '-2px',
@@ -100,7 +125,7 @@ function OgCard({ eyebrow, headline, footnote }: CardProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          fontSize: 27,
+          fontSize: t.footnote,
           fontWeight: 600,
           color: 'rgba(255,255,255,0.72)',
         }}
@@ -174,6 +199,20 @@ function loadFonts() {
 
 function render(props: CardProps) {
   return new ImageResponse(<OgCard {...props} />, { ...ogSize, fonts: loadFonts() })
+}
+
+/**
+ * The 4:5 card the Share and Download buttons hand over.
+ *
+ * Rendered by the same component as the link preview, so the image someone
+ * posts and the card a platform draws from the URL cannot drift apart — they
+ * were previously two separate designs, one of them a screenshot.
+ */
+export function shareCardImage({ headline, footnote }: { headline: string; footnote: string }) {
+  return new ImageResponse(
+    <OgCard portrait eyebrow="Rent reality check" headline={headline} footnote={footnote} />,
+    { ...shareSize, fonts: loadFonts() }
+  )
 }
 
 /** The sitewide default card, used by `app/opengraph-image.tsx`. */

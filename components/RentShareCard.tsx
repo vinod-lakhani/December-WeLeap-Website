@@ -4,7 +4,7 @@
  * Rent Share Card — downloadable card for sharing safe rent range.
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { track } from '@/lib/analytics';
 
@@ -60,26 +60,36 @@ export function RentShareCard({
       // Clipboard denied — the link is on screen and selectable either way.
     }
   };
-  const cardRef = useRef<HTMLDivElement>(null);
-
-
-  const generatePngBlob = async (): Promise<Blob | null> => {
-    if (!cardRef.current) return null;
-    const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(cardRef.current, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob ?? null), 'image/png');
-    });
+  /**
+   * The image is fetched, not screenshotted.
+   *
+   * This used to rasterise the popover with html2canvas: a 400px-wide DOM node
+   * at scale 2, so the export was ~800px against Instagram's 1080 minimum, and
+   * its aspect ratio moved with the length of the city name. Instagram had no
+   * ratio to fit it to.
+   *
+   * The server renders a real 1080x1350 (4:5) card instead — the tallest a feed
+   * post accepts, so it fits there exactly and letterboxes in Stories — drawn
+   * by the same component as the link preview, so the two cannot drift.
+   *
+   * html2canvas was already a lazy import, so this does not change first-load
+   * JS. What it removes is the 44KB gzipped chunk that downloaded the moment
+   * someone opened the share flow, which is the worst possible time to spend
+   * it. The dependency itself stays until OfferShareCard moves too.
+   */
+  const fetchPngBlob = async (): Promise<Blob | null> => {
+    try {
+      const res = await fetch(`${new URL(shareUrl, window.location.origin).pathname}/share-image`);
+      if (!res.ok) return null;
+      return await res.blob();
+    } catch {
+      return null;
+    }
   };
 
   const handleDownload = async () => {
     try {
-      const blob = await generatePngBlob();
+      const blob = await fetchPngBlob();
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -98,7 +108,7 @@ export function RentShareCard({
 
   const handleShare = async () => {
     try {
-      const blob = await generatePngBlob();
+      const blob = await fetchPngBlob();
       if (!blob) return;
       const file = new File([blob], 'weleap-rent-range.png', { type: 'image/png' });
       /**
@@ -167,7 +177,7 @@ export function RentShareCard({
               the card was leaking the one number the mechanic exists to
               protect. Same sentence as the link now, from the same helper, so
               the two cannot drift. */}
-          <div ref={cardRef} className="min-w-[320px] max-w-[400px] p-6">
+          <div className="min-w-[320px] max-w-[400px] p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
               Rent reality check
             </p>
