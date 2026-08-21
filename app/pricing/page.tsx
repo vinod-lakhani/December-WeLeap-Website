@@ -5,7 +5,6 @@ import { Check } from "lucide-react"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { TOOL_COUNT } from "@/lib/tools"
-import Link from "next/link"
 
 export const metadata: Metadata = {
   title: 'Pricing',
@@ -126,18 +125,12 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <div className="mt-9 flex justify-center">
               <EarlyAccessDialog signupType="pricing" placement="pricing_cta">
                 <Button className="w-full rounded-full bg-brand-700 px-9 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800 sm:w-auto">
                   Get your first Leap →
                 </Button>
               </EarlyAccessDialog>
-              <Link
-                href="/resources/pricing-philosophy"
-                className="w-full rounded-full border border-brand-100 px-8 py-[17px] text-center text-[17px] font-bold text-brand-700 transition hover:bg-brand-700/5 sm:w-auto"
-              >
-                Read our pricing philosophy
-              </Link>
             </div>
 
             <p className="mt-5 text-center text-[13.5px] text-faint">

@@ -183,19 +183,6 @@ export const ARTICLES: readonly Article[] = [
     icon: 'CreditCard',
   },
   {
-    href: '/resources/pricing-philosophy',
-    title: "Why WeLeap's Pricing Is Different (and Built for You)",
-    excerpt:
-      'Most financial apps profit when you spend more. WeLeap breaks that model by aligning incentives with your success, not transactions.',
-    description: 'Why WeLeap charges what it charges, and why the tools stay free.',
-    datePublished: '2025-11-11',
-    author: 'Vinod Lakhani',
-    readMinutes: 6,
-    image: '/images/Pricing.jpg',
-    category: 'Pricing',
-    icon: 'Wallet',
-  },
-  {
     href: '/resources/emergency-fund-guess',
     title: "Most people don't have an emergency fund. They have a guess.",
     excerpt:
