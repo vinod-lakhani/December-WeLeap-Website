@@ -16,6 +16,7 @@ import { ResultsCards } from '@/components/ResultsCards';
 import { AssumptionsAccordion } from '@/components/AssumptionsAccordion';
 import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { useCountReveal } from '@/lib/feedback-reveal';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
@@ -81,6 +82,27 @@ export function OfferTool() {
   const formStartedRef = useRef(false);
   const prefillAppliedRef = useRef(false);
   const toolCompletedRef = useRef(false);
+
+  /**
+   * How many times a playbook has been generated this visit.
+   *
+   * Drives when the feedback prompt appears. State rather than a ref because
+   * the prompt's visibility depends on it and a ref would not re-render.
+   */
+  const [playbookRuns, setPlaybookRuns] = useState(0);
+
+  /**
+   * The prompt waits for a second run.
+   *
+   * People re-run this tool with a different salary or city, and someone who
+   * has seen two rent ranges has something to compare — they know whether the
+   * number moved the way they expected. On the first run they have one number
+   * and nothing to judge it against.
+   */
+  const feedbackRevealed = useCountReveal(playbookRuns, {
+    threshold: 2,
+    enabled: !!results,
+  });
 
   // Fire tool_completed once when results first render (Phase 0 funnel).
   // Mirrors the same event on /what-is-my-job-offer-worth with tool: 'offer'.
@@ -312,6 +334,7 @@ export function OfferTool() {
       });
       
       // Track playbook generated (after successful calculation)
+      setPlaybookRuns((n) => n + 1);
       track('playbook_generated', {
         page: '/how-much-rent-can-i-afford',
         tool_version: 'rent_tool_v1',
@@ -685,6 +708,7 @@ export function OfferTool() {
 
               Still below the CTA, deliberately: the CTA is the page's job and
               this prompt should not push it down the page to buy responses. */}
+          {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/how-much-rent-can-i-afford"
             eventName="rent_tool_feedback_submitted"
@@ -701,6 +725,7 @@ export function OfferTool() {
             }}
             onFeedbackSubmitted={() => {}}
           />
+          )}
 
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">

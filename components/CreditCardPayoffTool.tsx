@@ -24,6 +24,7 @@ import { AppCta } from '@/components/AppCta';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { track } from '@/lib/analytics';
+import { useQuietReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
 
 const PAGE = '/credit-card-payoff';
@@ -132,6 +133,20 @@ export function CreditCardPayoffTool() {
 
   const hasValidInput = validCards.length > 0;
   const hasBalance = validCards.some((c) => c.balance > 0);
+
+  /**
+   * The feedback prompt waits for the extra-payment slider to go quiet.
+   *
+   * Most people who reach a result then spend a while on that slider, trying
+   * numbers and watching the payoff date move. The question this tool asks is
+   * whether the timeline feels achievable, and that is unanswerable until they
+   * have settled on a figure. Fifteen seconds is long enough to survive a pause
+   * between drags and short enough that they are still on the page.
+   */
+  const feedbackRevealed = useQuietReveal(extraPayment, {
+    quietMs: 15_000,
+    enabled: hasValidInput && hasBalance,
+  });
 
   // Second step of the funnel: tool_viewed -> tool_engaged -> tool_completed ->
   // tool_cta_clicked -> cta_click_signup. `credit_card_payoff_form_start`
@@ -487,6 +502,7 @@ export function CreditCardPayoffTool() {
             }}
           />
 
+          {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/credit-card-payoff"
             eventName="credit_card_payoff_feedback_submitted"
@@ -503,6 +519,7 @@ export function CreditCardPayoffTool() {
             }}
             onFeedbackSubmitted={() => {}}
           />
+          )}
         </>
       )}
     </div>

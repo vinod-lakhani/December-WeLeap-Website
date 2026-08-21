@@ -18,6 +18,7 @@ import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
 import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { useCountReveal } from '@/lib/feedback-reveal';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -294,17 +295,37 @@ export function OfferAnalysisTool() {
    * This fires once, on the first field anyone touches.
    */
   const engagedRef = useRef(false);
+  /**
+   * Counts edits so the feedback prompt can wait for a few of them.
+   *
+   * State rather than a ref because the prompt's visibility depends on it, and
+   * a ref would not re-render to reveal it. It only ever increments, so the
+   * extra renders are bounded by how much someone edits.
+   */
+  const [fieldChangeCount, setFieldChangeCount] = useState(0);
   const trackFieldChange = useCallback((field: string, value: any) => {
     if (!engagedRef.current) {
       engagedRef.current = true;
       track('tool_engaged', { tool: 'offer', first_field: field });
     }
+    setFieldChangeCount((n) => n + 1);
     track('offer_tool_field_changed', {
       field,
       value_type: typeof value === 'number' ? 'number' : 'string',
       has_value: !!value,
     });
   }, []);
+
+  /**
+   * This tool recomputes live with no submit button, so there is no single
+   * instant a result "lands" to hang the prompt on. Five edits is the stand-in:
+   * enough that the running total has moved under them a few times and the
+   * number on screen is theirs rather than a default.
+   */
+  const feedbackRevealed = useCountReveal(fieldChangeCount, {
+    threshold: 5,
+    enabled: !!calc,
+  });
 
 
   const trackEsppToggle = useCallback((isOpen: boolean) => {
@@ -840,6 +861,7 @@ export function OfferAnalysisTool() {
               thought" is a real answer rather than a complaint. `scale` marks
               that so these responses are not pooled into a blended sentiment
               rate by mistake. */}
+          {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/offer"
             eventName="offer_tool_feedback_submitted"
@@ -857,6 +879,7 @@ export function OfferAnalysisTool() {
             extraTrackParams={{ scale: 'expectation' }}
             onFeedbackSubmitted={() => {}}
           />
+          )}
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">
