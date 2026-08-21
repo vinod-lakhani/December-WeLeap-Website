@@ -14,7 +14,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { formatCurrency, formatCurrencyRange, roundToNearest100 } from '@/lib/rounding';
-import { rentNetWorthProtection30yr } from '@/lib/rent';
 import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 import { track } from '@/lib/analytics';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
@@ -254,7 +253,6 @@ export function ResultsCards({
   };
 
   const upfrontCash = calculateUpfrontCash();
-  const netWorthProtection = rentNetWorthProtection30yr(takeHomeMonthly);
 
   /**
    * What a share actually asserts.
@@ -325,12 +323,6 @@ export function ResultsCards({
                 <RentShareCard
                   shareUrl={shareUrl}
                   shareText={shareText}
-                  rentRange={rentRange}
-                  rentRangeLow={rentRangeLow}
-                  rentRangeHigh={rentRangeHigh}
-                  upfrontCashLow={upfrontCash?.totalLow}
-                  upfrontCashHigh={upfrontCash?.totalHigh}
-                  netWorthProtection={netWorthProtection}
                   trigger={
                     <button
                       type="button"
