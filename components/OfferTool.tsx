@@ -715,7 +715,11 @@ export function OfferTool() {
             question="Does this rent range make sense for you?"
             buttonLabels={{
               yes: '✅ Yes — this feels right',
-              not_sure: '🤔 Not sure',
+              // "Not sure" is an abstention: it ends the exchange without
+              // saying anything about the range. Money Plan's middle option
+              // is an actual position — the person has a view, it just isn't
+              // this number — and it is the best-performing prompt in the set.
+              not_sure: "🤔 I'd tweak it",
               no: "❌ Doesn't feel relevant",
             }}
             feedbackResponseMessages={{
