@@ -647,29 +647,38 @@ export function OfferTool() {
                         // target, which breaks the funnel comparison across
                         // tools rather than just losing a dimension here.
                         track('tool_cta_clicked', { tool: 'rent', placement: 'button' });
-                        const stateCode = showOtherState ? otherState : getStateCodeForCity(city);
-                        const extra: Record<string, string> = {};
-                        if (salary.trim()) extra.salary = String(Math.round(parseFloat(salary)));
-                        if (city) extra.city = city;
-                        if (stateCode) extra.state = stateCode;
-                        window.location.href = appLink('', extra);
+                        /**
+                         * `src` only. Salary, city and state used to ride along
+                         * here, and the app discarded all three: its hydration
+                         * returns early unless `src === 'offer_tool'`, and the
+                         * session it builds is an offer session whose unsent
+                         * fields fall back to an invented bonus and employer
+                         * match. Sending them was worse than not sending them.
+                         *
+                         * They would be near-worthless even if consumed —
+                         * onboarding asks for income directly, so a passed
+                         * salary is a default that is overwritten minutes
+                         * later. `src` does not go stale, because it records
+                         * where the person came from rather than what they own.
+                         */
+                        window.location.href = appLink('', { src: 'rent' });
                       }}
                       className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                     >
-                      Get my first Leap →
+                      {leapMonthly > 0
+                        ? `Track my ${formatCurrency(leapMonthly)}/mo →`
+                        : 'Get my first Leap →'}
                     </Button>
                     <p className="text-xs text-gray-500 mt-2">
                       Free · 2 minutes · No credit card.
                     </p>
                   </div>
-                  <div>
-                    <a
-                      href="#email-plan"
-                      className="text-sm text-gray-500 underline hover:text-gray-700"
-                    >
-                      Email me my plan instead
-                    </a>
-                  </div>
+                  {/* "Email me my plan instead" used to sit here, directly
+                      under the CTA and styled as a peer choice — a
+                      lower-commitment escape hatch offered at the exact moment
+                      of decision. The email plan itself still exists further
+                      down the page; it is no longer presented as an equal
+                      alternative to the thing this page is for. */}
                 </CardContent>
               </Card>
             }

@@ -78,7 +78,20 @@ export function AppCta({
       window.location.href = buildHref();
       return;
     }
-    const extra: Record<string, string> = {};
+    /**
+     * `src` is the tool that produced the click, and it is set here rather than
+     * per call site so a tool cannot ship without it — the same reason
+     * `tool_cta_clicked` fires here.
+     *
+     * The app stores it as the `initial_tool_source` person property, which is
+     * what attributes a signup back to a tool. Deliberately the same string as
+     * the `tool` slug so it joins straight onto `tool_cta_clicked.tool` rather
+     * than needing a lookup table.
+     *
+     * Placed before the prefill spread so a tool cannot overwrite it by
+     * accident.
+     */
+    const extra: Record<string, string> = { src: tool };
     Object.entries(prefill ?? {}).forEach(([key, value]) => {
       if (value != null && value !== '') extra[key] = String(value);
     });

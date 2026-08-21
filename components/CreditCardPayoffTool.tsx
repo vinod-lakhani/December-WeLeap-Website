@@ -479,6 +479,12 @@ export function CreditCardPayoffTool() {
 
           <AppCta
             tool="credit_card_payoff"
+            /* The button used to read "Get my first Leap" while the Leap was
+               already on screen above it — promising the thing the reader
+               already had. It carries the computed number instead, so it reads
+               as a continuation of what they just worked out rather than an
+               offer of it. */
+            buttonLabel={`Track my ${formatCurrency(freedMonthly)}/mo \u2192`}
             prefill={{
               debt_balance: Math.round(Number(card.balance) || 0),
               debt_apr: card.apr,
