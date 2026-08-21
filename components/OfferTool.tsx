@@ -678,6 +678,30 @@ export function OfferTool() {
               Personalized with the user's rent range. Email capture becomes the
               secondary action, not the terminus. */}
 
+          {/* Tool Feedback Questionnaire.
+              Moved above the "Factor in debt" toggle and the email-plan tile.
+              It used to sit below both, so reaching it meant scrolling past an
+              optional advanced input and a form designed to end the session.
+
+              Still below the CTA, deliberately: the CTA is the page's job and
+              this prompt should not push it down the page to buy responses. */}
+          <ToolFeedbackQuestionnaire
+            page="/how-much-rent-can-i-afford"
+            eventName="rent_tool_feedback_submitted"
+            question="Does this rent range make sense for you?"
+            buttonLabels={{
+              yes: '✅ Yes — this feels right',
+              not_sure: '🤔 Not sure',
+              no: "❌ Doesn't feel relevant",
+            }}
+            feedbackResponseMessages={{
+              yes: "Great — let's build the rest of your plan.",
+              not_sure: 'No worries — your full plan will show the tradeoffs and alternatives.',
+              no: "Got it — your full plan will show the next best move.",
+            }}
+            onFeedbackSubmitted={() => {}}
+          />
+
           {/* Debt Adjustment Accordion */}
           <Card className="border-[#D1D5DB] bg-white">
             <CardContent className="pt-6">
@@ -729,24 +753,6 @@ export function OfferTool() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Tool Feedback Questionnaire */}
-          <ToolFeedbackQuestionnaire
-            page="/how-much-rent-can-i-afford"
-            eventName="rent_tool_feedback_submitted"
-            question="Does this rent range make sense for you?"
-            buttonLabels={{
-              yes: '✅ Yes — this feels right',
-              not_sure: '🤔 Not sure',
-              no: "❌ Doesn't feel relevant",
-            }}
-            feedbackResponseMessages={{
-              yes: "Great — let's build the rest of your plan.",
-              not_sure: 'No worries — your full plan will show the tradeoffs and alternatives.',
-              no: "Got it — your full plan will show the next best move.",
-            }}
-            onFeedbackSubmitted={() => {}}
-          />
 
           <div className="mt-8" />
 

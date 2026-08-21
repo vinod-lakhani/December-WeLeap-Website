@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { AppCta } from '@/components/AppCta'
+import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { track } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 import {
@@ -332,6 +333,34 @@ export function SmartPurchaseTool() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Tool feedback. This tool had no prompt at all.
+              Every other tool returns a number and asks whether the number
+              lands. This one returns a decision, so the honest test is whether
+              the person agrees with the recommendation — not whether the
+              arithmetic is legible. Added now, while traffic is near zero:
+              there is no legacy response data to orphan, and retrofitting it
+              after the tool is promoted would start the sample from scratch.
+
+              Placed after the side-by-side comparison and above the CTA. The
+              comparison is what someone checks a verdict against, so their
+              view has actually formed by this point. */}
+          <ToolFeedbackQuestionnaire
+            page={PAGE}
+            eventName="purchase_tool_feedback_submitted"
+            question="Does this verdict match your gut?"
+            buttonLabels={{
+              yes: 'Yes, that tracks',
+              not_sure: 'Not sure',
+              no: 'No, I disagree',
+            }}
+            feedbackResponseMessages={{
+              yes: 'Good. The app does this across every purchase, not just this one.',
+              not_sure: 'Fair — this only sees five numbers. Your accounts fill in the rest.',
+              no: 'Useful to know. This only sees five numbers; your full picture may say otherwise.',
+            }}
+            onFeedbackSubmitted={() => {}}
+          />
 
           <AppCta
             tool="smart_purchase"

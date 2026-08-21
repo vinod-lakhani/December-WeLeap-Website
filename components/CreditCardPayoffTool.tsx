@@ -490,7 +490,7 @@ export function CreditCardPayoffTool() {
           <ToolFeedbackQuestionnaire
             page="/credit-card-payoff"
             eventName="credit_card_payoff_feedback_submitted"
-            question="Does this payoff plan make sense for you?"
+            question="Does this payoff timeline feel achievable?"
             buttonLabels={{
               yes: '✅ Yes — this feels right',
               not_sure: '🤔 Not sure',

@@ -17,6 +17,7 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
 import { OfferShareCard } from '@/components/OfferShareCard';
+import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -825,6 +826,37 @@ export function OfferAnalysisTool() {
               <p className="text-xs text-gray-500">Savings + 401k match + equity → <strong className="text-gray-900">${(calc.nw40yr / 1_000_000).toFixed(1)}M in 40 years at 7%</strong></p>
             </div>
           </div>
+
+          {/* Tool feedback. This tool had no prompt at all.
+              The question is about expectation, not helpfulness: the tool's
+              whole premise is that base salary is most of what people think
+              an offer is worth, so whether the total surprised them is the
+              finding. Placed after the result and above the CTA, so it never
+              competes with a scroll past the thing designed to end the session.
+
+              NOTE the axis differs from every other tool. Elsewhere
+              yes/not_sure/no is a sentiment ("this makes sense" → "not for
+              me"); here it is a direction (higher → lower), and "lower than I
+              thought" is a real answer rather than a complaint. `scale` marks
+              that so these responses are not pooled into a blended sentiment
+              rate by mistake. */}
+          <ToolFeedbackQuestionnaire
+            page="/offer"
+            eventName="offer_tool_feedback_submitted"
+            question="Is this total higher or lower than you thought your offer was worth?"
+            buttonLabels={{
+              yes: 'Higher than I thought',
+              not_sure: 'About what I expected',
+              no: 'Lower than I thought',
+            }}
+            feedbackResponseMessages={{
+              yes: "That gap is the point — your plan starts from the real number.",
+              not_sure: "Good — you already know what you're working with.",
+              no: "Worth knowing before you sign. Your plan works from the real number.",
+            }}
+            extraTrackParams={{ scale: 'expectation' }}
+            onFeedbackSubmitted={() => {}}
+          />
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">

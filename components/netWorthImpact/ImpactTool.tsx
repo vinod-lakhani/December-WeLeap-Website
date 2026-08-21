@@ -370,6 +370,18 @@ export function ImpactTool() {
       <ToolFeedbackQuestionnaire
         page={NET_WORTH_IMPACT_PAGE}
         eventName="networth_tool_feedback_submitted"
+        // This was the only tool left on the component's generic defaults
+        // ("Was this helpful?" / Yes / Not sure / No), which asks about the
+        // page rather than the result. This tool projects what a monthly
+        // amount becomes, so the honest test is whether it changes what the
+        // person actually saves — the same yes/not_sure/no axis every other
+        // tool uses, so the responses still pool.
+        question="Would this change what you save each month?"
+        buttonLabels={{
+          yes: "Yes — I'd save more",
+          not_sure: 'Maybe',
+          no: 'No change',
+        }}
         onFeedbackSubmitted={(feedback) => {
           if (feedback === 'yes' || feedback === 'not_sure') {
             track('waitlist_modal_opened', {
