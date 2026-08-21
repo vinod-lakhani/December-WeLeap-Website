@@ -40,6 +40,19 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        // The pricing-philosophy article was removed, but the URL was in the
+        // sitemap and is indexed, so a bare 404 would throw away whatever it
+        // had accumulated. /pricing is the closest live equivalent — the
+        // article was about why WeLeap charges what it does.
+        //
+        // Temporary rather than permanent on purpose: the article is archived
+        // and may come back, and browsers cache 308s hard enough to make that
+        // restoration messy.
+        source: '/resources/pricing-philosophy',
+        destination: '/pricing',
+        permanent: false,
+      },
+      {
         // /product-features was the 5th most-visited page (~260 visitors) but
         // its content was badly out of date. Permanent redirect rather than a
         // delete so the traffic and any inbound links land on the current
