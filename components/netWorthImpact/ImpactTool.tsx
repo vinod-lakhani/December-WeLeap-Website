@@ -354,7 +354,7 @@ export function ImpactTool() {
                already had. It carries the computed number instead, so it reads
                as a continuation of what they just worked out rather than an
                offer of it. */
-          buttonLabel={`Track my ${formatCurrencySigned(monthlyDelta)}/mo \u2192`}
+          buttonLabel={`Show me where my ${formatCurrencySigned(monthlyDelta)}/mo should go \u2192`}
           prefill={{
             monthly_delta: Math.round(monthlyDelta),
             use_case: useCase,

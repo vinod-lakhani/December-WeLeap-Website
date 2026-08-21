@@ -92,15 +92,22 @@ export function OfferTool() {
   const [playbookRuns, setPlaybookRuns] = useState(0);
 
   /**
-   * The prompt waits for a second run.
+   * The prompt appears with the first playbook.
    *
-   * People re-run this tool with a different salary or city, and someone who
-   * has seen two rent ranges has something to compare — they know whether the
-   * number moved the way they expected. On the first run they have one number
-   * and nothing to judge it against.
+   * It was gated on a second run, on the reasoning that someone comparing two
+   * rent ranges has formed a firmer view. That is probably true, and it was
+   * the wrong trade: the 2.2 runs-per-person this was based on is a mean, and
+   * a mean hides a minority re-running many times. Everyone who ran once —
+   * plausibly most people — never saw the prompt at all.
+   *
+   * Reach wins here. Unlike the payoff slider, this tool has no post-result
+   * interaction to wait for; a re-run means going back up the page and
+   * resubmitting, which is a different and rarer act than nudging a control.
+   * Still keyed on the run count rather than on `results` so the threshold is
+   * one number to change if that judgement flips back.
    */
   const feedbackRevealed = useCountReveal(playbookRuns, {
-    threshold: 2,
+    threshold: 1,
     enabled: !!results,
   });
 
@@ -665,8 +672,16 @@ export function OfferTool() {
                       }}
                       className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                     >
+                      {/* Not "Track my $350/mo". Two problems with that: the
+                          $350 does not exist yet — it is conditional on signing
+                          the cheaper lease — and "track" is the budgeting-app
+                          verb this product spends a comparison table on /tools
+                          distancing itself from. This completes the sentence
+                          directly above it ("WeLeap makes sure it goes
+                          somewhere first") and leaves the loop open: the tool
+                          found the money, the app decides where it goes. */}
                       {leapMonthly > 0
-                        ? `Track my ${formatCurrency(leapMonthly)}/mo →`
+                        ? `Show me where my ${formatCurrency(leapMonthly)}/mo should go →`
                         : 'Get my first Leap →'}
                     </Button>
                     <p className="text-xs text-gray-500 mt-2">

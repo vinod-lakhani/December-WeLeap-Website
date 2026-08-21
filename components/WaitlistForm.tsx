@@ -175,6 +175,43 @@ export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: Wai
 
   const isSecondary = variant === 'secondary';
 
+  /**
+   * The secondary tile is a disclosure, not a card.
+   *
+   * It sits a few hundred pixels below the app CTA on the rent result page,
+   * and as a full card — own heading, own bordered button — it read as a peer
+   * offer rather than a footnote. That is the same competing-exit problem as
+   * the "Email me my plan instead" link that used to sit directly under the
+   * button, just in a bigger box.
+   *
+   * Collapsed, it is one quiet line. The PDF is still one click away for
+   * anyone who wants it, which is the point — it just no longer argues with
+   * the CTA for the same decision. Matches the assumptions accordion
+   * immediately below it on that page.
+   */
+  if (isSecondary) {
+    return (
+      <details className="group rounded-lg border border-gray-200 bg-gray-50">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm text-gray-600 hover:text-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3F6B42]">
+          <span>Prefer a PDF? Get a 1-page rent plan.</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+          >
+            <path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </summary>
+        <div className="px-4 pb-4">
+          <p className="mb-3 text-sm text-gray-600">
+            Download a simple summary with your rent range and cash you need upfront.
+          </p>
+          {secondaryButton}
+        </div>
+      </details>
+    );
+  }
+
   return (
     <Card className={isSecondary ? 'border border-gray-200 bg-gray-50' : 'border-[#D1D5DB] bg-white'}>
       <CardHeader className={isSecondary ? 'pb-2 pt-4 px-4' : undefined}>
