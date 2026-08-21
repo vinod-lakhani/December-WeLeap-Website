@@ -39,7 +39,13 @@
  * - playbook_pdf_opened (optional)
  * - playbook_pdf_downloaded (optional)
  * - rent_tool_feedback_submitted (page, feedback: yes|no|not_sure) — rent tool
- * - networth_tool_feedback_submitted (page, feedback: yes|no|not_sure) — Net Worth Impact tool
+ * - networth_tool_feedback_submitted (page, feedback: yes|no|not_sure) — Monthly Saving Impact tool
+ * - offer_tool_feedback_submitted (page, feedback: yes|no|not_sure, scale: 'expectation') — offer tool.
+ *   `scale` is load-bearing: this tool's three answers are a DIRECTION (higher /
+ *   as expected / lower), not a sentiment, so "no" means the offer was worth
+ *   less than they hoped rather than that the tool failed. Exclude it, or split
+ *   on `scale`, before blending feedback across tools.
+ * - purchase_tool_feedback_submitted (page, feedback: yes|no|not_sure) — Buy Now, Pay Later tool
  * - waitlist_modal_opened (page, source, feedback)
  * - net_worth_impact_page_view
  * - net_worth_impact_tool_start

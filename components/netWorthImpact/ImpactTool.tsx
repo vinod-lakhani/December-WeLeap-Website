@@ -108,7 +108,19 @@ export function ImpactTool() {
    *
    */
   const engagedRef = useRef(false);
+  /**
+   * Mirrors `engagedRef` as state, purely so the feedback prompt can depend on
+   * it. The ref stays the guard for the analytics event — it must fire exactly
+   * once — while this drives a re-render. Setting it repeatedly is a no-op.
+   *
+   * This is the reveal condition on its own: it only ever goes false -> true,
+   * so it is already sticky and needs none of the machinery in
+   * lib/feedback-reveal.ts. The other three tools have a threshold or a timer
+   * to hold; this one just has "did they touch anything".
+   */
+  const [hasInteracted, setHasInteracted] = useState(false);
   const markEngaged = useCallback((field: string) => {
+    setHasInteracted(true);
     if (engagedRef.current) return;
     engagedRef.current = true;
     track('tool_engaged', { tool: 'net_worth_impact', first_field: field });
@@ -367,9 +379,30 @@ export function ImpactTool() {
       )}
 
       {/* Tool Feedback Questionnaire — Yes / Maybe opens the signup dialog */}
+      {/* The prompt waits for one interaction — a slider move or a change of
+          use-of-funds.
+
+          This tool is the extreme case for asking too early: it renders a full
+          result from its defaults, so a prompt tied to "a result exists" would
+          be on screen before the visitor had contributed anything. The question
+          asks whether this would change what they save, which only means
+          something once the number on screen is theirs. */}
+      {hasInteracted && (
       <ToolFeedbackQuestionnaire
         page={NET_WORTH_IMPACT_PAGE}
         eventName="networth_tool_feedback_submitted"
+        // This was the only tool left on the component's generic defaults
+        // ("Was this helpful?" / Yes / Not sure / No), which asks about the
+        // page rather than the result. This tool projects what a monthly
+        // amount becomes, so the honest test is whether it changes what the
+        // person actually saves — the same yes/not_sure/no axis every other
+        // tool uses, so the responses still pool.
+        question="Would this change what you save each month?"
+        buttonLabels={{
+          yes: "Yes — I'd save more",
+          not_sure: 'Maybe',
+          no: 'No change',
+        }}
         onFeedbackSubmitted={(feedback) => {
           if (feedback === 'yes' || feedback === 'not_sure') {
             track('waitlist_modal_opened', {
@@ -381,6 +414,7 @@ export function ImpactTool() {
           }
         }}
       />
+      )}
 
       {/* Assumptions footer */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
