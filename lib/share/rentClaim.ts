@@ -107,9 +107,25 @@ export function rentClaimHeadline(claim: RentClaim, metro: string | null): strin
   if (claim.kind === 'method' || !metro) {
     return 'I worked out my rent on take-home pay, not gross.'
   }
+  /**
+   * "math", not "maths" — the audience is American and the tool is priced,
+   * taxed and rent-indexed in dollars. A British spelling in the one sentence
+   * designed to be posted publicly is the wrong place to be caught out.
+   *
+   * The non-breaking space goes between the comma and the state code, and
+   * nowhere else. That is the defect worth fixing: the headline broke after
+   * the comma and left "CA" starting a line on its own.
+   *
+   * Making the WHOLE place name unbreakable was the obvious next move and it
+   * is wrong — "Gardnerville Ranchos, NV" is 24 characters and at a 375px
+   * viewport it overflows the heading box rather than wrapping. A city name
+   * splitting across two lines is untidy; a heading running off the screen is
+   * broken. So city words may wrap, and the state code may not orphan.
+   */
+  const place = metro.replace(/,\s+/, ',\u00A0')
   return claim.direction === 'over'
-    ? `Rentals in ${metro} run ${claim.pct}% above what the maths says I can afford.`
-    : `Rentals in ${metro} run ${claim.pct}% below what the maths says I can afford.`
+    ? `Rentals in ${place} run ${claim.pct}% above what the math says I can afford.`
+    : `Rentals in ${place} run ${claim.pct}% below what the math says I can afford.`
 }
 
 /**

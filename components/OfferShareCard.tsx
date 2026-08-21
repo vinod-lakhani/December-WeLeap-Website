@@ -11,7 +11,7 @@
  * Mirrors RentShareCard's download/native-share behaviour.
  */
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { track } from '@/lib/analytics';
 
@@ -28,32 +28,65 @@ import { track } from '@/lib/analytics';
  * straight at the real route and skips the redirect hop.
  */
 const PRINTED_URL = 'weleap.ai/offer';
-const CANONICAL_URL = 'https://www.weleap.ai/what-is-my-job-offer-worth';
 
 interface OfferShareCardProps {
   /** Total package as a % above the quoted base, e.g. 23 for +23%. */
   upliftPct: number;
   /** How many of the 7 numbers the offer actually carries. */
   componentsCounted?: number;
+  /**
+   * The /s/offer/... URL for this result.
+   *
+   * The card was previously a PNG and nothing else, so a share was a dead end:
+   * no platform accepts an image from a web page, and whoever saw the result
+   * had no route back to the tool. A link renders its own preview card
+   * everywhere that accepts one, and it is clickable.
+   */
+  shareUrl: string;
+  /** The claim the link asserts, used as the share text. */
+  shareText: string;
   trigger: React.ReactNode;
 }
 
-export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferShareCardProps) {
+export function OfferShareCard({
+  upliftPct,
+  componentsCounted,
+  shareUrl,
+  shareText,
+  trigger,
+}: OfferShareCardProps) {
   const [open, setOpen] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  /** Desktop has no share sheet, so the link is copied and the button says so. */
+  const [copied, setCopied] = useState(false);
 
-  const generatePngBlob = async (): Promise<Blob | null> => {
-    if (!cardRef.current) return null;
-    const html2canvas = (await import('html2canvas')).default;
-    const canvas = await html2canvas(cardRef.current, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob ?? null), 'image/png');
-    });
+  /** Host stripped, because the visible link is for recognition, not reading. */
+  const displayUrl = shareUrl.replace(/^https?:\/\/(www\.)?/, '');
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      track('offer_share_card_shared', { page: '/offer', method: 'copy_link', uplift_pct: Math.round(upliftPct) });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard denied — the link is on screen and selectable either way.
+    }
+  };
+
+  /**
+   * Fetched, not screenshotted. See RentShareCard: html2canvas rasterised this
+   * popover, so the export was ~800px against Instagram's 1080 minimum with an
+   * aspect ratio that moved with the text. The server renders a real 1080x1350
+   * (4:5) card from the same component as the link preview.
+   */
+  const fetchPngBlob = async (): Promise<Blob | null> => {
+    try {
+      const res = await fetch(`${new URL(shareUrl, window.location.origin).pathname}/share-image`);
+      if (!res.ok) return null;
+      return await res.blob();
+    } catch {
+      return null;
+    }
   };
 
   const downloadBlob = (blob: Blob) => {
@@ -69,7 +102,7 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
 
   const handleDownload = async () => {
     try {
-      const blob = await generatePngBlob();
+      const blob = await fetchPngBlob();
       if (!blob) return;
       downloadBlob(blob);
       track('offer_share_card_downloaded', { page: '/offer', uplift_pct: Math.round(upliftPct) });
@@ -81,19 +114,28 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
 
   const handleShare = async () => {
     try {
-      const blob = await generatePngBlob();
+      const blob = await fetchPngBlob();
       if (!blob) return;
       const file = new File([blob], 'weleap-offer.png', { type: 'image/png' });
+      /**
+       * The link is the payload; the image is a companion for the apps that
+       * cannot render a preview. Instagram and TikTok take no link card at all,
+       * and on mobile the OS share sheet lets someone pick either. Where the
+       * sheet is unavailable — desktop, mostly — the fallback copies the link
+       * rather than downloading a PNG nobody asked for.
+       */
       const shareData: ShareData = {
         title: 'My offer, all 7 numbers',
-        text: `My offer is worth ${Math.round(upliftPct)}% more than the base they quoted. Turns out an offer has 7 numbers and most people only read one:`,
-        url: `${CANONICAL_URL}?ref=offer_card`,
+        text: shareText,
+        url: shareUrl,
         files: [file],
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
         track('offer_share_card_shared', { page: '/offer', method: 'native', uplift_pct: Math.round(upliftPct) });
         setOpen(false);
+      } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
+        await handleCopy();
       } else {
         downloadBlob(blob);
         track('offer_share_card_shared', { page: '/offer', method: 'download', uplift_pct: Math.round(upliftPct) });
@@ -114,7 +156,7 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
           sideOffset={8}
           align="start"
         >
-          <div ref={cardRef} className="min-w-[320px] max-w-[400px] p-6">
+          <div className="min-w-[320px] max-w-[400px] p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
               My offer is worth
             </p>
@@ -135,7 +177,26 @@ export function OfferShareCard({ upliftPct, componentsCounted, trigger }: OfferS
             </div>
           </div>
 
-          <div className="border-t border-[#E5E7EB] px-4 py-3 flex gap-2">
+          {/* The link, shown rather than hidden behind the button. */}
+          <div className="border-t border-[#E5E7EB] px-4 pt-3">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+              Your link
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded border border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1.5 text-xs text-[#374151]">
+                {displayUrl}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="shrink-0 rounded-md border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium text-[#111827] hover:bg-[#F9FAFB]"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-[#E5E7EB] px-4 py-3 flex gap-2 mt-3">
             <button
               type="button"
               onClick={handleShare}

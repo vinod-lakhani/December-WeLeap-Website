@@ -208,11 +208,19 @@ function render(props: CardProps) {
  * posts and the card a platform draws from the URL cannot drift apart — they
  * were previously two separate designs, one of them a screenshot.
  */
-export function shareCardImage({ headline, footnote }: { headline: string; footnote: string }) {
-  return new ImageResponse(
-    <OgCard portrait eyebrow="Rent reality check" headline={headline} footnote={footnote} />,
-    { ...shareSize, fonts: loadFonts() }
-  )
+export function shareCardImage({
+  eyebrow,
+  headline,
+  footnote,
+}: {
+  eyebrow: string
+  headline: string
+  footnote: string
+}) {
+  return new ImageResponse(<OgCard portrait eyebrow={eyebrow} headline={headline} footnote={footnote} />, {
+    ...shareSize,
+    fonts: loadFonts(),
+  })
 }
 
 /** The sitewide default card, used by `app/opengraph-image.tsx`. */
@@ -251,14 +259,18 @@ export function toolOgImage(href: string) {
  * next.config.mjs is for. Without it the read succeeds locally and fails in
  * production, which is the worst shape a bug can take.
  */
-export function claimOgImage({ headline, footnote }: { headline: string; footnote: string }) {
-  return render({
-    // Named for what the reader is looking at rather than for the tool, since
-    // this card is seen in a feed by people who have never heard of WeLeap.
-    eyebrow: 'Rent reality check',
-    headline,
-    footnote,
-  })
+export function claimOgImage({
+  eyebrow,
+  headline,
+  footnote,
+}: {
+  eyebrow: string
+  headline: string
+  footnote: string
+}) {
+  // The eyebrow names what the reader is looking at rather than the tool: this
+  // card is seen in a feed by people who have never heard of WeLeap.
+  return render({ eyebrow, headline, footnote })
 }
 
 /** The `alt` export for a tool route's opengraph-image. */

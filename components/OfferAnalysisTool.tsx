@@ -18,6 +18,7 @@ import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
 import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
+import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -326,6 +327,27 @@ export function OfferAnalysisTool() {
     threshold: 5,
     enabled: !!calc,
   });
+
+  /**
+   * What a share of this result asserts.
+   *
+   * The uplift percentage, never the package. This tool has always followed
+   * that rule — salary is the one number an offer post cannot contain — but
+   * the claim existed only inside a PNG, so a share was a dead end. It is a
+   * link now, which renders its own preview card and can be clicked.
+   *
+   * Relative on the server so a preview deploy does not point its shares at
+   * production.
+   */
+  const shareClaim = buildOfferClaim({
+    totalPackage: calc?.totalPackage ?? 0,
+    base: salary,
+  });
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/s/offer/${encodeOfferClaim(shareClaim)}`
+      : `/s/offer/${encodeOfferClaim(shareClaim)}`;
+  const shareText = offerClaimHeadline(shareClaim);
 
 
   const trackEsppToggle = useCallback((isOpen: boolean) => {
@@ -738,6 +760,8 @@ export function OfferAnalysisTool() {
               <div className="mt-5 border-t border-hairline pt-4">
                 <OfferShareCard
                   upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  shareUrl={shareUrl}
+                  shareText={shareText}
                   trigger={
                     <button
                       type="button"

@@ -137,7 +137,7 @@ export function RentShareCard({
         await navigator.share(shareData);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'native' });
         setOpen(false);
-      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });

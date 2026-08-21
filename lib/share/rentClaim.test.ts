@@ -68,9 +68,18 @@ describe('rentClaimHeadline', () => {
   it('states a fact about the city, never about the person', () => {
     const claim: RentClaim = { kind: 'market_gap', metroSlug: 'austin-tx', pct: 22, direction: 'over' }
     const headline = rentClaimHeadline(claim, 'Austin, TX')
-    expect(headline).toBe('Rentals in Austin, TX run 22% above what the maths says I can afford.')
+    expect(headline).toBe('Rentals in Austin,\u00A0TX run 22% above what the math says I can afford.')
     // The whole point of the mechanic: no currency figure can appear.
     expect(headline).not.toMatch(/\$|\d{3,}/)
+  })
+
+  it('never orphans the state code, but lets a long city wrap', () => {
+    const claim: RentClaim = { kind: 'market_gap', metroSlug: 'san-francisco-ca', pct: 66, direction: 'over' }
+    const headline = rentClaimHeadline(claim, 'San Francisco, CA')
+    // The state code cannot orphan; the city may still wrap, which is what
+    // keeps a long metro inside the heading box on a narrow screen.
+    expect(headline).toContain('San Francisco,\u00A0CA')
+    expect(headline).not.toContain('San\u00A0Francisco')
   })
 
   it('reads correctly when the market is below the affordable range', () => {
