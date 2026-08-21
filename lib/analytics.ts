@@ -46,6 +46,18 @@
  *   less than they hoped rather than that the tool failed. Exclude it, or split
  *   on `scale`, before blending feedback across tools.
  * - purchase_tool_feedback_submitted (page, feedback: yes|no|not_sure) — Buy Now, Pay Later tool
+ *
+ * Sharing. Only rent and offer have a share affordance at all; the other five
+ * tools have none, which is why the share rate looks like zero rather than
+ * having been measured. `*_opened` counts people who reached the card,
+ * `*_shared` counts people who completed the gesture — the gap between them is
+ * the one worth watching:
+ * - rent_share_card_opened (page)
+ * - rent_share_card_shared (page, method: native|download)
+ * - rent_share_card_downloaded (page)
+ * - offer_share_card_opened (page)
+ * - offer_share_card_shared (page, method: native|download, uplift_pct)
+ * - offer_share_card_downloaded (page, uplift_pct)
  * - waitlist_modal_opened (page, source, feedback)
  * - net_worth_impact_page_view
  * - net_worth_impact_tool_start
