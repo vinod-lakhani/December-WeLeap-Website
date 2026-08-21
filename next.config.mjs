@@ -18,8 +18,33 @@ const nextConfig = {
    * production. Tracing them explicitly is the documented fix, and it is
    * scoped to the one route that needs it rather than applied globally.
    */
-  outputFileTracingIncludes: {
-    '/s/[tool]/[claim]': ['./lib/fonts/**'],
+  experimental: {
+    /**
+     * Under `experimental`, not top level: the top-level form is Next 15 and
+     * this project is on 14.2. Set at the top level the build printed
+     * "Unrecognized key(s) in object: 'outputFileTracingIncludes'" and carried
+     * on, so the config did nothing at all.
+     *
+     * `/s/**` rather than `/s/[tool]/[claim]`, too. These keys are globs, and
+     * in a glob `[tool]` is a character class — one character out of t, o, u
+     * or l, never the literal segment.
+     *
+     * Both mistakes fail the same way: no error, an empty trace, and a 500
+     * that only appears once deployed.
+     */
+    outputFileTracingIncludes: {
+      '/s/**': ['./lib/fonts/**'],
+    },
+
+    /**
+     * Ensure PDFKit's data files are included in serverless builds.
+     *
+     * Was `serverExternalPackages` at the top level — the Next 15 spelling and
+     * position. On 14.2 the build called it unrecognized and ignored it, so it
+     * has been doing nothing; the webpack config further down is what has
+     * actually been keeping PDFKit working.
+     */
+    serverComponentsExternalPackages: ['pdfkit'],
   },
   typescript: {
     // Was true, which meant the build could not catch a regression — and had
@@ -187,8 +212,6 @@ const nextConfig = {
   },
 
 
-  // Ensure PDFKit's data files are included in serverless builds
-  serverExternalPackages: ['pdfkit'],
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
       // Fix for @react-pdf/renderer in Next.js

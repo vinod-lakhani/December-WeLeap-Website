@@ -134,18 +134,46 @@ function OgCard({ eyebrow, headline, footnote }: CardProps) {
  */
 const FONT_DIR = path.join(process.cwd(), 'lib', 'fonts')
 
-const fonts = [
+const FONT_FILES = [
   { file: 'PlusJakartaSans-SemiBold.ttf', weight: 600 as const },
   { file: 'PlusJakartaSans-ExtraBold.ttf', weight: 800 as const },
-].map(({ file, weight }) => ({
-  name: 'Plus Jakarta Sans',
-  data: readFileSync(path.join(FONT_DIR, file)),
-  weight,
-  style: 'normal' as const,
-}))
+]
+
+/**
+ * Read on first render, not on import — and this is load-bearing, not tidiness.
+ *
+ * These two lines used to run at module scope. Next imports an
+ * `opengraph-image` module to read its `size`, `contentType` and `alt` exports
+ * while generating the PAGE's metadata, so importing this module is something
+ * a plain page render does, and the disk read went with it. For the eight
+ * prerendered tool cards that is harmless: it happens at build time, in the
+ * project root, where the files exist.
+ *
+ * The share route is dynamic. In a serverless bundle the .ttf files are only
+ * present if something traced them in, so the read threw ENOENT during
+ * metadata generation and BOTH the page and its image returned 500 — while
+ * working perfectly in dev, because dev runs from the project root.
+ *
+ * Deferring it means importing this module is free. Only a route that actually
+ * draws a card touches the disk, and if the fonts are missing the failure is
+ * confined to the image rather than taking the page down with it.
+ */
+let cachedFonts: { name: string; data: Buffer; weight: 600 | 800; style: 'normal' }[] | null = null
+
+function loadFonts() {
+  if (!cachedFonts) {
+    cachedFonts = FONT_FILES.map(({ file, weight }) => ({
+      name: 'Plus Jakarta Sans',
+      data: readFileSync(path.join(FONT_DIR, file)),
+      weight,
+      style: 'normal' as const,
+    }))
+  }
+  return cachedFonts
+}
 
 function render(props: CardProps) {
-  return new ImageResponse(<OgCard {...props} />, { ...ogSize, fonts })
+  return new ImageResponse(<OgCard {...props} />, { ...ogSize, fonts: loadFonts() })
 }
 
 /** The sitewide default card, used by `app/opengraph-image.tsx`. */
