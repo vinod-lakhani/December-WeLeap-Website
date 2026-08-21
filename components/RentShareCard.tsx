@@ -6,7 +6,6 @@
 
 import { useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { formatCurrency, formatCurrencyRange } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 
 /**
@@ -16,22 +15,13 @@ import { track } from '@/lib/analytics';
  * enough to retype from memory. `/rent` redirects to
  * /how-much-rent-can-i-afford (see next.config.mjs).
  *
- * CANONICAL_URL is what goes into `navigator.share`, where nobody types it and
- * a machine follows it. The short form cost two redirects there — apex 307s to
- * www, then /rent 307s to the real path — which loses referrer data on some
- * clients and passes nothing on to the destination. The full canonical URL
- * lands in one hop.
+ * The machine-followed URL is no longer built here — `shareUrl` arrives as a
+ * prop pointing at /s/rent/<claim>, which is what carries the OG card. Only
+ * the printed short form remains, and it is read by humans off an image.
  */
 const PRINTED_URL = 'weleap.ai/rent'
-const CANONICAL_URL = 'https://www.weleap.ai/how-much-rent-can-i-afford'
 
 interface RentShareCardProps {
-  rentRange: string;
-  rentRangeLow: number;
-  rentRangeHigh: number;
-  upfrontCashLow?: number;
-  upfrontCashHigh?: number;
-  netWorthProtection: number;
   trigger: React.ReactNode;
   /**
    * The /s/rent/... URL for this result. Built in ResultsCards, which is where
@@ -51,23 +41,27 @@ interface RentShareCardProps {
 export function RentShareCard({
   shareUrl,
   shareText,
-  rentRange,
-  rentRangeLow,
-  rentRangeHigh,
-  upfrontCashLow,
-  upfrontCashHigh,
-  netWorthProtection,
   trigger,
 }: RentShareCardProps) {
   const [open, setOpen] = useState(false);
   /** Desktop has no share sheet, so the link is copied and the button says so. */
   const [copied, setCopied] = useState(false);
+
+  /** Host stripped, because the visible link is for recognition, not reading. */
+  const displayUrl = shareUrl.replace(/^https?:\/\/(www\.)?/, '');
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard denied — the link is on screen and selectable either way.
+    }
+  };
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const upfrontRange =
-    upfrontCashLow != null && upfrontCashHigh != null
-      ? formatCurrencyRange(upfrontCashLow, upfrontCashHigh)
-      : null;
 
   const generatePngBlob = async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
@@ -165,28 +159,22 @@ export function RentShareCard({
           sideOffset={8}
           align="start"
         >
+          {/* The image carries the same claim as the link.
+              It used to print the rent range, the upfront cash and the
+              protected-net-worth figure — three absolute amounts, under a
+              button promising to share "without showing your salary". A rent
+              range at ~30% of take-home divides straight back to an income, so
+              the card was leaking the one number the mechanic exists to
+              protect. Same sentence as the link now, from the same helper, so
+              the two cannot drift. */}
           <div ref={cardRef} className="min-w-[320px] max-w-[400px] p-6">
-            {/* Card content — matches Builder spec */}
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1">
-              Rent range you can afford
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+              Rent reality check
             </p>
-            <p className="text-2xl font-bold text-[#111827] mb-4">{rentRange}</p>
-
-            {upfrontRange && (
-              <>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-1">
-                  Cash you need upfront
-                </p>
-                <p className="text-lg font-semibold text-[#111827] mb-4">{upfrontRange}</p>
-              </>
-            )}
-
-            {netWorthProtection > 0 && (
-              <p className="text-sm text-[#111827]/90 mb-4">
-                Choosing within this range protects ~{formatCurrency(netWorthProtection)} of future
-                money.
-              </p>
-            )}
+            <p className="text-xl font-bold leading-snug text-[#111827] mb-4">{shareText}</p>
+            <p className="text-sm text-[#111827]/80 mb-1">
+              Worked out on take-home pay, not gross.
+            </p>
 
             {/* The URL has to live IN the image. A screenshot is how this
                 actually travels, and without it the card is a dead end for
@@ -194,6 +182,29 @@ export function RentShareCard({
             <div className="mt-5 border-t border-[#E5E7EB] pt-3">
               <p className="text-sm font-bold text-[#3F6B42]">{PRINTED_URL}</p>
               <p className="text-xs text-[#9CA3AF]">Find your range free in 60 seconds</p>
+            </div>
+          </div>
+
+          {/* The link, shown rather than hidden behind the button.
+              This is the payload — it renders its own preview card on every
+              surface that accepts a link, and it is clickable, which the image
+              never is. It was previously invisible until you pressed Share and
+              guessed what had happened. */}
+          <div className="border-t border-[#E5E7EB] px-4 pt-3">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-[#6B7280]">
+              Your link
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded border border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1.5 text-xs text-[#374151]">
+                {displayUrl}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="shrink-0 rounded-md border border-[#E5E7EB] px-3 py-1.5 text-xs font-medium text-[#111827] hover:bg-[#F9FAFB]"
+              >
+                {copied ? 'Copied ✓' : 'Copy'}
+              </button>
             </div>
           </div>
 
