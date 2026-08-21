@@ -543,6 +543,12 @@ export function EmergencyFundTool() {
               worked out becomes the goal rather than something to re-enter. */}
           <AppCta
             tool="emergency_fund"
+            /* The button used to read "Get my first Leap" while the Leap was
+               already on screen above it — promising the thing the reader
+               already had. It carries the computed number instead, so it reads
+               as a continuation of what they just worked out rather than an
+               offer of it. */
+            buttonLabel={`Build my ${formatCurrency(displayTarget)} buffer \u2192`}
             prefill={{
               ef_target: Math.round(displayTarget),
               ef_months: displayMonths,
