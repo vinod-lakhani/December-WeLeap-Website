@@ -275,6 +275,42 @@ export function ResultsCards({
                 On {formatCurrency(takeHomeMonthly)}/mo take-home
                 <span className="text-faint"> · {formatCurrency(takeHomeAnnual)} a year after tax</span>
               </p>
+
+              {/* Share belongs with the number it's about, and it leads with
+                  the reason someone would.
+
+                  This used to read "Save This Range" — a save verb in 14px
+                  grey, with "Planning with someone? Share this range." as a
+                  smaller line underneath it — sitting several blocks below,
+                  after the accordions. One share was recorded in 180 days,
+                  which says less about whether people share than about never
+                  having been asked properly.
+
+                  Salary is the taboo that stops personal-finance content being
+                  shared at all: the numbers that would make a post worth
+                  reading are the ones nobody will publish. Naming that up front
+                  is the whole offer, and it is the framing the offer analyser
+                  already uses on 2% of the traffic while this tool, with 74%
+                  of it, buried the same mechanic. */}
+              <div className="mt-5 border-t border-hairline pt-4">
+                <RentShareCard
+                  rentRange={rentRange}
+                  rentRangeLow={rentRangeLow}
+                  rentRangeHigh={rentRangeHigh}
+                  upfrontCashLow={upfrontCash?.totalLow}
+                  upfrontCashHigh={upfrontCash?.totalHigh}
+                  netWorthProtection={netWorthProtection}
+                  trigger={
+                    <button
+                      type="button"
+                      onClick={() => track('rent_share_card_opened', { page: '/how-much-rent-can-i-afford' })}
+                      className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+                    >
+                      Share this without showing your salary →
+                    </button>
+                  }
+                />
+              </div>
             </div>
 
             {/* The reality check. This is the takeaway that turns an abstract
@@ -426,28 +462,6 @@ export function ResultsCards({
               </div>
             )}
 
-            {/* Share button — ghost style */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
-              <RentShareCard
-                rentRange={rentRange}
-                rentRangeLow={rentRangeLow}
-                rentRangeHigh={rentRangeHigh}
-                upfrontCashLow={upfrontCash?.totalLow}
-                upfrontCashHigh={upfrontCash?.totalHigh}
-                netWorthProtection={netWorthProtection}
-                trigger={
-                  <button
-                    type="button"
-                    className="text-sm text-[#6B7280] hover:text-[#111827] underline underline-offset-2"
-                  >
-                    Save This Range
-                  </button>
-                }
-              />
-            </div>
-            <p className="text-xs text-[#9CA3AF]">
-              Planning with someone? Share this range.
-            </p>
 
             {/* Market Reality - Unavailable */}
             {!zoriAvailable && !hudRentRange && (
