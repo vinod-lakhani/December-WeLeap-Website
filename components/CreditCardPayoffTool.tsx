@@ -484,7 +484,7 @@ export function CreditCardPayoffTool() {
                already had. It carries the computed number instead, so it reads
                as a continuation of what they just worked out rather than an
                offer of it. */
-            buttonLabel={`Track my ${formatCurrency(freedMonthly)}/mo \u2192`}
+            buttonLabel={`Show me where my ${formatCurrency(freedMonthly)}/mo should go \u2192`}
             prefill={{
               debt_balance: Math.round(Number(card.balance) || 0),
               debt_apr: card.apr,

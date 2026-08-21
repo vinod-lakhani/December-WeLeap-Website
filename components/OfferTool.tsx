@@ -665,8 +665,16 @@ export function OfferTool() {
                       }}
                       className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
                     >
+                      {/* Not "Track my $350/mo". Two problems with that: the
+                          $350 does not exist yet — it is conditional on signing
+                          the cheaper lease — and "track" is the budgeting-app
+                          verb this product spends a comparison table on /tools
+                          distancing itself from. This completes the sentence
+                          directly above it ("WeLeap makes sure it goes
+                          somewhere first") and leaves the loop open: the tool
+                          found the money, the app decides where it goes. */}
                       {leapMonthly > 0
-                        ? `Track my ${formatCurrency(leapMonthly)}/mo →`
+                        ? `Show me where my ${formatCurrency(leapMonthly)}/mo should go →`
                         : 'Get my first Leap →'}
                     </Button>
                     <p className="text-xs text-gray-500 mt-2">
