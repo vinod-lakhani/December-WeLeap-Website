@@ -19,6 +19,7 @@ import { getHUDRentRange, compareRentRanges } from '@/lib/hudRents';
 import { track } from '@/lib/analytics';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 import { RentShareCard } from '@/components/RentShareCard';
+import { buildRentClaim, encodeRentClaim, rentClaimHeadline } from '@/lib/share/rentClaim';
 
 interface TaxBreakdown {
   grossAnnual: number;
@@ -255,6 +256,34 @@ export function ResultsCards({
   const upfrontCash = calculateUpfrontCash();
   const netWorthProtection = rentNetWorthProtection30yr(takeHomeMonthly);
 
+  /**
+   * What a share actually asserts.
+   *
+   * A market gap where the data supports one, the take-home method line where
+   * it does not. Never the rent range itself: the range divides back to a
+   * salary in one step, so a card showing it is not the "without showing your
+   * salary" the button promises. A gap is a statement about a city.
+   *
+   * The URL is relative so it works on any deploy — preview, local, or
+   * production — rather than hard-coding the canonical host and quietly
+   * pointing every preview share at live.
+   */
+  const shareClaim = buildRentClaim({
+    comparison: marketRentComparison,
+    medianRent: marketRentData?.medianRent ?? 0,
+    rentRangeLow,
+    rentRangeHigh,
+    regionName: regionName ?? null,
+  });
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/s/rent/${encodeRentClaim(shareClaim)}`
+      : `/s/rent/${encodeRentClaim(shareClaim)}`;
+  const shareText = rentClaimHeadline(
+    shareClaim,
+    shareClaim.kind === 'market_gap' ? (regionName ?? null) : null
+  );
+
   return (
     <div className="space-y-6">
       {/* THE ANSWER. Previously the rent range was the second of seven
@@ -294,6 +323,8 @@ export function ResultsCards({
                   of it, buried the same mechanic. */}
               <div className="mt-5 border-t border-hairline pt-4">
                 <RentShareCard
+                  shareUrl={shareUrl}
+                  shareText={shareText}
                   rentRange={rentRange}
                   rentRangeLow={rentRangeLow}
                   rentRangeHigh={rentRangeHigh}

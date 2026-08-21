@@ -33,9 +33,24 @@ interface RentShareCardProps {
   upfrontCashHigh?: number;
   netWorthProtection: number;
   trigger: React.ReactNode;
+  /**
+   * The /s/rent/... URL for this result. Built in ResultsCards, which is where
+   * the market comparison lives.
+   *
+   * This is what makes the share worth anything. A PNG is a dead end — no
+   * platform accepts an image from a web page, so the sharer downloads a file
+   * and uploads it by hand, and whoever sees it has no route back. A link with
+   * an OG image is rendered as a card by X, LinkedIn, Facebook, Slack and
+   * iMessage, and it is clickable.
+   */
+  shareUrl: string;
+  /** The claim the link asserts, used as the share text. */
+  shareText: string;
 }
 
 export function RentShareCard({
+  shareUrl,
+  shareText,
   rentRange,
   rentRangeLow,
   rentRangeHigh,
@@ -45,6 +60,8 @@ export function RentShareCard({
   trigger,
 }: RentShareCardProps) {
   const [open, setOpen] = useState(false);
+  /** Desktop has no share sheet, so the link is copied and the button says so. */
+  const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const upfrontRange =
@@ -90,19 +107,36 @@ export function RentShareCard({
       const blob = await generatePngBlob();
       if (!blob) return;
       const file = new File([blob], 'weleap-rent-range.png', { type: 'image/png' });
-      // `url` matters as much as the image: without it the link doesn't survive
-      // the share sheet, and the recipient has no way back to the tool. The ref
-      // param is what makes sharing measurable.
+      /**
+       * The link is the payload; the image is a companion for the apps that
+       * cannot render one.
+       *
+       * `url` points at /s/rent/<claim>, which carries its own OG image — so
+       * anywhere that renders a link preview draws the card itself, with no
+       * download step, and the recipient can click through to the calculator.
+       * That is the whole difference: an image is a dead end, a link is a
+       * doorway.
+       *
+       * The file still rides along because Instagram and TikTok accept no link
+       * preview at all, and on mobile the OS share sheet lets someone pick
+       * either. Where the sheet is unavailable — desktop, mostly — the fallback
+       * below now copies the link rather than downloading a PNG nobody asked
+       * for.
+       */
       const shareData: ShareData = {
-        title: 'My rent range',
-        text: "I worked out the rent I can actually afford on my salary — after tax, not before. Took 60 seconds:",
-        url: `${CANONICAL_URL}?ref=rent_card`,
+        title: 'My rent reality check',
+        text: shareText,
+        url: shareUrl,
         files: [file],
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'native' });
         setOpen(false);
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
       } else {
         // Fallback: download on desktop or unsupported browsers
         const url = URL.createObjectURL(blob);
@@ -170,7 +204,7 @@ export function RentShareCard({
               onClick={handleShare}
               className="flex-1 rounded-md bg-[#3F6B42] px-4 py-2 text-sm font-medium text-white hover:bg-[#3F6B42]/90"
             >
-              Share
+              {copied ? 'Link copied ✓' : 'Share'}
             </button>
             <button
               type="button"

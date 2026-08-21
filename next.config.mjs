@@ -7,6 +7,20 @@ const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /**
+   * The share card's OG image renders per request, because the claim it draws
+   * is a dynamic path segment — unlike the eight tool cards, which prerender
+   * at build time in the project root.
+   *
+   * lib/og.tsx reads the two font files off disk with process.cwd(). That is
+   * fine at build time and wrong in a serverless bundle, where nothing has
+   * pulled the .ttf files in: the read succeeds locally and throws in
+   * production. Tracing them explicitly is the documented fix, and it is
+   * scoped to the one route that needs it rather than applied globally.
+   */
+  outputFileTracingIncludes: {
+    '/s/[tool]/[claim]': ['./lib/fonts/**'],
+  },
   typescript: {
     // Was true, which meant the build could not catch a regression — and had
     // been hiding real bugs: an undeclared variable that threw at runtime in

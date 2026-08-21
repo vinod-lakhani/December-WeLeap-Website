@@ -13,6 +13,14 @@ const DISALLOW = [
   '/join',
   '/early-access',
   '/sms-notifications',
+  /**
+   * Shared-claim pages. The space is unbounded — 686 metros times a percentage
+   * times two directions — and every one of them would compete with the tool
+   * page that should hold the ranking. They also carry `noindex` themselves,
+   * because a link shared into a crawlable surface reaches the page without
+   * anything having read robots.txt first.
+   */
+  '/s/',
 ]
 
 export default function robots(): MetadataRoute.Robots {

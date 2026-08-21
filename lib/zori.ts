@@ -219,3 +219,24 @@ export async function getMedianRentForRegion(
 // Note: calculateMarketRentRange and compareMarketToSafe have been moved to lib/zoriClient.ts
 // to avoid bundling server-side code in client components.
 // Import them from zoriClient.ts for client-side use.
+
+/**
+ * Resolve a slugified metro back to its display name, e.g. "austin-tx" →
+ * "Austin, TX".
+ *
+ * Used by the share route, which carries the metro in its URL path. Resolving
+ * against the data rather than un-slugifying the string does two jobs: the
+ * display name is exact ("Coeur d'Alene, ID", not "Coeur D Alene Id"), and a
+ * metro that does not exist has nothing to match, so a hand-edited URL 404s
+ * instead of rendering a claim the tool never made.
+ *
+ * The store is cached after first load, so this costs one Map walk.
+ */
+export async function getRegionNameBySlug(slug: string): Promise<string | null> {
+  const { slugifyMetro } = await import('@/lib/share/rentClaim');
+  const data = await loadZoriData();
+  for (const metro of data.byRegionState.values()) {
+    if (slugifyMetro(metro.regionName) === slug) return metro.regionName;
+  }
+  return null;
+}

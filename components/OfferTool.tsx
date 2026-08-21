@@ -535,6 +535,23 @@ export function OfferTool() {
                       stateName: otherState,
                       regionName: value,
                     });
+                  } else {
+                    /**
+                     * Picking "Outside major metros / Not sure" fired nothing,
+                     * so the one population that gets a market-free answer was
+                     * the one population that could not be counted.
+                     *
+                     * It also got misread: `other_metro_selected_v1` fires only
+                     * on a REAL metro, so its 64 events were people who FOUND
+                     * their metro. They were reported as evidence that a
+                     * quarter of users fall outside coverage. The data says the
+                     * opposite — 686 metros across all 51 states — and this is
+                     * the event that will say how narrow the gap actually is.
+                     */
+                    track('other_metro_outside_selected_v1', {
+                      page: '/how-much-rent-can-i-afford',
+                      stateName: otherState,
+                    });
                   }
                 }}
                 disabled={loadingMetros || metroOptions.length === 0}
