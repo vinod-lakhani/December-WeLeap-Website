@@ -58,6 +58,18 @@
  * - offer_share_card_opened (page)
  * - offer_share_card_shared (page, method: native|download, uplift_pct)
  * - offer_share_card_downloaded (page, uplift_pct)
+ *
+ * The receiving half of the share loop:
+ * - share_landing_viewed (tool, claim_kind, metro) — arrived on a shared claim
+ * - share_landing_cta_clicked (tool, claim_kind)   — acted on one
+ *
+ * Plus the `entry_src` SUPER PROPERTY, not an event. Registered once on the
+ * first page load carrying `?src=` (see lib/utm-storage.ts) and attached by
+ * PostHog to every subsequent event that visitor fires. So the existing funnel
+ * — tool_viewed through cta_click_signup — is segmentable by `entry_src =
+ * 'share'` with no per-event changes. Before it, a visitor arriving from a
+ * shared link became indistinguishable from an organic one the moment they
+ * left the landing page, which left the whole referral question unanswerable.
  * - waitlist_modal_opened (page, source, feedback)
  * - net_worth_impact_page_view
  * - net_worth_impact_tool_start

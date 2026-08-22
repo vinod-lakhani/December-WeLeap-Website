@@ -28,6 +28,7 @@ import type { PostHog } from 'posthog-js'
 type QueuedCall =
   | { kind: 'capture'; args: Parameters<PostHog['capture']> }
   | { kind: 'identify'; args: Parameters<PostHog['identify']> }
+  | { kind: 'register_once'; args: Parameters<PostHog['register_once']> }
 
 let real: PostHog | null = null
 let loading: Promise<PostHog | null> | null = null
@@ -38,7 +39,8 @@ const MAX_QUEUED = 100
 
 /**
  * Stands in until the SDK lands. Only the methods this codebase actually calls
- * are implemented — `capture`, `identify`, `get_distinct_id`. Anything else
+ * are implemented — `capture`, `identify`, `register_once`,
+ * `get_distinct_id`. Anything else
  * reaching for a PostHog method through this object is a bug worth seeing, not
  * something to silently absorb, so it is deliberately not a catch-all proxy.
  */
@@ -51,6 +53,16 @@ const stub = {
   },
   identify: (...args: Parameters<PostHog['identify']>) => {
     if (queue.length < MAX_QUEUED) queue.push({ kind: 'identify', args })
+  },
+  /**
+   * Queued like the rest, and this one has to be: it is called on mount to
+   * record how someone entered the site, which is exactly the moment the SDK
+   * is least likely to have finished loading. Dropping it would lose the
+   * attribution for the fastest-bouncing visitors — the population whose
+   * origin you most want to know.
+   */
+  register_once: (...args: Parameters<PostHog['register_once']>) => {
+    if (queue.length < MAX_QUEUED) queue.push({ kind: 'register_once', args })
   },
   // No id exists before init. `lib/app-link.ts` already treats a missing
   // distinct_id as "link still works, just unstitched", which is the correct
@@ -96,6 +108,7 @@ export function loadPostHog(): Promise<PostHog | null> {
       for (const call of pending) {
         try {
           if (call.kind === 'capture') posthog.capture(...call.args)
+          else if (call.kind === 'register_once') posthog.register_once(...call.args)
           else posthog.identify(...call.args)
         } catch {
           // One bad event must not strand the rest of the queue.
