@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { resolveShareClaim } from '@/lib/share/claims'
 import { ShareLandingBeacon } from '@/components/ShareLandingBeacon'
+import { ShareLandingCta } from '@/components/ShareLandingCta'
 
 /**
  * Where a shared claim lands.
@@ -83,12 +83,16 @@ export default async function SharedClaimPage({ params }: Props) {
           </p>
 
           <div className="mt-8">
-            <Link
+            {/* `?src=share` is read on arrival by UtmCapture and registered as
+                a first-touch super property, so every event the visitor goes
+                on to fire in the tool carries it. That is what makes "did a
+                share produce a completion" answerable at all. */}
+            <ShareLandingCta
               href={`${claim.toolHref}?src=share`}
-              className="inline-flex rounded-full bg-brand-700 px-9 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
-            >
-              {claim.ctaLabel}
-            </Link>
+              label={claim.ctaLabel}
+              tool={claim.toolSlug}
+              claimKind={claim.claimKind}
+            />
           </div>
 
           <p className="mt-4 text-[13.5px] text-faint">

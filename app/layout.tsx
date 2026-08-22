@@ -85,8 +85,10 @@ export default function RootLayout({
       </head>
       <body className={jakarta.className}>
         <PostHogProvider>
-          <UtmCapture />
+          {/* Both read search params, so both need a Suspense boundary or the
+              whole tree opts out of static rendering. */}
           <Suspense fallback={null}>
+            <UtmCapture />
             <PostHogPageView />
           </Suspense>
           {children}
