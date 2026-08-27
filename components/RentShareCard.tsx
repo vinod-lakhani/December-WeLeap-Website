@@ -55,6 +55,7 @@ export function RentShareCard({
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
+      track('tool_shared', { tool: 'rent', method: 'copy_link' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard denied — the link is on screen and selectable either way.
@@ -136,11 +137,13 @@ export function RentShareCard({
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'native' });
+        track('tool_shared', { tool: 'rent', method: 'native' });
         setOpen(false);
       } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
+        track('tool_shared', { tool: 'rent', method: 'copy_link' });
       } else {
         // Fallback: download on desktop or unsupported browsers
         const url = URL.createObjectURL(blob);
@@ -152,6 +155,7 @@ export function RentShareCard({
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'download' });
+        track('tool_shared', { tool: 'rent', method: 'download' });
         setOpen(false);
       }
     } catch (err) {

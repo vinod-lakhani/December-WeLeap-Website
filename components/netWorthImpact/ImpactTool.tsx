@@ -12,6 +12,8 @@ import { computeImpacts } from '@/lib/networthImpact/math';
 import type { ImpactInputs, UseCase } from '@/lib/networthImpact/types';
 import { formatCurrencySigned, formatPercent } from '@/lib/format';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import { cn } from '@/lib/utils';
 
 /**
@@ -210,7 +212,8 @@ export function ImpactTool() {
 
     const timer = setTimeout(() => {
       completedRef.current = true;
-      track('tool_completed', { tool: 'net_worth_impact' });
+      track('tool_completed', { tool: 'net_worth_impact', run_index: nextRunIndex('net_worth_impact') });
+      trackLeapShown({ tool: 'net_worth_impact', leapType: 'monthly_saving', leapValueUsd: monthlyDelta });
     }, RESULT_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [monthlyDelta, useCase, debtApr]);
@@ -396,6 +399,7 @@ export function ImpactTool() {
       {hasInteracted && (
       <ToolFeedbackQuestionnaire
         page={NET_WORTH_IMPACT_PAGE}
+              tool="net_worth_impact"
         eventName="networth_tool_feedback_submitted"
         // This was the only tool left on the component's generic defaults
         // ("Was this helpful?" / Yes / Not sure / No), which asks about the

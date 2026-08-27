@@ -20,6 +20,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AppCta } from '@/components/AppCta'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { track } from '@/lib/analytics'
+import { nextRunIndex } from '@/lib/run-index'
+import { trackLeapShown } from '@/lib/leap-shown'
 import { cn } from '@/lib/utils'
 import {
   recommend,
@@ -133,7 +135,9 @@ export function SmartPurchaseTool() {
   useEffect(() => {
     if (result && !seen.current) {
       seen.current = true
-      track('tool_completed', { tool: 'smart_purchase' })
+      track('tool_completed', { tool: 'smart_purchase', run_index: nextRunIndex('smart_purchase') })
+      // A verdict, not an amount — see the note on leapValueUsd.
+      trackLeapShown({ tool: 'smart_purchase', leapType: `purchase_${result.choice}` })
       track('purchase_result_viewed', { page: PAGE, choice: result.choice })
     }
   }, [result])
@@ -347,6 +351,7 @@ export function SmartPurchaseTool() {
               view has actually formed by this point. */}
           <ToolFeedbackQuestionnaire
             page={PAGE}
+              tool="smart_purchase"
             eventName="purchase_tool_feedback_submitted"
             question="Does this verdict match your gut?"
             buttonLabels={{

@@ -67,6 +67,7 @@ export function OfferShareCard({
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       track('offer_share_card_shared', { page: '/offer', method: 'copy_link', uplift_pct: Math.round(upliftPct) });
+      track('tool_shared', { tool: 'offer', method: 'copy_link' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard denied — the link is on screen and selectable either way.
@@ -133,12 +134,14 @@ export function OfferShareCard({
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
         track('offer_share_card_shared', { page: '/offer', method: 'native', uplift_pct: Math.round(upliftPct) });
+        track('tool_shared', { tool: 'offer', method: 'native' });
         setOpen(false);
       } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
         await handleCopy();
       } else {
         downloadBlob(blob);
         track('offer_share_card_shared', { page: '/offer', method: 'download', uplift_pct: Math.round(upliftPct) });
+        track('tool_shared', { tool: 'offer', method: 'download' });
         setOpen(false);
       }
     } catch (err) {

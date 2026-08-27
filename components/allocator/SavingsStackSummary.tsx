@@ -645,6 +645,7 @@ function MoneyStructureSummary({
             <p className="text-xs text-gray-500 mb-2">Optional</p>
             <ToolFeedbackQuestionnaire
               page="/allocator"
+              tool="allocator"
               eventName="leap_full_plan_feedback_submitted"
               question="How does this feel?"
               buttonLabels={{
@@ -724,6 +725,7 @@ function MoneyStructureSummary({
             <p className="text-xs text-gray-500 mb-2">Optional</p>
             <ToolFeedbackQuestionnaire
               page="/allocator"
+              tool="allocator"
               eventName="leap_full_plan_feedback_submitted"
               question="How does this feel?"
               buttonLabels={{

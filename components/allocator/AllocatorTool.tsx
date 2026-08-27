@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { buildLeaps } from '@/lib/allocator/buildLeaps';
 import { computeAnnualContributionIncrease401k, estimateHsaImpact30yr } from '@/lib/leapImpact/trajectory';
@@ -297,7 +299,10 @@ export function AllocatorTool() {
        * plan. Both entry paths (URL prefill and the wedge) converge here, so
        * one condition covers both.
        */
-      track('tool_completed', { tool: 'allocator' });
+      track('tool_completed', { tool: 'allocator', run_index: nextRunIndex('allocator') });
+      // The ordering's first step. No dollar value: the match Leap's target
+      // is a contribution percentage, not an amount.
+      trackLeapShown({ tool: 'allocator', leapType: nextLeapId ?? 'unknown' });
       // Wait for gtag so Summary view events reach GA4
       track('leap_stack_rendered', { hasUnlockData, numLeaps: leaps.length, nextLeapId: nextLeapId ?? '' }, true);
       track('leap_stack_plan_viewed', {

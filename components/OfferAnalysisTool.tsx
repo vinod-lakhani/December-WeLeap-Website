@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
@@ -398,10 +400,18 @@ export function OfferAnalysisTool() {
   useEffect(() => {
     if (analysisComplete && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'offer' });
+      track('tool_completed', { tool: 'offer', run_index: nextRunIndex('offer') });
+      // The CTA leads with the employer match where there is one, and falls
+      // back to total-package uplift otherwise, so the Leap reported here is
+      // whichever of those the visitor is actually being shown.
+      trackLeapShown(
+        calc && calc.annual401kMatch > 0
+          ? { tool: 'offer', leapType: 'employer_match', leapValueUsd: calc.annual401kMatch / 12 }
+          : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
+      );
       fbqTrack('Lead', { content_name: 'offer_tool' });
     }
-  }, [analysisComplete]);
+  }, [analysisComplete, calc, salary]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">
@@ -888,6 +898,7 @@ export function OfferAnalysisTool() {
           {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/offer"
+              tool="offer"
             eventName="offer_tool_feedback_submitted"
             question="Is this total higher or lower than you thought your offer was worth?"
             buttonLabels={{
