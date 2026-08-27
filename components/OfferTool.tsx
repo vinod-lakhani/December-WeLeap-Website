@@ -22,6 +22,8 @@ import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import { appLink } from '@/lib/app-link';
 import { fbqTrack } from '@/lib/meta-pixel';
 import {
@@ -116,7 +118,7 @@ export function OfferTool() {
   useEffect(() => {
     if (results && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'rent' });
+      track('tool_completed', { tool: 'rent', run_index: nextRunIndex('rent') });
       fbqTrack('Lead', { content_name: 'rent_tool' });
     }
   }, [results]);
@@ -378,6 +380,22 @@ export function OfferTool() {
   // heuristic used for the "going above this range" line, which answers a
   // different question and isn't tied to the choice we're asking them to make.
   const leapMonthly = Math.max(0, rentRangeHigh - rentRangeLow);
+
+  /**
+   * `leap_shown` sits in its own effect rather than beside `tool_completed`,
+   * because it reports `leapMonthly` and that is declared here — below the
+   * completion effect. Referencing it from up there compiles as a
+   * use-before-declaration the moment it enters a dependency array.
+   *
+   * Same guard shape, its own ref, so the two still fire once each and at the
+   * same moment: both are gated on `results` existing.
+   */
+  const leapShownRef = useRef(false);
+  useEffect(() => {
+    if (!results || leapShownRef.current) return;
+    leapShownRef.current = true;
+    trackLeapShown({ tool: 'rent', leapType: 'rent_reduction', leapValueUsd: leapMonthly });
+  }, [results, leapMonthly]);
   const leapThirtyYear = leapMonthly > 0
     ? Math.round(computeInvestingImpact(leapMonthly, 0.07, 30))
     : 0;
@@ -752,6 +770,7 @@ export function OfferTool() {
           {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/how-much-rent-can-i-afford"
+              tool="rent"
             eventName="rent_tool_feedback_submitted"
             question="Does this rent range make sense for you?"
             buttonLabels={{

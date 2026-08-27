@@ -24,6 +24,8 @@ import { AppCta } from '@/components/AppCta';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import { useQuietReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
 
@@ -178,9 +180,13 @@ export function CreditCardPayoffTool() {
   useEffect(() => {
     if (payoffResultReady && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'credit_card_payoff' });
+      track('tool_completed', { tool: 'credit_card_payoff', run_index: nextRunIndex('credit_card_payoff') });
+      trackLeapShown({ tool: 'credit_card_payoff', leapType: 'debt_paydown', leapValueUsd: freedMonthly });
     }
-  }, [payoffResultReady]);
+    // freedMonthly is a dependency because leap_shown reports it. The ref
+    // guard means a later change cannot fire a second event; it only ensures
+    // the one that fires carries a settled number.
+  }, [payoffResultReady, freedMonthly]);
 
   useEffect(() => {
     if (hasValidInput && hasBalance && validCards[0] && !resultsViewedRef.current) {
@@ -511,6 +517,7 @@ export function CreditCardPayoffTool() {
           {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
             page="/credit-card-payoff"
+              tool="credit_card_payoff"
             eventName="credit_card_payoff_feedback_submitted"
             question="Does this payoff timeline feel achievable?"
             buttonLabels={{

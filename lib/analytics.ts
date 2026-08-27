@@ -12,6 +12,27 @@
  * Plus tool_card_clicked (tool, surface) upstream on /tools and the homepage,
  * and tool_cross_sell_clicked (from, to, surface) between calculators.
  *
+ * Cross-tool events added alongside the funnel, each replacing a set of
+ * per-tool names that could only be assembled by hand:
+ * - leap_shown (tool, leap_type, engine: 'site', leap_value_usd?) — what the
+ *   tool actually recommended and what it was worth. `engine` is load-bearing:
+ *   the APP fires an event of the same name from its own recommendation
+ *   engine, and without the discriminator the two blend into one series that
+ *   reads as a single funnel and is really two products.
+ * - leap_feedback (tool, answer: yes|not_sure|not_relevant, scale?) — the
+ *   acceptance-rate gate. `scale: 'expectation'` marks the offer tool, whose
+ *   answers are a direction rather than a sentiment; exclude or split on it
+ *   before blending.
+ * - tool_shared (tool, method: native|copy_link|download) — only rent and
+ *   offer have a share affordance at all, so this covers two of seven by
+ *   design rather than by omission.
+ *
+ * `tool_completed` also carries `run_index`: which run this was for this
+ * browser, counting from 1. count() and uniq(person_id) already separate runs
+ * from people in aggregate; this says whether a given answer was someone's
+ * first or their fourth, which is what makes re-runners comparable only to
+ * each other.
+ *
  * All seven free tools emit the sequence. What counts as "a real result" is
  * decided per tool, from that tool's own state machine, because firing it at
  * the same moment as tool_engaged makes the step between them measure nothing:

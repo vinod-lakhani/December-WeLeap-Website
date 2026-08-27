@@ -23,6 +23,8 @@ import {
 } from '@/lib/emergencyFund/calculation';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { nextRunIndex } from '@/lib/run-index';
+import { trackLeapShown } from '@/lib/leap-shown';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { AppCta } from '@/components/AppCta';
 
@@ -156,7 +158,7 @@ export function EmergencyFundTool() {
   useEffect(() => {
     if (step === 'results' && result && !resultsViewedRef.current) {
       resultsViewedRef.current = true;
-      track('tool_completed', { tool: 'emergency_fund' });
+      track('tool_completed', { tool: 'emergency_fund', run_index: nextRunIndex('emergency_fund') });
       track('emergency_fund_results_viewed', {
         page: PAGE,
         tool_version: 'emergency_fund_v1',
@@ -189,6 +191,24 @@ export function EmergencyFundTool() {
   }, [monthlyIncome, monthlyExpenses, incomeNum, expensesNum, result]);
 
   const effectiveMonthlySavings = savingsRateNum > 0 ? savingsRateNum : suggestedSavings;
+
+  /**
+   * `leap_shown` has its own effect because it reports
+   * `effectiveMonthlySavings`, which is declared here — below the completion
+   * effect. Referencing it from up there is a use-before-declaration the
+   * moment it enters a dependency array. Same guard shape, same gate: both
+   * fire once, when the results step renders a real result.
+   */
+  const leapShownRef = useRef(false);
+  useEffect(() => {
+    if (step !== 'results' || !result || leapShownRef.current) return;
+    leapShownRef.current = true;
+    trackLeapShown({
+      tool: 'emergency_fund',
+      leapType: 'emergency_fund',
+      leapValueUsd: effectiveMonthlySavings,
+    });
+  }, [step, result, effectiveMonthlySavings]);
 
   return (
     <div className="space-y-8">
@@ -696,6 +716,7 @@ export function EmergencyFundTool() {
 
           <ToolFeedbackQuestionnaire
             page={PAGE}
+              tool="emergency_fund"
             eventName="emergency_fund_feedback_submitted"
             question="Does this target feel realistic for you?"
             buttonLabels={{

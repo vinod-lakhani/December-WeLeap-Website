@@ -5,8 +5,34 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { track } from '@/lib/analytics';
 
+/**
+ * The unified answer vocabulary.
+ *
+ * The component's internal states are yes/not_sure/no because that is what
+ * every call site and every legacy per-tool event already uses. `not_relevant`
+ * is the reporting name for `no` — "this doesn't apply to me" rather than
+ * "this is wrong", which is what the third button has always said on every
+ * tool. Mapping it here keeps the widget's history intact while giving the
+ * cross-tool event a name that means what it measures.
+ */
+const ANSWER: Record<'yes' | 'not_sure' | 'no', string> = {
+  yes: 'yes',
+  not_sure: 'not_sure',
+  no: 'not_relevant',
+};
+
 interface ToolFeedbackQuestionnaireProps {
   page: string;
+  /**
+   * FREE_TOOLS slug, for the cross-tool `leap_feedback` event.
+   *
+   * Every tool already fires its own `*_feedback_submitted`, but under seven
+   * different names, so the acceptance rate the concept gate rests on could
+   * only be assembled by hand from seven queries. This is the one event that
+   * answers it directly. The per-tool events keep firing alongside — their
+   * history predates this and reports built on them should not break.
+   */
+  tool: string;
   /** Analytics event name. Defaults to "rent_tool_feedback_submitted" (rent tool). Use "networth_tool_feedback_submitted" for Net Worth Impact, "leap_impact_feedback_submitted" for Leap Impact. */
   eventName?: string;
   /** Custom question. Default: "Was this helpful?" */
@@ -22,7 +48,7 @@ interface ToolFeedbackQuestionnaireProps {
   onFeedbackSubmitted: (feedback: 'yes' | 'no' | 'not_sure') => void;
 }
 
-export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedback_submitted', question = 'Was this helpful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', extraTrackParams, onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
+export function ToolFeedbackQuestionnaire({ page, tool, eventName = 'rent_tool_feedback_submitted', question = 'Was this helpful?', buttonLabels = { yes: 'Yes', not_sure: 'Not sure', no: 'No' }, feedbackResponseMessages, variant = 'default', extraTrackParams, onFeedbackSubmitted }: ToolFeedbackQuestionnaireProps) {
   const [selectedFeedback, setSelectedFeedback] = useState<'yes' | 'no' | 'not_sure' | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
@@ -36,6 +62,23 @@ export function ToolFeedbackQuestionnaire({ page, eventName = 'rent_tool_feedbac
     track(eventName, {
       page,
       feedback,
+      ...extraTrackParams,
+    });
+
+    /**
+     * The cross-tool event. `answer` rather than `feedback`, and
+     * `not_relevant` rather than `no`, so the name matches what the button
+     * actually says.
+     *
+     * `extraTrackParams` rides along because of the offer tool: its three
+     * answers are a DIRECTION (higher / as expected / lower), not a sentiment,
+     * and it passes `scale: 'expectation'` to say so. Without that marker
+     * here, a blended acceptance rate would read "the offer was worth less
+     * than I hoped" as dissatisfaction with the tool.
+     */
+    track('leap_feedback', {
+      tool,
+      answer: ANSWER[feedback],
       ...extraTrackParams,
     });
     
