@@ -52,6 +52,13 @@
  * Event Names:
  * - rent_tool_page_view
  * - hero_cta_click
+ * - hero_leap_engaged / hero_leap_calculated (salary_bucket, leap_value_usd) /
+ *   hero_leap_cta_clicked (salary_bucket) / hero_tools_link_clicked — the
+ *   homepage hero, which is now a one-question calculator rather than a
+ *   description of one. Deliberately NOT the tool_* funnel: `tool` is a
+ *   FREE_TOOLS slug, the homepage is not a registered tool, and adding a
+ *   'home' slug would break the completeness check that asserts all seven
+ *   appear. Salary is bucketed, never sent raw.
  * - scrolled_past_how_it_works
  * - rent_form_start
  * - rent_form_submit
