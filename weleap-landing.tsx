@@ -328,8 +328,33 @@ function Problem() {
   return (
     <Section variant="canvas">
       <Container maxWidth="wide">
+        {/* Written to read correctly whether or not the hero has been used.
+            That constraint is the whole difficulty here, and two earlier
+            versions failed it in opposite directions.
+
+            "The real problem" worked when the hero POSED a problem — "you're
+            not behind, you just don't have a next move" — and this section
+            named it. Once the hero started ANSWERING that question, arriving
+            at "the real problem" afterwards made the page argue backwards.
+
+            "Why the rest is locked" fixed the direction and broke something
+            else: it pointed at the three greyed-out rows in the hero's result,
+            which only exist once someone has typed a salary. The hero is
+            opt-in, so for most people scrolling past it referred to nothing on
+            screen — and the sub-line asserted "we ranked your first move",
+            which for those readers had not happened.
+
+            "What one number can't tell us" then failed a plainer test: which
+            number? A reader had to work out that it meant the salary the hero
+            asks for. An eyebrow is read in about a quarter of a second and
+            cannot carry a reference the reader has to decode.
+
+            So it stopped trying to make the argument. The title is strong and
+            self-contained, the sub-line names the salary explicitly, and the
+            eyebrow now does the one job an eyebrow can do: say where in the
+            argument you are. */}
         <SectionHead
-          eyebrow="The real problem"
+          eyebrow="The hard part"
           title={
             <>
               Your money isn’t lazy.
@@ -337,7 +362,7 @@ function Problem() {
               It’s just unassigned.
             </>
           }
-          sub="You’re earning. You’re saving a bit. But it sits in checking doing nothing while you scroll conflicting advice from people who don’t know your numbers."
+          sub="A salary is enough to rank one move. The ones after it need what a salary can’t show — your spending, your balances, your plan. Almost nobody has a single place that sees all of it at once."
         />
 
         <div className="mt-14 grid gap-5 md:grid-cols-3">
