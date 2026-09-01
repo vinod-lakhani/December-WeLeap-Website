@@ -186,15 +186,6 @@ export default function SmartPurchaseCheckPage() {
               splitting the payment, paying cash, taking a monthly plan or waiting leaves you
               better off.
             </p>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
-              A genuine interest-free plan costs nothing extra, so the real question is what the cash it frees up is
-              doing instead. This free calculator compares four ways to fund a purchase — paying cash, splitting it into
-              four instalments, a monthly payment plan, or waiting — against the price, the savings you could actually
-              reach today, and what you normally have spare in a month. It returns one recommendation with the
-              arithmetic behind it, and it will say &ldquo;wait&rdquo; when none of the funding routes fits. Built for
-              people whose pay covers the month with something left over, and whose question is which way of paying
-              costs them least, not whether they can survive the purchase.
-            </p>
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
@@ -210,6 +201,17 @@ export default function SmartPurchaseCheckPage() {
       <MethodSteps
         heading="How does this calculator decide?"
         intro="Five rules, applied in order. The tool runs them against the three numbers you enter; the logic itself is written out here so you can apply it to a purchase without entering anything."
+        summary={
+          <>
+            A genuine interest-free plan costs nothing extra, so the real question is what the cash it frees up is
+            doing instead. This free calculator compares four ways to fund a purchase — paying cash, splitting it into
+            four instalments, a monthly payment plan, or waiting — against the price, the savings you could actually
+            reach today, and what you normally have spare in a month. It returns one recommendation with the
+            arithmetic behind it, and it will say &ldquo;wait&rdquo; when none of the funding routes fits. Built for
+            people whose pay covers the month with something left over, and whose question is which way of paying
+            costs them least, not whether they can survive the purchase.
+          </>
+        }
         steps={STEPS}
       />
 

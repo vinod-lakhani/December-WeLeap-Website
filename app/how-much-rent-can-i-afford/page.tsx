@@ -135,14 +135,6 @@ export default function HowMuchRentCanIAffordPage() {
               Don&apos;t let rent break your first paycheck. Turn a salary into a rent range you can actually live
               with — and see what life looks like before you sign a lease.
             </p>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
-              This free calculator estimates federal, state and FICA tax for the state you will be working in,
-              subtracts any monthly debt minimums, and applies a 28&ndash;35% band to what is left &mdash; take-home
-              pay, not gross salary. The familiar 30% rule is quoted on gross income, which is why the number here is
-              usually lower than the one a listing site gives you. It then shows the cash you need before you get
-              keys, which is normally a little over two months&apos; rent once the deposit, moving costs and the gap
-              before your first paycheck are counted.
-            </p>
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
@@ -160,6 +152,16 @@ export default function HowMuchRentCanIAffordPage() {
       <MethodSteps
         heading="How this rent affordability calculator works"
         intro="Five rules, and the third one is why this returns a smaller number than most rent calculators do."
+        summary={
+          <>
+            This free calculator estimates federal, state and FICA tax for the state you will be working in,
+            subtracts any monthly debt minimums, and applies a 28&ndash;35% band to what is left &mdash; take-home
+            pay, not gross salary. The familiar 30% rule is quoted on gross income, which is why the number here is
+            usually lower than the one a listing site gives you. It then shows the cash you need before you get
+            keys, which is normally a little over two months&apos; rent once the deposit, moving costs and the gap
+            before your first paycheck are counted.
+          </>
+        }
         steps={STEPS}
       />
 

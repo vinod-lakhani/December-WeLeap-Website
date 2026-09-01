@@ -159,14 +159,6 @@ export default function AllocatorPage() {
           <p className="mb-4 text-balance text-lg font-semibold text-ink md:text-xl">
             Here&apos;s how your money should flow.
           </p>
-          <p className="max-w-2xl text-base leading-relaxed text-subtle md:text-lg">
-            This free money plan calculator puts your dollars in order: employer 401(k) match first, then a safety
-            buffer, then high-interest debt, then tax-advantaged accounts, then whatever is left. It takes your salary,
-            your state, what you currently contribute and your essential expenses, and returns the monthly surplus you
-            actually have to direct, the share of it each step should get, and the single move worth making first. It
-            is built for people whose pay covers the month with something left over, and whose real question is not
-            &ldquo;how much should I save&rdquo; but &ldquo;which account does the next dollar go into.&rdquo;
-          </p>
         </Container>
       </Section>
 
@@ -180,6 +172,16 @@ export default function AllocatorPage() {
       <MethodSteps
         heading="What order should your money go in?"
         intro="Five steps, applied in order of what each one returns. The tool runs them against your salary, state and current contributions; the logic itself is below so you can apply it without entering anything."
+        summary={
+          <>
+            This free money plan calculator puts your dollars in order: employer 401(k) match first, then a safety
+            buffer, then high-interest debt, then tax-advantaged accounts, then whatever is left. It takes your salary,
+            your state, what you currently contribute and your essential expenses, and returns the monthly surplus you
+            actually have to direct, the share of it each step should get, and the single move worth making first. It
+            is built for people whose pay covers the month with something left over, and whose real question is not
+            &ldquo;how much should I save&rdquo; but &ldquo;which account does the next dollar go into.&rdquo;
+          </>
+        }
         steps={STEPS}
       />
 
