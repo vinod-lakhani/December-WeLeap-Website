@@ -35,10 +35,31 @@ export interface MethodStep {
 export function MethodSteps({
   heading,
   intro,
+  summary,
   steps,
 }: {
   heading: string
   intro?: string
+  /**
+   * The full prose explanation of what the calculator does.
+   *
+   * This used to sit between the h1 and the widget on every tool page, where
+   * it was written to carry the page's search terms. Measured on a 375x812
+   * phone against production, it put the first input between 841px and 1142px
+   * down — so not one of the seven tools was visible on arrival, and every
+   * visitor scrolled a full screen of prose to reach the thing they came for.
+   *
+   * Moved here rather than deleted. The words are unchanged and still
+   * server-rendered, so nothing leaves the index; they gain the H2 above them
+   * that an orphan intro paragraph never had, which is what makes a passage
+   * extractable by an answer engine. Page position inside <body> is not a
+   * ranking factor for body copy, and none of the title, h1, canonical or
+   * meta description move.
+   *
+   * ReactNode, not string: the copy carries typographic entities and em
+   * dashes that only survive as JSX.
+   */
+  summary?: React.ReactNode
   steps: readonly MethodStep[]
 }) {
   return (
@@ -51,6 +72,16 @@ export function MethodSteps({
           {intro && (
             <p className="mx-auto mb-10 max-w-2xl text-center text-base leading-relaxed text-subtle md:mb-12 md:text-lg">
               {intro}
+            </p>
+          )}
+
+          {/* Left-aligned and body-sized. The centred `intro` is a one-line
+              lede into the numbered steps; this is a paragraph to be read, and
+              ~100 words of centred text is the wall the move was meant to
+              undo. */}
+          {summary && (
+            <p className="mb-10 text-base leading-relaxed text-subtle md:mb-12 md:text-lg">
+              {summary}
             </p>
           )}
 

@@ -122,13 +122,6 @@ export default function OfferAnalysisPage() {
           <p className="mx-auto max-w-md text-lg leading-relaxed text-subtle">
             Your offer letter has seven numbers in it. Most people only read one.
           </p>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-subtle">
-            This free total compensation calculator turns base salary, bonus target, employer 401(k) match, health and
-            HSA contributions, equity, paid time off and local rent into one annual figure and one monthly take-home
-            figure. Base salary is usually only 70% to 90% of what an offer is worth, which is why two offers that look
-            a few thousand apart often aren&apos;t. Enter one offer to see what it is really worth, or run it twice to
-            compare two.
-          </p>
         </Container>
       </Section>
 
@@ -166,7 +159,19 @@ export default function OfferAnalysisPage() {
         </Container>
       </Section>
 
-      <MethodSteps heading="How we value an offer" steps={STEPS} />
+      <MethodSteps
+        heading="How we value an offer"
+        summary={
+          <>
+            This free total compensation calculator turns base salary, bonus target, employer 401(k) match, health and
+            HSA contributions, equity, paid time off and local rent into one annual figure and one monthly take-home
+            figure. Base salary is usually only 70% to 90% of what an offer is worth, which is why two offers that look
+            a few thousand apart often aren&apos;t. Enter one offer to see what it is really worth, or run it twice to
+            compare two.
+          </>
+        }
+        steps={STEPS}
+      />
 
       {/* Reading the output. The calculator returns three numbers and they mean
           different things; without this the page shows a total and leaves the

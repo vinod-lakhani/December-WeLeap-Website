@@ -159,15 +159,6 @@ export default function EmergencyFundTargetPage() {
             {/* Self-contained on purpose — an answer engine lifts this
                 paragraph with no page around it, so it has to say what is
                 computed and from what, without an antecedent. */}
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
-              &ldquo;Three to six months&rdquo; is a range wide enough to mean nothing. This free calculator
-              starts at three months of your essential expenses and adjusts from there for how stable your
-              income is, what share of it your essentials consume, whether anyone depends on you, and whether
-              you carry a credit card balance &mdash; then caps the answer at six months, converts it into a
-              dollar figure, and breaks it into milestones with a date on each. Built for people early enough
-              in their career that the fund is still being built rather than maintained, and whose real
-              question is how many months is enough rather than whether to have one at all.
-            </p>
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
@@ -185,6 +176,17 @@ export default function EmergencyFundTargetPage() {
       <MethodSteps
         heading="How this emergency fund calculator works"
         intro="Six rules, all published. You can run them on paper if you would rather not type your numbers in — the arithmetic is small enough to do in your head."
+        summary={
+          <>
+            &ldquo;Three to six months&rdquo; is a range wide enough to mean nothing. This free calculator
+            starts at three months of your essential expenses and adjusts from there for how stable your
+            income is, what share of it your essentials consume, whether anyone depends on you, and whether
+            you carry a credit card balance &mdash; then caps the answer at six months, converts it into a
+            dollar figure, and breaks it into milestones with a date on each. Built for people early enough
+            in their career that the fund is still being built rather than maintained, and whose real
+            question is how many months is enough rather than whether to have one at all.
+          </>
+        }
         steps={STEPS}
       />
 

@@ -178,15 +178,6 @@ export default function NetWorthImpactPage() {
               Enough that the boring answer is worth checking. Small monthly amounts compound into
               numbers most people guess low by an order of magnitude.
             </p>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
-              This free calculator takes one monthly amount and shows what it becomes after one, ten and thirty years,
-              three different ways: invested and compounding at an assumed 7% return, held as cash with no growth at
-              all, or put against a debt where the payoff is the interest you stop paying. Saving $150 a month and
-              investing it comes to about $1,859 after a year, about $25,963 after ten years and about $182,996 after
-              thirty — of which $54,000 is what you paid in. Built for anyone deciding whether a small, repeatable
-              amount is worth the trouble, and the 7% is an assumption the model applies, not a return anyone can
-              promise.
-            </p>
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
@@ -202,6 +193,17 @@ export default function NetWorthImpactPage() {
       <MethodSteps
         heading="How is this calculated?"
         intro="Three models, one monthly amount, three horizons. The formulas are written out here so you can see what the projection assumes before you trust the size of it."
+        summary={
+          <>
+            This free calculator takes one monthly amount and shows what it becomes after one, ten and thirty years,
+            three different ways: invested and compounding at an assumed 7% return, held as cash with no growth at
+            all, or put against a debt where the payoff is the interest you stop paying. Saving $150 a month and
+            investing it comes to about $1,859 after a year, about $25,963 after ten years and about $182,996 after
+            thirty — of which $54,000 is what you paid in. Built for anyone deciding whether a small, repeatable
+            amount is worth the trouble, and the 7% is an assumption the model applies, not a return anyone can
+            promise.
+          </>
+        }
         steps={STEPS}
       />
 

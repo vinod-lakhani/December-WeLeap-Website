@@ -147,17 +147,6 @@ export default function CreditCardPayoffPage() {
             {/* Self-contained on purpose — an answer engine lifts this
                 paragraph with no page around it, so it has to say what is
                 computed and from what, without an antecedent. */}
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-subtle md:text-[17px]">
-              On minimum payments alone the answer is usually years longer than people expect: a $5,000
-              balance at 22% APR takes about 230 months &mdash; a little over 19 years &mdash; and costs
-              roughly $8,100 in interest. Adding $100 a month on top brings that to 40 months and about
-              $1,767. This free credit card payoff calculator takes your balance and your rate, models the
-              minimum payment the way most US issuers set it &mdash; 1% of the balance plus that
-              month&rsquo;s interest, with a $25 floor &mdash; and returns your debt-free date, the total
-              interest, and how both move with any extra payment you add. It is built for people already
-              carrying a balance whose real question is whether the amount they can spare each month
-              changes the answer by enough to matter.
-            </p>
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
@@ -175,6 +164,19 @@ export default function CreditCardPayoffPage() {
       <MethodSteps
         heading="How this credit card payoff calculator works"
         intro="Five rules, all published. The second one is why a credit card balance lasts as long as it does, and the third is why a small extra payment does so much to it."
+        summary={
+          <>
+            On minimum payments alone the answer is usually years longer than people expect: a $5,000
+            balance at 22% APR takes about 230 months &mdash; a little over 19 years &mdash; and costs
+            roughly $8,100 in interest. Adding $100 a month on top brings that to 40 months and about
+            $1,767. This free credit card payoff calculator takes your balance and your rate, models the
+            minimum payment the way most US issuers set it &mdash; 1% of the balance plus that
+            month&rsquo;s interest, with a $25 floor &mdash; and returns your debt-free date, the total
+            interest, and how both move with any extra payment you add. It is built for people already
+            carrying a balance whose real question is whether the amount they can spare each month
+            changes the answer by enough to matter.
+          </>
+        }
         steps={STEPS}
       />
 
