@@ -10,12 +10,35 @@ import { cn } from "@/lib/utils"
 import { PRESENT_DAY_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
 import { HOME_FAQS } from "@/lib/home-faqs"
+import { track } from "@/lib/analytics"
+import { appLink } from "@/lib/app-link"
+import { bucketSalary } from "@/lib/buckets"
+import { formatCurrency } from "@/lib/rounding"
+import { computeMatchLeap, MATCH_ASSUMPTION } from "@/lib/hero/matchLeap"
 
 /* ============================================================================
    Shared bits
    ========================================================================== */
 
 const NUM = "tabular-nums tracking-[-0.02em]"
+
+/**
+ * The order the engine actually builds Leaps in — match, HSA, emergency fund,
+ * debt — from lib/allocator/buildLeaps.ts.
+ *
+ * Each locked step names the data the calculator is missing, not a feature it
+ * is withholding. That distinction is the whole argument for connecting
+ * accounts: these are moves a salary alone genuinely cannot rank.
+ */
+const LEAP_SEQUENCE = [
+  { label: "Capture your full 401(k) match", needs: "" },
+  { label: "Fund your HSA", needs: "needs your health plan" },
+  { label: "Build your emergency fund", needs: "needs your spending" },
+  { label: "Clear high-interest debt", needs: "needs your balances" },
+] as const
+
+/** Short form for the big projections. Used by the hero and the counter. */
+const compact = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`)
 
 function Eyebrow({ children, tone = "dark" }: { children: React.ReactNode; tone?: "dark" | "light" }) {
   return (
@@ -56,58 +79,57 @@ function SectionHead({
    Hero — the Leap card cycles through three real moves
    ========================================================================== */
 
-const HERO_LEAPS = [
-  {
-    title: "Capture your full 401(k) match",
-    desc: "You’re deferring 3%. Your employer matches every dollar up to 6% — you’re leaving half of it on the table.",
-    label: "Free money you’re missing",
-    value: "+$750",
-    unit: "/mo",
-    aside1: "≈ $212k",
-    aside2: "by age 60",
-  },
-  {
-    title: "Move $4,200 out of checking",
-    desc: "It’s earning 0.01% where it sits. The same money in a high-yield account pays about 4.3%.",
-    label: "You’re leaving on the table",
-    value: "+$183",
-    unit: "/yr",
-    aside1: "≈ $2,240",
-    aside2: "over 10 yrs",
-  },
-  {
-    title: "Clear the 22% APR card first",
-    desc: "Investing ahead of this is a losing trade — no portfolio reliably beats 22% a year.",
-    label: "Interest you’d avoid",
-    value: "$1,240",
-    unit: " saved",
-    aside1: "debt-free",
-    aside2: "14 mo sooner",
-  },
-]
-
+/**
+ * The hero is the tool.
+ *
+ * It used to be eight elements: a pill, a three-line headline, a 40-word
+ * paragraph, two buttons, a trust line, and a carousel of three example Leaps
+ * on a 5.2-second timer. Nothing was dramatically larger than anything else,
+ * so a two-second glance resolved a paragraph-shaped blur — and the one
+ * genuinely arresting thing on the page, a real Leap with a dollar value, was
+ * rotating away before it could be read. Motion wins the eye, so attention
+ * landed on the element engineered to change.
+ *
+ * This asks one question and answers it. The bet is the strongest pattern in
+ * the tool data: people will not read a homepage, and they will answer a
+ * question — the seven calculators see 78–99% completion once started. The
+ * homepage now behaves like one of them instead of arguing for them.
+ *
+ * What it claims is bounded by what one input can support. It does NOT say
+ * "you're leaving $X on the table", because it cannot know what anyone
+ * currently defers. It reports the size of the prize at a stated assumption,
+ * printed under the number. See lib/hero/matchLeap.ts.
+ */
 function Hero() {
-  const [i, setI] = useState(0)
-  const [fading, setFading] = useState(false)
-  const [paused, setPaused] = useState(false)
+  const [salary, setSalary] = useState("")
+  const [leap, setLeap] = useState<ReturnType<typeof computeMatchLeap>>(null)
+  const [touched, setTouched] = useState(false)
+  const engagedRef = useRef(false)
+  const resultRef = useRef<HTMLDivElement>(null)
 
-  const goTo = (next: number) => {
-    if (next === i) return
-    setFading(true)
-    setTimeout(() => {
-      setI(next)
-      setFading(false)
-    }, 200)
+  const salaryNum = parseFloat(salary.replace(/[^0-9.]/g, "")) || 0
+  const canCompute = computeMatchLeap(salaryNum) !== null
+
+  const onChange = (raw: string) => {
+    setSalary(raw)
+    if (!engagedRef.current && raw.trim()) {
+      engagedRef.current = true
+      track("hero_leap_engaged", {})
+    }
   }
 
-  useEffect(() => {
-    if (paused) return
-    const t = setTimeout(() => goTo((i + 1) % HERO_LEAPS.length), 5200)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, paused])
-
-  const leap = HERO_LEAPS[i]
+  const compute = () => {
+    setTouched(true)
+    const next = computeMatchLeap(salaryNum)
+    setLeap(next)
+    if (next) {
+      // Bucketed, never the raw figure — same rule as every other tool here.
+      track("hero_leap_calculated", {
+        salary_bucket: bucketSalary(salaryNum),
+        leap_value_usd: Math.round(next.monthly),
+      })
+    }
+  }
 
   return (
     <Section variant="canvas" isHero className="relative overflow-hidden">
@@ -116,168 +138,172 @@ function Hero() {
         className="pointer-events-none absolute -right-[8%] -top-32 h-[620px] w-[620px] rounded-full"
         style={{ background: "radial-gradient(circle at 35% 35%, rgba(167,201,87,.20), transparent 68%)" }}
       />
-      <Container maxWidth="wide">
-        <div className="relative grid items-center gap-x-16 gap-y-14 lg:grid-cols-[1.1fr_.9fr]">
-          {/* copy */}
-          <div>
-            <div className="mb-7 inline-flex items-center gap-2.5 rounded-full border border-hairline bg-white py-1.5 pl-2 pr-4 shadow-sm">
-              <Image
-                src="/images/ribbit.png"
-                alt=""
-                width={26}
-                height={26}
-                className="h-[26px] w-[26px] object-contain"
-              />
-              <span className="text-[13.5px] font-semibold text-ink-soft">Meet Ribbit — your financial sidekick</span>
-            </div>
+      <Container maxWidth="narrow">
+        <div className="relative mx-auto max-w-[680px] text-center">
+          {/* The promise is the biggest thing, and the question is second.
+              This read "What's your salary?" at display size, which put a
+              DEMAND where the offer should be: the largest element on a
+              homepage should say what the visitor gets, not what they have to
+              hand over. It also fought the product's own positioning — salary
+              is the one number people will not disclose, which is the entire
+              reason the share cards report a ratio instead — and it left the
+              h1, the strongest on-page signal there is, carrying no product or
+              category term at all.
 
-            <h1 className="max-w-[620px] text-balance text-[clamp(2.4rem,4.35vw,3.95rem)] font-extrabold leading-[1.02] tracking-[-0.035em] text-ink">
-              You’re not behind.
-              <br />
-              You just don’t have
-              <br />
-              <span className="relative inline-block">
-                <span className="text-brand-700">a next move.</span>
-                <svg
-                  viewBox="0 0 300 12"
-                  preserveAspectRatio="none"
-                  aria-hidden
-                  className="absolute -bottom-1.5 left-0 h-[11px] w-full"
-                >
-                  <path d="M2 8 C 70 2, 150 2, 298 6" fill="none" stroke="#a7c957" strokeWidth="5" strokeLinecap="round" />
-                </svg>
-              </span>
-            </h1>
+              The interaction was right; the order was wrong. */}
+          <h1 className="text-balance text-[clamp(2.3rem,5.4vw,3.6rem)] font-extrabold leading-[1.02] tracking-[-0.038em] text-ink">
+            Your money&rsquo;s next move.
+          </h1>
 
-            <p className="mt-7 max-w-[530px] text-[19px] leading-relaxed text-subtle">
-              WeLeap finds the money sitting idle in your accounts and shows you the{" "}
-              <strong className="font-bold text-ink">single move that does the most</strong> — 401(k) match, HYSA, Roth,
-              or debt. You approve it. That’s a Leap.
-            </p>
+          {/* The differentiator, not one Leap's benefit.
+              This read "Find the free money in your paycheck", which sells the
+              401(k) match — a thing Fidelity, an HR portal and every finance
+              blog also say. It positioned the product as a match calculator.
+              What nobody else does is the ORDER: one action at a time, ranked
+              across accounts that don't talk to each other. */}
+          <p className="mx-auto mt-4 max-w-[48ch] text-[17px] leading-relaxed text-subtle">
+            Not a budget. Not a dashboard. One specific action at a time, in the order that
+            pays most — across every account you own.
+          </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <EarlyAccessDialog signupType="hero" placement="hero">
-                <Button className="rounded-full bg-brand-700 px-8 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800">
-                  Get your first Leap →
-                </Button>
-              </EarlyAccessDialog>
-              <Link
-                href="#how-it-works"
-                className="rounded-full border border-brand-100 px-7 py-[17px] text-[17px] font-bold text-brand-700 transition hover:bg-brand-700/5"
-              >
-                See how it works
-              </Link>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13.5px] text-faint">
-              <span>Free to start</span>
-              <span aria-hidden>·</span>
-              <span>2 minutes</span>
-              <span aria-hidden>·</span>
-              <span>No card</span>
-              <span aria-hidden>·</span>
-              <span className="font-semibold text-brand-700">You approve every move</span>
-            </div>
-          </div>
-
-          {/* product moment */}
-          <div className="relative pb-10">
-            <div className="absolute -top-5 right-1.5 z-20 flex items-center gap-2.5 rounded-full border border-hairline bg-white px-[18px] py-2.5 shadow-card">
-              <span className="relative flex h-[9px] w-[9px]">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-75" />
-                <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-brand-700" />
-              </span>
-              <span className="text-[13.5px] font-bold text-ink">Ribbit found 3 moves</span>
-            </div>
-
-            <div
-              onMouseEnter={() => setPaused(true)}
-              onMouseLeave={() => setPaused(false)}
-              className="relative z-10 rounded-[26px] border border-hairline bg-white p-[26px] pb-6"
-              style={{ boxShadow: "0 2px 4px rgba(16,32,26,.05), 0 24px 60px rgba(16,32,26,.13)" }}
+          <form
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              compute()
+            }}
+          >
+            {/* Visible, not sr-only. The headline used to BE the question, so
+                the field could stand alone; now that the headline is a promise,
+                an unlabelled box with a dollar sign is a guess. */}
+            <label
+              htmlFor="hero-salary"
+              className="w-full text-[12.5px] font-bold uppercase tracking-[0.1em] text-subtle"
             >
-              <div className="flex items-center justify-between">
-                <Eyebrow>
-                  <span className="inline-block h-[7px] w-[7px] rounded-full bg-lime" />
-                  Next Leap
-                </Eyebrow>
-                <div className="flex items-center gap-1.5">
-                  {HERO_LEAPS.map((_, d) => (
-                    <button
-                      key={d}
-                      onClick={() => goTo(d)}
-                      aria-label={`Show Leap ${d + 1}`}
-                      className={cn(
-                        "h-[7px] rounded-full transition-all duration-300",
-                        d === i ? "w-5 bg-brand-700" : "w-[7px] bg-brand-100",
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div
-                className="transition-all duration-200"
-                style={{ opacity: fading ? 0 : 1, transform: fading ? "translateY(6px)" : "none" }}
-              >
-                <div className="min-h-[132px]">
-                  <h3 className="mb-2.5 mt-3.5 text-[25px] font-extrabold leading-tight tracking-[-0.022em] text-ink">
-                    {leap.title}
-                  </h3>
-                  <p className="text-[15px] leading-relaxed text-subtle">{leap.desc}</p>
-                </div>
-
-                <div className="mt-3 flex items-end justify-between rounded-2xl border border-brand-100 bg-brand-50 px-[18px] py-4">
-                  <div>
-                    <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-brand-700">
-                      {leap.label}
-                    </div>
-                    <div className={cn("text-[30px] font-extrabold leading-none text-ink", NUM)}>
-                      {leap.value}
-                      <span className="text-[15px] font-semibold text-subtle">{leap.unit}</span>
-                    </div>
-                  </div>
-                  <div className="text-right text-[12.5px] leading-snug text-subtle">
-                    <strong className={cn("text-ink", NUM)}>{leap.aside1}</strong>
-                    <br />
-                    {leap.aside2}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 flex items-center gap-2.5">
-                <EarlyAccessDialog signupType="hero" placement="hero_leap_card">
-                  <Button className="rounded-full bg-brand-700 px-6 py-3 text-[15px] font-bold text-white shadow-pill transition hover:bg-brand-800">
-                    Approve this Leap
-                  </Button>
-                </EarlyAccessDialog>
-                <span className="px-3 py-3 text-[14.5px] font-semibold text-subtle">Not now</span>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 border-t border-hairline pt-3.5 text-[12.5px] text-faint">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
-                  <rect x="3" y="11" width="18" height="11" rx="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                Nothing moves until you tap approve.
-              </div>
+              Your annual salary
+            </label>
+            <div className="flex items-center gap-1.5 rounded-full border-[1.5px] border-hairline bg-white px-6 py-3.5 shadow-sm focus-within:border-brand-700">
+              <span aria-hidden className="text-[22px] font-semibold text-faint">$</span>
+              <input
+                id="hero-salary"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="72,000"
+                value={salary}
+                onChange={(e) => onChange(e.target.value)}
+                className={cn(
+                  "w-[7.5ch] bg-transparent text-[26px] font-extrabold text-ink outline-none placeholder:font-bold placeholder:text-faint",
+                  NUM,
+                )}
+              />
             </div>
+            <Button
+              type="submit"
+              className="rounded-full bg-brand-700 px-8 py-[18px] text-[16.5px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
+            >
+              Find my Leap →
+            </Button>
+          </form>
 
-            {/* Sits behind the Leap card (z-5 vs z-10) on purpose — the tuck gives
-                the hero depth. At -left-24 the card cut 24px into his silhouette,
-                clipping his raised hand. The PNG carries ~32px of transparent
-                padding on its right at this size, so -left-32 clears the artwork
-                by ~8px while the image box still overlaps: he tucks, nothing cuts. */}
-            <Image
-              src="/images/ribbit.png"
-              alt="Ribbit, the WeLeap financial sidekick"
-              width={152}
-              height={152}
-              priority
-              className="absolute -bottom-8 -left-32 z-[5] hidden w-[152px] lg:block"
-              style={{ filter: "drop-shadow(0 18px 26px rgba(16,32,26,.22))" }}
-            />
-          </div>
+          {touched && !canCompute && (
+            <p className="mt-4 text-[14px] text-subtle" role="alert">
+              Enter a yearly salary — anything from $12,000 to $2,000,000.
+            </p>
+          )}
+
+          {leap && (
+            <div
+              ref={resultRef}
+              className="mt-9 rounded-card border border-hairline bg-white p-6 text-left shadow-card md:p-8"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
+                <div className="min-w-[220px] flex-1">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+                    Your first Leap
+                  </span>
+                  <h2 className="mt-2 text-[19px] font-extrabold tracking-[-0.02em] text-ink">
+                    Capture your full 401(k) match
+                  </h2>
+                  <p className="mt-2 text-[14.5px] leading-relaxed text-subtle">
+                    Contribute {leap.contributionPct}% and a typical employer adds the same
+                    again. It is the only guaranteed return in personal finance.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className={cn("text-[44px] font-extrabold leading-none text-brand-700", NUM)}>
+                    +{formatCurrency(leap.monthly)}
+                    <span className="text-[19px] font-bold text-subtle">/mo</span>
+                  </div>
+                  <div className="mt-1.5 text-[13px] text-faint">
+                    ≈ {compact(leap.thirtyYear)} by 60
+                  </div>
+                </div>
+              </div>
+
+              {/* The sequence, which is the actual differentiator.
+                  A single computed Leap demonstrates that WeLeap is specific;
+                  it does not demonstrate that it ORDERS. These rows do both —
+                  and each locked one names the data it is missing rather than
+                  teasing a feature, so the reason to connect accounts is a
+                  thing the calculator genuinely cannot know rather than a
+                  paywall. Order is the engine's own: match, HSA, emergency
+                  fund, debt (lib/allocator/buildLeaps.ts). */}
+              <ol className="mt-6 space-y-px border-t border-hairline pt-5">
+                {LEAP_SEQUENCE.map((step, idx) => (
+                  <li
+                    key={step.label}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[14px]",
+                      idx === 0 ? "bg-brand-50" : "opacity-55",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                        idx === 0 ? "bg-brand-700 text-white" : "bg-hairline text-subtle",
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span className={cn("flex-1", idx === 0 ? "font-bold text-ink" : "text-subtle")}>
+                      {step.label}
+                    </span>
+                    <span className="shrink-0 text-[12.5px] text-faint">
+                      {idx === 0 ? `+${formatCurrency(leap.monthly)}/mo` : step.needs}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-hairline pt-5">
+                <Button
+                  onClick={() => {
+                    track("hero_leap_cta_clicked", { salary_bucket: bucketSalary(salaryNum) })
+                    window.location.href = appLink("", { src: "home_hero" })
+                  }}
+                  className="rounded-full bg-brand-700 px-7 py-[15px] text-[15.5px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
+                >
+                  Unlock the rest of my plan →
+                </Button>
+                <Link
+                  href="/tools"
+                  onClick={() => track("hero_tools_link_clicked", {})}
+                  className="text-[14.5px] font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+                >
+                  Or try the other {TOOL_COUNT_WORD} calculators
+                </Link>
+              </div>
+
+              <p className="mt-4 text-[12.5px] leading-relaxed text-faint">{MATCH_ASSUMPTION}</p>
+            </div>
+          )}
+
+          {!leap && (
+            <p className="mt-5 text-[13.5px] text-faint">
+              Free · No account · Nothing to connect
+            </p>
+          )}
         </div>
       </Container>
     </Section>
@@ -302,8 +328,33 @@ function Problem() {
   return (
     <Section variant="canvas">
       <Container maxWidth="wide">
+        {/* Written to read correctly whether or not the hero has been used.
+            That constraint is the whole difficulty here, and two earlier
+            versions failed it in opposite directions.
+
+            "The real problem" worked when the hero POSED a problem — "you're
+            not behind, you just don't have a next move" — and this section
+            named it. Once the hero started ANSWERING that question, arriving
+            at "the real problem" afterwards made the page argue backwards.
+
+            "Why the rest is locked" fixed the direction and broke something
+            else: it pointed at the three greyed-out rows in the hero's result,
+            which only exist once someone has typed a salary. The hero is
+            opt-in, so for most people scrolling past it referred to nothing on
+            screen — and the sub-line asserted "we ranked your first move",
+            which for those readers had not happened.
+
+            "What one number can't tell us" then failed a plainer test: which
+            number? A reader had to work out that it meant the salary the hero
+            asks for. An eyebrow is read in about a quarter of a second and
+            cannot carry a reference the reader has to decode.
+
+            So it stopped trying to make the argument. The title is strong and
+            self-contained, the sub-line names the salary explicitly, and the
+            eyebrow now does the one job an eyebrow can do: say where in the
+            argument you are. */}
         <SectionHead
-          eyebrow="The real problem"
+          eyebrow="The hard part"
           title={
             <>
               Your money isn’t lazy.
@@ -311,7 +362,7 @@ function Problem() {
               It’s just unassigned.
             </>
           }
-          sub="You’re earning. You’re saving a bit. But it sits in checking doing nothing while you scroll conflicting advice from people who don’t know your numbers."
+          sub="A salary is enough to rank one move. The ones after it need what a salary can’t show — your spending, your balances, your plan. Almost nobody has a single place that sees all of it at once."
         />
 
         <div className="mt-14 grid gap-5 md:grid-cols-3">
@@ -681,7 +732,6 @@ function buildSeries(rate: number) {
 }
 
 const money = (n: number) => `$${Math.round(Math.max(0, n)).toLocaleString("en-US")}`
-const compact = (n: number) => (n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : `$${Math.round(n / 1e3)}K`)
 
 function NetWorthReveal() {
   const series = React.useMemo(() => buildSeries(NW.rate), [])
