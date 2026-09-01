@@ -23,6 +23,28 @@ import { computeMatchLeap, MATCH_ASSUMPTION } from "@/lib/hero/matchLeap"
 const NUM = "tabular-nums tracking-[-0.02em]"
 
 /**
+ * The label on every button that sends someone to the product.
+ *
+ * A constant rather than three literals, because three literals is what the
+ * page had: "Unlock the rest of my plan" under the hero result and "Get your
+ * first Leap" in the closing — one offer, two sentences, and a person switch
+ * ("my" vs "your") on top. Every rewording of the same offer makes the reader
+ * re-decide whether it IS the same offer.
+ *
+ * Why this wording and not the sitewide AppCta default ("Get my first Leap"):
+ * the hero result card is headed "Your first Leap", so a button beneath it
+ * offering to get you your first Leap contradicts what you are looking at.
+ * And the hero's own "Unlock the rest of my plan" fails the opposite way in
+ * the closing — someone who scrolled past the calculator has no "rest" to
+ * unlock, the same defect that killed the "Why the rest is locked" eyebrow.
+ *
+ * "Get my full plan" is the only phrasing that is true in both places: it is
+ * first-person, it names what you get rather than what you do, and it stands
+ * on its own for a reader who never typed a salary.
+ */
+const APP_CTA_LABEL = "Get my full plan \u2192"
+
+/**
  * The order the engine actually builds Leaps in — match, HSA, emergency fund,
  * debt — from lib/allocator/buildLeaps.ts.
  *
@@ -67,7 +89,12 @@ function SectionHead({
   return (
     <div className={cn("mx-auto max-w-3xl text-center", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-3.5 text-balance text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-ink">
+      {/* 700, not 800. The h1 dropped to 600 to gain its scale, and an 800
+          section heading underneath it inverted the weight ladder: on a phone,
+          where the h1 shrinks to 41.6px and this only to 32px, the second
+          heading on the page read as heavier than the first. Hierarchy is the
+          ratio between levels, not the absolute weight of any one of them. */}
+      <h2 className="mt-3.5 text-balance text-[clamp(2rem,3.6vw,3rem)] font-bold leading-[1.08] tracking-[-0.03em] text-ink">
         {title}
       </h2>
       {sub ? <p className="mt-4 text-lg leading-relaxed text-subtle">{sub}</p> : null}
@@ -151,7 +178,19 @@ function Hero() {
               category term at all.
 
               The interaction was right; the order was wrong. */}
-          <h1 className="text-balance text-[clamp(2.3rem,5.4vw,3.6rem)] font-extrabold leading-[1.02] tracking-[-0.038em] text-ink">
+          {/* Big and light, not small and heavy.
+              This was 57.6px at weight 800, which is the typographic signature
+              of a page trying to be heard: near-maximum weight compensating for
+              a size that never claimed the space in the first place. Display
+              type earns emphasis from SCALE, and once it has scale the extra
+              weight reads as shouting. 84px at 600 is the same four words
+              taking up the room they deserve.
+
+              The cap is reached at ~1273px, so a laptop gets the full size and
+              narrower viewports scale down rather than wrapping to three lines.
+              The floor rose too (36.8px -> 45.6px): the argument holds on a
+              phone, where the headline is most of what is on screen. */}
+          <h1 className="text-balance text-[clamp(2.85rem,6.6vw,5.25rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-ink">
             Your money&rsquo;s next move.
           </h1>
 
@@ -161,7 +200,7 @@ function Hero() {
               blog also say. It positioned the product as a match calculator.
               What nobody else does is the ORDER: one action at a time, ranked
               across accounts that don't talk to each other. */}
-          <p className="mx-auto mt-4 max-w-[48ch] text-[17px] leading-relaxed text-subtle">
+          <p className="mx-auto mt-6 max-w-[48ch] text-[17px] leading-relaxed text-subtle">
             Not a budget. Not a dashboard. One specific action at a time, in the order that
             pays most — across every account you own.
           </p>
@@ -198,6 +237,10 @@ function Hero() {
                 )}
               />
             </div>
+            {/* Deliberately NOT APP_CTA_LABEL. This one computes in place and
+                stays on the page; that is a different action from leaving for
+                the product, so it keeps its own verb. The page has exactly two
+                CTA voices — this one, and the app's. */}
             <Button
               type="submit"
               className="rounded-full bg-brand-700 px-8 py-[18px] text-[16.5px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
@@ -284,7 +327,7 @@ function Hero() {
                   }}
                   className="rounded-full bg-brand-700 px-7 py-[15px] text-[15.5px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
                 >
-                  Unlock the rest of my plan →
+                  {APP_CTA_LABEL}
                 </Button>
                 <Link
                   href="/tools"
@@ -1151,7 +1194,7 @@ function Closing() {
             </p>
             <EarlyAccessDialog signupType="cta" placement="cta_section">
               <Button className="rounded-full bg-brand-700 px-9 py-[17px] text-[17px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800">
-                Get your first Leap →
+                {APP_CTA_LABEL}
               </Button>
             </EarlyAccessDialog>
             <p className="mt-4 text-[13.5px] text-faint">Free to start · No card · Cancel whenever</p>
