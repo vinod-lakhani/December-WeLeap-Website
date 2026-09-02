@@ -22,6 +22,16 @@ import type { ParsedOffer } from '@/lib/offer-parse/fields'
 /** Kept just under the 4 MB the route accepts, so the check fails here first. */
 const MAX_BYTES = 4 * 1024 * 1024
 
+/**
+ * A backstop above the server's own deadline, not a duplicate of it.
+ *
+ * The route fails itself at 25s and Vercel ends the request at 60, so in normal
+ * operation an answer always arrives. This exists for the case where neither
+ * happens — a connection that stalls rather than closes — because without it
+ * `fetch` waits forever and the button reads "Reading…" until the tab is shut.
+ */
+const REQUEST_TIMEOUT_MS = 70_000
+
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
 /**
@@ -41,6 +51,8 @@ const MESSAGES: Record<string, string> = {
   // is theirs and that the form still works, because it does.
   rate_limited:
     'You have uploaded a few documents in a short time. Give it an hour, or fill the form in below — it works the same.',
+  timeout:
+    'That one took too long to read — it may be a large or complex file. The form below still works.',
   default: 'Something went wrong reading that. The form below still works.',
 }
 
@@ -98,7 +110,11 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
       const body = new FormData()
       body.append('file', file)
       body.append('kind', kind)
-      const response = await fetch('/api/parse-offer', { method: 'POST', body })
+      const response = await fetch('/api/parse-offer', {
+        method: 'POST',
+        body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
@@ -132,9 +148,10 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
         rejected_count: data.rejectedCount ?? 0,
         latency_ms: data.latencyMs ?? null,
       })
-    } catch {
-      setError(MESSAGES.default!)
-      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'network' })
+    } catch (e) {
+      const timedOut = e instanceof DOMException && e.name === 'TimeoutError'
+      setError((timedOut ? MESSAGES.timeout : MESSAGES.default)!)
+      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: timedOut ? 'client_timeout' : 'network' })
     } finally {
       setBusy(null)
       // Let the same file be picked again after an error.
