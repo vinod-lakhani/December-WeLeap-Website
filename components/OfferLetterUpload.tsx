@@ -16,6 +16,7 @@
 
 import { useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
+import { cn } from '@/lib/utils'
 import type { ParsedOffer } from '@/lib/offer-parse/fields'
 
 /** Kept just under the 4 MB the route accepts, so the check fails here first. */
@@ -39,40 +40,67 @@ const MESSAGES: Record<string, string> = {
   default: 'Something went wrong reading that. The form below still works.',
 }
 
+export type DocKind = 'offer' | 'benefits'
+
+const DOC: Record<DocKind, { button: string; analytics: string; found: string }> = {
+  offer: {
+    button: 'Upload offer letter',
+    analytics: 'offer_letter',
+    found: 'from your offer letter',
+  },
+  benefits: {
+    button: 'Upload benefits guide',
+    analytics: 'benefits_guide',
+    found: 'from your benefits guide',
+  },
+}
+
 export interface OfferLetterUploadProps {
   /** Called with whatever survived validation. Never called with nothing. */
-  onParsed: (parsed: ParsedOffer) => void
+  onParsed: (parsed: ParsedOffer, kind: DocKind) => void
 }
 
 export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
+  const offerRef = useRef<HTMLInputElement>(null)
+  const benefitsRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState<DocKind | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [filled, setFilled] = useState<number | null>(null)
+  const [filled, setFilled] = useState<{ count: number; kind: DocKind } | null>(null)
 
-  async function handleFile(file: File) {
+  /**
+   * Which document this is comes from the button, not a classifier.
+   *
+   * The spec's pipeline detects the class from the content, and it has to —
+   * it accepts one upload and works out what arrived. Here the user has
+   * already said, by pressing one of two buttons, so detection would only add
+   * a way to be wrong. Reading a benefits guide with the offer schema would
+   * produce well-formed numbers from the wrong document, which is the one
+   * failure the validation layer cannot catch.
+   */
+  async function handleFile(file: File, kind: DocKind) {
     setError(null)
     setFilled(null)
 
     if (file.size > MAX_BYTES) {
       setError(MESSAGES.too_large!)
-      track('doc_parse_failed', { doc_class: 'offer_letter', failure_reason: 'too_large' })
+      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'too_large' })
       return
     }
 
-    setBusy(true)
-    track('doc_uploaded', { doc_class: 'offer_letter', file_type: file.type || 'unknown' })
+    setBusy(kind)
+    track('doc_uploaded', { doc_class: DOC[kind].analytics, file_type: file.type || 'unknown' })
 
     try {
       const body = new FormData()
       body.append('file', file)
+      body.append('kind', kind)
       const response = await fetch('/api/parse-offer', { method: 'POST', body })
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         setError(MESSAGES[data?.error as string] ?? MESSAGES.default!)
         track('doc_parse_failed', {
-          doc_class: 'offer_letter',
+          doc_class: DOC[kind].analytics,
           failure_reason: String(data?.error ?? response.status),
         })
         return
@@ -83,14 +111,14 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
       // standing, whatever the status code said.
       if (count === 0) {
         setError(MESSAGES.no_fields!)
-        track('doc_parse_failed', { doc_class: 'offer_letter', failure_reason: 'no_fields' })
+        track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'no_fields' })
         return
       }
 
-      onParsed(data.parsed as ParsedOffer)
-      setFilled(count)
+      onParsed(data.parsed as ParsedOffer, kind)
+      setFilled({ count, kind })
       track('doc_parsed', {
-        doc_class: 'offer_letter',
+        doc_class: DOC[kind].analytics,
         fields_extracted: count,
         // Which route the document took. `text` means unpdf read it and the
         // redaction sweep ran before the model saw anything; `vision` means it
@@ -102,13 +130,45 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
       })
     } catch {
       setError(MESSAGES.default!)
-      track('doc_parse_failed', { doc_class: 'offer_letter', failure_reason: 'network' })
+      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'network' })
     } finally {
-      setBusy(false)
+      setBusy(null)
       // Let the same file be picked again after an error.
-      if (inputRef.current) inputRef.current.value = ''
+      if (offerRef.current) offerRef.current.value = ''
+      if (benefitsRef.current) benefitsRef.current.value = ''
     }
   }
+
+  const Picker = ({ kind, refObj }: { kind: DocKind; refObj: React.RefObject<HTMLInputElement> }) => (
+    <>
+      <button
+        type="button"
+        disabled={busy !== null}
+        onClick={() => {
+          track('doc_upload_started', { doc_class: DOC[kind].analytics, surface: 'tool', authed: false })
+          refObj.current?.click()
+        }}
+        className={cn(
+          'shrink-0 rounded-xl border-2 px-5 py-2.5 text-sm font-bold transition disabled:opacity-60',
+          kind === 'offer'
+            ? 'border-[#386641] bg-white text-[#386641] hover:bg-[#386641] hover:text-white disabled:hover:bg-white disabled:hover:text-[#386641]'
+            : 'border-transparent bg-[#386641]/10 text-[#2d5a26] hover:bg-[#386641]/20'
+        )}
+      >
+        {busy === kind ? 'Reading…' : DOC[kind].button}
+      </button>
+      <input
+        ref={refObj}
+        type="file"
+        accept={ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) void handleFile(file, kind)
+        }}
+      />
+    </>
+  )
 
   return (
     <div className="mb-4 rounded-2xl border-2 border-dashed border-[#386641]/35 bg-[#386641]/[0.04] px-5 py-4">
@@ -120,38 +180,25 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
             which are guesses until you do.
           </p>
         </div>
-
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            track('doc_upload_started', { doc_class: 'offer_letter', surface: 'tool', authed: false })
-            inputRef.current?.click()
-          }}
-          className="shrink-0 rounded-xl border-2 border-[#386641] bg-white px-5 py-2.5 text-sm font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white disabled:opacity-60 disabled:hover:bg-white disabled:hover:text-[#386641]"
-        >
-          {busy ? 'Reading…' : 'Upload offer letter'}
-        </button>
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void handleFile(file)
-          }}
-        />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Picker kind="offer" refObj={offerRef} />
+          <Picker kind="benefits" refObj={benefitsRef} />
+        </div>
       </div>
 
+      {/* Why there are two buttons at all. Across four real offer letters, not
+          one stated a 401(k) match, an employer HSA contribution or a medical
+          premium — those live in the benefits guide, and it is a separate
+          document nobody thinks to reach for unless asked. */}
+      <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+        Most offer letters say nothing about the 401(k) match, HSA or health premium. The benefits
+        guide does.
+      </p>
+
       {filled !== null && (
-        /* Counts what was found. What was NOT found is asked for by the callout
-           the tool renders directly beneath this, where it can name the missing
-           terms — this line would only be guessing at them. */
         <p className="mt-3 text-[13px] font-semibold text-[#386641]" role="status">
-          Filled in {filled} {filled === 1 ? 'field' : 'fields'} from your letter. Every one is
-          still editable.
+          Filled in {filled.count} {filled.count === 1 ? 'field' : 'fields'} {DOC[filled.kind].found}
+          . Every one is still editable.
         </p>
       )}
 

@@ -143,3 +143,56 @@ export function isInRange(key: OfferFieldKey, value: unknown): value is number {
 export function isStateCode(value: unknown): value is (typeof US_STATES)[number] {
   return typeof value === 'string' && (US_STATES as readonly string[]).includes(value)
 }
+
+/* ==========================================================================
+   Benefits guide
+   ========================================================================== */
+
+/**
+ * The four fields an offer letter does not carry.
+ *
+ * This is not a guess about document conventions — it is what four real offer
+ * letters showed. All four stated a base salary and a work location. None
+ * stated a 401(k) match, an employer HSA contribution or a medical premium.
+ * Those live in the benefits guide, so that is the document asked for, and
+ * these are the only fields worth asking it for: everything else the offer
+ * letter already answers better.
+ *
+ * The ranges and the validation are shared with the offer path. Only the
+ * wording changes, because the same number is described very differently in a
+ * one-page letter and a thirty-page plan summary.
+ */
+export const BENEFITS_FIELD_KEYS = [
+  'matchRatePct',
+  'matchUpToPct',
+  'employerHsaAnnual',
+  'healthcarePremiumMonthly',
+] as const satisfies readonly OfferFieldKey[]
+
+/**
+ * WHICH PLAN, and this is the hard part of reading a benefits guide.
+ *
+ * A guide does not say what this employee pays. It lists every plan — a real
+ * one under test offers three medical options at $78, $164 and $286 a month —
+ * and the answer depends on an election the document cannot know about. The
+ * employer HSA figure splits the same way, by coverage tier.
+ *
+ * Picking the HSA-eligible plan is a considered choice rather than a coin
+ * toss. It is the only option on which the employer HSA contribution exists at
+ * all, so the premium and the HSA figure come from the same plan and describe
+ * one coherent scenario instead of two unrelated ones. It is also the plan
+ * that makes the HSA Leap available, which is the reason this tool wants the
+ * number. The plan name is required in the quote so the assumption is visible
+ * at the point of use, and the UI says it in plain words.
+ */
+export const BENEFITS_DESCRIPTIONS: Record<(typeof BENEFITS_FIELD_KEYS)[number], string> = {
+  matchRatePct:
+    'Employer 401(k) match rate as a percentage. For a tiered formula — "100% of the first 3% and 50% of the next 2%" — compute the blended rate over the full cap: (1.00x3 + 0.50x2) / 5 = 80. Read the formula from the prose, not from an illustrative table of example contributions.',
+  matchUpToPct:
+    'The employee contribution percentage at which the employer match stops. For "100% of the first 3% and 50% of the next 2%" that is 5, because the match stops growing after 5%. Not the maximum employer contribution, which for that formula is 4% of pay.',
+  employerHsaAnnual:
+    'Employer HSA contribution in US dollars per year, for EMPLOYEE-ONLY coverage. Guides usually give a second, larger figure for family coverage — do not use it. Where the amount is given per pay period, annualise it ONLY with a pay-period count stated somewhere in this document; if the document does not state one, omit rather than assuming 24 or 26. If no plan is HSA-eligible, omit this.',
+  healthcarePremiumMonthly:
+    'What the EMPLOYEE pays per month for medical coverage, for employee-only coverage on the HSA-ELIGIBLE plan (usually labelled HDHP or high deductible). Where several plans are listed, use that one and name it in your quote. Convert from per-pay-period if needed. Exclude dental and vision. A guide stating that a plan costs the employee nothing is stating a premium of 0 — record 0 rather than omitting it. If no plan is HSA-eligible, use the lowest-cost medical plan and name it.',
+}
+
