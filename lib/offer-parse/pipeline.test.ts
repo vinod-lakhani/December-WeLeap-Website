@@ -108,3 +108,23 @@ describe('unpdf → redact, on a real PDF', () => {
     expect(redact(text).text).toContain('Alex Smith')
   })
 })
+
+describe('the buffer survives text extraction', () => {
+  it('leaves the original bytes intact for the vision fallback', async () => {
+    // Regression, and the failure it guards is invisible on any PDF that has a
+    // text layer. PDF.js detaches the buffer it is given, so passing the
+    // original left nothing to send when extraction came back empty — which is
+    // precisely the case that needs to fall through to vision.
+    const buf = await buildPdf(LETTER)
+    const before = buf.length
+    await extractText(await getDocumentProxy(new Uint8Array(buf)), { mergePages: true })
+    expect(buf.length).toBe(before)
+    expect(Buffer.from(buf).toString('base64').length).toBeGreaterThan(0)
+  })
+
+  it('demonstrates the detach, so the copy above is not mistaken for ceremony', async () => {
+    const buf = await buildPdf(LETTER)
+    await extractText(await getDocumentProxy(buf), { mergePages: true })
+    expect(buf.length).toBe(0)
+  })
+})

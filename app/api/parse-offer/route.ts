@@ -178,7 +178,17 @@ export async function POST(request: NextRequest) {
   if (type.kind === 'pdf') {
     let text = ''
     try {
-      const pdf = await getDocumentProxy(buf)
+      /**
+       * A COPY, and this is not defensive style — it is required.
+       *
+       * PDF.js takes ownership of the buffer it is handed and detaches it.
+       * After `getDocumentProxy(buf)` the original view has length 0, so the
+       * vision fallback below was base64-encoding nothing and the API replied
+       * "PDF cannot be empty". That only bites when extraction finds no text,
+       * which is exactly when the fallback is the one thing that matters: every
+       * scanned or photographed PDF failed, and no digital one did.
+       */
+      const pdf = await getDocumentProxy(new Uint8Array(buf))
       text = (await extractText(pdf, { mergePages: true })).text
     } catch {
       // A PDF unpdf cannot open still renders for the model. Fall through.
