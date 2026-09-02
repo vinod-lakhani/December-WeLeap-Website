@@ -37,6 +37,10 @@ const MESSAGES: Record<string, string> = {
     'We could not find the numbers in that one. It may be a scan we cannot read, or not an offer letter — the form below still works.',
   upload_unavailable: 'Upload is unavailable right now. The form below still works.',
   busy: 'We are busy right now. Try again in a moment, or use the form below.',
+  // Distinct from `busy`, which blames us. This one tells the reader the limit
+  // is theirs and that the form still works, because it does.
+  rate_limited:
+    'You have uploaded a few documents in a short time. Give it an hour, or fill the form in below — it works the same.',
   default: 'Something went wrong reading that. The form below still works.',
 }
 

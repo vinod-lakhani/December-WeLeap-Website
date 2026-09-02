@@ -11,6 +11,7 @@ import {
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
+import { checkRateLimit, clientKey } from '@/lib/offer-parse/rate-limit'
 import { validateExtraction, mergeToolInputs } from '@/lib/offer-parse/validate'
 
 /**
@@ -198,6 +199,28 @@ export async function POST(request: NextRequest) {
     // Same shape as every other failure: the client shows the form and the user
     // types. An unconfigured key must never look different from a bad scan.
     return NextResponse.json({ error: 'upload_unavailable' }, { status: 503 })
+  }
+
+  /**
+   * Before anything is read, and before a single token is spent.
+   *
+   * The model call is the cost, so the limit is checked ahead of parsing the
+   * body rather than after — a blocked caller should be cheap to block. This is
+   * the second layer: the Vercel WAF rule in the dashboard is the first, and it
+   * is the one that survives an attacker spreading load across instances.
+   */
+  const limit = checkRateLimit(clientKey(request.headers), Date.now())
+  if (!limit.allowed) {
+    console.warn('[parse-offer] rate limited', { window: limit.window })
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      {
+        status: 429,
+        headers: limit.retryAfterSeconds
+          ? { 'Retry-After': String(limit.retryAfterSeconds) }
+          : undefined,
+      }
+    )
   }
 
   let file: File
