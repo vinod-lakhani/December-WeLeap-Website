@@ -390,3 +390,42 @@ export function employerMatchState(
     ? { hasMatch: true, amountCurrent, amountYtd }
     : { hasMatch: null }
 }
+
+/**
+ * What the stub proves about an HSA.
+ *
+ * An employee HSA deduction is proof of an HSA-eligible health plan: the IRS
+ * does not let you contribute to one without an HDHP. So a stub carrying that
+ * line answers a question the money plan currently asks outright, and asking it
+ * anyway — after the user has handed over the document that settles it — is the
+ * kind of thing that makes an upload feel pointless.
+ *
+ * THE ROWS ARE TAKEN AT THEIR MAXIMUM, NOT SUMMED. A real ADP statement listed
+ * the same $181.81 deduction twice, under "Hsa Ee Ded" and "HSA DD" — one is
+ * the deduction and the other its direct-deposit counterpart, and both classify
+ * as an employee HSA line. Summing them doubles a real contribution to $8,726 a
+ * year, past the IRS limit, and the money plan would then compute the remaining
+ * room as zero for somebody with thousands left. Two identical rows are far
+ * more likely to be one deduction described twice than two separate ones.
+ *
+ * Coverage type is not inferred. A stub does not say whether the plan is single
+ * or family, and that changes the annual limit — so it stays the form's own
+ * default for the user to set.
+ */
+export function hsaState(
+  lines: PaystubLine[],
+  grossPeriodsPerYear: number | null
+): { eligible: true; annualEmployee: number | null } | { eligible: null } {
+  const rows = lines.filter((l) => l.kind === 'hsa_employee')
+  const largest = rows.reduce((max, l) => Math.max(max, l.currentAmount), 0)
+  const largestYtd = rows.reduce((max, l) => Math.max(max, l.ytdAmount), 0)
+
+  // Either column proves the plan. A contribution that has paused for the
+  // period still happened this year.
+  if (largest <= 0 && largestYtd <= 0) return { eligible: null }
+
+  const annual =
+    largest > 0 && grossPeriodsPerYear ? Math.round(largest * grossPeriodsPerYear) : null
+  return { eligible: true, annualEmployee: annual }
+}
+
