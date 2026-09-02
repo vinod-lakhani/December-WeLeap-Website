@@ -78,8 +78,10 @@ describe('validatePaystub', () => {
   })
 
   it.each([
+    // A negative amount is NOT in this list, and used to be: real payroll
+    // statements print deductions as negatives, so rejecting them threw away
+    // most of the first real stub tested. See the sign block below.
     ['a kind outside the taxonomy', { label: 'x', currentAmount: 10, kind: 'crypto' }],
-    ['a negative amount', { label: 'x', currentAmount: -10, kind: 'other' }],
     ['an amount past the ceiling', { label: 'x', currentAmount: 1_000_000, kind: 'other' }],
     ['an empty label', { label: '   ', currentAmount: 10, kind: 'other' }],
     ['a label carrying personal data', { label: 'Garnishment 123-45-6789', currentAmount: 10, kind: 'other' }],
@@ -120,5 +122,32 @@ describe('mergePaystubInputs', () => {
   it('always produces a lines array, even from nothing', () => {
     expect(mergePaystubInputs([]).lines).toEqual([])
     expect(mergePaystubInputs([null, 'x']).lines).toEqual([])
+  })
+})
+
+describe('deductions printed as negatives', () => {
+  const stub = (currentAmount: number, kind = 'retirement_employee') => ({
+    grossPayCurrent: 4000,
+    payFrequency: 'semimonthly',
+    lines: [{ label: '401(k)', currentAmount, kind }],
+  })
+
+  it('keeps a negative deduction, as its magnitude', () => {
+    // A real ADP statement prints "-181.81" for money leaving the cheque.
+    // Requiring a positive amount discarded fourteen rows of twenty-two on the
+    // first real stub tested — including the whole employee HSA deduction.
+    const { parsed } = validatePaystub(stub(-240))
+    expect(parsed.lines).toHaveLength(1)
+    expect(parsed.lines[0]!.currentAmount).toBe(240)
+  })
+
+  it('reaches the same deferral either way the stub signs it', () => {
+    expect(deferralPct(validatePaystub(stub(-240)).parsed.lines, 4000)).toBe(6)
+    expect(deferralPct(validatePaystub(stub(240)).parsed.lines, 4000)).toBe(6)
+  })
+
+  it('still rejects a magnitude past the ceiling, in either direction', () => {
+    expect(validatePaystub(stub(-1_000_000)).parsed.lines).toHaveLength(0)
+    expect(validatePaystub(stub(1_000_000)).parsed.lines).toHaveLength(0)
   })
 })

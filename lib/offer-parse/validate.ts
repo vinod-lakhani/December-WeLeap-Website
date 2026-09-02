@@ -131,11 +131,24 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
         continue
       }
       const { label, currentAmount, kind } = row as Record<string, unknown>
+      /**
+       * The sign is direction, not magnitude, so it is discarded.
+       *
+       * A real ADP statement prints every deduction as a negative — "Federal
+       * Income Tax -2,134.76", "Hsa Ee Ded -181.81" — because the column is
+       * showing money leaving the cheque. Requiring a positive amount threw
+       * away fourteen rows of twenty-two on the first real stub tested,
+       * including the entire employee HSA deduction, while the synthetic ones
+       * that print unsigned passed cleanly and hid it.
+       *
+       * Every kind consumed downstream is an amount rather than a movement:
+       * "how much was deferred", "how much did the employer add". Magnitude is
+       * the whole of what they need.
+       */
       const amountOk =
         typeof currentAmount === 'number' &&
         Number.isFinite(currentAmount) &&
-        currentAmount >= 0 &&
-        currentAmount <= MAX_LINE_AMOUNT
+        Math.abs(currentAmount) <= MAX_LINE_AMOUNT
       const labelOk = typeof label === 'string' && label.trim().length > 0
       // A row label is the closest thing this shape has to a quote, and it goes
       // through the same sweep everything else does — a payroll system that
@@ -144,7 +157,11 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
         rejected.push(typeof label === 'string' ? label.slice(0, 40) : 'line')
         continue
       }
-      parsed.lines.push({ label: (label as string).trim(), currentAmount: currentAmount as number, kind })
+      parsed.lines.push({
+        label: (label as string).trim(),
+        currentAmount: Math.abs(currentAmount as number),
+        kind,
+      })
     }
   }
 

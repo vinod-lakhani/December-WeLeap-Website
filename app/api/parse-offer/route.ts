@@ -16,6 +16,7 @@ import {
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
+import { assessPaystubText } from '@/lib/offer-parse/text-quality'
 import { checkRateLimit, clientKey } from '@/lib/offer-parse/rate-limit'
 import {
   validateExtraction,
@@ -368,7 +369,24 @@ export async function POST(request: NextRequest) {
       text = ''
     }
 
-    if (text.trim().length >= MIN_TEXT_CHARS) {
+    /**
+     * Enough text is not the same as usable text.
+     *
+     * A paystub is a grid, and on a real ADP statement unpdf returns 1,776
+     * characters of it with every decimal separator gone — "$5 358 89" for
+     * $5,358.89. That passes a length check comfortably and is worthless: the
+     * model spends the whole deadline on it and times out. Prose documents
+     * cannot fail this way, so the check is paystub-only.
+     */
+    const quality = kind === 'paystub' ? assessPaystubText(text) : null
+    if (quality && !quality.usable) {
+      console.warn('[parse-offer] paystub text unusable, falling back to vision', {
+        moneyFigures: quality.moneyFigures,
+        numericRuns: quality.numericRuns,
+      })
+    }
+
+    if (text.trim().length >= MIN_TEXT_CHARS && quality?.usable !== false) {
       const swept = redact(text)
       redactions = swept.hits
       path = 'text'
@@ -417,7 +435,20 @@ export async function POST(request: NextRequest) {
      * runaway-thinking case that returns a truncated tool call anyway, and
      * cutting that off loses nothing.
      */
-    const client = new Anthropic({ timeout: 25_000, maxRetries: 1 })
+    /**
+     * A paystub gets longer and does not retry; everything else keeps the
+     * shorter deadline and one retry. Both worst cases stay inside the 60s
+     * ceiling — 45s alone, or 25s twice.
+     *
+     * The extra time is for the vision path, which is where a real stub ends
+     * up and which measured 21-28s against 5-11s for prose on text. A retry on
+     * top of 45s would not fit, and is worth less here anyway: a paystub that
+     * failed once at 45 seconds will not succeed at 90.
+     */
+    const client =
+      kind === 'paystub'
+        ? new Anthropic({ timeout: 45_000, maxRetries: 0 })
+        : new Anthropic({ timeout: 25_000, maxRetries: 1 })
     const response = await client.messages.create({
       model: 'claude-opus-5',
       /**
