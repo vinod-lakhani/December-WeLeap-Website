@@ -10,6 +10,7 @@ import {
   WORK_STATE_DESCRIPTION,
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
+import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
 import { validateExtraction, mergeToolInputs } from '@/lib/offer-parse/validate'
 
 /**
@@ -229,6 +230,8 @@ export async function POST(request: NextRequest) {
   let content: Anthropic.MessageParam['content']
   let path: 'text' | 'vision' = 'vision'
   let redactions = 0
+  /** The text the model was given, kept so its quotes can be checked. */
+  let sourceText = ''
 
   if (type.kind === 'pdf') {
     let text = ''
@@ -254,6 +257,7 @@ export async function POST(request: NextRequest) {
       const swept = redact(text)
       redactions = swept.hits
       path = 'text'
+      sourceText = swept.text
       content = [
         { type: 'text', text: `<offer_letter>\n${swept.text.slice(0, 120_000)}\n</offer_letter>` },
       ]
@@ -345,13 +349,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { parsed, rejected } = validateExtraction(mergeToolInputs(calls.map((c) => c.input)))
+
+    /**
+     * Drop anything whose quote is not in the document.
+     *
+     * Same rule as everywhere else here: a field that fails a check is removed
+     * rather than repaired, because the alternative is a number shown under a
+     * citation that does not support it. Only on the text path — a scan leaves
+     * nothing to check against, and asserting grounding we did not test would
+     * be worse than admitting we could not.
+     */
+    let ungrounded = 0
+    if (path === 'text') {
+      for (const [key, field] of Object.entries(parsed)) {
+        if (field && !quoteIsGrounded(field.quote, sourceText)) {
+          // The key, never the quote: this line has to be safe to read in a
+          // production log, and the quote is document content.
+          console.warn('[parse-offer] quote not found in document', { key, path })
+          delete (parsed as Record<string, unknown>)[key]
+          ungrounded += 1
+        }
+      }
+    }
     return NextResponse.json({
       parsed,
       kind,
       path,
       redactions,
       fieldsFound: Object.keys(parsed).length,
-      rejectedCount: rejected.length,
+      rejectedCount: rejected.length + ungrounded,
+      ungrounded,
       latencyMs: Date.now() - started,
       truncated,
       outputTokens: response.usage.output_tokens,

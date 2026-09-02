@@ -23,6 +23,7 @@ import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnair
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
 
@@ -435,7 +436,23 @@ export function OfferAnalysisTool() {
       : 0.28; // fallback ~28% when no API result yet
 
     const annualBonus = salary * bonusPct / 100;
-    const annual401kMatch = salary * (matchUpToPct / 100) * (matchRatePct / 100);
+    /**
+     * Capped at the IRS employee deferral limit.
+     *
+     * An employer matches what the employee actually defers, and above the cap
+     * they cannot defer any more — so the match stops growing. Without this the
+     * formula is salary x cap% x rate% with nothing to stop it, which held up
+     * only because the defaults are 100% up to 6% and 6% of a salary is rarely
+     * near the limit.
+     *
+     * A real benefits guide broke it: "Company match is $0.30 on every $1
+     * employee deferral up to 60% of salary." Read faithfully — and it is
+     * faithful, those are the document's words — that is 18% of pay in employer
+     * match, $27,000 on a $150,000 salary against a true maximum of $7,350.
+     * The same guard already exists in lib/hero/matchLeap.ts for the homepage.
+     */
+    const matchedDeferral = Math.min(salary * (matchUpToPct / 100), K401_EMPLOYEE_CAP);
+    const annual401kMatch = matchedDeferral * (matchRatePct / 100);
     const annualHsa = hsaMonthly * 12;
     const annualHealthcare = -(healthcarePremium * 12);
     const annualEspp = showEspp ? Math.round(salary * esppContrib / 100 * esppDiscount / 100) : 0;
