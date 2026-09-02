@@ -23,6 +23,16 @@ import {
 } from '@/lib/offer-parse/fields'
 
 const MAX_BYTES = 4 * 1024 * 1024
+/**
+ * A backstop above the server's own deadline, not a duplicate of it.
+ *
+ * The route fails itself at 25s and Vercel ends the request at 60, so in normal
+ * operation an answer always arrives. This exists for the case where neither
+ * happens — a connection that stalls rather than closes — because without it
+ * `fetch` waits forever and the button reads "Reading…" until the tab is shut.
+ */
+const REQUEST_TIMEOUT_MS = 70_000
+
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
 const MESSAGES: Record<string, string> = {
@@ -32,6 +42,8 @@ const MESSAGES: Record<string, string> = {
   no_fields: 'We could not read that one. It may be a scan we cannot make out — the questions below still work.',
   upload_unavailable: 'Upload is unavailable right now. The questions below still work.',
   rate_limited: 'You have uploaded a few documents in a short time. Give it an hour, or answer below.',
+  timeout:
+    'That one took too long to read — it may be a large or complex file. The questions below still work.',
   default: 'Something went wrong reading that. The questions below still work.',
 }
 
@@ -69,7 +81,11 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
       const body = new FormData()
       body.append('file', file)
       body.append('kind', 'paystub')
-      const response = await fetch('/api/parse-offer', { method: 'POST', body })
+      const response = await fetch('/api/parse-offer', {
+        method: 'POST',
+        body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
@@ -129,9 +145,10 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
         found_match: result.hasMatch === true,
         latency_ms: data.latencyMs ?? null,
       })
-    } catch {
-      setError(MESSAGES.default!)
-      track('doc_parse_failed', { doc_class: 'paystub', failure_reason: 'network' })
+    } catch (e) {
+      const timedOut = e instanceof DOMException && e.name === 'TimeoutError'
+      setError((timedOut ? MESSAGES.timeout : MESSAGES.default)!)
+      track('doc_parse_failed', { doc_class: 'paystub', failure_reason: timedOut ? 'client_timeout' : 'network' })
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
