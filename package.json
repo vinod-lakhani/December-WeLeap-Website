@@ -16,6 +16,7 @@
     "lint:fix": "next lint --fix"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@hookform/resolvers": "^3.9.1",
     "@next/third-parties": "14.2.26",
     "@radix-ui/react-accordion": "1.2.2",
@@ -72,6 +73,7 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "unpdf": "^1.8.1",
     "vaul": "^0.9.6",
     "zod": "^3.24.1"
   },
