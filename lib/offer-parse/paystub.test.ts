@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deferralState, employerMatchState, type PaystubLine } from './fields'
+import { deferralState, employerMatchState, hsaState, type PaystubLine } from './fields'
 import { validatePaystub, mergePaystubInputs } from './validate'
 
 const line = (
@@ -180,5 +180,40 @@ describe('deductions printed as negatives', () => {
   it('still rejects a magnitude past the ceiling, in either direction', () => {
     expect(validatePaystub(stub(-1_000_000)).parsed.lines).toHaveLength(0)
     expect(validatePaystub(stub(1_000_000)).parsed.lines).toHaveLength(0)
+  })
+})
+
+describe('hsaState — the stub answers the HSA question', () => {
+  const hsa = (currentAmount: number, ytdAmount = 0, label = 'Hsa Ee Ded'): PaystubLine => ({
+    label, currentAmount, ytdAmount, kind: 'hsa_employee',
+  })
+
+  it('treats a deduction as proof of an eligible plan', () => {
+    // The IRS does not allow an HSA contribution without an HDHP, so the
+    // deduction settles the question the money plan asks outright.
+    expect(hsaState([hsa(181.81)], 24)).toEqual({ eligible: true, annualEmployee: 4363 })
+  })
+
+  it('takes the largest row rather than the sum', () => {
+    // A real ADP statement listed the same $181.81 twice, as "Hsa Ee Ded" and
+    // "HSA DD". Summing doubles a real contribution to $8,726 — past the IRS
+    // limit — and the plan would then read the remaining room as zero.
+    const both = [hsa(181.81, 2363.53, 'Hsa Ee Ded'), hsa(181.81, 4363.53, 'HSA DD')]
+    expect(hsaState(both, 24)).toEqual({ eligible: true, annualEmployee: 4363 })
+  })
+
+  it('still confirms eligibility when the period is zero but the year is not', () => {
+    expect(hsaState([hsa(0, 2545.34)], 24)).toEqual({ eligible: true, annualEmployee: null })
+  })
+
+  it('says nothing when there is no HSA line', () => {
+    // Not "no HSA" — the person may be eligible and simply not contributing.
+    expect(hsaState([], 24)).toEqual({ eligible: null })
+    expect(hsaState([{ label: 'Medical', currentAmount: 120, ytdAmount: 1920, kind: 'medical' }], 24))
+      .toEqual({ eligible: null })
+  })
+
+  it('omits the annual figure when the frequency is unknown', () => {
+    expect(hsaState([hsa(181.81)], null)).toEqual({ eligible: true, annualEmployee: null })
   })
 })

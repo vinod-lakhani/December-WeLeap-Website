@@ -20,6 +20,7 @@ import {
   PAY_FREQUENCIES,
   deferralState,
   employerMatchState,
+  hsaState,
   type ParsedPaystub,
 } from '@/lib/offer-parse/fields'
 
@@ -63,6 +64,14 @@ export interface PaystubResult {
   maxedOut: boolean
   /** True when a match appears in either column. Never false — see fields.ts. */
   hasMatch: true | null
+  /**
+   * An employee HSA deduction proves an HSA-eligible plan — the IRS does not
+   * allow one without an HDHP. Never false: no deduction only means this stub
+   * does not show one.
+   */
+  hsaEligible: true | null
+  /** Annualised employee HSA contribution, when the period figure allows it. */
+  hsaAnnual: number | null
 }
 
 export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => void }) {
@@ -114,6 +123,8 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
       const match = employerMatchState(parsed.lines ?? [])
       const deferral = deferralState(parsed.lines ?? [], gross, parsed.grossPayYtd)
 
+      const hsa = hsaState(parsed.lines ?? [], periods)
+
       const result: PaystubResult = {
         annualSalary,
         stateCode: parsed.workStateCode ?? null,
@@ -125,6 +136,8 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
               : null,
         maxedOut: deferral.kind === 'maxed',
         hasMatch: match.hasMatch === true ? true : null,
+        hsaEligible: hsa.eligible === true ? true : null,
+        hsaAnnual: hsa.eligible === true ? hsa.annualEmployee : null,
       }
 
       if (!result.annualSalary && result.currentDeferralPct === null && !result.maxedOut) {
@@ -142,6 +155,7 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
       if (result.annualSalary) found.push('your salary')
       if (result.currentDeferralPct !== null) found.push(`your ${result.currentDeferralPct}% contribution`)
       if (result.stateCode) found.push('your state')
+      if (result.hsaEligible) found.push('your HSA')
       const read = found.length ? `Read ${found.join(', ')}.` : 'Read your stub.'
       const matchNote = result.hasMatch
         ? " Your employer's match is on there too."
@@ -165,6 +179,7 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
         found_deferral: result.currentDeferralPct !== null,
         found_match: result.hasMatch === true,
         maxed_out: result.maxedOut,
+        found_hsa: result.hsaEligible === true,
         latency_ms: data.latencyMs ?? null,
       })
     } catch (e) {

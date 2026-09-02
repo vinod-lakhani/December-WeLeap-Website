@@ -183,6 +183,20 @@ export function AllocatorTool() {
     if (r.stateCode) { setWState(r.stateCode); filled.add('state'); }
     if (r.currentDeferralPct !== null) { setWCurrent401k(String(r.currentDeferralPct)); filled.add('current_401k'); }
     if (r.hasMatch === true) { setWHasMatch(true); filled.add('has_match'); }
+    /**
+     * The stub settles the HSA question outright, so the plan stops asking it.
+     *
+     * An employee HSA deduction is only possible on an HSA-eligible plan, which
+     * is exactly what the HSA step asks. Putting that question to somebody who
+     * has just handed over the document answering it is what makes an upload
+     * feel like it did nothing.
+     *
+     * Only ever set to true. No deduction on the stub does not mean no HSA —
+     * the person may be eligible and simply not contributing — so the question
+     * stays open, the same rule the employer match follows.
+     */
+    if (r.hsaEligible === true) { setHsaEligible(true); filled.add('hsa_eligible'); }
+    if (r.hsaAnnual !== null) { setCurrentHsaAnnual(String(r.hsaAnnual)); filled.add('hsa_annual'); }
     setStubMaxedOut(r.maxedOut);
     fromStubRef.current = filled;
     editedFromStubRef.current = new Set();
@@ -977,13 +991,23 @@ export function AllocatorTool() {
                   <p className="text-gray-600">
                     Do you have an HSA-eligible health plan? (HSA = triple tax advantage for long-term investing.)
                   </p>
+                  {/* Answered rather than hidden. The question stays on screen
+                      because the user must be able to correct it, but saying
+                      where the answer came from is what stops a pre-filled
+                      radio reading as a default nobody chose. */}
+                  {fromStubRef.current.has('hsa_eligible') && (
+                    <p className="text-[12.5px] leading-relaxed text-[#2d5a26]">
+                      Answered from your paystub — it shows an HSA deduction, which is only possible
+                      on an eligible plan. Change it if that is wrong.
+                    </p>
+                  )}
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="hsaEligible"
                         checked={hsaEligible === true}
-                        onChange={() => { markEngaged('hsa_eligible'); setHsaEligible(true); }}
+                        onChange={() => { noteStubEdit('hsa_eligible'); markEngaged('hsa_eligible'); setHsaEligible(true); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>Yes</span>
@@ -993,7 +1017,7 @@ export function AllocatorTool() {
                         type="radio"
                         name="hsaEligible"
                         checked={hsaEligible === false}
-                        onChange={() => { markEngaged('hsa_eligible'); setHsaEligible(false); }}
+                        onChange={() => { noteStubEdit('hsa_eligible'); markEngaged('hsa_eligible'); setHsaEligible(false); }}
                         className="accent-[#3F6B42]"
                       />
                       <span>No</span>
@@ -1009,7 +1033,7 @@ export function AllocatorTool() {
                           type="number"
                           placeholder="e.g. 2000"
                           value={currentHsaAnnual}
-                          onChange={(e) => { markEngaged('current_hsa_annual'); setCurrentHsaAnnual(e.target.value); }}
+                          onChange={(e) => { noteStubEdit('hsa_annual'); markEngaged('current_hsa_annual'); setCurrentHsaAnnual(e.target.value); }}
                           className="border-[#D1D5DB] max-w-xs"
                         />
                       </div>
