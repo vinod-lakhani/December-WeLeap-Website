@@ -1,0 +1,197 @@
+'use client'
+
+/**
+ * Reads a paystub into the money plan's opening questions.
+ *
+ * The plan starts by asking for salary, state, current 401(k) percentage and
+ * whether the employer matches. Three of those four are on every paystub, and
+ * the fourth — the deferral percentage — is the one nobody can answer from
+ * memory. `wCurrent401k` defaults to "0", so without this the plan opens by
+ * assuming the user contributes nothing and builds its first Leap on that.
+ *
+ * Optional, like the offer-letter upload: everything below still works if this
+ * fails, is switched off, or is ignored.
+ */
+
+import { useRef, useState } from 'react'
+import { track } from '@/lib/analytics'
+import {
+  PAY_FREQUENCIES,
+  deferralPct,
+  employerMatchState,
+  type ParsedPaystub,
+} from '@/lib/offer-parse/fields'
+
+const MAX_BYTES = 4 * 1024 * 1024
+const ACCEPT = 'application/pdf,image/png,image/jpeg'
+
+const MESSAGES: Record<string, string> = {
+  too_large: 'That file is over 4MB. A PDF from your payroll site is usually much smaller than a photo.',
+  unsupported_type: 'We can read PDF, PNG and JPG files.',
+  empty_file: 'That file looks empty.',
+  no_fields: 'We could not read that one. It may be a scan we cannot make out — the questions below still work.',
+  upload_unavailable: 'Upload is unavailable right now. The questions below still work.',
+  rate_limited: 'You have uploaded a few documents in a short time. Give it an hour, or answer below.',
+  default: 'Something went wrong reading that. The questions below still work.',
+}
+
+export interface PaystubResult {
+  /** Gross for the period, annualised by the stub's own stated frequency. */
+  annualSalary: number | null
+  stateCode: string | null
+  /** Employee deferral as a percent of gross, computed here from two figures. */
+  currentDeferralPct: number | null
+  /** True when a match line was present. Never false — see fields.ts. */
+  hasMatch: true | null
+  employerMatchThisPeriod: number | null
+}
+
+export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [summary, setSummary] = useState<string | null>(null)
+
+  async function handleFile(file: File) {
+    setError(null)
+    setSummary(null)
+
+    if (file.size > MAX_BYTES) {
+      setError(MESSAGES.too_large!)
+      track('doc_parse_failed', { doc_class: 'paystub', failure_reason: 'too_large' })
+      return
+    }
+
+    setBusy(true)
+    track('doc_uploaded', { doc_class: 'paystub', file_type: file.type || 'unknown' })
+
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      body.append('kind', 'paystub')
+      const response = await fetch('/api/parse-offer', { method: 'POST', body })
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setError(MESSAGES[data?.error as string] ?? MESSAGES.default!)
+        track('doc_parse_failed', { doc_class: 'paystub', failure_reason: String(data?.error ?? response.status) })
+        return
+      }
+
+      const parsed = (data.parsed ?? { lines: [] }) as ParsedPaystub
+      const gross = parsed.grossPayCurrent
+      const periods = parsed.payFrequency ? PAY_FREQUENCIES[parsed.payFrequency] : null
+
+      /**
+       * Annualising happens here, from two figures both printed on the stub.
+       * Asking the model for an annual salary would have made it multiply, and
+       * hidden which frequency it assumed inside a number nobody can check.
+       */
+      const annualSalary = gross && periods ? Math.round(gross * periods) : null
+      const match = employerMatchState(parsed.lines ?? [])
+
+      const result: PaystubResult = {
+        annualSalary,
+        stateCode: parsed.workStateCode ?? null,
+        currentDeferralPct: deferralPct(parsed.lines ?? [], gross),
+        hasMatch: match.hasMatch === true ? true : null,
+        employerMatchThisPeriod: match.hasMatch === true ? match.amount : null,
+      }
+
+      if (!result.annualSalary && result.currentDeferralPct === null) {
+        setError(MESSAGES.no_fields!)
+        track('doc_parse_failed', { doc_class: 'paystub', failure_reason: 'no_fields' })
+        return
+      }
+
+      onRead(result)
+
+      // Says what was found AND what was not, because the gap matters here: a
+      // stub with no match line leaves the match question genuinely open, and
+      // the user has to answer it themselves rather than assume we knew.
+      const found: string[] = []
+      if (result.annualSalary) found.push('your salary')
+      if (result.currentDeferralPct !== null) found.push(`your ${result.currentDeferralPct}% contribution`)
+      if (result.stateCode) found.push('your state')
+      setSummary(
+        result.hasMatch
+          ? `Read ${found.join(', ')} and your employer's match.`
+          : `Read ${found.join(', ')}. Your stub does not show an employer match — many payroll systems never print one, so that question is still yours to answer.`
+      )
+
+      track('doc_parsed', {
+        doc_class: 'paystub',
+        extraction_path: data.path,
+        redactions: data.redactions ?? 0,
+        rejected_count: data.rejectedCount ?? 0,
+        line_count: (parsed.lines ?? []).length,
+        found_deferral: result.currentDeferralPct !== null,
+        found_match: result.hasMatch === true,
+        latency_ms: data.latencyMs ?? null,
+      })
+    } catch {
+      setError(MESSAGES.default!)
+      track('doc_parse_failed', { doc_class: 'paystub', failure_reason: 'network' })
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border-2 border-dashed border-[#386641]/35 bg-[#386641]/[0.04] px-4 py-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-[200px] flex-1">
+          <p className="text-sm font-bold text-[#111827]">Have a recent paystub?</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-gray-600">
+            It shows what you already contribute, which is the one number here most people cannot
+            recall.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            track('doc_upload_started', { doc_class: 'paystub', surface: 'tool', authed: false })
+            inputRef.current?.click()
+          }}
+          className="w-full shrink-0 rounded-xl border-2 border-[#386641] bg-white px-5 py-2.5 text-sm font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white disabled:opacity-60 sm:w-auto"
+        >
+          {busy ? 'Reading…' : 'Upload paystub'}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void handleFile(file)
+          }}
+        />
+      </div>
+
+      <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+        <span className="font-semibold text-gray-700">
+          No paystub to hand? Just answer the questions below — it works the same either way.
+        </span>
+      </p>
+
+      {summary && (
+        <p className="mt-3 text-[13px] leading-relaxed text-[#386641]" role="status">
+          {summary}
+        </p>
+      )}
+      {error && (
+        <p className="mt-3 text-[13px] text-gray-600" role="status">
+          {error}
+        </p>
+      )}
+
+      <p className="mt-3 text-[12px] leading-relaxed text-gray-500">
+        PDF, PNG or JPG. We read the numbers and never store the file. We do not read or keep your
+        name, address, Social Security number or any account number.
+      </p>
+    </div>
+  )
+}

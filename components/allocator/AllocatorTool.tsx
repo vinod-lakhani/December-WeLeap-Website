@@ -25,6 +25,7 @@ import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
+import { PaystubUpload, type PaystubResult } from '@/components/allocator/PaystubUpload';
 
 /**
  * The money plan calculator — the interactive half of
@@ -150,6 +151,24 @@ export function AllocatorTool() {
   const [wMatchCap, setWMatchCap] = useState('5');
   const [wMatchRate, setWMatchRate] = useState('100');
   const [wError, setWError] = useState<string | null>(null);
+
+  /**
+   * A paystub answers three of the four opening questions and deliberately
+   * leaves the fourth alone.
+   *
+   * `wHasMatch` is only ever set to true, never false. A stub with no employer
+   * match line has not told us there is no match — many payroll systems simply
+   * do not print employer contributions. Leaving it null keeps the question
+   * unanswered, which is already how this form treats "not yet decided": the
+   * submit handler refuses to continue while it is null. Setting false would
+   * skip that guard and quietly tell someone to ignore free money.
+   */
+  const applyPaystub = useCallback((r: PaystubResult) => {
+    if (r.annualSalary) setWSalary(String(r.annualSalary));
+    if (r.stateCode) setWState(r.stateCode);
+    if (r.currentDeferralPct !== null) setWCurrent401k(String(r.currentDeferralPct));
+    if (r.hasMatch === true) setWHasMatch(true);
+  }, []);
   /**
    * The simulator's whole value was the staged reveal: give us four numbers,
    * here is free money you are not taking. Folding it into the allocator moved
@@ -598,6 +617,11 @@ export function AllocatorTool() {
                 <CardTitle className="text-lg text-[#111827]">Start with your income</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Above the questions it answers. Three of the four opening
+                    fields are on any paystub, and the fourth — what you already
+                    contribute — is the one nobody recalls. */}
+                <PaystubUpload onRead={applyPaystub} />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="w-salary" className="text-[#111827]">Annual salary (USD)</Label>

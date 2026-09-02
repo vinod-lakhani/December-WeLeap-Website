@@ -196,3 +196,133 @@ export const BENEFITS_DESCRIPTIONS: Record<(typeof BENEFITS_FIELD_KEYS)[number],
     'What the EMPLOYEE pays per month for medical coverage, for employee-only coverage on the HSA-ELIGIBLE plan (usually labelled HDHP or high deductible). Where several plans are listed, use that one and name it in your quote. Convert from per-pay-period if needed. Exclude dental and vision. A guide stating that a plan costs the employee nothing is stating a premium of 0 — record 0 rather than omitting it. If no plan is HSA-eligible, use the lowest-cost medical plan and name it.',
 }
 
+/* ==========================================================================
+   Paystub
+   ========================================================================== */
+
+/**
+ * The one document that says what is actually happening.
+ *
+ * An offer letter says what was promised and a benefits guide says what is
+ * available. Only a paystub says what the employee is really doing — and the
+ * money plan opens by assuming they contribute nothing, because `wCurrent401k`
+ * defaults to "0" and nobody recalls their deferral percentage from memory.
+ *
+ * ASK FOR THE ROWS, NOT THE FIELDS. This was first written the obvious way,
+ * with a named scalar per figure: `retirement401kEmployeeCurrent`,
+ * `employerMatchCurrent`, `hsaEmployeeCurrent`. It did not work. Recall swung
+ * between 2/6 and 6/6 on the same stub across four attempts — two effort
+ * settings, three prompts, and the vision path, which was worst of all.
+ *
+ * The extraction was never the problem. unpdf hands over the table perfectly:
+ * headers, row order and both columns intact. Asking "find the 401(k) line"
+ * makes the model judge, per field, whether it has found the right thing; it
+ * inconsistently decided no. Asking "list every row" is a single mechanical
+ * pass with nothing to decide, and it is byte-for-byte identical run to run.
+ *
+ * Which also answers whether better OCR or a table-aware extractor would have
+ * helped: no. The input was already right.
+ */
+
+/**
+ * What a deduction row is, once classified.
+ *
+ * A cut-down version of the spec's §4 taxonomy — only the kinds the money plan
+ * can act on, plus `other` so nothing has to be forced into a wrong bucket. The
+ * rows we ignore still have to be listed, because listing all of them is what
+ * makes the listing reliable.
+ */
+export const PAYSTUB_LINE_KINDS = [
+  'retirement_employee',
+  'employer_match',
+  'hsa_employee',
+  'medical',
+  'dental',
+  'vision',
+  'tax',
+  'other',
+] as const
+
+export type PaystubLineKind = (typeof PAYSTUB_LINE_KINDS)[number]
+
+export interface PaystubLine {
+  /** The row label, verbatim. Doubles as the quote for this figure. */
+  label: string
+  /** The Current column, never year-to-date. */
+  currentAmount: number
+  kind: PaystubLineKind
+}
+
+/** Rows outside this are a misread of the table rather than a real deduction. */
+export const MAX_LINE_AMOUNT = 100_000
+
+export const PAY_FREQUENCIES = {
+  weekly: 52,
+  biweekly: 26,
+  semimonthly: 24,
+  monthly: 12,
+} as const
+
+export type PayFrequency = keyof typeof PAY_FREQUENCIES
+
+export const PAY_FREQUENCY_DESCRIPTION =
+  'How often this employee is paid, as stated on the stub. "Semi-monthly" is twice a month (24 a year); "biweekly" is every two weeks (26 a year) — they are different and the stub usually says which. If the stub does not state it, derive it from the pay period dates rather than assuming.'
+
+export const PAYSTUB_LINES_DESCRIPTION =
+  'EVERY row of the deductions and employer-contributions tables, in the order they appear. Do not skip rows and do not filter to the interesting ones — list all of them. Take the Current column, never year-to-date.'
+
+export const GROSS_PAY_DESCRIPTION =
+  'Gross pay for THIS pay period, from the Current column, before any tax or deduction.'
+
+export function isPayFrequency(value: unknown): value is PayFrequency {
+  return typeof value === 'string' && value in PAY_FREQUENCIES
+}
+
+export function isLineKind(value: unknown): value is PaystubLineKind {
+  return typeof value === 'string' && (PAYSTUB_LINE_KINDS as readonly string[]).includes(value)
+}
+
+/** What a read paystub hands back, after validation. */
+export interface ParsedPaystub {
+  grossPayCurrent?: number
+  payFrequency?: PayFrequency
+  workStateCode?: (typeof US_STATES)[number]
+  lines: PaystubLine[]
+}
+
+/**
+ * The one figure the money plan most wants, derived here rather than asked for.
+ *
+ * A deferral percentage is a division, and the model has no business doing it:
+ * asked for a percentage it would have to pick a denominator, and a stub with
+ * two gross figures on it gives it two to choose from. Both inputs come off the
+ * page; the arithmetic is ours.
+ */
+export function deferralPct(lines: PaystubLine[], grossPayCurrent: number | undefined): number | null {
+  if (!grossPayCurrent || grossPayCurrent <= 0) return null
+  const deferred = lines
+    .filter((l) => l.kind === 'retirement_employee')
+    .reduce((sum, l) => sum + l.currentAmount, 0)
+  if (deferred <= 0) return null
+  const pct = (deferred / grossPayCurrent) * 100
+  // A deferral above the IRS percentage ceiling is a misread, not a plan.
+  if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return null
+  return Math.round(pct * 10) / 10
+}
+
+/**
+ * Whether the employer matches — in three states, because two would be a lie.
+ *
+ * A stub showing a match line proves one exists. A stub showing none proves
+ * nothing: plenty of payroll systems never print employer contributions, and
+ * two of the three stubs under test are identical in net pay for exactly that
+ * reason. Returning `false` there would tell someone they have no match when
+ * they may well have one, and capturing the match is the money plan's first
+ * move. `null` keeps the question open, which is what the allocator's own
+ * `wHasMatch === null` already means.
+ */
+export function employerMatchState(lines: PaystubLine[]): { hasMatch: true; amount: number } | { hasMatch: null } {
+  const match = lines.filter((l) => l.kind === 'employer_match')
+  const amount = match.reduce((sum, l) => sum + l.currentAmount, 0)
+  return match.length > 0 && amount > 0 ? { hasMatch: true, amount } : { hasMatch: null }
+}

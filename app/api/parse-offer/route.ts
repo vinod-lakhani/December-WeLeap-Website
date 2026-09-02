@@ -7,12 +7,22 @@ import {
   OFFER_FIELD_KEYS,
   BENEFITS_FIELD_KEYS,
   BENEFITS_DESCRIPTIONS,
+  PAYSTUB_LINE_KINDS,
+  PAYSTUB_LINES_DESCRIPTION,
+  GROSS_PAY_DESCRIPTION,
+  PAY_FREQUENCIES,
+  PAY_FREQUENCY_DESCRIPTION,
   WORK_STATE_DESCRIPTION,
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
 import { checkRateLimit, clientKey } from '@/lib/offer-parse/rate-limit'
-import { validateExtraction, mergeToolInputs } from '@/lib/offer-parse/validate'
+import {
+  validateExtraction,
+  validatePaystub,
+  mergeToolInputs,
+  mergePaystubInputs,
+} from '@/lib/offer-parse/validate'
 
 /**
  * Read an offer letter and hand the numbers back to the form.
@@ -75,11 +85,65 @@ function sniff(buf: Uint8Array) {
   return MAGIC.find((m) => m.bytes.every((b, i) => buf[i] === b)) ?? null
 }
 
-export type DocKind = 'offer' | 'benefits'
+export type DocKind = 'offer' | 'benefits' | 'paystub'
 
 /** The schema is generated from the field table so the two cannot drift. */
 function buildTool(kind: DocKind): Anthropic.Tool {
   const properties: Record<string, unknown> = {}
+
+  /**
+   * A paystub has its own table rather than a subset of the offer one. The
+   * figures on it are per-period amounts of what is happening now; the offer
+   * fields are annual statements of what was promised. Sharing the table would
+   * mean sharing wording that is wrong for one of them.
+   */
+  if (kind === 'paystub') {
+    /**
+     * Rows, not named fields — see the note in fields.ts. Asking the model to
+     * enumerate the table is one mechanical pass with nothing to judge; asking
+     * it to find four particular figures made it judge each one, and it decided
+     * differently on identical input from run to run.
+     */
+    return {
+      name: 'record_offer_terms',
+      description: 'Record the figures on this pay statement.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          grossPayCurrent: { type: 'number', description: GROSS_PAY_DESCRIPTION },
+          payFrequency: { type: 'string', enum: Object.keys(PAY_FREQUENCIES), description: PAY_FREQUENCY_DESCRIPTION },
+          workStateCode: {
+            type: 'string',
+            enum: [...US_STATES],
+            description:
+              'The two-letter state code the state income tax was withheld for, read from the tax lines. Omit if there is no state tax line.',
+          },
+          lines: {
+            type: 'array',
+            description: PAYSTUB_LINES_DESCRIPTION,
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', description: 'The row label, copied verbatim.' },
+                currentAmount: { type: 'number', description: 'The Current column figure for this row.' },
+                kind: {
+                  type: 'string',
+                  enum: [...PAYSTUB_LINE_KINDS],
+                  description:
+                    'What this row is. Use employer_match ONLY for an employer 401(k) match row, and retirement_employee for the employee 401(k), 403(b) or 457(b) deduction. Anything that fits nothing else is other.',
+                },
+              },
+              required: ['label', 'currentAmount', 'kind'],
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      } as Anthropic.Tool['input_schema'],
+      strict: true,
+    }
+  }
+
   const keys = kind === 'benefits' ? BENEFITS_FIELD_KEYS : OFFER_FIELD_KEYS
 
   for (const key of keys) {
@@ -193,6 +257,33 @@ const BENEFITS_SYSTEM = [
   '6. If this is not a benefits guide, call the tool with no fields set.',
 ].join('\n')
 
+/**
+ * A paystub is the most sensitive document this route accepts and the most
+ * literal to read. Everything wanted is a labelled number in a table.
+ *
+ * The two rules that matter are both about NOT concluding things. A stub shows
+ * an observed amount, never a formula — the same $160 match appears under
+ * "100% of the first 4%" and under "66.7% of the first 6%". And a missing
+ * employer match line means the payroll system did not print one, which is not
+ * the same as there being no match: two of the three stubs under test are
+ * identical in net pay for exactly that reason.
+ */
+const PAYSTUB_SYSTEM = [
+  'Record this US pay statement by calling record_offer_terms once.',
+  '',
+  'List EVERY row of the deductions and employer-contributions tables, in the',
+  'order they appear. Do not filter to the interesting ones — listing all of',
+  'them is what makes the listing reliable.',
+  '',
+  'Three things to get right:',
+  '- Take the CURRENT period column, never year-to-date. YTD is the larger.',
+  '- Classify a row as employer_match only if it is an EMPLOYER 401(k) match.',
+  '  If no such row exists, list none — many payroll systems never print',
+  '  employer contributions, and their absence is not evidence that no match',
+  '  exists.',
+  '- Never report a name, address, employee or payroll ID, Social Security',
+  '  number or bank detail, including inside a row label.',
+].join('\n')
 
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -236,7 +327,8 @@ export async function POST(request: NextRequest) {
     // they are handing over, so there is no classifier to be wrong — and a
     // misclassification here would read the right numbers off the wrong
     // document, which validation cannot catch.
-    kind = form.get('kind') === 'benefits' ? 'benefits' : 'offer'
+    const requested = form.get('kind')
+    kind = requested === 'benefits' || requested === 'paystub' ? requested : 'offer'
   } catch {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
@@ -326,12 +418,21 @@ export async function POST(request: NextRequest) {
        */
       max_tokens: 16000,
       /**
-       * Low, not medium. This is field extraction against a fixed schema, not
-       * a problem that rewards deliberation, and the depth was costing 30
-       * seconds a call without buying accuracy. Re-tune against the golden set.
+       * Effort is per document class, because the reading problems are not
+       * alike.
+       *
+       * Low, and raising it was tried and made things worse. On a 1,310-character
+       * paystub, `high` sent the model into runaway thinking: three runs in nine
+       * generated the full 16,000-token ceiling, truncated mid-tool-call, and
+       * took over two minutes to lose fields they had already found. Depth is
+       * not what this needs.
+       *
+       * The unstable recall it was meant to fix came from the prompt instead —
+       * see PAYSTUB_SYSTEM.
        */
-      output_config: { effort: 'low' },
-      system: kind === 'benefits' ? BENEFITS_SYSTEM : OFFER_SYSTEM,
+      ...(kind === 'paystub' ? {} : { output_config: { effort: 'low' as const } }),
+      system:
+        kind === 'paystub' ? PAYSTUB_SYSTEM : kind === 'benefits' ? BENEFITS_SYSTEM : OFFER_SYSTEM,
       tools: [buildTool(kind)],
       messages: [{ role: 'user', content: content! }],
     })
@@ -371,7 +472,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ parsed: {}, kind, path, fieldsFound: 0, redactions })
     }
 
-    const { parsed, rejected } = validateExtraction(mergeToolInputs(calls.map((c) => c.input)))
+    const inputs = calls.map((c) => c.input)
+    const { parsed, rejected } =
+      kind === 'paystub'
+        ? validatePaystub(mergePaystubInputs(inputs))
+        : validateExtraction(mergeToolInputs(inputs))
 
     /**
      * Drop anything whose quote is not in the document.
@@ -383,8 +488,13 @@ export async function POST(request: NextRequest) {
      * be worse than admitting we could not.
      */
     let ungrounded = 0
-    if (path === 'text') {
-      for (const [key, field] of Object.entries(parsed)) {
+    /**
+     * The paystub shape carries no per-field quote — a row's label IS its
+     * provenance, and validatePaystub already sweeps those. Running this loop
+     * over it would read `.quote` off a number and drop every field.
+     */
+    if (path === 'text' && kind !== 'paystub') {
+      for (const [key, field] of Object.entries(parsed as Record<string, { quote: string }>)) {
         if (field && !quoteIsGrounded(field.quote, sourceText)) {
           // The key, never the quote: this line has to be safe to read in a
           // production log, and the quote is document content.
