@@ -1,11 +1,16 @@
 import { US_STATES } from '@/lib/states'
 import {
   OFFER_FIELD_KEYS,
+  PAYSTUB_FIELD_KEYS,
   MIN_CONFIDENCE,
   isInRange,
   isStateCode,
+  isPaystubValueInRange,
+  isPayFrequency,
   type OfferFieldKey,
   type ParsedOffer,
+  type ParsedPaystub,
+  type PayFrequency,
 } from './fields'
 import { containsPii } from './redact'
 
@@ -86,3 +91,57 @@ export function mergeToolInputs(inputs: unknown[]): Record<string, unknown> {
   }
   return merged
 }
+
+/* ==========================================================================
+   Paystub
+   ========================================================================== */
+
+/**
+ * Same rules, different table.
+ *
+ * A field that fails any check is dropped rather than repaired, exactly as on
+ * the offer path — and it matters more here, because these numbers feed a plan
+ * that tells someone what to do with their money rather than a package total
+ * they can eyeball.
+ */
+export function validatePaystub(raw: unknown): {
+  parsed: ParsedPaystub
+  rejected: string[]
+} {
+  const parsed: ParsedPaystub = {}
+  const rejected: string[] = []
+  if (typeof raw !== 'object' || raw === null) return { parsed, rejected }
+  const input = raw as Record<string, { value?: unknown; confidence?: unknown; quote?: unknown }>
+
+  const meta = (key: string, entry: (typeof input)[string], valueOk: boolean) => {
+    const confidence = typeof entry?.confidence === 'number' ? entry.confidence : 0
+    const quote = typeof entry?.quote === 'string' ? entry.quote.trim() : ''
+    if (!valueOk || confidence < MIN_CONFIDENCE || quote.length === 0 || containsPii(quote)) {
+      rejected.push(key)
+      return null
+    }
+    return { confidence, quote }
+  }
+
+  for (const key of PAYSTUB_FIELD_KEYS) {
+    const entry = input[key]
+    if (!entry) continue
+    const m = meta(key, entry, isPaystubValueInRange(key, entry.value))
+    if (m) parsed[key] = { value: entry.value as number, ...m }
+  }
+
+  const freq = input.payFrequency
+  if (freq) {
+    const m = meta('payFrequency', freq, isPayFrequency(freq.value))
+    if (m) parsed.payFrequency = { value: freq.value as PayFrequency, ...m }
+  }
+
+  const state = input.workStateCode
+  if (state) {
+    const m = meta('workStateCode', state, isStateCode(state.value))
+    if (m) parsed.workStateCode = { value: state.value as (typeof US_STATES)[number], ...m }
+  }
+
+  return { parsed, rejected }
+}
+

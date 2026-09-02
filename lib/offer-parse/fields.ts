@@ -196,3 +196,101 @@ export const BENEFITS_DESCRIPTIONS: Record<(typeof BENEFITS_FIELD_KEYS)[number],
     'What the EMPLOYEE pays per month for medical coverage, for employee-only coverage on the HSA-ELIGIBLE plan (usually labelled HDHP or high deductible). Where several plans are listed, use that one and name it in your quote. Convert from per-pay-period if needed. Exclude dental and vision. A guide stating that a plan costs the employee nothing is stating a premium of 0 — record 0 rather than omitting it. If no plan is HSA-eligible, use the lowest-cost medical plan and name it.',
 }
 
+/* ==========================================================================
+   Paystub
+   ========================================================================== */
+
+/**
+ * The one document that says what is actually happening.
+ *
+ * An offer letter says what was promised and a benefits guide says what is
+ * available. Only a paystub says what the employee is really doing — and the
+ * money plan opens by assuming they contribute nothing, because `wCurrent401k`
+ * defaults to "0" and nobody recalls their deferral percentage from memory.
+ *
+ * Everything here is a PER-PERIOD figure, straight off the stub, with the
+ * frequency alongside it. The alternative was asking the model for annualised
+ * numbers, which makes it do arithmetic it has no need to do and hides the
+ * assumption inside a value nobody can check. A stub states its own frequency;
+ * multiplying is our job.
+ *
+ * WHAT A PAYSTUB CANNOT TELL YOU, and this is the reason `matchRatePct` and
+ * `matchUpToPct` are absent from this list: a stub shows an observed amount,
+ * not a formula. An employee deferring $240 on $4,000 gross and receiving $160
+ * produces exactly the same stub under "100% of the first 4%" and under "66.7%
+ * of the first 6%". Deriving a formula from one point on the curve is a
+ * fabrication, and the formula belongs to the benefits guide.
+ */
+export const PAYSTUB_FIELD_KEYS = [
+  'grossPayCurrent',
+  'retirement401kEmployeeCurrent',
+  'employerMatchCurrent',
+  'hsaEmployeeCurrent',
+] as const
+
+export type PaystubFieldKey = (typeof PAYSTUB_FIELD_KEYS)[number]
+
+export const PAYSTUB_FIELDS = {
+  grossPayCurrent: {
+    describe:
+      'Gross pay for THIS pay period, in US dollars — the "Current" column, not the year-to-date column. Before any tax or deduction.',
+    min: 1,
+    max: 200_000,
+  },
+  retirement401kEmployeeCurrent: {
+    describe:
+      'The EMPLOYEE 401(k), 403(b) or 457(b) contribution deducted this pay period, from the Current column. Traditional and Roth together if both are listed. Not the employer match, not a 401(k) loan repayment, not the year-to-date figure. Omit if there is no such deduction line.',
+    min: 0,
+    max: 100_000,
+  },
+  employerMatchCurrent: {
+    describe:
+      'The EMPLOYER 401(k) match paid this pay period, from the Current column. Usually in a separate employer-contributions block and labelled ER MATCH, CO MATCH or Employer 401(k). Omit if no such line appears anywhere — many payroll systems do not print employer contributions at all, and its absence does not mean there is no match.',
+    min: 0,
+    max: 100_000,
+  },
+  hsaEmployeeCurrent: {
+    describe:
+      'The EMPLOYEE HSA contribution deducted this pay period, from the Current column. Not the employer HSA contribution, and not an FSA.',
+    min: 0,
+    max: 100_000,
+  },
+} as const satisfies Record<PaystubFieldKey, { describe: string; min: number; max: number }>
+
+/**
+ * How many of these periods make a year.
+ *
+ * A closed set, so it carries no more information than a number would, and the
+ * annualising happens in our code rather than the model's head.
+ */
+export const PAY_FREQUENCIES = {
+  weekly: 52,
+  biweekly: 26,
+  semimonthly: 24,
+  monthly: 12,
+} as const
+
+export type PayFrequency = keyof typeof PAY_FREQUENCIES
+
+export const PAY_FREQUENCY_DESCRIPTION =
+  'How often this employee is paid, as stated on the stub. "Semi-monthly" is twice a month (24 a year); "biweekly" is every two weeks (26 a year) — they are different and the stub usually says which. If the stub does not state it, derive it from the pay period dates rather than assuming.'
+
+export function isPayFrequency(value: unknown): value is PayFrequency {
+  return typeof value === 'string' && value in PAY_FREQUENCIES
+}
+
+export function isPaystubValueInRange(key: PaystubFieldKey, value: unknown): value is number {
+  const spec = PAYSTUB_FIELDS[key]
+  if (typeof value !== 'number' || !Number.isFinite(value)) return false
+  return value >= spec.min && value <= spec.max
+}
+
+/**
+ * What a read paystub hands back. Per-period amounts plus the frequency needed
+ * to annualise them, and the state the taxes were withheld in.
+ */
+export type ParsedPaystub = Partial<Record<PaystubFieldKey, ParsedField>> & {
+  payFrequency?: { value: PayFrequency; confidence: number; quote: string }
+  workStateCode?: { value: (typeof US_STATES)[number]; confidence: number; quote: string }
+}
+
