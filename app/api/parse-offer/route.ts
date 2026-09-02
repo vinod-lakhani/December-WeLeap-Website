@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { extractText, getDocumentProxy } from 'unpdf'
 import { US_STATES } from '@/lib/states'
-import { OFFER_FIELDS, OFFER_FIELD_KEYS, WORK_STATE_DESCRIPTION } from '@/lib/offer-parse/fields'
+import {
+  OFFER_FIELDS,
+  OFFER_FIELD_KEYS,
+  BENEFITS_FIELD_KEYS,
+  BENEFITS_DESCRIPTIONS,
+  WORK_STATE_DESCRIPTION,
+} from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
 import { validateExtraction, mergeToolInputs } from '@/lib/offer-parse/validate'
 
@@ -67,12 +73,19 @@ function sniff(buf: Uint8Array) {
   return MAGIC.find((m) => m.bytes.every((b, i) => buf[i] === b)) ?? null
 }
 
-/** The schema is generated from the field table so the two cannot drift. */
-function buildTool(): Anthropic.Tool {
-  const properties: Record<string, unknown> = {}
+export type DocKind = 'offer' | 'benefits'
 
-  for (const key of OFFER_FIELD_KEYS) {
+/** The schema is generated from the field table so the two cannot drift. */
+function buildTool(kind: DocKind): Anthropic.Tool {
+  const properties: Record<string, unknown> = {}
+  const keys = kind === 'benefits' ? BENEFITS_FIELD_KEYS : OFFER_FIELD_KEYS
+
+  for (const key of keys) {
     const spec = OFFER_FIELDS[key]
+    const describe =
+      kind === 'benefits'
+        ? BENEFITS_DESCRIPTIONS[key as (typeof BENEFITS_FIELD_KEYS)[number]]
+        : spec.describe
     properties[key] = {
       type: 'object',
       // The range goes in the description, not as `minimum`/`maximum`: a
@@ -82,7 +95,7 @@ function buildTool(): Anthropic.Tool {
       // the model aims at it; validateExtraction enforces it, and that is the
       // half that has to be true. A constraint the API silently dropped would
       // have been worse than one it refused.
-      description: `${spec.describe} Expected range: ${spec.min} to ${spec.max}.`,
+      description: `${describe} Expected range: ${spec.min} to ${spec.max}.`,
       properties: {
         value: { type: 'number' },
         confidence: { type: 'number' },
@@ -97,16 +110,19 @@ function buildTool(): Anthropic.Tool {
     }
   }
 
-  properties.workStateCode = {
-    type: 'object',
-    description: WORK_STATE_DESCRIPTION,
-    properties: {
-      value: { type: 'string', enum: [...US_STATES] },
-      confidence: { type: 'number' },
-      quote: { type: 'string' },
-    },
-    required: ['value', 'confidence', 'quote'],
-    additionalProperties: false,
+  // A benefits guide describes a plan, not a posting — it has no work location.
+  if (kind === 'offer') {
+    properties.workStateCode = {
+      type: 'object',
+      description: WORK_STATE_DESCRIPTION,
+      properties: {
+        value: { type: 'string', enum: [...US_STATES] },
+        confidence: { type: 'number' },
+        quote: { type: 'string' },
+      },
+      required: ['value', 'confidence', 'quote'],
+      additionalProperties: false,
+    }
   }
 
   return {
@@ -120,7 +136,7 @@ function buildTool(): Anthropic.Tool {
   }
 }
 
-const SYSTEM = [
+const OFFER_SYSTEM = [
   'You read US employment offer letters and record the compensation terms in them.',
   '',
   'Call the record_offer_terms tool exactly once with everything you find.',
@@ -142,6 +158,39 @@ const SYSTEM = [
   '   they change the answer just as much.',
 ].join('\n')
 
+/**
+ * A benefits guide is a different reading problem from an offer letter.
+ *
+ * A letter states one number and means it. A guide is a reference document: it
+ * lists every plan, every tier and every illustrative example, and most of what
+ * it says is about someone other than this reader. The rules below are the ones
+ * that went wrong on a real guide under test — an illustrative contribution
+ * table sitting under the actual match formula, a family HSA figure next to the
+ * employee-only one, three premiums where the tool has one field.
+ */
+const BENEFITS_SYSTEM = [
+  'You read US employee benefits guides and record four things from them: the',
+  '401(k) match formula, the employer HSA contribution, and the employee medical',
+  'premium.',
+  '',
+  'Call the record_offer_terms tool exactly once.',
+  '',
+  'Rules, in order of importance:',
+  '1. Omit any field the document does not state. Never infer a typical value.',
+  '   A missing field costs the reader nothing; a guessed one gives them a wrong',
+  '   number they have no reason to doubt.',
+  '2. Every field you return needs a verbatim quote from the document.',
+  '3. Read the match from the PROSE formula, not from an illustrative table of',
+  '   example contribution rates. Such a table shows what different employees',
+  '   would receive; it is not the formula.',
+  '4. Where the guide lists several medical plans or coverage tiers, the figures',
+  '   you return must all describe ONE scenario: employee-only coverage on the',
+  '   HSA-eligible plan. Name that plan in your quote.',
+  '5. Record only the fields in the schema. Do not report names, addresses,',
+  '   identifiers or any other personal detail, including in quotes.',
+  '6. If this is not a benefits guide, call the tool with no fields set.',
+].join('\n')
+
 
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -151,6 +200,7 @@ export async function POST(request: NextRequest) {
   }
 
   let file: File
+  let kind: DocKind = 'offer'
   try {
     const form = await request.formData()
     const candidate = form.get('file')
@@ -158,6 +208,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'no_file' }, { status: 400 })
     }
     file = candidate
+    // Told, not detected. The user picked a button that says which document
+    // they are handing over, so there is no classifier to be wrong — and a
+    // misclassification here would read the right numbers off the wrong
+    // document, which validation cannot catch.
+    kind = form.get('kind') === 'benefits' ? 'benefits' : 'offer'
   } catch {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
@@ -249,8 +304,8 @@ export async function POST(request: NextRequest) {
        * seconds a call without buying accuracy. Re-tune against the golden set.
        */
       output_config: { effort: 'low' },
-      system: SYSTEM,
-      tools: [buildTool()],
+      system: kind === 'benefits' ? BENEFITS_SYSTEM : OFFER_SYSTEM,
+      tools: [buildTool(kind)],
       messages: [{ role: 'user', content: content! }],
     })
 
@@ -286,12 +341,13 @@ export async function POST(request: NextRequest) {
     // No tool call is a parse failure, not an error. The form is untouched and
     // the user types, exactly as they would have without the upload.
     if (calls.length === 0) {
-      return NextResponse.json({ parsed: {}, path, fieldsFound: 0, redactions })
+      return NextResponse.json({ parsed: {}, kind, path, fieldsFound: 0, redactions })
     }
 
     const { parsed, rejected } = validateExtraction(mergeToolInputs(calls.map((c) => c.input)))
     return NextResponse.json({
       parsed,
+      kind,
       path,
       redactions,
       fieldsFound: Object.keys(parsed).length,

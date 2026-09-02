@@ -23,7 +23,7 @@ import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnair
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
-import { OfferLetterUpload } from '@/components/OfferLetterUpload';
+import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -204,6 +204,7 @@ export function OfferAnalysisTool() {
    */
   const [fromLetter, setFromLetter] = useState<Record<string, string>>({});
   const [letterUploaded, setLetterUploaded] = useState(false);
+  const [benefitsUploaded, setBenefitsUploaded] = useState(false);
 
   /**
    * Which inputs the user, or a letter, has actually spoken for.
@@ -225,7 +226,7 @@ export function OfferAnalysisTool() {
     touched[key] || fromLetter[key] ? '' : 'text-gray-400';
   const missingAsks = ASK_FOR.filter((a) => !fromLetter[a.mark]);
 
-  const applyParsed = useCallback((parsed: ParsedOffer) => {
+  const applyParsed = useCallback((parsed: ParsedOffer, kind: DocKind) => {
     const marks: Record<string, string> = {};
 
     if (parsed.baseSalaryAnnual) {
@@ -293,12 +294,28 @@ export function OfferAnalysisTool() {
      * The user can put any of them back. The difference is that doing so is
      * now their statement rather than ours.
      */
-    if (!marks.bonusPct) setBonusPct(0);
-    if (!marks.matchRatePct) setMatchRatePct(0);
-    if (!marks.matchUpToPct) setMatchUpToPct(0);
+    /**
+     * Only an offer letter clears the assumptions, and the distinction is not
+     * a detail. An offer letter is a complete statement of the offer, so a
+     * term it omits is a term the reader has to supply — and leaving our
+     * default in its place turns a guess into an implied quotation.
+     *
+     * A benefits guide is not that. It is silent on salary, bonus and PTO by
+     * design, and reading it says nothing whatever about them. Clearing them
+     * here would delete numbers the user had typed or a letter had supplied,
+     * on the strength of a document that was never asked about them.
+     */
+    if (kind === 'offer') {
+      if (!marks.bonusPct) setBonusPct(0);
+      if (!marks.matchRatePct) setMatchRatePct(0);
+      if (!marks.matchUpToPct) setMatchUpToPct(0);
+    }
 
-    setFromLetter(marks);
+    // Merged, not replaced: a benefits guide read after an offer letter adds
+    // the match and the HSA to what the letter already gave.
+    setFromLetter((prev) => ({ ...prev, ...marks }));
     setLetterUploaded(true);
+    if (kind === 'benefits') setBenefitsUploaded(true);
   }, []);
 
 
@@ -606,6 +623,23 @@ export function OfferAnalysisTool() {
       )}
 
       <OfferLetterUpload onParsed={applyParsed} />
+
+      {benefitsUploaded && (
+        /* The one assumption the benefits path makes, stated in plain words.
+           A guide lists every plan — the one under test had three medical
+           options at $78, $164 and $286 — and cannot know which the reader
+           elected. The HSA-eligible plan is chosen because it is the only one
+           carrying an employer HSA figure, so the premium and the HSA describe
+           one coherent scenario rather than two unrelated ones. The quote in
+           each field's tooltip names the plan. */
+        <div className="mb-4 rounded-2xl border border-[#386641]/25 bg-white px-5 py-3.5">
+          <p className="text-[13px] leading-relaxed text-gray-700">
+            <span className="font-semibold text-[#111827]">A note on which plan.</span> Guides list
+            every plan and cannot know which you picked, so the premium and HSA above are for the
+            HSA-eligible one. If you are on a different plan, change them.
+          </p>
+        </div>
+      )}
 
       {letterUploaded && missingAsks.length > 0 && (
         <div className="mb-4 rounded-2xl border-2 border-[#A7C957] bg-[#A7C957]/[0.12] px-5 py-4">
