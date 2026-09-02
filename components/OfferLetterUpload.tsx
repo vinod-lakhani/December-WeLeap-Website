@@ -16,6 +16,7 @@
 
 import { useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
+import { stampFirstDocClass, type DocClass } from '@/lib/offer-parse/doc-analytics'
 import { cn } from '@/lib/utils'
 import type { ParsedOffer } from '@/lib/offer-parse/fields'
 
@@ -137,6 +138,8 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
 
       onParsed(data.parsed as ParsedOffer, kind)
       setFilled({ count, kind })
+      // First document wins, and it stays on the person — see doc-analytics.
+      stampFirstDocClass(DOC[kind].analytics as DocClass)
       track('doc_parsed', {
         doc_class: DOC[kind].analytics,
         fields_extracted: count,

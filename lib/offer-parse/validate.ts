@@ -3,6 +3,7 @@ import {
   OFFER_FIELD_KEYS,
   MIN_CONFIDENCE,
   MAX_LINE_AMOUNT,
+  MAX_YTD_AMOUNT,
   isInRange,
   isStateCode,
   isPayFrequency,
@@ -118,6 +119,11 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
     }
   }
 
+  if (typeof input.grossPayYtd === 'number' && Number.isFinite(input.grossPayYtd)) {
+    if (input.grossPayYtd > 0 && input.grossPayYtd <= MAX_YTD_AMOUNT) parsed.grossPayYtd = input.grossPayYtd
+    else rejected.push('grossPayYtd')
+  }
+
   if (isPayFrequency(input.payFrequency)) parsed.payFrequency = input.payFrequency
   else if (input.payFrequency !== undefined) rejected.push('payFrequency')
 
@@ -130,12 +136,28 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
         rejected.push('line')
         continue
       }
-      const { label, currentAmount, kind } = row as Record<string, unknown>
-      const amountOk =
-        typeof currentAmount === 'number' &&
-        Number.isFinite(currentAmount) &&
-        currentAmount >= 0 &&
-        currentAmount <= MAX_LINE_AMOUNT
+      const { label, currentAmount, ytdAmount, kind } = row as Record<string, unknown>
+      /**
+       * The sign is direction, not magnitude, so it is discarded.
+       *
+       * A real ADP statement prints every deduction as a negative — "Federal
+       * Income Tax -2,134.76", "Hsa Ee Ded -181.81" — because the column is
+       * showing money leaving the cheque. Requiring a positive amount threw
+       * away fourteen rows of twenty-two on the first real stub tested,
+       * including the entire employee HSA deduction, while the synthetic ones
+       * that print unsigned passed cleanly and hid it.
+       *
+       * Every kind consumed downstream is an amount rather than a movement:
+       * "how much was deferred", "how much did the employer add". Magnitude is
+       * the whole of what they need.
+       */
+      const inBounds = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= MAX_LINE_AMOUNT
+      // A year-to-date figure is a running total, so it clears MAX_LINE_AMOUNT
+      // on any well-paid year — it gets its own, wider ceiling.
+      const ytdInBounds = (v: unknown) =>
+        v === undefined || (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= MAX_YTD_AMOUNT)
+      const amountOk = inBounds(currentAmount) && ytdInBounds(ytdAmount)
       const labelOk = typeof label === 'string' && label.trim().length > 0
       // A row label is the closest thing this shape has to a quote, and it goes
       // through the same sweep everything else does — a payroll system that
@@ -144,7 +166,12 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
         rejected.push(typeof label === 'string' ? label.slice(0, 40) : 'line')
         continue
       }
-      parsed.lines.push({ label: (label as string).trim(), currentAmount: currentAmount as number, kind })
+      parsed.lines.push({
+        label: (label as string).trim(),
+        currentAmount: Math.abs(currentAmount as number),
+        ytdAmount: typeof ytdAmount === 'number' ? Math.abs(ytdAmount) : 0,
+        kind,
+      })
     }
   }
 

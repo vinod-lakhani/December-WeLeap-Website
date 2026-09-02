@@ -15,9 +15,10 @@
 
 import { useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
+import { stampFirstDocClass } from '@/lib/offer-parse/doc-analytics'
 import {
   PAY_FREQUENCIES,
-  deferralPct,
+  deferralState,
   employerMatchState,
   type ParsedPaystub,
 } from '@/lib/offer-parse/fields'
@@ -53,9 +54,15 @@ export interface PaystubResult {
   stateCode: string | null
   /** Employee deferral as a percent of gross, computed here from two figures. */
   currentDeferralPct: number | null
-  /** True when a match line was present. Never false — see fields.ts. */
+  /**
+   * The employee has already hit the annual 401(k) limit.
+   *
+   * Changes the advice rather than decorating it: the plan's first move is
+   * capturing the match, and there is nothing left to capture.
+   */
+  maxedOut: boolean
+  /** True when a match appears in either column. Never false — see fields.ts. */
   hasMatch: true | null
-  employerMatchThisPeriod: number | null
 }
 
 export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => void }) {
@@ -105,16 +112,22 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
        */
       const annualSalary = gross && periods ? Math.round(gross * periods) : null
       const match = employerMatchState(parsed.lines ?? [])
+      const deferral = deferralState(parsed.lines ?? [], gross, parsed.grossPayYtd)
 
       const result: PaystubResult = {
         annualSalary,
         stateCode: parsed.workStateCode ?? null,
-        currentDeferralPct: deferralPct(parsed.lines ?? [], gross),
+        currentDeferralPct:
+          deferral.kind === 'contributing'
+            ? deferral.pct
+            : deferral.kind === 'maxed'
+              ? deferral.effectivePct
+              : null,
+        maxedOut: deferral.kind === 'maxed',
         hasMatch: match.hasMatch === true ? true : null,
-        employerMatchThisPeriod: match.hasMatch === true ? match.amount : null,
       }
 
-      if (!result.annualSalary && result.currentDeferralPct === null) {
+      if (!result.annualSalary && result.currentDeferralPct === null && !result.maxedOut) {
         setError(MESSAGES.no_fields!)
         track('doc_parse_failed', { doc_class: 'paystub', failure_reason: 'no_fields' })
         return
@@ -129,12 +142,20 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
       if (result.annualSalary) found.push('your salary')
       if (result.currentDeferralPct !== null) found.push(`your ${result.currentDeferralPct}% contribution`)
       if (result.stateCode) found.push('your state')
+      const read = found.length ? `Read ${found.join(', ')}.` : 'Read your stub.'
+      const matchNote = result.hasMatch
+        ? " Your employer's match is on there too."
+        : ' Your stub does not show an employer match — many payroll systems never print one, so that question is still yours to answer.'
       setSummary(
-        result.hasMatch
-          ? `Read ${found.join(', ')} and your employer's match.`
-          : `Read ${found.join(', ')}. Your stub does not show an employer match — many payroll systems never print one, so that question is still yours to answer.`
+        // The cap goes first when it applies, because it changes what the plan
+        // should say rather than adding to it.
+        result.maxedOut
+          ? `You have already hit this year's 401(k) limit — the year-to-date figure on your stub is at the cap, which is why the current period shows nothing going in. ${read}${matchNote}`
+          : `${read}${matchNote}`
       )
 
+      // First document wins, and it stays on the person — see doc-analytics.
+      stampFirstDocClass('paystub')
       track('doc_parsed', {
         doc_class: 'paystub',
         extraction_path: data.path,
@@ -143,6 +164,7 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
         line_count: (parsed.lines ?? []).length,
         found_deferral: result.currentDeferralPct !== null,
         found_match: result.hasMatch === true,
+        maxed_out: result.maxedOut,
         latency_ms: data.latencyMs ?? null,
       })
     } catch (e) {

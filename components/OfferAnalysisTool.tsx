@@ -25,6 +25,7 @@ import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
 import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
+import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -166,6 +167,29 @@ const ASK_FOR: ReadonlyArray<{ mark: string; label: string }> = [
   { mark: 'healthcarePremium', label: 'Healthcare premium' },
   { mark: 'ptoDays', label: 'PTO days' },
 ]
+
+/**
+ * The analytics field names are snake_case and the provenance keys are
+ * camelCase, so a correction signal keyed on one cannot find the other.
+ *
+ * Written out rather than derived by transforming the string, because two of
+ * them do not correspond at all — `state` against `jobState`, and
+ * `espp_discount_pct` against `esppDiscount`. A snake-to-camel helper would
+ * have looked right and silently missed both, which is the sort of bug that
+ * shows up as a metric quietly reading zero.
+ */
+const ANALYTICS_TO_MARK: Record<string, string> = {
+  salary: 'salary',
+  state: 'jobState',
+  bonus_pct: 'bonusPct',
+  match_rate_pct: 'matchRatePct',
+  match_up_to_pct: 'matchUpToPct',
+  hsa_monthly: 'hsaMonthly',
+  healthcare_premium: 'healthcarePremium',
+  rsu_annual: 'rsuAnnual',
+  pto_days: 'ptoDays',
+  espp_discount_pct: 'esppDiscount',
+}
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -555,7 +579,31 @@ export function OfferAnalysisTool() {
    * extra renders are bounded by how much someone edits.
    */
   const [fieldChangeCount, setFieldChangeCount] = useState(0);
+  /**
+   * Every edit already flows through trackFieldChange, so the correction signal
+   * hangs off it rather than being wired into a dozen onChange handlers where
+   * one would inevitably be missed.
+   *
+   * `fromLetterRef` mirrors the state because this callback is created once —
+   * reading `fromLetter` directly would close over the empty object it held on
+   * mount, and the check would never fire.
+   */
+  const fromLetterRef = useRef<Record<string, { quote: string; doc: DocLabel }>>({});
+  /** Which document-sourced fields the user has corrected, for doc_confirmed. */
+  const editedFromDocRef = useRef<Set<string>>(new Set());
+  useEffect(() => { fromLetterRef.current = fromLetter; }, [fromLetter]);
+
   const trackFieldChange = useCallback((field: string, value: any) => {
+    const markKey = ANALYTICS_TO_MARK[field] ?? '';
+    const source = fromLetterRef.current[markKey];
+    if (source) {
+      editedFromDocRef.current.add(markKey);
+      trackDocFieldEdited({
+        fieldKey: field,
+        docClass: source.doc === 'benefits guide' ? 'benefits_guide' : 'offer_letter',
+        tool: 'offer',
+      });
+    }
     if (!engagedRef.current) {
       engagedRef.current = true;
       track('tool_engaged', { tool: 'offer', first_field: field });
@@ -612,6 +660,33 @@ export function OfferAnalysisTool() {
     // `placement` distinguishes the primary button from the clickable preview
     // tile — without it both targets fire an identical event and we can't tell
     // which one is doing the work.
+    /**
+     * The confirm point, and it has to be here rather than at analysis-complete.
+     *
+     * This tool computes live, so the answer resolves the instant an upload
+     * lands — before the user has had any chance to correct anything. Firing
+     * there made `fields_edited` structurally zero: the ordering in a real
+     * session was doc_parsed, doc_confirmed, then doc_field_edited, which is
+     * the wrong way round for a metric meant to say how much of the extraction
+     * survived review. Leaving for the app is a decision taken AFTER the
+     * corrections, so it is the moment worth counting.
+     */
+    const marks = fromLetterRef.current;
+    if (Object.keys(marks).length > 0) {
+      trackDocConfirmed({
+        docClasses: [
+          ...new Set(
+            Object.values(marks).map((m): DocClass =>
+              m.doc === 'benefits guide' ? 'benefits_guide' : 'offer_letter'
+            )
+          ),
+        ],
+        fieldsFromDoc: Object.keys(marks).length,
+        fieldsEdited: editedFromDocRef.current.size,
+        tool: 'offer',
+      });
+    }
+
     track('tool_cta_clicked', { tool: 'offer', placement });
     track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
     // appLink() owns the cross-domain attribution: stored first-touch UTMs plus
