@@ -153,7 +153,7 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
           refObj.current?.click()
         }}
         className={cn(
-          'shrink-0 rounded-xl border-2 px-5 py-2.5 text-sm font-bold transition disabled:opacity-60',
+          'w-full shrink-0 rounded-xl border-2 px-5 py-2.5 text-sm font-bold transition disabled:opacity-60 sm:w-auto',
           kind === 'offer'
             ? 'border-[#386641] bg-white text-[#386641] hover:bg-[#386641] hover:text-white disabled:hover:bg-white disabled:hover:text-[#386641]'
             : 'border-transparent bg-[#386641]/10 text-[#2d5a26] hover:bg-[#386641]/20'
@@ -184,19 +184,32 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
             which are guesses until you do.
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {/* Full width on a phone, inline once there is room. `shrink-0` on the
+            wrapper meant it kept its two-buttons-wide natural size at 375px and
+            the benefits button was clipped by the box it sits in. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
           <Picker kind="offer" refObj={offerRef} />
           <Picker kind="benefits" refObj={benefitsRef} />
         </div>
       </div>
 
-      {/* Why there are two buttons at all. Across four real offer letters, not
-          one stated a 401(k) match, an employer HSA contribution or a medical
-          premium — those live in the benefits guide, and it is a separate
+      {/* Says the upload is optional, in the box that makes it look mandatory.
+          Two prominent buttons inside a dashed border, sitting above the form,
+          read as step one of two — a visitor without the documents to hand has
+          no way to tell from this that the calculator works perfectly well
+          without them, and the likeliest thing they do is leave.
+
+          Also why there are two buttons at all: across four real offer letters,
+          not one stated a 401(k) match, an employer HSA contribution or a
+          medical premium. Those live in the benefits guide, which is a separate
           document nobody thinks to reach for unless asked. */}
       <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
-        Most offer letters say nothing about the 401(k) match, HSA or health premium. The benefits
-        guide does.
+        <span className="font-semibold text-gray-700">
+          No documents to hand? Skip this and fill in the form below — it works the same either
+          way.
+        </span>{' '}
+        Uploading just saves the typing. Most offer letters say nothing about the 401(k) match, HSA
+        or health premium; the benefits guide does.
       </p>
 
       {filled !== null && (
