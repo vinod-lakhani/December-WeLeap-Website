@@ -402,7 +402,22 @@ export async function POST(request: NextRequest) {
 
   const started = Date.now()
   try {
-    const client = new Anthropic()
+    /**
+     * Our own deadline, set below Vercel's.
+     *
+     * The SDK defaults to a ten-minute timeout with two retries, which inside a
+     * sixty-second function can never fire: Vercel kills the request first and
+     * the browser gets a bare 504 with no body, so nothing is logged and the
+     * client cannot tell a timeout from a bad scan. Failing on our own terms
+     * means a real error code and a message that says what happened.
+     *
+     * 25s with one retry is a worst case of 50s, inside the 60s ceiling. It
+     * also covers the measured range comfortably — offer letters ran 10-17s,
+     * guides 5-10s, stubs 7-11s. A call still going at 25s is almost always the
+     * runaway-thinking case that returns a truncated tool call anyway, and
+     * cutting that off loses nothing.
+     */
+    const client = new Anthropic({ timeout: 25_000, maxRetries: 1 })
     const response = await client.messages.create({
       model: 'claude-opus-5',
       /**
@@ -519,6 +534,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
       return NextResponse.json({ error: 'busy' }, { status: 429 })
+    }
+    // Distinguishable in the logs and to the client, which is the whole reason
+    // for owning the deadline rather than letting Vercel end the request.
+    if (error instanceof Anthropic.APIConnectionTimeoutError) {
+      console.warn('[parse-offer] model call timed out', { kind, path })
+      return NextResponse.json({ error: 'timeout' }, { status: 504 })
     }
     console.error('[parse-offer] extraction failed', {
       // Never the document, never the model output — only the shape of the
