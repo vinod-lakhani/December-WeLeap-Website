@@ -62,3 +62,27 @@ export function validateExtraction(raw: unknown): { parsed: ParsedOffer; rejecte
 
   return { parsed, rejected }
 }
+
+/**
+ * Fold several tool-call payloads into one.
+ *
+ * Blocks can name the same field twice — `workStateCode` came back in both on
+ * the letter this was debugged against. Highest confidence wins, so the merge
+ * does not depend on which order the model happened to emit them in.
+ */
+export function mergeToolInputs(inputs: unknown[]): Record<string, unknown> {
+  const merged: Record<string, { confidence?: unknown }> = {}
+  for (const input of inputs) {
+    if (typeof input !== 'object' || input === null) continue
+    for (const [key, entry] of Object.entries(input as Record<string, { confidence?: unknown }>)) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const existing = merged[key]
+      const better =
+        !existing ||
+        (typeof entry.confidence === 'number' &&
+          (typeof existing.confidence !== 'number' || entry.confidence > existing.confidence))
+      if (better) merged[key] = entry
+    }
+  }
+  return merged
+}

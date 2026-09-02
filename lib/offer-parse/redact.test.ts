@@ -56,6 +56,13 @@ describe('redact — what must survive, or the parser stops working', () => {
     ['an equity grant', 'An RSU grant valued at $240,000 vesting over 4 years'],
     ['a start date', 'Your start date is March 3, 2026'],
     ['an HSA contribution', 'The Company contributes $1,200 annually to your HSA'],
+    // Regression. "unit" is an address designator and also the most common
+    // word in an equity section; the sweep ate "unit grant" on a real letter
+    // before the pattern required a digit after the designator.
+    ['a restricted stock unit grant', 'You will receive a restricted stock unit grant with a value of $240,000'],
+    ['units, plural', '4,000 restricted stock units vesting over four years'],
+    ['a floor plan reference', 'Your desk is on the engineering floor plan'],
+    ['a suite of benefits', 'You are eligible for our full suite of health benefits'],
   ])('keeps %s intact', (_label, input) => {
     const { text, hits } = redact(input)
     expect(hits).toBe(0)
@@ -76,5 +83,15 @@ describe('containsPii', () => {
   it('gates a model-written quote on the same rules', () => {
     expect(containsPii('the Company matches 50% of the first 6%')).toBe(false)
     expect(containsPii('Alex Smith, 12 Oak Street, starting at $120,000')).toBe(true)
+  })
+})
+
+describe('redact — address designators still work when a number follows', () => {
+  it.each([
+    ['Apt 4B', 'Alex Smith, 12 Oak Street, Apt 4B'],
+    ['Suite 200', 'Our office is at 1 Innovation Plaza, Suite 200'],
+    ['Unit 12', 'Delivered to Unit 12'],
+  ])('still removes %s', (_label, input) => {
+    expect(redact(input).hits).toBeGreaterThan(0)
   })
 })

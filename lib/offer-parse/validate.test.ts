@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateExtraction } from './validate'
+import { validateExtraction, mergeToolInputs } from './validate'
 
 const ok = (value: number | string, quote = 'Annual base salary: $145,000') => ({
   value,
@@ -102,5 +102,39 @@ describe('validateExtraction — what gets dropped', () => {
     ['undefined', undefined],
   ])('returns nothing for %s rather than throwing', (_label, input) => {
     expect(validateExtraction(input).parsed).toEqual({})
+  })
+})
+
+describe('mergeToolInputs', () => {
+  it('keeps fields the model split across parallel tool calls', () => {
+    // The real failure: the money fields arrived in one block and ptoDays in a
+    // second, so reading only the first lost a correctly extracted field.
+    const merged = mergeToolInputs([
+      { baseSalaryAnnual: ok(145000) },
+      { ptoDays: { value: 20, confidence: 0.97, quote: 'accrue 20 days of paid time off' } },
+    ])
+    expect(Object.keys(merged).sort()).toEqual(['baseSalaryAnnual', 'ptoDays'])
+  })
+
+  it('prefers the higher confidence when a field appears in both', () => {
+    const merged = mergeToolInputs([
+      { workStateCode: { value: 'CA', confidence: 0.5, quote: 'a' } },
+      { workStateCode: { value: 'TX', confidence: 0.95, quote: 'b' } },
+    ]) as Record<string, { value: string }>
+    expect(merged.workStateCode?.value).toBe('TX')
+  })
+
+  it('does not depend on the order the blocks arrived in', () => {
+    const a = { workStateCode: { value: 'CA', confidence: 0.5, quote: 'a' } }
+    const b = { workStateCode: { value: 'TX', confidence: 0.95, quote: 'b' } }
+    expect(mergeToolInputs([a, b])).toEqual(mergeToolInputs([b, a]))
+  })
+
+  it.each([
+    ['a null block', [null]],
+    ['a string block', ['nope']],
+    ['a field that is not an object', [{ baseSalaryAnnual: 42 }]],
+  ])('skips %s rather than throwing', (_label, inputs) => {
+    expect(() => mergeToolInputs(inputs as unknown[])).not.toThrow()
   })
 })

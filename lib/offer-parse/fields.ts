@@ -107,7 +107,7 @@ export const OFFER_FIELDS = {
   },
   ptoDays: {
     describe:
-      'Paid time off in days per year. Convert hours at 8 per day. Exclude public holidays and sick days stated separately. Omit for unlimited PTO.',
+      'Paid time off or vacation days per year. Convert hours at 8 per day. If the letter lists company holidays as a separate figure, report only the PTO or vacation number and ignore the holidays. Omit only if the letter does not state a number, or says PTO is unlimited.',
     min: 0,
     max: 365,
     integer: true,

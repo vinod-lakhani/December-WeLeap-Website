@@ -48,8 +48,13 @@ const PATTERNS: readonly RegExp[] = [
   /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g,
   // Street addresses. Anchored on the unit word so "401k" and "15 days" survive.
   /\b\d{1,6}\s+[\w.'-]+(?:\s+[\w.'-]+){0,3}\s+(?:st|street|ave|avenue|rd|road|blvd|boulevard|ln|lane|dr|drive|ct|court|way|pl|place|ter|terrace|cir|circle|hwy|highway|pkwy|parkway)\b\.?/gi,
-  // Apartment and suite lines, which often carry the number the line above lost.
-  /\b(?:apt|apartment|suite|ste|unit|floor|fl)\.?\s*#?\s*[\w-]{1,8}\b/gi,
+  // Apartment and suite lines, which often carry the number the line above
+  // lost. The designator must be followed by a token CONTAINING A DIGIT, and
+  // that lookahead is load-bearing: without it "unit" swallowed "restricted
+  // stock unit grant" on a real letter, which is the single most common phrase
+  // in the equity section of the documents this parses. An address word is
+  // only an address word when a number follows it.
+  /\b(?:apt|apartment|suite|ste|unit|floor|fl)\.?\s*#?\s*(?=[\w-]*\d)[\w-]{1,8}\b/gi,
   /\b\d{5}(?:-\d{4})?\b(?=\s*(?:$|[,.\n]))/g,
   // Dates of birth, when labelled. An unlabelled date is a start date and stays.
   /\b(?:date of birth|dob|birth date)\b\s*:?\s*\S{1,12}/gi,

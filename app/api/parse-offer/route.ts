@@ -4,7 +4,7 @@ import { extractText, getDocumentProxy } from 'unpdf'
 import { US_STATES } from '@/lib/states'
 import { OFFER_FIELDS, OFFER_FIELD_KEYS, WORK_STATE_DESCRIPTION } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
-import { validateExtraction } from '@/lib/offer-parse/validate'
+import { validateExtraction, mergeToolInputs } from '@/lib/offer-parse/validate'
 
 /**
  * Read an offer letter and hand the numbers back to the form.
@@ -75,10 +75,17 @@ function buildTool(): Anthropic.Tool {
     const spec = OFFER_FIELDS[key]
     properties[key] = {
       type: 'object',
-      description: spec.describe,
+      // The range goes in the description, not as `minimum`/`maximum`: a
+      // strict tool schema rejects those on a number outright —
+      // "For 'number' type, properties maximum, minimum are not supported".
+      // Which is the right split anyway. The schema advertises the range so
+      // the model aims at it; validateExtraction enforces it, and that is the
+      // half that has to be true. A constraint the API silently dropped would
+      // have been worse than one it refused.
+      description: `${spec.describe} Expected range: ${spec.min} to ${spec.max}.`,
       properties: {
-        value: { type: 'number', minimum: spec.min, maximum: spec.max },
-        confidence: { type: 'number', minimum: 0, maximum: 1 },
+        value: { type: 'number' },
+        confidence: { type: 'number' },
         quote: {
           type: 'string',
           description:
@@ -95,7 +102,7 @@ function buildTool(): Anthropic.Tool {
     description: WORK_STATE_DESCRIPTION,
     properties: {
       value: { type: 'string', enum: [...US_STATES] },
-      confidence: { type: 'number', minimum: 0, maximum: 1 },
+      confidence: { type: 'number' },
       quote: { type: 'string' },
     },
     required: ['value', 'confidence', 'quote'],
@@ -129,7 +136,12 @@ const SYSTEM = [
   '4. Record only the fields in the schema. Do not report names, addresses,',
   '   identifiers or any other personal detail anywhere, including in quotes.',
   '5. If the document is not an offer letter, call the tool with no fields set.',
+  '6. Go through every field in the schema in turn and decide on each one before',
+  '   you call the tool. Do not stop once you have the headline money numbers.',
+  '   Terms like time off are easy to skip past among the dollar figures and',
+  '   they change the answer just as much.',
 ].join('\n')
+
 
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -209,26 +221,65 @@ export async function POST(request: NextRequest) {
     const client = new Anthropic()
     const response = await client.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 4000,
-      // Bounded extraction against a fixed schema, not open reasoning. Tune
-      // this against the golden set rather than by feel — it is the cheapest
-      // lever on both latency and precision.
-      output_config: { effort: 'medium' },
+      /**
+       * Thinking tokens count against this, and adaptive thinking is on by
+       * default. At 4000 the model spent the entire budget reasoning and the
+       * tool call came back truncated — stop_reason "max_tokens", exactly 4000
+       * output tokens, and the last field silently missing on every single run.
+       * It read as a clean success, which is the worst way for it to fail.
+       *
+       * The extracted fields themselves are ~1.5k tokens. The rest is headroom
+       * for thinking, and it is cheap headroom: nothing bills for tokens the
+       * model does not generate.
+       */
+      max_tokens: 16000,
+      /**
+       * Low, not medium. This is field extraction against a fixed schema, not
+       * a problem that rewards deliberation, and the depth was costing 30
+       * seconds a call without buying accuracy. Re-tune against the golden set.
+       */
+      output_config: { effort: 'low' },
       system: SYSTEM,
       tools: [buildTool()],
       messages: [{ role: 'user', content: content! }],
     })
 
-    const call = response.content.find(
+    /**
+     * A truncated response is a silent data-loss bug, so it is named.
+     *
+     * The fields that did arrive are individually valid — each one passed range
+     * and quote checks — so they are still returned. What must not happen is
+     * the caller believing the document had nothing more in it.
+     */
+    const truncated = response.stop_reason === 'max_tokens'
+    if (truncated) {
+      console.warn('[parse-offer] response truncated at max_tokens', {
+        outputTokens: response.usage.output_tokens,
+        path,
+      })
+    }
+
+    /**
+     * Every tool_use block, not the first one.
+     *
+     * Parallel tool use is on by default, and the model genuinely uses it here:
+     * on a real letter it returned the money fields in one block and `ptoDays`
+     * in a second. Reading only the first — which is what `.find()` did — threw
+     * away a correctly extracted field on every single run, and looked like the
+     * model had simply missed it. Nine of ten fields is a plausible enough
+     * result that the bug survived several rounds of prompt tuning aimed at the
+     * wrong thing.
+     */
+    const calls = response.content.filter(
       (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === 'record_offer_terms'
     )
     // No tool call is a parse failure, not an error. The form is untouched and
     // the user types, exactly as they would have without the upload.
-    if (!call) {
+    if (calls.length === 0) {
       return NextResponse.json({ parsed: {}, path, fieldsFound: 0, redactions })
     }
 
-    const { parsed, rejected } = validateExtraction(call.input)
+    const { parsed, rejected } = validateExtraction(mergeToolInputs(calls.map((c) => c.input)))
     return NextResponse.json({
       parsed,
       path,
@@ -236,6 +287,8 @@ export async function POST(request: NextRequest) {
       fieldsFound: Object.keys(parsed).length,
       rejectedCount: rejected.length,
       latencyMs: Date.now() - started,
+      truncated,
+      outputTokens: response.usage.output_tokens,
     })
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
