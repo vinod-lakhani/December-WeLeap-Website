@@ -146,8 +146,11 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
       </div>
 
       {filled !== null && (
+        /* Counts what was found. What was NOT found is asked for by the callout
+           the tool renders directly beneath this, where it can name the missing
+           terms — this line would only be guessing at them. */
         <p className="mt-3 text-[13px] font-semibold text-[#386641]" role="status">
-          Filled in {filled} {filled === 1 ? 'field' : 'fields'}. Check them below — every one is
+          Filled in {filled} {filled === 1 ? 'field' : 'fields'} from your letter. Every one is
           still editable.
         </p>
       )}

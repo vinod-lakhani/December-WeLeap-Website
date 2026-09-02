@@ -92,25 +92,58 @@ function Section({ num, title, subtitle, annualValue, children }: {
 }
 
 /**
- * Marks an input the upload filled in, and carries the sentence it came from in
- * the tooltip.
+ * Says where a value came from, once a letter has been uploaded.
  *
- * Provenance is the whole reason a prefilled number is trustworthy. A figure
- * that simply appears in a box is worse than one the user typed, because they
- * have no way to tell whether it is right. `title` is the cheapest surface that
- * survives keyboard and screen-reader use, so the quote goes there.
+ * Both states matter, and the second one is the important one. Before upload
+ * existed, the defaults on this form were plainly the calculator's own
+ * assumptions — nobody had told it anything. After an upload the frame
+ * changes: the user has handed over their letter and now reads the whole form
+ * as a description of it. An unlabelled 401(k) match sitting at 100%/6% is
+ * then not a default, it is an implied quotation, and the user has no way to
+ * tell it apart from the salary we genuinely read.
+ *
+ * So every field gets a label after an upload, including the ones we could not
+ * find. `title` carries the source sentence for the ones we could — the
+ * cheapest surface that survives keyboard and screen-reader use.
  */
-function FromLetter({ quote }: { quote?: string }) {
-  if (!quote) return null;
+function FieldSource({ quote, uploaded }: { quote?: string; uploaded: boolean }) {
+  if (quote) {
+    return (
+      <span
+        title={quote}
+        className="ml-2 cursor-help rounded-full bg-[#386641]/10 px-2 py-0.5 align-middle text-[10.5px] font-bold uppercase tracking-wide text-[#386641]"
+      >
+        from your letter
+      </span>
+    );
+  }
+  if (!uploaded) return null;
   return (
-    <span
-      title={quote}
-      className="ml-2 cursor-help rounded-full bg-[#386641]/10 px-2 py-0.5 align-middle text-[10.5px] font-bold uppercase tracking-wide text-[#386641]"
-    >
-      from your letter
+    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 align-middle text-[10.5px] font-bold uppercase tracking-wide text-gray-500">
+      not in your letter
     </span>
   );
 }
+
+/**
+ * What the form still needs after a letter has been read, named out loud.
+ *
+ * A label on a field only speaks to someone already looking at that field.
+ * Most offer letters are silent on the terms that move the number most — across
+ * four real ones, none stated a 401(k) match — so after an upload the majority
+ * of the package is still unknown, and saying so quietly next to twelve inputs
+ * is not saying it. This asks.
+ *
+ * Ordered by how much each one is worth, not by where it sits on the form.
+ */
+const ASK_FOR: ReadonlyArray<{ mark: string; label: string }> = [
+  { mark: 'matchRatePct', label: '401(k) match' },
+  { mark: 'bonusPct', label: 'Bonus target' },
+  { mark: 'rsuAnnual', label: 'Equity value' },
+  { mark: 'hsaMonthly', label: 'Employer HSA' },
+  { mark: 'healthcarePremium', label: 'Healthcare premium' },
+  { mark: 'ptoDays', label: 'PTO days' },
+]
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
@@ -159,6 +192,8 @@ export function OfferAnalysisTool() {
    * and editing a prefilled field is not a special case — it is just typing.
    */
   const [fromLetter, setFromLetter] = useState<Record<string, string>>({});
+  const [letterUploaded, setLetterUploaded] = useState(false);
+  const missingAsks = ASK_FOR.filter((a) => !fromLetter[a.mark]);
 
   const applyParsed = useCallback((parsed: ParsedOffer) => {
     const marks: Record<string, string> = {};
@@ -210,7 +245,30 @@ export function OfferAnalysisTool() {
       marks.esppDiscount = parsed.esppDiscountPct.quote;
     }
 
+    /**
+     * Nothing the letter did not state may put a dollar into the package.
+     *
+     * This form ships with assumptions for the terms people cannot recall —
+     * a 100% match up to 6%, a 10% bonus target. They are reasonable defaults
+     * for someone filling the form in by hand, and they become a false claim
+     * the moment a letter is uploaded: on a real $295,000 offer that never
+     * mentions a 401(k), the untouched default quietly adds $17,700 of
+     * employer match to a total presented as "from your letter".
+     *
+     * So the money-bearing assumptions are cleared. PTO is left at 15 because
+     * that is the market baseline this tool measures against rather than a
+     * claim about this offer — at 15 it contributes exactly zero, which is the
+     * same test every other field here has to pass. It is still labelled.
+     *
+     * The user can put any of them back. The difference is that doing so is
+     * now their statement rather than ours.
+     */
+    if (!marks.bonusPct) setBonusPct(0);
+    if (!marks.matchRatePct) setMatchRatePct(0);
+    if (!marks.matchUpToPct) setMatchUpToPct(0);
+
     setFromLetter(marks);
+    setLetterUploaded(true);
   }, []);
 
 
@@ -519,11 +577,36 @@ export function OfferAnalysisTool() {
 
       <OfferLetterUpload onParsed={applyParsed} />
 
+      {letterUploaded && missingAsks.length > 0 && (
+        <div className="mb-4 rounded-2xl border-2 border-[#A7C957] bg-[#A7C957]/[0.12] px-5 py-4">
+          <p className="text-sm font-bold text-[#111827]">Your letter did not mention everything.</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-gray-700">
+            {missingAsks.length === 1 ? 'It is' : 'These are'} left out of the total rather than
+            guessed, so the number below is lower than your real package. Add what you know — each
+            field is marked.
+          </p>
+          {/* A list, not a sentence. On a letter that states only salary and
+              location — which is what a real scanned one did — six missing
+              terms strung together with commas is a paragraph nobody finishes
+              reading, and the whole point is that they act on it. */}
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {missingAsks.map((a) => (
+              <li
+                key={a.mark}
+                className="rounded-full border border-[#386641]/25 bg-white px-2.5 py-1 text-[12.5px] font-semibold text-[#2d5a26]"
+              >
+                {a.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* ── 1. Base Salary ─────────────────────────────────────────────────── */}
       <Section num={1} title="Base Salary" subtitle="The headline number on your offer letter" annualValue={salary || null}>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Annual base salary<FromLetter quote={fromLetter.salary} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Annual base salary<FieldSource uploaded={letterUploaded} quote={fromLetter.salary} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input
@@ -543,7 +626,7 @@ export function OfferAnalysisTool() {
           </div>
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">
-              Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span><FromLetter quote={fromLetter.jobState} />
+              Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span><FieldSource uploaded={letterUploaded} quote={fromLetter.jobState} />
             </Label>
             <Select value={jobState} onValueChange={(val) => {
               setJobState(val);
@@ -574,7 +657,7 @@ export function OfferAnalysisTool() {
       <Section num={2} title="Bonus Target" subtitle="Annual performance bonus — not guaranteed but real comp" annualValue={calc?.annualBonus}>
         <div>
           <div className="flex justify-between mb-2">
-            <Label className="text-sm font-semibold text-gray-700">Target bonus<FromLetter quote={fromLetter.bonusPct} /></Label>
+            <Label className="text-sm font-semibold text-gray-700">Target bonus<FieldSource uploaded={letterUploaded} quote={fromLetter.bonusPct} /></Label>
             <span className="text-lg font-extrabold text-gray-900">{bonusPct}%</span>
           </div>
           <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => {
@@ -594,7 +677,7 @@ export function OfferAnalysisTool() {
       <Section num={3} title="401k Match" subtitle="Free money — often the most-missed line in an offer" annualValue={calc?.annual401kMatch}>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FromLetter quote={fromLetter.matchRatePct} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FieldSource uploaded={letterUploaded} quote={fromLetter.matchRatePct} /></Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="100" value={matchRatePct || ''}
                 onChange={e => {
@@ -607,7 +690,7 @@ export function OfferAnalysisTool() {
             </div>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)<FromLetter quote={fromLetter.matchUpToPct} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)<FieldSource uploaded={letterUploaded} quote={fromLetter.matchUpToPct} /></Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="6" value={matchUpToPct || ''}
                 onChange={e => {
@@ -629,7 +712,7 @@ export function OfferAnalysisTool() {
       <Section num={4} title="Health & Benefits" subtitle="Employer HSA contribution and your healthcare premium" annualValue={calc ? calc.annualHsa + calc.annualHealthcare : null}>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Employer HSA / mo<FromLetter quote={fromLetter.hsaMonthly} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Employer HSA / mo<FieldSource uploaded={letterUploaded} quote={fromLetter.hsaMonthly} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={hsaMonthly || ''}
@@ -641,7 +724,7 @@ export function OfferAnalysisTool() {
             </div>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Your healthcare premium / mo<FromLetter quote={fromLetter.healthcarePremium} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Your healthcare premium / mo<FieldSource uploaded={letterUploaded} quote={fromLetter.healthcarePremium} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={healthcarePremium || ''}
@@ -659,7 +742,7 @@ export function OfferAnalysisTool() {
       <Section num={5} title="Equity" subtitle="RSUs and ESPP — often the biggest gap between base and total comp" annualValue={calc ? rsuAnnual + calc.annualEspp : null}>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1 block">RSU grant — annual vesting value<FromLetter quote={fromLetter.rsuAnnual} /></Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1 block">RSU grant — annual vesting value<FieldSource uploaded={letterUploaded} quote={fromLetter.rsuAnnual} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={rsuAnnual || ''}
@@ -694,7 +777,7 @@ export function OfferAnalysisTool() {
                 </div>
               </div>
               <div>
-                <Label className="text-xs font-semibold text-gray-600 mb-1 block">Discount %<FromLetter quote={fromLetter.esppDiscount} /></Label>
+                <Label className="text-xs font-semibold text-gray-600 mb-1 block">Discount %<FieldSource uploaded={letterUploaded} quote={fromLetter.esppDiscount} /></Label>
                 <div className="relative">
                   <Input type="text" inputMode="numeric" placeholder="15" value={esppDiscount || ''}
                     onChange={e => {
@@ -714,7 +797,7 @@ export function OfferAnalysisTool() {
       <Section num={6} title="Time Off" subtitle="PTO above the US average (15 days) has real dollar value" annualValue={calc && calc.ptoValue > 0 ? calc.ptoValue : null}>
         <div>
           <div className="flex justify-between mb-2">
-            <Label className="text-sm font-semibold text-gray-700">PTO days offered<FromLetter quote={fromLetter.ptoDays} /></Label>
+            <Label className="text-sm font-semibold text-gray-700">PTO days offered<FieldSource uploaded={letterUploaded} quote={fromLetter.ptoDays} /></Label>
             <span className="text-lg font-extrabold text-gray-900">{ptoDays} days</span>
           </div>
           <input type="range" min={0} max={40} step={1} value={ptoDays} onChange={e => {
