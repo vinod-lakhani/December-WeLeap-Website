@@ -15,6 +15,7 @@
 
 import { useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
+import { stampFirstDocClass } from '@/lib/offer-parse/doc-analytics'
 import {
   PAY_FREQUENCIES,
   deferralPct,
@@ -135,6 +136,8 @@ export function PaystubUpload({ onRead }: { onRead: (result: PaystubResult) => v
           : `Read ${found.join(', ')}. Your stub does not show an employer match — many payroll systems never print one, so that question is still yours to answer.`
       )
 
+      // First document wins, and it stays on the person — see doc-analytics.
+      stampFirstDocClass('paystub')
       track('doc_parsed', {
         doc_class: 'paystub',
         extraction_path: data.path,
