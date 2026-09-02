@@ -22,6 +22,8 @@ import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
+import { OfferLetterUpload } from '@/components/OfferLetterUpload';
+import type { ParsedOffer } from '@/lib/offer-parse/fields';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,27 @@ function Section({ num, title, subtitle, annualValue, children }: {
   );
 }
 
+/**
+ * Marks an input the upload filled in, and carries the sentence it came from in
+ * the tooltip.
+ *
+ * Provenance is the whole reason a prefilled number is trustworthy. A figure
+ * that simply appears in a box is worse than one the user typed, because they
+ * have no way to tell whether it is right. `title` is the cheapest surface that
+ * survives keyboard and screen-reader use, so the quote goes there.
+ */
+function FromLetter({ quote }: { quote?: string }) {
+  if (!quote) return null;
+  return (
+    <span
+      title={quote}
+      className="ml-2 cursor-help rounded-full bg-[#386641]/10 px-2 py-0.5 align-middle text-[10.5px] font-bold uppercase tracking-wide text-[#386641]"
+    >
+      from your letter
+    </span>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function OfferAnalysisTool() {
@@ -127,6 +150,68 @@ export function OfferAnalysisTool() {
   const [needsPct, setNeedsPct] = useState(50);
   const [wantsPct, setWantsPct] = useState(30);
   const savingsPct = Math.max(0, 100 - needsPct - wantsPct);
+
+  /**
+   * Which inputs came off an uploaded letter rather than from the user.
+   *
+   * Only used to mark them. The values themselves live in the same state as
+   * every typed value, so there is no second source of truth to keep in sync,
+   * and editing a prefilled field is not a special case — it is just typing.
+   */
+  const [fromLetter, setFromLetter] = useState<Record<string, string>>({});
+
+  const applyParsed = useCallback((parsed: ParsedOffer) => {
+    const marks: Record<string, string> = {};
+
+    if (parsed.baseSalaryAnnual) {
+      const v = Math.round(parsed.baseSalaryAnnual.value);
+      setSalaryInput(v.toLocaleString());
+      setSalary(v);
+      marks.salary = parsed.baseSalaryAnnual.quote;
+    }
+    if (parsed.workStateCode) {
+      setJobState(parsed.workStateCode.value);
+      marks.jobState = parsed.workStateCode.quote;
+    }
+    if (parsed.targetBonusPct) {
+      setBonusPct(parsed.targetBonusPct.value);
+      marks.bonusPct = parsed.targetBonusPct.quote;
+    }
+    if (parsed.matchRatePct) {
+      setMatchRatePct(parsed.matchRatePct.value);
+      marks.matchRatePct = parsed.matchRatePct.quote;
+    }
+    if (parsed.matchUpToPct) {
+      setMatchUpToPct(parsed.matchUpToPct.value);
+      marks.matchUpToPct = parsed.matchUpToPct.quote;
+    }
+    if (parsed.employerHsaAnnual) {
+      setHsaMonthly(Math.round(parsed.employerHsaAnnual.value / 12));
+      marks.hsaMonthly = parsed.employerHsaAnnual.quote;
+    }
+    if (parsed.healthcarePremiumMonthly) {
+      setHealthcarePremium(Math.round(parsed.healthcarePremiumMonthly.value));
+      marks.healthcarePremium = parsed.healthcarePremiumMonthly.quote;
+    }
+    if (parsed.equityAnnualUsd) {
+      setRsuAnnual(Math.round(parsed.equityAnnualUsd.value));
+      marks.rsuAnnual = parsed.equityAnnualUsd.quote;
+    }
+    if (parsed.ptoDays) {
+      setPtoDays(parsed.ptoDays.value);
+      marks.ptoDays = parsed.ptoDays.quote;
+    }
+    if (parsed.esppDiscountPct) {
+      setEsppDiscount(parsed.esppDiscountPct.value);
+      // The ESPP section is collapsed by default. A letter that names a
+      // discount is a letter with an ESPP, so open it — a value the user
+      // cannot see is a value we did not really give them.
+      setShowEspp(true);
+      marks.esppDiscount = parsed.esppDiscountPct.quote;
+    }
+
+    setFromLetter(marks);
+  }, []);
 
 
   // Metro/city options
@@ -432,11 +517,13 @@ export function OfferAnalysisTool() {
         </div>
       )}
 
+      <OfferLetterUpload onParsed={applyParsed} />
+
       {/* ── 1. Base Salary ─────────────────────────────────────────────────── */}
       <Section num={1} title="Base Salary" subtitle="The headline number on your offer letter" annualValue={salary || null}>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Annual base salary</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Annual base salary<FromLetter quote={fromLetter.salary} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input
@@ -456,7 +543,7 @@ export function OfferAnalysisTool() {
           </div>
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">
-              Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span>
+              Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span><FromLetter quote={fromLetter.jobState} />
             </Label>
             <Select value={jobState} onValueChange={(val) => {
               setJobState(val);
@@ -487,7 +574,7 @@ export function OfferAnalysisTool() {
       <Section num={2} title="Bonus Target" subtitle="Annual performance bonus — not guaranteed but real comp" annualValue={calc?.annualBonus}>
         <div>
           <div className="flex justify-between mb-2">
-            <Label className="text-sm font-semibold text-gray-700">Target bonus</Label>
+            <Label className="text-sm font-semibold text-gray-700">Target bonus<FromLetter quote={fromLetter.bonusPct} /></Label>
             <span className="text-lg font-extrabold text-gray-900">{bonusPct}%</span>
           </div>
           <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => {
@@ -507,7 +594,7 @@ export function OfferAnalysisTool() {
       <Section num={3} title="401k Match" subtitle="Free money — often the most-missed line in an offer" annualValue={calc?.annual401kMatch}>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FromLetter quote={fromLetter.matchRatePct} /></Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="100" value={matchRatePct || ''}
                 onChange={e => {
@@ -520,7 +607,7 @@ export function OfferAnalysisTool() {
             </div>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)<FromLetter quote={fromLetter.matchUpToPct} /></Label>
             <div className="relative">
               <Input type="text" inputMode="numeric" placeholder="6" value={matchUpToPct || ''}
                 onChange={e => {
@@ -542,7 +629,7 @@ export function OfferAnalysisTool() {
       <Section num={4} title="Health & Benefits" subtitle="Employer HSA contribution and your healthcare premium" annualValue={calc ? calc.annualHsa + calc.annualHealthcare : null}>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Employer HSA / mo</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Employer HSA / mo<FromLetter quote={fromLetter.hsaMonthly} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={hsaMonthly || ''}
@@ -554,7 +641,7 @@ export function OfferAnalysisTool() {
             </div>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Your healthcare premium / mo</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Your healthcare premium / mo<FromLetter quote={fromLetter.healthcarePremium} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={healthcarePremium || ''}
@@ -572,7 +659,7 @@ export function OfferAnalysisTool() {
       <Section num={5} title="Equity" subtitle="RSUs and ESPP — often the biggest gap between base and total comp" annualValue={calc ? rsuAnnual + calc.annualEspp : null}>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1 block">RSU grant — annual vesting value</Label>
+            <Label className="text-sm font-semibold text-gray-700 mb-1 block">RSU grant — annual vesting value<FromLetter quote={fromLetter.rsuAnnual} /></Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <Input type="text" inputMode="numeric" placeholder="0" value={rsuAnnual || ''}
@@ -607,7 +694,7 @@ export function OfferAnalysisTool() {
                 </div>
               </div>
               <div>
-                <Label className="text-xs font-semibold text-gray-600 mb-1 block">Discount %</Label>
+                <Label className="text-xs font-semibold text-gray-600 mb-1 block">Discount %<FromLetter quote={fromLetter.esppDiscount} /></Label>
                 <div className="relative">
                   <Input type="text" inputMode="numeric" placeholder="15" value={esppDiscount || ''}
                     onChange={e => {
@@ -627,7 +714,7 @@ export function OfferAnalysisTool() {
       <Section num={6} title="Time Off" subtitle="PTO above the US average (15 days) has real dollar value" annualValue={calc && calc.ptoValue > 0 ? calc.ptoValue : null}>
         <div>
           <div className="flex justify-between mb-2">
-            <Label className="text-sm font-semibold text-gray-700">PTO days offered</Label>
+            <Label className="text-sm font-semibold text-gray-700">PTO days offered<FromLetter quote={fromLetter.ptoDays} /></Label>
             <span className="text-lg font-extrabold text-gray-900">{ptoDays} days</span>
           </div>
           <input type="range" min={0} max={40} step={1} value={ptoDays} onChange={e => {
