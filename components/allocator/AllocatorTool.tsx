@@ -175,6 +175,23 @@ export function AllocatorTool() {
    * nothing left to capture.
    */
   const [stubMaxedOut, setStubMaxedOut] = useState(false);
+
+  /**
+   * Mirrors the HSA answers for the wedge-submit callback.
+   *
+   * That callback is created once, so reading the state directly would capture
+   * whatever it held on mount — null and empty — and carry that across the
+   * handoff no matter what the stub said. The lint rule caught it; adding the
+   * values to the dependency array would rebuild the callback on every
+   * keystroke instead.
+   */
+  const hsaFromStubRef = useRef<{ eligible: boolean | null; annual: string }>({
+    eligible: null,
+    annual: '',
+  });
+  useEffect(() => {
+    hsaFromStubRef.current = { eligible: hsaEligible, annual: currentHsaAnnual };
+  }, [hsaEligible, currentHsaAnnual]);
   const editedFromStubRef = useRef<Set<string>>(new Set());
 
   const applyPaystub = useCallback((r: PaystubResult) => {
@@ -419,6 +436,17 @@ export function AllocatorTool() {
       years: 30,
     }, 12);
 
+    /**
+     * Carried across the wedge boundary, because state does not survive it.
+     *
+     * Completing the wedge sets `prefill`, which swaps the cold-start card —
+     * and the paystub upload inside it — for the full plan. Anything the stub
+     * answered has to travel in that object or it is lost at the handoff, and
+     * the HSA fields were not in it: the plan went on to ask a question the
+     * document had already settled.
+     */
+    const hsaFromStub = Number(hsaFromStubRef.current.annual) > 0 ? Number(hsaFromStubRef.current.annual) : 0;
+
     setPrefill({
       salaryAnnual: salary,
       state: wState,
@@ -429,10 +457,21 @@ export function AllocatorTool() {
       matchCapPct: matchCap,
       current401kPct: current401k,
       recommended401kPct: leap.optimized401kPct,
+      /**
+       * The HSA the stub already told us about, rather than a hardcoded zero.
+       *
+       * An HSA deduction is pre-tax, so leaving it at 0 overstates the take-home
+       * figure shown right under the salary — on the statement under test, by
+       * $4,363 of sheltered income. Reading the number off a paystub and then
+       * ignoring it in the one calculation the reader can see is worse than not
+       * reading it.
+       */
+      hsaEligible: hsaFromStubRef.current.eligible ?? undefined,
+      currentHsaAnnual: hsaFromStub,
       estimatedNetMonthlyIncome: computeNetTakeHomeMonthly({
         salaryAnnual: salary,
         employee401kPct: leap.optimized401kPct,
-        currentHsaAnnual: 0,
+        currentHsaAnnual: hsaFromStub,
         stateCode: wState,
       }),
       leapDelta30yr: traj.delta30yr,
