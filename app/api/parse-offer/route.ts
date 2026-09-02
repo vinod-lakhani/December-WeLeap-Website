@@ -112,6 +112,11 @@ function buildTool(kind: DocKind): Anthropic.Tool {
         type: 'object',
         properties: {
           grossPayCurrent: { type: 'number', description: GROSS_PAY_DESCRIPTION },
+          grossPayYtd: {
+            type: 'number',
+            description:
+              'Gross pay year to date, from the YTD column. This is what makes a zero current period readable — a 401(k) row of 0.00 against a large year-to-date figure is somebody who finished contributing, not somebody who never started.',
+          },
           payFrequency: { type: 'string', enum: Object.keys(PAY_FREQUENCIES), description: PAY_FREQUENCY_DESCRIPTION },
           workStateCode: {
             type: 'string',
@@ -126,7 +131,24 @@ function buildTool(kind: DocKind): Anthropic.Tool {
               type: 'object',
               properties: {
                 label: { type: 'string', description: 'The row label, copied verbatim.' },
-                currentAmount: { type: 'number', description: 'The Current column figure for this row.' },
+                currentAmount: { type: 'number', description: 'The current-period column figure for this row.' },
+                ytdAmount: {
+                  type: 'number',
+                  /**
+                   * Asked for on EVERY row, uniformly.
+                   *
+                   * An attempt to save output by saying it only mattered on
+                   * retirement and match rows cost far more than it saved: a
+                   * fifteen-row stub came back with one row. Telling the model
+                   * most of the table does not matter undermines the thing that
+                   * makes this shape work — that listing the table is a
+                   * mechanical pass with nothing to judge. The moment it starts
+                   * deciding which rows are worth the effort, it starts
+                   * deciding which rows are worth listing.
+                   */
+                  description:
+                    'The year-to-date column figure for this row. Use 0 if the row shows only one figure.',
+                },
                 kind: {
                   type: 'string',
                   enum: [...PAYSTUB_LINE_KINDS],
@@ -277,7 +299,10 @@ const PAYSTUB_SYSTEM = [
   'them is what makes the listing reliable.',
   '',
   'Three things to get right:',
-  '- Take the CURRENT period column, never year-to-date. YTD is the larger.',
+  '- Give BOTH columns for every row. The current-period figure goes in',
+  '  currentAmount and the year-to-date figure in ytdAmount; do not put one in',
+  '  place of the other. A row reading 0.00 this period against a large',
+  '  year-to-date total is the case these two columns exist to tell apart.',
   '- Classify a row as employer_match only if it is an EMPLOYER 401(k) match.',
   '  If no such row exists, list none — many payroll systems never print',
   '  employer contributions, and their absence is not evidence that no match',
@@ -438,7 +463,7 @@ export async function POST(request: NextRequest) {
     /**
      * A paystub gets longer and does not retry; everything else keeps the
      * shorter deadline and one retry. Both worst cases stay inside the 60s
-     * ceiling — 45s alone, or 25s twice.
+     * ceiling — 52s alone, or 25s twice.
      *
      * The extra time is for the vision path, which is where a real stub ends
      * up and which measured 21-28s against 5-11s for prose on text. A retry on
@@ -447,7 +472,7 @@ export async function POST(request: NextRequest) {
      */
     const client =
       kind === 'paystub'
-        ? new Anthropic({ timeout: 45_000, maxRetries: 0 })
+        ? new Anthropic({ timeout: 52_000, maxRetries: 0 })
         : new Anthropic({ timeout: 25_000, maxRetries: 1 })
     const response = await client.messages.create({
       model: 'claude-opus-5',

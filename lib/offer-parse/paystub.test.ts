@@ -1,52 +1,83 @@
 import { describe, it, expect } from 'vitest'
-import { deferralPct, employerMatchState, type PaystubLine } from './fields'
+import { deferralState, employerMatchState, type PaystubLine } from './fields'
 import { validatePaystub, mergePaystubInputs } from './validate'
 
-const line = (kind: PaystubLine['kind'], currentAmount: number, label = kind): PaystubLine => ({
-  label, currentAmount, kind,
-})
+const line = (
+  kind: PaystubLine['kind'],
+  currentAmount: number,
+  ytdAmount = 0,
+  label = kind
+): PaystubLine => ({ label, currentAmount, ytdAmount, kind })
 
-describe('deferralPct — the figure the money plan opens by assuming is zero', () => {
-  it('divides the deferral by gross, to one decimal', () => {
-    // The stub under test: $240 deducted on $4,000 gross, semi-monthly.
-    expect(deferralPct([line('retirement_employee', 240)], 4000)).toBe(6)
+describe('deferralState — what the stub says about the 401(k)', () => {
+  it('reads the current period when there is one', () => {
+    // $240 deducted on $4,000 gross, semi-monthly.
+    expect(deferralState([line('retirement_employee', 240)], 4000, undefined)).toEqual({
+      kind: 'contributing', pct: 6, from: 'current',
+    })
   })
 
   it('adds traditional and Roth together', () => {
-    expect(deferralPct([line('retirement_employee', 160), line('retirement_employee', 80)], 4000)).toBe(6)
+    expect(
+      deferralState([line('retirement_employee', 160), line('retirement_employee', 80)], 4000, undefined)
+    ).toMatchObject({ kind: 'contributing', pct: 6 })
+  })
+
+  it('calls a maxed-out saver maxed out, not a non-saver', () => {
+    // Both real statements tested: 0.00 for the period, 32,500 year to date —
+    // the IRS limit plus the age-50 catch-up. Reading only the current column
+    // said "contributes nothing" about somebody who had finished contributing,
+    // and would have opened the plan by telling them to start.
+    const state = deferralState([line('retirement_employee', 0, 32_500)], 10_816.8, 235_141.95)
+    expect(state.kind).toBe('maxed')
+    if (state.kind === 'maxed') {
+      expect(state.ytd).toBe(32_500)
+      expect(state.effectivePct).toBeCloseTo(13.8, 1)
+    }
+  })
+
+  it('falls back to year-to-date when the period happens to be zero', () => {
+    // A bonus-only cheque or an unpaid week, well below the cap.
+    expect(deferralState([line('retirement_employee', 0, 6_000)], 4000, 100_000)).toEqual({
+      kind: 'contributing', pct: 6, from: 'ytd',
+    })
+  })
+
+  it('distinguishes "contributes nothing" from "no 401(k) line at all"', () => {
+    expect(deferralState([line('retirement_employee', 0, 0)], 4000, 96_000).kind).toBe('none')
+    expect(deferralState([line('medical', 120)], 4000, 96_000).kind).toBe('unknown')
   })
 
   it('ignores the employer match, which is not the employee deferral', () => {
-    expect(deferralPct([line('employer_match', 160)], 4000)).toBeNull()
+    expect(deferralState([line('employer_match', 160, 2_560)], 4000, 96_000).kind).toBe('unknown')
   })
 
-  it.each([
-    ['no retirement line at all', [line('medical', 120)], 4000],
-    ['no gross to divide by', [line('retirement_employee', 240)], undefined],
-    ['a gross of zero', [line('retirement_employee', 240)], 0],
-    ['a deferral larger than gross', [line('retirement_employee', 5000)], 4000],
-  ])('returns null for %s rather than a number', (_l, lines, gross) => {
-    expect(deferralPct(lines as PaystubLine[], gross as number | undefined)).toBeNull()
+  it('returns unknown rather than a nonsense percentage', () => {
+    expect(deferralState([line('retirement_employee', 240)], 0, 0).kind).toBe('unknown')
+    expect(deferralState([line('retirement_employee', 5000)], 4000, undefined).kind).toBe('unknown')
   })
 })
 
 describe('employerMatchState — three states, because two would be a lie', () => {
-  it('confirms a match when the stub shows one', () => {
-    expect(employerMatchState([line('employer_match', 160)])).toEqual({ hasMatch: true, amount: 160 })
+  it('confirms a match from the current column', () => {
+    expect(employerMatchState([line('employer_match', 160, 2_560)])).toEqual({
+      hasMatch: true, amountCurrent: 160, amountYtd: 2_560,
+    })
+  })
+
+  it('confirms a match that only appears year-to-date', () => {
+    // A real statement pays the match as an annual true-up: 0.00 this period,
+    // 4,814.69 year to date. Current-column-only, that read as "unknown".
+    expect(employerMatchState([line('employer_match', 0, 4_814.69)])).toMatchObject({ hasMatch: true })
   })
 
   it('says UNKNOWN when no match line appears, never "no"', () => {
-    // The whole reason this returns null. Plenty of payroll systems never print
-    // employer contributions — the two stubs under test are identical in net
-    // pay for exactly that reason. Answering "no" here would tell someone they
-    // have no match when they may well have one, and capturing the match is the
-    // money plan's first move.
+    // Plenty of payroll systems never print employer contributions — two of the
+    // sample stubs are identical in net pay for exactly that reason. Answering
+    // "no" would tell someone they have no match when they may well have one.
     expect(employerMatchState([line('retirement_employee', 240)])).toEqual({ hasMatch: null })
     expect(employerMatchState([])).toEqual({ hasMatch: null })
-  })
-
-  it('treats a zero-amount match row as unknown too', () => {
-    expect(employerMatchState([line('employer_match', 0)])).toEqual({ hasMatch: null })
+    expect(employerMatchState([line('employer_match', 0, 0)])).toEqual({ hasMatch: null })
   })
 })
 
@@ -55,7 +86,7 @@ describe('validatePaystub', () => {
     grossPayCurrent: 4000,
     payFrequency: 'semimonthly',
     workStateCode: 'CA',
-    lines: [{ label: '401(k) - employee', currentAmount: 240, kind: 'retirement_employee' }],
+    lines: [{ label: '401(k) - employee', currentAmount: 240, ytdAmount: 3840, kind: 'retirement_employee' }],
   }
 
   it('accepts a well-formed stub', () => {
@@ -81,8 +112,8 @@ describe('validatePaystub', () => {
     // A negative amount is NOT in this list, and used to be: real payroll
     // statements print deductions as negatives, so rejecting them threw away
     // most of the first real stub tested. See the sign block below.
-    ['a kind outside the taxonomy', { label: 'x', currentAmount: 10, kind: 'crypto' }],
-    ['an amount past the ceiling', { label: 'x', currentAmount: 1_000_000, kind: 'other' }],
+    ['a kind outside the taxonomy', { label: 'x', currentAmount: 10, ytdAmount: 0, kind: 'crypto' }],
+    ['an amount past the ceiling', { label: 'x', currentAmount: 1_000_000, ytdAmount: 0, kind: 'other' }],
     ['an empty label', { label: '   ', currentAmount: 10, kind: 'other' }],
     ['a label carrying personal data', { label: 'Garnishment 123-45-6789', currentAmount: 10, kind: 'other' }],
     ['a row that is not an object', 'nope'],
@@ -113,8 +144,8 @@ describe('mergePaystubInputs', () => {
 
   it('concatenates rows split across parallel tool calls', () => {
     const merged = mergePaystubInputs([
-      { lines: [{ label: 'a', currentAmount: 1, kind: 'other' }] },
-      { lines: [{ label: 'b', currentAmount: 2, kind: 'other' }] },
+      { lines: [{ label: 'a', currentAmount: 1, ytdAmount: 0, kind: 'other' }] },
+      { lines: [{ label: 'b', currentAmount: 2, ytdAmount: 0, kind: 'other' }] },
     ])
     expect(merged.lines).toHaveLength(2)
   })
@@ -129,7 +160,7 @@ describe('deductions printed as negatives', () => {
   const stub = (currentAmount: number, kind = 'retirement_employee') => ({
     grossPayCurrent: 4000,
     payFrequency: 'semimonthly',
-    lines: [{ label: '401(k)', currentAmount, kind }],
+    lines: [{ label: '401(k)', currentAmount, ytdAmount: 0, kind }],
   })
 
   it('keeps a negative deduction, as its magnitude', () => {
@@ -142,8 +173,8 @@ describe('deductions printed as negatives', () => {
   })
 
   it('reaches the same deferral either way the stub signs it', () => {
-    expect(deferralPct(validatePaystub(stub(-240)).parsed.lines, 4000)).toBe(6)
-    expect(deferralPct(validatePaystub(stub(240)).parsed.lines, 4000)).toBe(6)
+    expect(deferralState(validatePaystub(stub(-240)).parsed.lines, 4000, undefined)).toMatchObject({ pct: 6 })
+    expect(deferralState(validatePaystub(stub(240)).parsed.lines, 4000, undefined)).toMatchObject({ pct: 6 })
   })
 
   it('still rejects a magnitude past the ceiling, in either direction', () => {

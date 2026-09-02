@@ -3,6 +3,7 @@ import {
   OFFER_FIELD_KEYS,
   MIN_CONFIDENCE,
   MAX_LINE_AMOUNT,
+  MAX_YTD_AMOUNT,
   isInRange,
   isStateCode,
   isPayFrequency,
@@ -118,6 +119,11 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
     }
   }
 
+  if (typeof input.grossPayYtd === 'number' && Number.isFinite(input.grossPayYtd)) {
+    if (input.grossPayYtd > 0 && input.grossPayYtd <= MAX_YTD_AMOUNT) parsed.grossPayYtd = input.grossPayYtd
+    else rejected.push('grossPayYtd')
+  }
+
   if (isPayFrequency(input.payFrequency)) parsed.payFrequency = input.payFrequency
   else if (input.payFrequency !== undefined) rejected.push('payFrequency')
 
@@ -130,7 +136,7 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
         rejected.push('line')
         continue
       }
-      const { label, currentAmount, kind } = row as Record<string, unknown>
+      const { label, currentAmount, ytdAmount, kind } = row as Record<string, unknown>
       /**
        * The sign is direction, not magnitude, so it is discarded.
        *
@@ -145,10 +151,13 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
        * "how much was deferred", "how much did the employer add". Magnitude is
        * the whole of what they need.
        */
-      const amountOk =
-        typeof currentAmount === 'number' &&
-        Number.isFinite(currentAmount) &&
-        Math.abs(currentAmount) <= MAX_LINE_AMOUNT
+      const inBounds = (v: unknown) =>
+        typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= MAX_LINE_AMOUNT
+      // A year-to-date figure is a running total, so it clears MAX_LINE_AMOUNT
+      // on any well-paid year — it gets its own, wider ceiling.
+      const ytdInBounds = (v: unknown) =>
+        v === undefined || (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= MAX_YTD_AMOUNT)
+      const amountOk = inBounds(currentAmount) && ytdInBounds(ytdAmount)
       const labelOk = typeof label === 'string' && label.trim().length > 0
       // A row label is the closest thing this shape has to a quote, and it goes
       // through the same sweep everything else does — a payroll system that
@@ -160,6 +169,7 @@ export function validatePaystub(raw: unknown): { parsed: ParsedPaystub; rejected
       parsed.lines.push({
         label: (label as string).trim(),
         currentAmount: Math.abs(currentAmount as number),
+        ytdAmount: typeof ytdAmount === 'number' ? Math.abs(ytdAmount) : 0,
         kind,
       })
     }

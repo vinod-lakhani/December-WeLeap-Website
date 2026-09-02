@@ -166,6 +166,15 @@ export function AllocatorTool() {
    */
   /** What the stub filled in, so a later edit to one of them is a correction. */
   const fromStubRef = useRef<Set<string>>(new Set());
+  /**
+   * The stub says this person has already hit the annual 401(k) limit.
+   *
+   * Held in state rather than folded into the percentage because it changes
+   * what the plan should say, not just what it computes: the first move here is
+   * capturing the employer match, and somebody who maxed out in August has
+   * nothing left to capture.
+   */
+  const [stubMaxedOut, setStubMaxedOut] = useState(false);
   const editedFromStubRef = useRef<Set<string>>(new Set());
 
   const applyPaystub = useCallback((r: PaystubResult) => {
@@ -174,6 +183,7 @@ export function AllocatorTool() {
     if (r.stateCode) { setWState(r.stateCode); filled.add('state'); }
     if (r.currentDeferralPct !== null) { setWCurrent401k(String(r.currentDeferralPct)); filled.add('current_401k'); }
     if (r.hasMatch === true) { setWHasMatch(true); filled.add('has_match'); }
+    setStubMaxedOut(r.maxedOut);
     fromStubRef.current = filled;
     editedFromStubRef.current = new Set();
   }, []);
@@ -698,7 +708,15 @@ export function AllocatorTool() {
                     onChange={(e) => { noteStubEdit('current_401k'); markEngaged('current_401k_pct'); setWCurrent401k(e.target.value); }}
                     className="mt-1 w-32 border-[#D1D5DB]"
                   />
-                </div>
+                
+                    {stubMaxedOut && (
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-[#2d5a26]">
+                        Your stub shows you have already reached this year&apos;s 401(k) limit. This
+                        is your year-to-date rate — the current period shows nothing going in
+                        because there is nothing left to defer.
+                      </p>
+                    )}
+                  </div>
 
                 <div>
                   <Label className="text-[#111827]">Does your employer match?</Label>

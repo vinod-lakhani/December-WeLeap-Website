@@ -248,13 +248,31 @@ export type PaystubLineKind = (typeof PAYSTUB_LINE_KINDS)[number]
 export interface PaystubLine {
   /** The row label, verbatim. Doubles as the quote for this figure. */
   label: string
-  /** The Current column, never year-to-date. */
+  /** The Current column. */
   currentAmount: number
+  /**
+   * The year-to-date column, which is where a real stub keeps its answers.
+   *
+   * Dropped when this was first built, on the grounds that the money plan
+   * wants what is happening now. Two real statements showed why that was
+   * wrong: both had a 401(k) row reading 0.00 for the period and 32,500
+   * year-to-date. Reading only the current column, the tool concluded the
+   * person contributes nothing and would have opened by telling a maxed-out
+   * saver to start saving.
+   */
+  ytdAmount: number
   kind: PaystubLineKind
 }
 
 /** Rows outside this are a misread of the table rather than a real deduction. */
 export const MAX_LINE_AMOUNT = 100_000
+
+/**
+ * Year-to-date figures are running totals and legitimately far larger — one
+ * real statement showed 312,746.61 of gross by August. Sharing the per-period
+ * ceiling would have rejected the very column that answers the question.
+ */
+export const MAX_YTD_AMOUNT = 5_000_000
 
 export const PAY_FREQUENCIES = {
   weekly: 52,
@@ -269,7 +287,7 @@ export const PAY_FREQUENCY_DESCRIPTION =
   'How often this employee is paid, as stated on the stub. "Semi-monthly" is twice a month (24 a year); "biweekly" is every two weeks (26 a year) — they are different and the stub usually says which. If the stub does not state it, derive it from the pay period dates rather than assuming.'
 
 export const PAYSTUB_LINES_DESCRIPTION =
-  'EVERY row of the deductions and employer-contributions tables, in the order they appear. Do not skip rows and do not filter to the interesting ones — list all of them. Take the Current column, never year-to-date.'
+  'EVERY row of the deductions and employer-contributions tables, in the order they appear. Do not skip rows and do not filter to the interesting ones — list all of them. Give BOTH columns for each row: currentAmount from the current-period column and ytdAmount from the year-to-date column. Where a row shows only one figure, put it in currentAmount and use 0 for ytdAmount.'
 
 export const GROSS_PAY_DESCRIPTION =
   'Gross pay for THIS pay period, from the Current column, before any tax or deduction.'
@@ -285,29 +303,67 @@ export function isLineKind(value: unknown): value is PaystubLineKind {
 /** What a read paystub hands back, after validation. */
 export interface ParsedPaystub {
   grossPayCurrent?: number
+  grossPayYtd?: number
   payFrequency?: PayFrequency
   workStateCode?: (typeof US_STATES)[number]
   lines: PaystubLine[]
 }
 
 /**
- * The one figure the money plan most wants, derived here rather than asked for.
+ * What the stub says about this person's 401(k), in the states it can be in.
  *
- * A deferral percentage is a division, and the model has no business doing it:
- * asked for a percentage it would have to pick a denominator, and a stub with
- * two gross figures on it gives it two to choose from. Both inputs come off the
- * page; the arithmetic is ours.
+ * The current column alone is not enough, and two real statements are the
+ * proof: both show a 401(k) row of 0.00 for the period against 32,500
+ * year-to-date. That is not somebody who contributes nothing — it is somebody
+ * who finished contributing. 32,500 is exactly the IRS employee limit plus the
+ * age-50 catch-up, so the deductions stopped because there was nothing left to
+ * defer.
+ *
+ * Getting this wrong is not a small miss. The money plan's first move is
+ * capturing the employer match, and opening with that for someone who maxed out
+ * in August is both useless and slightly insulting.
  */
-export function deferralPct(lines: PaystubLine[], grossPayCurrent: number | undefined): number | null {
-  if (!grossPayCurrent || grossPayCurrent <= 0) return null
-  const deferred = lines
-    .filter((l) => l.kind === 'retirement_employee')
-    .reduce((sum, l) => sum + l.currentAmount, 0)
-  if (deferred <= 0) return null
-  const pct = (deferred / grossPayCurrent) * 100
-  // A deferral above the IRS percentage ceiling is a misread, not a plan.
-  if (!Number.isFinite(pct) || pct <= 0 || pct > 100) return null
-  return Math.round(pct * 10) / 10
+export type DeferralState =
+  | { kind: 'maxed'; ytd: number; effectivePct: number | null }
+  | { kind: 'contributing'; pct: number; from: 'current' | 'ytd' }
+  | { kind: 'none' }
+  | { kind: 'unknown' }
+
+/**
+ * The base employee limit. Someone at or above it has finished for the year,
+ * and the catch-up cases land above it too rather than needing their own test —
+ * an age this tool never asks for.
+ */
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants'
+
+export function deferralState(
+  lines: PaystubLine[],
+  grossPayCurrent: number | undefined,
+  grossPayYtd: number | undefined
+): DeferralState {
+  const retirement = lines.filter((l) => l.kind === 'retirement_employee')
+  if (retirement.length === 0) return { kind: 'unknown' }
+
+  const current = retirement.reduce((s, l) => s + l.currentAmount, 0)
+  const ytd = retirement.reduce((s, l) => s + l.ytdAmount, 0)
+
+  const pct = (part: number, whole: number | undefined) => {
+    if (!whole || whole <= 0) return null
+    const v = (part / whole) * 100
+    return Number.isFinite(v) && v > 0 && v <= 100 ? Math.round(v * 10) / 10 : null
+  }
+
+  if (ytd >= K401_EMPLOYEE_CAP) {
+    return { kind: 'maxed', ytd, effectivePct: pct(ytd, grossPayYtd) }
+  }
+  // Current first: it is what the person is doing now. Year-to-date is the
+  // fallback for a period that happens to be zero — a bonus-only cheque, an
+  // unpaid week, a contribution that started mid-year.
+  const fromCurrent = current > 0 ? pct(current, grossPayCurrent) : null
+  if (fromCurrent !== null) return { kind: 'contributing', pct: fromCurrent, from: 'current' }
+  const fromYtd = ytd > 0 ? pct(ytd, grossPayYtd) : null
+  if (fromYtd !== null) return { kind: 'contributing', pct: fromYtd, from: 'ytd' }
+  return current === 0 && ytd === 0 ? { kind: 'none' } : { kind: 'unknown' }
 }
 
 /**
@@ -315,14 +371,22 @@ export function deferralPct(lines: PaystubLine[], grossPayCurrent: number | unde
  *
  * A stub showing a match line proves one exists. A stub showing none proves
  * nothing: plenty of payroll systems never print employer contributions, and
- * two of the three stubs under test are identical in net pay for exactly that
- * reason. Returning `false` there would tell someone they have no match when
- * they may well have one, and capturing the match is the money plan's first
- * move. `null` keeps the question open, which is what the allocator's own
- * `wHasMatch === null` already means.
+ * two of the sample stubs are identical in net pay for exactly that reason.
+ * Returning `false` there would tell someone they have no match when they may
+ * well have one, and capturing the match is the money plan's first move.
+ *
+ * The year-to-date column settles cases the current one cannot. On a real
+ * statement the per-period match reads 0.00 while year-to-date reads 4,814.69
+ * — the match is real and paid as an annual true-up. Current-column-only, that
+ * was "unknown"; with both, it is a confirmed yes.
  */
-export function employerMatchState(lines: PaystubLine[]): { hasMatch: true; amount: number } | { hasMatch: null } {
+export function employerMatchState(
+  lines: PaystubLine[]
+): { hasMatch: true; amountCurrent: number; amountYtd: number } | { hasMatch: null } {
   const match = lines.filter((l) => l.kind === 'employer_match')
-  const amount = match.reduce((sum, l) => sum + l.currentAmount, 0)
-  return match.length > 0 && amount > 0 ? { hasMatch: true, amount } : { hasMatch: null }
+  const amountCurrent = match.reduce((s, l) => s + l.currentAmount, 0)
+  const amountYtd = match.reduce((s, l) => s + l.ytdAmount, 0)
+  return amountCurrent > 0 || amountYtd > 0
+    ? { hasMatch: true, amountCurrent, amountYtd }
+    : { hasMatch: null }
 }
