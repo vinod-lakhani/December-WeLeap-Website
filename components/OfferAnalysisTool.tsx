@@ -22,6 +22,7 @@ import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
+import { cn } from '@/lib/utils';
 import { OfferLetterUpload } from '@/components/OfferLetterUpload';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
 
@@ -64,8 +65,16 @@ const fc = (n: number) =>
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
 
-function Section({ num, title, subtitle, annualValue, children }: {
-  num: number; title: string; subtitle: string; annualValue?: number | null; children: React.ReactNode;
+function Section({ num, title, subtitle, annualValue, example, children }: {
+  num: number; title: string; subtitle: string; annualValue?: number | null;
+  /**
+   * True when this section's total is derived entirely from figures nobody has
+   * confirmed. Greying the input alone was not enough: a muted "100" above a
+   * solid green "$9,000 per year" leaves the loudest number on the card still
+   * asserting the guess, and that number is the one people read.
+   */
+  example?: boolean;
+  children: React.ReactNode;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-3">
@@ -81,8 +90,10 @@ function Section({ num, title, subtitle, annualValue, children }: {
         </div>
         {annualValue != null && annualValue > 0 && (
           <div className="text-right shrink-0">
-            <div className="text-xs text-gray-400">per year</div>
-            <div className="text-base font-extrabold text-[#386641]">{fc(annualValue)}</div>
+            <div className="text-xs text-gray-400">{example ? 'per year, example' : 'per year'}</div>
+            <div className={cn('text-base font-extrabold', example ? 'text-gray-400' : 'text-[#386641]')}>
+              {fc(annualValue)}
+            </div>
           </div>
         )}
       </div>
@@ -193,6 +204,25 @@ export function OfferAnalysisTool() {
    */
   const [fromLetter, setFromLetter] = useState<Record<string, string>>({});
   const [letterUploaded, setLetterUploaded] = useState(false);
+
+  /**
+   * Which inputs the user, or a letter, has actually spoken for.
+   *
+   * This form ships with a filled-in 401(k) match, bonus target and PTO figure
+   * so the package number means something before anyone types. They are
+   * examples — but a solid black 100 in a box is indistinguishable from a 100
+   * somebody entered, so the form asserts its own guesses in the same voice it
+   * uses for the salary you typed. Untouched values render in the same grey as
+   * a placeholder, which is the idiom already used for the empty ones.
+   *
+   * A value read off a letter counts as spoken for: it is a real figure about
+   * this offer, so it renders solid alongside anything typed.
+   */
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (key: string) =>
+    setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+  const example = (key: string) =>
+    touched[key] || fromLetter[key] ? '' : 'text-gray-400';
   const missingAsks = ASK_FOR.filter((a) => !fromLetter[a.mark]);
 
   const applyParsed = useCallback((parsed: ParsedOffer) => {
@@ -654,27 +684,28 @@ export function OfferAnalysisTool() {
 
       {salary > 0 && (<>
       {/* ── 2. Bonus ──────────────────────────────────────────────────────── */}
-      <Section num={2} title="Bonus Target" subtitle="Annual performance bonus — not guaranteed but real comp" annualValue={calc?.annualBonus}>
+      <Section num={2} title="Bonus Target" subtitle="Annual performance bonus — not guaranteed but real comp" annualValue={calc?.annualBonus} example={!touched.bonusPct && !fromLetter.bonusPct}>
         <div>
           <div className="flex justify-between mb-2">
             <Label className="text-sm font-semibold text-gray-700">Target bonus<FieldSource uploaded={letterUploaded} quote={fromLetter.bonusPct} /></Label>
-            <span className="text-lg font-extrabold text-gray-900">{bonusPct}%</span>
+            <span className={cn('text-lg font-extrabold text-gray-900', example('bonusPct'))}>{bonusPct}%</span>
           </div>
           <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => {
             const newVal = Number(e.target.value);
             setBonusPct(newVal);
+            touch('bonusPct');
             trackFieldChange('bonus_pct', newVal);
           }}
             className="w-full accent-[#386641] cursor-pointer" />
           <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0%</span><span>Typical: 10–20%</span><span>50%</span></div>
           {calc && bonusPct > 0 && (
-            <p className="text-sm text-gray-500 mt-2">At target: <strong className="text-gray-900">{fc(calc.annualBonus)}/yr</strong></p>
+            <p className="text-sm text-gray-500 mt-2">At target: <strong className={cn(example('bonusPct') || 'text-gray-900')}>{fc(calc.annualBonus)}/yr</strong></p>
           )}
         </div>
       </Section>
 
       {/* ── 3. 401k match ─────────────────────────────────────────────────── */}
-      <Section num={3} title="401k Match" subtitle="Free money — often the most-missed line in an offer" annualValue={calc?.annual401kMatch}>
+      <Section num={3} title="401k Match" subtitle="Free money — often the most-missed line in an offer" annualValue={calc?.annual401kMatch} example={!touched.matchRatePct && !touched.matchUpToPct && !fromLetter.matchRatePct}>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FieldSource uploaded={letterUploaded} quote={fromLetter.matchRatePct} /></Label>
@@ -683,9 +714,10 @@ export function OfferAnalysisTool() {
                 onChange={e => {
                   const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
                   setMatchRatePct(newVal);
+                  touch('matchRatePct');
                   trackFieldChange('match_rate_pct', newVal);
                 }}
-                className="pr-6" />
+                className={cn('pr-6', example('matchRatePct'))} />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
           </div>
@@ -696,15 +728,16 @@ export function OfferAnalysisTool() {
                 onChange={e => {
                   const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
                   setMatchUpToPct(newVal);
+                  touch('matchUpToPct');
                   trackFieldChange('match_up_to_pct', newVal);
                 }}
-                className="pr-6" />
+                className={cn('pr-6', example('matchUpToPct'))} />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
           </div>
         </div>
         {calc && calc.annual401kMatch > 0 && (
-          <p className="text-sm text-gray-500 mt-3">Contribute at least {matchUpToPct}% to capture the full <strong className="text-[#386641]">{fc(calc.annual401kMatch)}/yr match</strong>.</p>
+          <p className="text-sm text-gray-500 mt-3">Contribute at least {matchUpToPct}% to capture the full <strong className={cn(example('matchRatePct') || 'text-[#386641]')}>{fc(calc.annual401kMatch)}/yr match</strong>.</p>
         )}
       </Section>
 
@@ -771,8 +804,9 @@ export function OfferAnalysisTool() {
                     onChange={e => {
                       const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
                       setEsppContrib(newVal);
+                      touch('esppContrib');
                       trackFieldChange('espp_contrib_pct', newVal);
-                    }} className="pr-6 text-sm" />
+                    }} className={cn('pr-6 text-sm', example('esppContrib'))} />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
                 </div>
               </div>
@@ -783,8 +817,9 @@ export function OfferAnalysisTool() {
                     onChange={e => {
                       const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
                       setEsppDiscount(newVal);
+                      touch('esppDiscount');
                       trackFieldChange('espp_discount_pct', newVal);
-                    }} className="pr-6 text-sm" />
+                    }} className={cn('pr-6 text-sm', example('esppDiscount'))} />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
                 </div>
               </div>
@@ -798,11 +833,12 @@ export function OfferAnalysisTool() {
         <div>
           <div className="flex justify-between mb-2">
             <Label className="text-sm font-semibold text-gray-700">PTO days offered<FieldSource uploaded={letterUploaded} quote={fromLetter.ptoDays} /></Label>
-            <span className="text-lg font-extrabold text-gray-900">{ptoDays} days</span>
+            <span className={cn('text-lg font-extrabold text-gray-900', example('ptoDays'))}>{ptoDays} days</span>
           </div>
           <input type="range" min={0} max={40} step={1} value={ptoDays} onChange={e => {
             const newVal = Number(e.target.value);
             setPtoDays(newVal);
+            touch('ptoDays');
             trackFieldChange('pto_days', newVal);
           }}
             className="w-full accent-[#386641] cursor-pointer" />
