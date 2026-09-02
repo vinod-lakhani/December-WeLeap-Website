@@ -7,8 +7,9 @@ import {
   OFFER_FIELD_KEYS,
   BENEFITS_FIELD_KEYS,
   BENEFITS_DESCRIPTIONS,
-  PAYSTUB_FIELDS,
-  PAYSTUB_FIELD_KEYS,
+  PAYSTUB_LINE_KINDS,
+  PAYSTUB_LINES_DESCRIPTION,
+  GROSS_PAY_DESCRIPTION,
   PAY_FREQUENCIES,
   PAY_FREQUENCY_DESCRIPTION,
   WORK_STATE_DESCRIPTION,
@@ -16,7 +17,12 @@ import {
 import { redact } from '@/lib/offer-parse/redact'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
 import { checkRateLimit, clientKey } from '@/lib/offer-parse/rate-limit'
-import { validateExtraction, validatePaystub, mergeToolInputs } from '@/lib/offer-parse/validate'
+import {
+  validateExtraction,
+  validatePaystub,
+  mergeToolInputs,
+  mergePaystubInputs,
+} from '@/lib/offer-parse/validate'
 
 /**
  * Read an offer letter and hand the numbers back to the form.
@@ -92,47 +98,48 @@ function buildTool(kind: DocKind): Anthropic.Tool {
    * mean sharing wording that is wrong for one of them.
    */
   if (kind === 'paystub') {
-    for (const key of PAYSTUB_FIELD_KEYS) {
-      const spec = PAYSTUB_FIELDS[key]
-      properties[key] = {
-        type: 'object',
-        description: `${spec.describe} Expected range: ${spec.min} to ${spec.max}.`,
-        properties: {
-          value: { type: 'number' },
-          confidence: { type: 'number' },
-          quote: { type: 'string', description: 'The exact line from the stub this came from.' },
-        },
-        required: ['value', 'confidence', 'quote'],
-        additionalProperties: false,
-      }
-    }
-    properties.payFrequency = {
-      type: 'object',
-      description: PAY_FREQUENCY_DESCRIPTION,
-      properties: {
-        value: { type: 'string', enum: Object.keys(PAY_FREQUENCIES) },
-        confidence: { type: 'number' },
-        quote: { type: 'string' },
-      },
-      required: ['value', 'confidence', 'quote'],
-      additionalProperties: false,
-    }
-    properties.workStateCode = {
-      type: 'object',
-      description:
-        'The two-letter US state code the state income tax was withheld for, read from the tax lines. Omit if no state tax line appears.',
-      properties: {
-        value: { type: 'string', enum: [...US_STATES] },
-        confidence: { type: 'number' },
-        quote: { type: 'string' },
-      },
-      required: ['value', 'confidence', 'quote'],
-      additionalProperties: false,
-    }
+    /**
+     * Rows, not named fields — see the note in fields.ts. Asking the model to
+     * enumerate the table is one mechanical pass with nothing to judge; asking
+     * it to find four particular figures made it judge each one, and it decided
+     * differently on identical input from run to run.
+     */
     return {
       name: 'record_offer_terms',
-      description: 'Record the figures found on this pay statement.',
-      input_schema: { type: 'object', properties, additionalProperties: false } as Anthropic.Tool['input_schema'],
+      description: 'Record the figures on this pay statement.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          grossPayCurrent: { type: 'number', description: GROSS_PAY_DESCRIPTION },
+          payFrequency: { type: 'string', enum: Object.keys(PAY_FREQUENCIES), description: PAY_FREQUENCY_DESCRIPTION },
+          workStateCode: {
+            type: 'string',
+            enum: [...US_STATES],
+            description:
+              'The two-letter state code the state income tax was withheld for, read from the tax lines. Omit if there is no state tax line.',
+          },
+          lines: {
+            type: 'array',
+            description: PAYSTUB_LINES_DESCRIPTION,
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string', description: 'The row label, copied verbatim.' },
+                currentAmount: { type: 'number', description: 'The Current column figure for this row.' },
+                kind: {
+                  type: 'string',
+                  enum: [...PAYSTUB_LINE_KINDS],
+                  description:
+                    'What this row is. Use employer_match ONLY for an employer 401(k) match row, and retirement_employee for the employee 401(k), 403(b) or 457(b) deduction. Anything that fits nothing else is other.',
+                },
+              },
+              required: ['label', 'currentAmount', 'kind'],
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      } as Anthropic.Tool['input_schema'],
       strict: true,
     }
   }
@@ -262,16 +269,20 @@ const BENEFITS_SYSTEM = [
  * identical in net pay for exactly that reason.
  */
 const PAYSTUB_SYSTEM = [
-  'Read this US pay statement and record every figure in the schema by calling',
-  'record_offer_terms once. Most of them are rows in the deductions table.',
+  'Record this US pay statement by calling record_offer_terms once.',
+  '',
+  'List EVERY row of the deductions and employer-contributions tables, in the',
+  'order they appear. Do not filter to the interesting ones — listing all of',
+  'them is what makes the listing reliable.',
   '',
   'Three things to get right:',
   '- Take the CURRENT period column, never year-to-date. YTD is the larger.',
-  '- If no employer match line appears anywhere, omit that field. Many payroll',
-  '  systems do not print employer contributions, so its absence is not evidence',
-  '  that no match exists.',
+  '- Classify a row as employer_match only if it is an EMPLOYER 401(k) match.',
+  '  If no such row exists, list none — many payroll systems never print',
+  '  employer contributions, and their absence is not evidence that no match',
+  '  exists.',
   '- Never report a name, address, employee or payroll ID, Social Security',
-  '  number or bank detail, including inside a quote.',
+  '  number or bank detail, including inside a row label.',
 ].join('\n')
 
 export async function POST(request: NextRequest) {
@@ -461,9 +472,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ parsed: {}, kind, path, fieldsFound: 0, redactions })
     }
 
-    const merged = mergeToolInputs(calls.map((c) => c.input))
+    const inputs = calls.map((c) => c.input)
     const { parsed, rejected } =
-      kind === 'paystub' ? validatePaystub(merged) : validateExtraction(merged)
+      kind === 'paystub'
+        ? validatePaystub(mergePaystubInputs(inputs))
+        : validateExtraction(mergeToolInputs(inputs))
 
     /**
      * Drop anything whose quote is not in the document.
@@ -475,8 +488,13 @@ export async function POST(request: NextRequest) {
      * be worse than admitting we could not.
      */
     let ungrounded = 0
-    if (path === 'text') {
-      for (const [key, field] of Object.entries(parsed)) {
+    /**
+     * The paystub shape carries no per-field quote — a row's label IS its
+     * provenance, and validatePaystub already sweeps those. Running this loop
+     * over it would read `.quote` off a number and drop every field.
+     */
+    if (path === 'text' && kind !== 'paystub') {
+      for (const [key, field] of Object.entries(parsed as Record<string, { quote: string }>)) {
         if (field && !quoteIsGrounded(field.quote, sourceText)) {
           // The key, never the quote: this line has to be safe to read in a
           // production log, and the quote is document content.
