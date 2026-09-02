@@ -60,7 +60,16 @@ describe('the benefits field table', () => {
     expect(BENEFITS_DESCRIPTIONS.matchUpToPct).toMatch(/not the maximum employer contribution/i)
     expect(BENEFITS_DESCRIPTIONS.employerHsaAnnual).toMatch(/employee-only/i)
     expect(BENEFITS_DESCRIPTIONS.employerHsaAnnual).toMatch(/do not use it/i)
+    // A real guide gave "$50 each pay period" in one section and "There are 26
+    // pay periods per calendar year" in another, and the two combined to a
+    // correct $1,300. That worked because the count was there to find; the
+    // rule is what stops it being assumed on a guide that omits one.
+    expect(BENEFITS_DESCRIPTIONS.employerHsaAnnual).toMatch(/omit rather than assuming 24 or 26/i)
     expect(BENEFITS_DESCRIPTIONS.healthcarePremiumMonthly).toMatch(/HSA-ELIGIBLE/)
+    // One real guide gives the employee-only HDHP premium as prose — "This
+    // coverage costs you nothing" — rather than a rate table. Zero is a
+    // premium, and without saying so it was recorded on one run in three.
+    expect(BENEFITS_DESCRIPTIONS.healthcarePremiumMonthly).toMatch(/record 0 rather than omitting/i)
     expect(BENEFITS_DESCRIPTIONS.matchRatePct).toMatch(/not from an illustrative table/i)
   })
 })

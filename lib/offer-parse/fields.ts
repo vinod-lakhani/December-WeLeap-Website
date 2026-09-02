@@ -191,8 +191,8 @@ export const BENEFITS_DESCRIPTIONS: Record<(typeof BENEFITS_FIELD_KEYS)[number],
   matchUpToPct:
     'The employee contribution percentage at which the employer match stops. For "100% of the first 3% and 50% of the next 2%" that is 5, because the match stops growing after 5%. Not the maximum employer contribution, which for that formula is 4% of pay.',
   employerHsaAnnual:
-    'Employer HSA contribution in US dollars per year, for EMPLOYEE-ONLY coverage. Guides usually give a second, larger figure for family coverage — do not use it. If no plan is HSA-eligible, omit this.',
+    'Employer HSA contribution in US dollars per year, for EMPLOYEE-ONLY coverage. Guides usually give a second, larger figure for family coverage — do not use it. Where the amount is given per pay period, annualise it ONLY with a pay-period count stated somewhere in this document; if the document does not state one, omit rather than assuming 24 or 26. If no plan is HSA-eligible, omit this.',
   healthcarePremiumMonthly:
-    'What the EMPLOYEE pays per month for medical coverage, for employee-only coverage on the HSA-ELIGIBLE plan (usually labelled HDHP or high deductible). Where several plans are listed, use that one and name it in your quote. Convert from per-pay-period if needed. Exclude dental and vision. If no plan is HSA-eligible, use the lowest-cost medical plan and name it.',
+    'What the EMPLOYEE pays per month for medical coverage, for employee-only coverage on the HSA-ELIGIBLE plan (usually labelled HDHP or high deductible). Where several plans are listed, use that one and name it in your quote. Convert from per-pay-period if needed. Exclude dental and vision. A guide stating that a plan costs the employee nothing is stating a premium of 0 — record 0 rather than omitting it. If no plan is HSA-eligible, use the lowest-cost medical plan and name it.',
 }
 
