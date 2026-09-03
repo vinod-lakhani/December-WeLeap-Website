@@ -25,7 +25,12 @@ function aprRangeToPercent(range: string): number | null {
 export interface CapitalRoutingInputs {
   /** Post-tax monthly savings (take-home minus essentials; use tool's existing definition). */
   postTaxSavingsMonthly: number;
-  /** Current EF balance (0 if unknown). */
+  /**
+   * Current EF balance. Defaults to 0 for callers that genuinely have no
+   * answer, but a caller that CAN ask should ask: this is the difference
+   * between "40% of your surplus goes to a buffer for the next 20 months" and
+   * "your buffer is done, all of it goes to debt".
+   */
   efCurrent?: number;
   unlock: AllocatorUnlockData | null;
 }
@@ -59,10 +64,17 @@ export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRout
   const retirementAlloc = remaining2 * (split.retirementPct / 100);
   const brokerageAlloc = remaining2 * (split.brokeragePct / 100);
 
+  // Reported rather than left to each caller to re-derive. Three surfaces need
+  // "is the buffer done" and two need the gap; computing it here keeps the
+  // comparison (>= target, not > target) in one place.
+  const efGap = Math.max(0, efTarget - efCurrent);
+  const efFunded = efTarget > 0 && efCurrent >= efTarget;
+
   let monthsToEfTarget: number | undefined;
-  if (efTarget > 0 && efAlloc > 0 && efCurrent < efTarget) {
-    const gap = efTarget - efCurrent;
-    monthsToEfTarget = Math.ceil(gap / efAlloc);
+  if (efTarget > 0 && efAlloc > 0 && efGap > 0) {
+    // The gap, not the target. Someone with $3,000 of a $7,200 buffer is 12
+    // months out at $377/mo, not the 20 months a target-based figure gives.
+    monthsToEfTarget = Math.ceil(efGap / efAlloc);
   }
 
   return {
@@ -72,6 +84,9 @@ export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRout
     retirementAlloc,
     brokerageAlloc,
     efTarget,
+    efCurrent,
+    efGap,
+    efFunded,
     monthsToEfTarget,
   };
 }
