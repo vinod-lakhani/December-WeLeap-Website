@@ -11,7 +11,7 @@ import {
 /**
  * Question-and-answer copy for the calculator routes.
  *
- * One registry rather than JSX scattered across seven pages, for one specific
+ * One registry rather than JSX scattered across every tool page, for one specific
  * reason: `faqSchema` in lib/structured-data.ts reads this exact array, and the
  * page renders this exact array. FAQPage markup that describes questions a
  * visitor cannot see is a manual-action risk, and the only reliable way to stop

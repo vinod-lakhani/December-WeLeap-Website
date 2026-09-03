@@ -3,7 +3,7 @@ import { FREE_TOOLS } from '@/lib/tools'
 import { ARTICLES } from '@/lib/articles'
 
 /**
- * The site had no sitemap at all, so every page — including the seven free
+ * The site had no sitemap at all, so every page — including the free
  * tools that are the top of the funnel — relied on being crawled by luck.
  *
  * Tools are pulled from FREE_TOOLS so a new one is listed the moment it is

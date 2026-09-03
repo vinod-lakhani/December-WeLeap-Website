@@ -5,7 +5,7 @@ import { faqsByHref } from '@/lib/tool-faqs'
 /**
  * Structured data for a calculator route.
  *
- * All seven tool layouts were carrying the same four lines of lookup-and-emit,
+ * Every tool layout was carrying the same four lines of lookup-and-emit,
  * which is how the /net-worth-impact layout ended up importing the helpers and
  * never calling them. One component, keyed on the route.
  *

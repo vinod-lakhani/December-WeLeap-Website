@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   // competing <link rel="icon"> tags.
   //
   // Likewise no `openGraph.images` / `twitter.images`: `app/opengraph-image.tsx`
-  // is the sitewide card and the seven tool routes override it with their own,
+  // is the sitewide card and each tool route overrides it with its own,
   // all resolved per-route by Next.
   openGraph: {
     type: 'website',

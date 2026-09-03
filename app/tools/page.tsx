@@ -4,17 +4,22 @@ import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
+
+/** "Eight" — the count, capitalised for the start of a sentence. */
+const COUNT_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
 import { ToolCard } from "@/components/ToolCard"
 
 export const metadata: Metadata = {
   title: "Free money tools",
   alternates: { canonical: "/tools" },
-  description:
-    "Seven free calculators that answer a real money question in under a minute. Rent affordability, offer letters, pay-in-4 decisions, credit card payoff, emergency fund and more. No account, no email wall.",
+  // Derived, like the two body-copy uses below. This string and the openGraph
+  // one under it were the last hardcoded counts on the site, and they went
+  // stale the moment an eighth tool shipped — on the page whose whole job is to
+  // list them.
+  description: `${COUNT_CAP} free calculators that answer a real money question in under a minute. Money age, rent affordability, offer letters, pay-in-4 decisions, credit card payoff and more. No account, no email wall.`,
   openGraph: {
     title: "Free money tools | WeLeap",
-    description:
-      "Seven free calculators that answer a real money question in under a minute. No account, no email wall.",
+    description: `${COUNT_CAP} free calculators that answer a real money question in under a minute. No account, no email wall.`,
     url: "/tools",
     images: [DEFAULT_OG_IMAGE],
   },
@@ -64,7 +69,7 @@ export default function ToolsPage() {
             Answer one money question in under a minute.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtle">
-            {TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)} calculators, built for decisions you're actually facing. Nothing to sign up for — use them, get your
+            {COUNT_CAP} calculators, built for decisions you're actually facing. Nothing to sign up for — use them, get your
             number, leave.
           </p>
         </Container>
@@ -72,9 +77,9 @@ export default function ToolsPage() {
 
       <Section variant="canvas" className="pt-0">
         <Container maxWidth="wide">
-          {/* Centred wrap rather than a grid: seven cards in three columns left
-              an orphan hanging off the left of the last row. This centres the
-              trailing row and survives the count changing again. */}
+          {/* Centred wrap rather than a grid: an odd count in three columns
+              left an orphan hanging off the left of the last row. This centres
+              the trailing row and survives the count changing again. */}
           <div className="flex flex-wrap justify-center gap-5">
             {FREE_TOOLS.map((t) => (
               <div
