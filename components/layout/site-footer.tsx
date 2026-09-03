@@ -15,7 +15,7 @@ import { FREE_TOOLS } from "@/lib/tools"
  * over: it listed four of seven tools, and the one it did list for the Money
  * Plan was /leap-impact-simulator — a route that 308s to the live tool, so the
  * site's only sitewide internal link block was spending link equity on a
- * redirect. All seven are listed; this is the main internal-linking surface for
+ * redirect. Every tool is listed; this is the main internal-linking surface for
  * the acquisition pages, so a tall column beats a truncated one.
  */
 export function SiteFooter() {

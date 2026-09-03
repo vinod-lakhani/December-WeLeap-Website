@@ -19,7 +19,7 @@
  * describe.
  */
 
-import { FREE_TOOLS, type FreeTool } from '@/lib/tools'
+import { FREE_TOOLS, TOOL_COUNT_WORD, type FreeTool } from '@/lib/tools'
 import type { Article } from '@/lib/articles'
 import type { FaqItem } from '@/lib/tool-faqs'
 
@@ -45,7 +45,7 @@ export function organizationSchema() {
     // than omitting the field. Add others as they go live.
     sameAs: ['https://www.linkedin.com/company/weleap'],
     description:
-      'WeLeap is a consumer personal-finance company. Its product is Ribbit, an AI financial sidekick for people in their twenties and early thirties: it reads a connected financial picture — cash, debt, 401(k) and goals — and names the single highest-value next move, called a Leap. WeLeap also publishes seven free calculators that need no account. It is not a budgeting app, not a robo-adviser, and not a registered investment adviser.',
+      `WeLeap is a consumer personal-finance company. Its product is Ribbit, an AI financial sidekick for people in their twenties and early thirties: it reads a connected financial picture — cash, debt, 401(k) and goals — and names the single highest-value next move, called a Leap. WeLeap also publishes ${TOOL_COUNT_WORD} free calculators that need no account. It is not a budgeting app, not a robo-adviser, and not a registered investment adviser.`,
     // Named explicitly because a model cannot infer from prose alone that
     // "Ribbit" and "WeLeap" are the assistant and the company rather than two
     // unrelated products. The site says both names constantly and had defined
@@ -105,7 +105,7 @@ export function toolSchema(tool: FreeTool) {
  * The tools sit at top-level URLs — /how-should-i-split-my-paycheck, not
  * /tools/allocator — because the slug is the query and URL depth is a weak
  * signal. The cost of that flatness is
- * that nothing in the URL says these seven pages belong together, so this is
+ * that nothing in the URL says these pages belong together, so this is
  * the only machine-readable statement of the hierarchy.
  *
  * Emitted by `ToolBreadcrumb`, which renders the same three items as a visible

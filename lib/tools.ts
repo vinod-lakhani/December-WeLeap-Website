@@ -17,6 +17,22 @@
  * tool passes to `tool_cta_clicked`. That makes card click -> tool CTA a single
  * joinable funnel rather than two unrelated event streams.
  *
+ * ORDER IS LOAD-BEARING, on three surfaces at once: the /tools grid, the
+ * footer column, and — through PRESENT_DAY_TOOLS — the homepage. From the C2
+ * session: "I'd have seen the first two and stopped exploring." So the first
+ * two entries are doing most of the work and the rest are a long tail.
+ *
+ * Ordered by how little a stranger has to have ready, not by how much each
+ * tool does. Money Age asks an age and three taps and needs nothing looked up,
+ * which makes it the cheapest thing to start and the only one whose output is
+ * shareable — so it leads. Money Plan follows because it is where Money Age
+ * hands off and where the product actually lives. Rent is third on reach: it
+ * has the broadest search intent of the set and needs one number.
+ *
+ * The tail is ordered by how hypothetical the question is. Emergency Fund and
+ * Monthly Saving Impact both ask about a situation you are not in yet, which is
+ * the same reason they are the two that are not `presentDay`.
+ *
  * `presentDay` marks the tools that answer a decision someone is facing right
  * now, as opposed to a projection. From the C2 research session: "offer is
  * present-day, retirement is hypothetical… I'd have seen the first two and
@@ -37,6 +53,62 @@ export interface FreeTool {
 
 export const FREE_TOOLS: FreeTool[] = [
   {
+
+    /**
+     * The campaign front door.
+     *
+     * Present-day even though it reads like a projection: it answers a
+     * question about right now — is my money older or younger than I am —
+     * and it is the only tool here whose first screen asks for nothing a
+     * visitor has to look up. Four taps and a slider, and a number lands
+     * after the third.
+     *
+     * Deliberately does not lead with 401(k) vocabulary. The retirement
+     * machinery sits behind the slider, which is where an audience that
+     * bounces off "employer match" will still meet it.
+     */
+    name: "Money Age",
+    question: "Is my money older than I am?",
+    blurb: "One number for where you stand. Four taps, no account, no bank connection.",
+    cta: "Find my money age →",
+    href: "/whats-my-money-age",
+    // sparkles is shared with one other card. Every icon in this set is
+    // already spoken for and adding an asset is out of scope for this PR;
+    // trophy would have been the third use of the same image.
+    icon: "/images/tool-icons/sparkles.png",
+    slug: "money_age",
+    presentDay: true,
+  },
+  {
+
+    // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
+    // rate and then handed off to the allocation engine for everything else.
+    // That engine can now start from nothing, so the two are one tool and this
+    // points at the full thing.
+    //
+    // Present-day despite sounding like planning: it opens on "you are leaving
+    // $3,400 a year of your employer's money behind", which is a thing that is
+    // true today, not a projection.
+    name: "Money Plan",
+    // Was "What should my money do, and in what order?". The ordering question
+    // is answered by prose — every list-shaped result already owns it — while
+    // the thing this tool alone does is take a real paycheck and split it. The
+    // card now asks the question the page is targeting, and the blurb below
+    // still says the order, so both signals survive on one card.
+    question: "How should I split my paycheck?",
+    blurb: "Match, safety buffer, debt, retirement — and the single move worth making first.",
+    cta: "Build my plan →",
+    // Renamed from /allocator, which was the internal name for the engine and
+    // matched nothing anyone types. 308 in next.config.mjs. `slug` deliberately
+    // stayed "allocator": it is the analytics id, and every event and saved
+    // report keyed on it would otherwise lose its own history.
+    href: "/how-should-i-split-my-paycheck",
+    icon: "/images/tool-icons/rocket.png",
+    slug: "allocator",
+    presentDay: true,
+  },
+  {
+
     name: "Rent Affordability",
     question: "Can I actually afford this apartment?",
     blurb: "Turn a salary into a rent range you can live with — after tax, not before.",
@@ -47,6 +119,7 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
+
     name: "Offer Letter Analyzer",
     question: "Is this offer as good as it sounds?",
     blurb: "Seven numbers hide in an offer letter. See what the package is really worth.",
@@ -57,6 +130,18 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
+
+    name: "Credit Card Payoff",
+    question: "When will I finally be debt-free?",
+    blurb: "Your payoff date, and how much sooner extra payments get you there.",
+    cta: "Build my payoff plan →",
+    href: "/credit-card-payoff",
+    icon: "/images/tool-icons/move-debt.png",
+    slug: "credit_card_payoff",
+    presentDay: true,
+  },
+  {
+
     name: "Buy Now, Pay Later",
     question: "Should I use buy now, pay later?",
     blurb: "Cash, pay in 4, or monthly financing — see which one actually leaves you better off.",
@@ -83,16 +168,7 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
-    name: "Credit Card Payoff",
-    question: "When will I finally be debt-free?",
-    blurb: "Your payoff date, and how much sooner extra payments get you there.",
-    cta: "Build my payoff plan →",
-    href: "/credit-card-payoff",
-    icon: "/images/tool-icons/move-debt.png",
-    slug: "credit_card_payoff",
-    presentDay: true,
-  },
-  {
+
     name: "Emergency Fund Target",
     question: "How much do I actually need saved?",
     blurb: "Not everyone needs six months. Find the number that fits your situation.",
@@ -122,59 +198,7 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: false,
   },
   {
-    /**
-     * The campaign front door.
-     *
-     * Present-day even though it reads like a projection: it answers a
-     * question about right now — is my money older or younger than I am —
-     * and it is the only tool here whose first screen asks for nothing a
-     * visitor has to look up. Four taps and a slider, and a number lands
-     * after the third.
-     *
-     * Deliberately does not lead with 401(k) vocabulary. The retirement
-     * machinery sits behind the slider, which is where an audience that
-     * bounces off "employer match" will still meet it.
-     */
-    name: "Money Age",
-    question: "Is my money older than I am?",
-    blurb: "One number for where you stand. Four taps, no account, no bank connection.",
-    cta: "Find my money age →",
-    href: "/whats-my-money-age",
-    // sparkles is shared with one other card. Every icon in this set is
-    // already spoken for and adding an asset is out of scope for this PR;
-    // trophy would have been the third use of the same image.
-    icon: "/images/tool-icons/sparkles.png",
-    slug: "money_age",
-    presentDay: true,
-  },
-  {
-    // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
-    // rate and then handed off to the allocation engine for everything else.
-    // That engine can now start from nothing, so the two are one tool and this
-    // points at the full thing.
-    //
-    // Present-day despite sounding like planning: it opens on "you are leaving
-    // $3,400 a year of your employer's money behind", which is a thing that is
-    // true today, not a projection.
-    name: "Money Plan",
-    // Was "What should my money do, and in what order?". The ordering question
-    // is answered by prose — every list-shaped result already owns it — while
-    // the thing this tool alone does is take a real paycheck and split it. The
-    // card now asks the question the page is targeting, and the blurb below
-    // still says the order, so both signals survive on one card.
-    question: "How should I split my paycheck?",
-    blurb: "Match, safety buffer, debt, retirement — and the single move worth making first.",
-    cta: "Build my plan →",
-    // Renamed from /allocator, which was the internal name for the engine and
-    // matched nothing anyone types. 308 in next.config.mjs. `slug` deliberately
-    // stayed "allocator": it is the analytics id, and every event and saved
-    // report keyed on it would otherwise lose its own history.
-    href: "/how-should-i-split-my-paycheck",
-    icon: "/images/tool-icons/rocket.png",
-    slug: "allocator",
-    presentDay: true,
-  },
-  {
+
     name: "Monthly Saving Impact",
     // Was "Is $150 a month even worth it?". The amount is this tool's default,
     // not its subject — it is a slider — and the card, the OG card headline and

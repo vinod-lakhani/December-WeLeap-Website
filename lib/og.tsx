@@ -11,7 +11,7 @@ import { OG_CONTENT_TYPE, OG_SIZE } from '@/lib/og-image'
  * for `summary_large_image` but no image was ever set, and there was no
  * `opengraph-image` file anywhere. This is the one card design, rendered at
  * request time by Next's ImageResponse, reused by the sitewide default and by
- * each of the seven tool routes.
+ * each tool route.
  *
  * Deliberately no stats, ratings, user counts or logos-of-companies strip.
  * Nothing on the card is a claim that is not already true and visible on the

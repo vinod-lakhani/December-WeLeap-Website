@@ -1028,10 +1028,9 @@ function Tools() {
         {/* Leads with the three present-day decisions. From the C2 session:
             "offer is present-day, retirement is hypothetical… I'd have seen the
             first two and stopped exploring." The rest live on /tools. */}
-        {/* Five present-day tools now. A four-column grid would leave the
-            fifth stranded on its own row, so this centres the trailing row the
-            way /tools does — 3 + 2 reads better than 4 + 1, and the layout
-            survives the count changing again. */}
+        {/* Six present-day tools now, so this reads 3 + 3. Centred wrap rather
+            than a fixed grid because the count keeps moving and a stranded card
+            on the last row looks like a bug. */}
         <div className="mt-14 flex flex-wrap justify-center gap-5">
           {PRESENT_DAY_TOOLS.map((t) => (
             <div

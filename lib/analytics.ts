@@ -33,7 +33,7 @@
  * first or their fourth, which is what makes re-runners comparable only to
  * each other.
  *
- * All seven free tools emit the sequence. What counts as "a real result" is
+ * Every free tool emits the sequence. What counts as "a real result" is
  * decided per tool, from that tool's own state machine, because firing it at
  * the same moment as tool_engaged makes the step between them measure nothing:
  * - offer            — the tax lookup resolves (take-home stops being a 72% stub)
@@ -57,7 +57,7 @@
  *   homepage hero, which is now a one-question calculator rather than a
  *   description of one. Deliberately NOT the tool_* funnel: `tool` is a
  *   FREE_TOOLS slug, the homepage is not a registered tool, and adding a
- *   'home' slug would break the completeness check that asserts all seven
+ *   'home' slug would break the completeness check that asserts every tool
  *   appear. Salary is bucketed, never sent raw.
  * - scrolled_past_how_it_works
  * - rent_form_start
