@@ -32,7 +32,14 @@ import { track } from '@/lib/analytics'
 import { nextRunIndex } from '@/lib/run-index'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { computeMoneyAge, priceMove } from '@/lib/moneyAge/calculation'
-import { INCOME_BANDS, POSITION_BANDS, DEBT_BANDS, bandLabel, type Band } from '@/lib/moneyAge/bands'
+import {
+  INCOME_BANDS,
+  POSITION_BANDS,
+  DEBT_BANDS,
+  POSITION_BAND_CEILING,
+  bandLabel,
+  type Band,
+} from '@/lib/moneyAge/bands'
 import { REFERENCE_SAVINGS_RATE, CAREER_START_AGE } from '@/lib/moneyAge/constants'
 
 const PAGE = '/whats-my-money-age'
@@ -104,7 +111,16 @@ function Answered({ label, value, onEdit }: { label: string; value: string; onEd
 export function MoneyAgeTool() {
   const [age, setAge] = useState('')
   const [income, setIncome] = useState<number | null>(null)
-  const [position, setPosition] = useState<number | null>(null)
+  const [positionBand, setPositionBand] = useState<number | null>(null)
+  /**
+   * An exact figure, for people the bands cannot represent.
+   *
+   * Bands are the fast path and stay the default, but no band is right for a
+   * $2M portfolio — and each doubling of savings is worth two to three years of
+   * money age, so the top band carries years of error however it is drawn. When
+   * this is filled it wins over the band.
+   */
+  const [positionExact, setPositionExact] = useState('')
   const [debt, setDebt] = useState<number | null>(null)
   const [ratePct, setRatePct] = useState(DEFAULT_RATE_PCT)
   const [rateTouched, setRateTouched] = useState(false)
@@ -124,6 +140,15 @@ export function MoneyAgeTool() {
     track('tool_engaged', { tool: TOOL, first_field: field })
     track('tool_form_start', { tool: TOOL, page: PAGE })
   }, [])
+
+  const exactNum = useMemo(() => {
+    if (!positionExact.trim()) return null
+    const n = Math.round(parseFloat(positionExact.replace(/[$,\s]/g, '')))
+    return Number.isFinite(n) && n >= 0 && n <= 100_000_000 ? n : null
+  }, [positionExact])
+
+  /** The typed figure wins when present; otherwise the tapped band. */
+  const position = exactNum ?? positionBand
 
   /** Everything needed for a number. Debt is optional — it defaults to none. */
   const ready = ageNum != null && income != null && position != null
@@ -176,13 +201,14 @@ export function MoneyAgeTool() {
       money_age: result.moneyAge,
       delta_years: result.deltaYears,
       income_band: bandLabel(INCOME_BANDS, income),
-      position_band: bandLabel(POSITION_BANDS, position),
+      position_band: exactNum != null ? 'exact' : bandLabel(POSITION_BANDS, positionBand),
+      position_exact_used: exactNum != null,
       debt_band: bandLabel(DEBT_BANDS, debt),
       savings_rate: ratePct,
       slider_moves: sliderMoves.current,
       rate_touched: rateTouched,
     })
-  }, [result, ageNum, income, position, debt, ratePct, rateTouched])
+  }, [result, ageNum, income, position, positionBand, exactNum, debt, ratePct, rateTouched])
 
   /**
    * The one move, priced in years.
@@ -260,7 +286,7 @@ export function MoneyAgeTool() {
               <Answered
                 label="You earn"
                 value={bandLabel(INCOME_BANDS, income) ?? ''}
-                onEdit={() => setPosition(null)}
+                onEdit={() => setPositionBand(null)}
               />
             ) : (
               <>
@@ -298,14 +324,43 @@ export function MoneyAgeTool() {
             <div className="mt-3">
               <BandRow
                 bands={POSITION_BANDS}
-                value={position}
+                value={exactNum != null ? null : positionBand}
                 name="Total saved"
                 onPick={(v) => {
                   markEngaged('position')
-                  setPosition(v)
+                  setPositionBand(v)
+                  // A tap is an explicit answer, so it clears any typed figure
+                  // rather than being silently overridden by it.
+                  setPositionExact('')
                 }}
               />
             </div>
+            {/* The ceiling escape hatch. Above the top band the error is years,
+                not rounding, and it lands on the people whose result is worth
+                sharing — so precision is offered rather than assumed away. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Label htmlFor="ma-exact" className="text-xs text-gray-500">
+                Or enter the exact amount
+              </Label>
+              <Input
+                id="ma-exact"
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 320,000"
+                value={positionExact}
+                onChange={(e) => {
+                  markEngaged('position_exact')
+                  setPositionExact(e.target.value)
+                }}
+                className="h-9 max-w-[10rem] border-[#D1D5DB] text-sm"
+              />
+            </div>
+            {exactNum != null && exactNum > POSITION_BAND_CEILING && (
+              <p className="mt-2 text-xs text-[#3F6B42]">
+                Above ${POSITION_BAND_CEILING.toLocaleString()} the bands stop being precise, so
+                we&apos;re using your figure.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

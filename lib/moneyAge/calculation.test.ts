@@ -20,6 +20,7 @@ import {
   CAREER_START_AGE,
   wageGrowthAt,
 } from './constants'
+import { POSITION_BANDS, INCOME_BANDS, bandLabel } from './bands'
 
 const base = { age: 28, income: 70_000, position: 12_000, savingsRate: 0.06 }
 
@@ -176,5 +177,44 @@ describe('the reference career follows BLS bands, not one rate', () => {
       const b = yardstickBalance(age + 1, 90_000, age + 1)
       expect(b).toBeGreaterThan(a * 0.5)
     }
+  })
+})
+
+describe('the bands cover a plausible range (and where they cannot, say so)', () => {
+  it('no open top band understates a realistic saver by a decade', () => {
+    // The first version stopped at "$50K+" scored as $75,000, which told a
+    // 32-year-old holding $350,000 that their money age was 29 when it was 41.
+    // Twelve years, and understated for exactly the people whose result is
+    // worth sharing.
+    const at = (p: number) =>
+      computeMoneyAge({ age: 32, income: 105_000, position: p, savingsRate: 0.121 }).moneyAge
+    const top = POSITION_BANDS[POSITION_BANDS.length - 1]!
+    expect(top.value).toBeGreaterThanOrEqual(400_000)
+    // Someone at the old failure point is now inside a band, not above the top.
+    expect(Math.abs(at(350_000) - at(top.value))).toBeLessThanOrEqual(3)
+  })
+
+  it('bands ascend, and each position band is wider than the last', () => {
+    // Log spacing. Even bands would put the resolution where the curve is flat.
+    const vals = POSITION_BANDS.map((b) => b.value)
+    for (let i = 1; i < vals.length; i++) expect(vals[i]!).toBeGreaterThan(vals[i - 1]!)
+    const gaps = vals.slice(1).map((v, i) => v - vals[i]!)
+    for (let i = 1; i < gaps.length; i++) expect(gaps[i]!).toBeGreaterThanOrEqual(gaps[i - 1]!)
+  })
+
+  it('savings bands reach well past the top income band', () => {
+    // Savings are a stock and income a flow, so the top of one has no business
+    // being anchored to the top of the other. A 44-year-old on $200k can hold
+    // several times that.
+    const topIncome = INCOME_BANDS[INCOME_BANDS.length - 1]!.value
+    const topPosition = POSITION_BANDS[POSITION_BANDS.length - 1]!.value
+    expect(topPosition).toBeGreaterThan(topIncome)
+  })
+
+  it('a typed figure is reported as "exact" rather than as a missing band', () => {
+    // So a funnel can separate "did not answer" from "answered precisely".
+    expect(bandLabel(POSITION_BANDS, 320_000)).toBe('exact')
+    expect(bandLabel(POSITION_BANDS, 37_500)).toBe('$25–50K')
+    expect(bandLabel(POSITION_BANDS, null)).toBeNull()
   })
 })

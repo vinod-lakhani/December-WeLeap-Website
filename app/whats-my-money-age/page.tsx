@@ -66,6 +66,10 @@ const STEPS: readonly MethodStep[] = [
     d: 'Two different rates are at work and it is easy to run them together: the step above is how fast their salary rises, and this one is what their invested balance earns. Their contributions compound at 5% real, which produces a rising balance for every age. Your money age is the point on that curve where their balance equals yours — your retirement accounts, investments, savings and cash, minus any credit card balance. Because there is no closed-form way to invert a growing annuity, the answer is found by bisection: the same arithmetic run about sixty times, narrowing on the age.',
   },
   {
+    t: 'Your savings are read from a band, or from an exact figure if you give one',
+    d: 'The tapped ranges are deliberately log-spaced rather than even, because the accumulation curve is steep at the bottom and flat at the top: five thousand dollars moves the answer a full year when you are starting out and barely registers later, so the fine resolution belongs at the low end. Bands have a real limit, though. Each doubling of your savings is worth two to three years of money age, so any range wide enough to be useful carries years of error at its top — and an open-ended top band is worse still. That is why you can type an exact amount instead. If you do, we use it.',
+  },
+  {
     t: 'Then years are added or subtracted for what you are putting away now',
     d: 'Saving more than 12.1% adds years, saving less subtracts them, capped at ten in either direction so that one estimated input cannot swamp the balance you actually hold. This term is why a contribution change moves your money age the moment you make it, rather than years later once it has compounded — and it is why the slider does anything at all. It also produces the property that makes the whole number interpretable: save exactly the reference rate, hold exactly what the reference saver holds, and your money age is your own age.',
   },
@@ -126,7 +130,7 @@ export default function MoneyAgePage() {
 
       <MethodSteps
         heading="How your money age is calculated"
-        intro="Six rules and two parameters, all published. Both parameters come from a named public source rather than from us, so you can check the bar rather than take it on trust."
+        intro="Seven rules and two parameters, all published. Both parameters come from a named public source rather than from us, so you can check the bar rather than take it on trust."
         summary={
           <>
             Your money age is the age at which one reference saver would have held what you hold. That
