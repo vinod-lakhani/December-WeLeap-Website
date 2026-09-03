@@ -6,6 +6,23 @@ import { useState } from "react"
 import { appLink, APP_HREF } from "@/lib/app-link"
 import { track } from "@/lib/analytics"
 
+/**
+ * Did the user ask for this link to open somewhere else?
+ *
+ * The two "Open app" handlers below call preventDefault so the href can be
+ * rebuilt with attribution at click time, and they used to do it
+ * unconditionally — which quietly broke cmd-click, ctrl-click and
+ * middle-click. The anchor looked like a link and refused to behave like one.
+ *
+ * On a modified click we leave the event alone: the browser opens the plain
+ * APP_HREF in a new tab without attribution. That loses the UTMs for that one
+ * crossing, which is the right trade against breaking a gesture people use
+ * deliberately.
+ */
+function isModifiedClick(e: React.MouseEvent): boolean {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0
+}
+
 export function Navigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -84,7 +101,7 @@ export function Navigation() {
             <div className="hidden md:flex items-center gap-4">
               <a
                 href={APP_HREF}
-                onClick={(e) => { e.preventDefault(); track('open_app_clicked', { placement: 'header' }); window.location.href = appLink() }}
+                onClick={(e) => { if (isModifiedClick(e)) return; e.preventDefault(); track('open_app_clicked', { placement: 'header' }); window.location.href = appLink() }}
                 className="bg-brand-700 hover:bg-brand-800 text-white px-6 py-2.5 rounded-full font-bold shadow-pill transition-all duration-200 hover:-translate-y-px"
               >
                 Open app
@@ -134,7 +151,7 @@ export function Navigation() {
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-200">
                 <a
                   href={APP_HREF}
-                  onClick={(e) => { e.preventDefault(); track('open_app_clicked', { placement: 'mobile_nav' }); window.location.href = appLink() }}
+                  onClick={(e) => { if (isModifiedClick(e)) return; e.preventDefault(); track('open_app_clicked', { placement: 'mobile_nav' }); window.location.href = appLink() }}
                   className="w-full bg-brand-700 hover:bg-brand-800 text-white px-6 py-3 rounded-full font-bold shadow-pill transition-all duration-200 text-center block"
                 >
                   Open app

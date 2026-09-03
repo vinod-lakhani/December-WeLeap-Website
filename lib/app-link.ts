@@ -14,7 +14,7 @@
 // Lazy accessor rather than a static SDK import — this module is imported by
 // every CTA on the site. See lib/posthog-lazy.ts.
 import { getPostHog } from "@/lib/posthog-lazy"
-import { getUtmParams } from "@/lib/utm-storage"
+import { getUtmParams, getFirstTouchUtmParams } from "@/lib/utm-storage"
 
 /** Base URL of the WeLeap app. Env-driven so dev/prod can differ. */
 export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://weleap.app"
@@ -37,10 +37,30 @@ export const APP_HREF = APP_BASE_URL
 export function appLink(path = "", extraParams?: Record<string, string>): string {
   const params = new URLSearchParams()
 
-  // 1) Stored first-touch UTMs (query string, no leading "?").
+  /**
+   * 1) Last-touch UTMs, resolved from the live URL merged over storage.
+   *
+   * Was first touch, which meant the first tagged visit in a tab was forwarded
+   * for the life of that tab — so on Instagram, where one webview session
+   * spans many taps, every post's conversions were credited to whichever post
+   * the person tapped first. See lib/utm-storage.ts.
+   */
   const utm = typeof window !== "undefined" ? getUtmParams() : ""
   if (utm) {
     new URLSearchParams(utm).forEach((value, key) => params.set(key, value))
+  }
+
+  /**
+   * 1b) First touch, as utm_first_*, and only when it actually differs.
+   *
+   * Sending it always would double the length of every CTA URL to restate what
+   * utm_* already says for the common single-campaign visit. Sending it when
+   * it differs is the only case where it carries information: this person was
+   * found by one post and converted from another.
+   */
+  const firstUtm = typeof window !== "undefined" ? getFirstTouchUtmParams() : ""
+  if (firstUtm && firstUtm !== utm) {
+    new URLSearchParams(firstUtm).forEach((value, key) => params.set(`${key.replace(/^utm_/, "utm_first_")}`, value))
   }
 
   // 2) PostHog distinct_id -> lets the app stitch identity across domains.
