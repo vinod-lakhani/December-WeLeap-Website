@@ -276,11 +276,14 @@ function PrimaryCard({
           <p className="mt-1 text-[#111827]">
             Increase 401(k) from {formatPct(currentPct)} → {formatPct(targetPct)}
           </p>
+          {/* This said "getting to 15% of pay" while the number beside it read
+              40.83%, because the target chased the IRS limit and the copy was
+              never updated. The target is now genuinely 15% including the
+              match, so the sentence can name the arithmetic it comes from. */}
           <p className="mt-1 text-sm text-gray-600">
-            Getting to 15% of pay into retirement dramatically improves your path.
-          </p>
-          <p className="mt-2 text-sm text-[#3F6B42]">
-            Impact: improves long-term compounding.
+            That puts 15% of your pay into retirement once your employer&apos;s match is
+            counted — enough to compound, and not so much that the rest of this plan has
+            nothing to work with.
           </p>
           <p className="text-xs text-gray-400 mt-1">Assumes 7% real return.</p>
         </CardContent>
