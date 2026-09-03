@@ -26,10 +26,16 @@ interface SavingsStackSummaryProps {
   monthlyCapitalAvailable?: number | null;
   /** For pre-tax display: 401(k) current %, target %, match rate/cap. */
   preTax401k?: { currentPct: number; targetPct: number; matchRatePct?: number; matchCapPct?: number } | null;
-  /** 401(k) impact at Year 30. Only for primary when kind === 'match'. */
-  impact401kAtYear30?: number | null;
-  /** Annual contribution increase (employee + match) for 401k. Used for transparent framing. */
-  annualContributionIncrease401k?: number | null;
+  /**
+   * The annual increase, split into whose money each half is.
+   *
+   * This was a single summed figure, and the sum was shown under a heading
+   * about capturing the employer match — so "$2,400 a year" read as employer
+   * money when half of it is the reader's own paycheck moving between
+   * accounts. Half of a headline gain turning out to be your own money is the
+   * kind of thing that makes you distrust the other half too.
+   */
+  contributionSplit401k?: { employee: number; employer: number; total: number } | null;
   /** Cost of delay if user waits 12 months. Only for primary when kind === 'match'. */
   costOfDelay12Mo?: number | null;
   /** HSA long-term impact (by retirement). Only for primary when kind === 'hsa'. */
@@ -43,7 +49,7 @@ interface SavingsStackSummaryProps {
   /** When true and primary is HSA: acknowledge 401(k) as #1 move, HSA as #2. */
   acknowledge401kFirst?: boolean;
   onUnlockDetailsClick?: () => void;
-  /** CTA to show in collapsed view (e.g. "Keep this plan on autopilot"). */
+  /** CTA to show in collapsed view (e.g. "Keep my plan current"). */
   ctaSlot?: React.ReactNode;
 }
 
@@ -59,15 +65,13 @@ function formatCurrencyShort(n: number): string {
 /** Step 1 (Locked) + Step 2 layout when user came from Leap Impact with 401k rec. */
 function StepwisePrimaryCard({
   preTax401k,
-  impact401kAtYear30,
-  annualContributionIncrease401k,
+  contributionSplit401k,
   hsaLeap,
   impactHsaAtYear30,
   annualContributionIncreaseHsa,
 }: {
   preTax401k: { currentPct: number; targetPct: number };
-  impact401kAtYear30?: number | null;
-  annualContributionIncrease401k?: number | null;
+  contributionSplit401k?: { employee: number; employer: number; total: number } | null;
   hsaLeap: Leap;
   impactHsaAtYear30?: number | null;
   annualContributionIncreaseHsa?: number | null;
@@ -90,12 +94,24 @@ function StepwisePrimaryCard({
           <p className="mt-0.5 text-sm text-gray-600">
             Your #1 move from Leap Impact — apply this first.
           </p>
-          {(impact401kAtYear30 != null && impact401kAtYear30 > 0) && (
+          {contributionSplit401k && contributionSplit401k.employer > 0 && (
             <div className="mt-1 text-xs text-[#3F6B42]">
-              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
-                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
-              )}
-              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+              <p>
+                {formatDollars(contributionSplit401k.employer)} a year in employer money you are not
+                taking.
+              </p>
+              <p className="text-gray-600">
+                Your contribution rises by {formatDollars(contributionSplit401k.employee)} and your
+                employer adds {formatDollars(contributionSplit401k.employer)}.
+              </p>
+              {/* A month, not thirty years. A quarter-million-dollar projection
+                  assumes a flat contribution and no raise for three decades,
+                  and it is abstract to somebody who came here unable to choose
+                  between four options. The cost of waiting is felt. */}
+              <p className="text-gray-600">
+                Every month you wait costs {formatDollars(Math.round(contributionSplit401k.employer / 12))} of
+                employer money. It does not carry forward.
+              </p>
             </div>
           )}
         </div>
@@ -135,8 +151,7 @@ function StepwisePrimaryCard({
 /** Dominant primary card: one highest-leverage move. */
 function PrimaryCard({
   primary,
-  impact401kAtYear30,
-  annualContributionIncrease401k,
+  contributionSplit401k,
   costOfDelay12Mo,
   impactHsaAtYear30,
   annualContributionIncreaseHsa,
@@ -145,8 +160,7 @@ function PrimaryCard({
   onUnlockDetailsClick,
 }: {
   primary: PrimaryLeapResult;
-  impact401kAtYear30?: number | null;
-  annualContributionIncrease401k?: number | null;
+  contributionSplit401k?: { employee: number; employer: number; total: number } | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
   annualContributionIncreaseHsa?: number | null;
@@ -160,8 +174,7 @@ function PrimaryCard({
     return (
       <StepwisePrimaryCard
         preTax401k={preTax401k}
-        impact401kAtYear30={impact401kAtYear30}
-        annualContributionIncrease401k={annualContributionIncrease401k}
+        contributionSplit401k={contributionSplit401k}
         hsaLeap={leap}
         impactHsaAtYear30={impactHsaAtYear30}
         annualContributionIncreaseHsa={annualContributionIncreaseHsa}
@@ -185,12 +198,22 @@ function PrimaryCard({
           <p className="mt-1 text-sm text-gray-600">
             Unlocks employer match — free money that compounds for decades.
           </p>
-          {(impact401kAtYear30 != null && impact401kAtYear30 > 0) && (
-            <div className="mt-2 text-sm font-medium text-[#3F6B42]">
-              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
-                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
-              )}
-              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+          {contributionSplit401k && contributionSplit401k.employer > 0 && (
+            <div className="mt-2 text-sm text-[#3F6B42]">
+              <p className="font-medium">
+                {formatDollars(contributionSplit401k.employer)} a year in employer money you are not
+                taking.
+              </p>
+              <p className="mt-0.5 text-gray-600">
+                Your contribution rises by {formatDollars(contributionSplit401k.employee)} and your
+                employer adds {formatDollars(contributionSplit401k.employer)}.{' '}
+                {formatDollars(contributionSplit401k.total)} a year lands in the account, half of it
+                theirs.
+              </p>
+              <p className="mt-0.5 text-gray-600">
+                Every month you wait costs {formatDollars(Math.round(contributionSplit401k.employer / 12))} of
+                employer money. It does not carry forward.
+              </p>
             </div>
           )}
           {costOfDelay12Mo != null && costOfDelay12Mo > 0 && (
@@ -523,13 +546,12 @@ function MoneyStructureSummary({
   payrollLeaps,
   hasEmployerMatch,
   primary,
-  annualContributionIncrease401k,
+  contributionSplit401k,
   annualContributionIncreaseHsa,
   routing,
   hasRouting,
   supportingLeaps,
   primaryTarget401kPct,
-  impact401kAtYear30,
   costOfDelay12Mo,
   impactHsaAtYear30,
   costOfDelayHsa12Mo,
@@ -540,18 +562,17 @@ function MoneyStructureSummary({
   payrollLeaps: Leap[];
   hasEmployerMatch: boolean;
   primary: PrimaryLeapResult;
-  annualContributionIncrease401k: number | null | undefined;
   annualContributionIncreaseHsa: number | null | undefined;
   routing: CapitalRoutingResult | null | undefined;
   hasRouting: boolean;
   supportingLeaps: Leap[];
   primaryTarget401kPct?: number;
-  impact401kAtYear30: number | null | undefined;
   costOfDelay12Mo: number | null | undefined;
   impactHsaAtYear30: number | null | undefined;
   costOfDelayHsa12Mo: number | null | undefined;
   onUnlockDetailsClick?: () => void;
   ctaSlot?: React.ReactNode;
+  contributionSplit401k?: { employee: number; employer: number; total: number } | null;
 }) {
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
 
@@ -576,7 +597,11 @@ function MoneyStructureSummary({
                 <p className="text-base font-semibold text-[#111827]">
                   {matchComplete
                     ? '✔ Capture full match'
-                    : `✔ Capture full match${annualContributionIncrease401k != null && annualContributionIncrease401k > 0 ? ` (+${formatCurrencyShort(annualContributionIncrease401k)}/yr)` : ''}`}
+                    : /* The EMPLOYER half only. This read "+$2.4K/yr" beside
+                         "Capture full match", and half of that figure was the
+                         reader's own contribution — so the headline number for
+                         capturing employer money was 50% not employer money. */
+                      `✔ Capture full match${contributionSplit401k && contributionSplit401k.employer > 0 ? ` (+${formatCurrencyShort(contributionSplit401k.employer)}/yr from your employer)` : ''}`}
                 </p>
               )}
               {!hasEmployerMatch && preTax401k && preTax401k.currentPct !== preTax401k.targetPct && (
@@ -678,8 +703,7 @@ function MoneyStructureSummary({
                       leap={leap}
                       primaryKind={primary.kind}
                       primaryTarget401kPct={primaryTarget401kPct}
-                      impact401kAtYear30={impact401kAtYear30}
-                      annualContributionIncrease401k={annualContributionIncrease401k}
+                      contributionSplit401k={contributionSplit401k}
                       costOfDelay12Mo={costOfDelay12Mo}
                       impactHsaAtYear30={impactHsaAtYear30}
                       annualContributionIncreaseHsa={annualContributionIncreaseHsa}
@@ -748,8 +772,7 @@ function PayrollCard({
   leap,
   primaryKind,
   primaryTarget401kPct,
-  impact401kAtYear30,
-  annualContributionIncrease401k,
+  contributionSplit401k,
   costOfDelay12Mo,
   impactHsaAtYear30,
   annualContributionIncreaseHsa,
@@ -758,8 +781,7 @@ function PayrollCard({
   leap: Leap;
   primaryKind: string;
   primaryTarget401kPct?: number;
-  impact401kAtYear30?: number | null;
-  annualContributionIncrease401k?: number | null;
+  contributionSplit401k?: { employee: number; employer: number; total: number } | null;
   costOfDelay12Mo?: number | null;
   impactHsaAtYear30?: number | null;
   annualContributionIncreaseHsa?: number | null;
@@ -786,12 +808,16 @@ function PayrollCard({
               {formatPct(currentPct)} → {formatPct(targetPct)}
             </p>
           )}
-          {showImpact && impact401kAtYear30 != null && impact401kAtYear30 > 0 && (
-            <div className="text-xs font-medium text-[#3F6B42] mt-1">
-              {annualContributionIncrease401k != null && annualContributionIncrease401k > 0 && (
-                <p>Annual contribution increase: {formatCurrencyShort(annualContributionIncrease401k)}</p>
-              )}
-              <p>30-year compounded value: ~{formatCurrencyShort(impact401kAtYear30)}</p>
+          {showImpact && contributionSplit401k && contributionSplit401k.employer > 0 && (
+            <div className="text-xs text-[#3F6B42] mt-1">
+              <p className="font-medium">
+                {formatDollars(contributionSplit401k.employer)} a year in employer money you are not
+                taking.
+              </p>
+              <p className="text-gray-600">
+                Your contribution rises by {formatDollars(contributionSplit401k.employee)} and your
+                employer adds {formatDollars(contributionSplit401k.employer)}.
+              </p>
             </div>
           )}
           {showImpact && costOfDelay12Mo != null && costOfDelay12Mo > 0 && (
@@ -853,8 +879,7 @@ export function SavingsStackSummary({
   routing = null,
   monthlyCapitalAvailable = null,
   preTax401k = null,
-  impact401kAtYear30 = null,
-  annualContributionIncrease401k = null,
+  contributionSplit401k = null,
   costOfDelay12Mo = null,
   impactHsaAtYear30 = null,
   annualContributionIncreaseHsa = null,
@@ -889,8 +914,7 @@ export function SavingsStackSummary({
         </h2>
         <PrimaryCard
           primary={primary}
-          impact401kAtYear30={impact401kAtYear30}
-          annualContributionIncrease401k={annualContributionIncrease401k}
+          contributionSplit401k={contributionSplit401k}
           costOfDelay12Mo={costOfDelay12Mo}
           impactHsaAtYear30={impactHsaAtYear30}
           annualContributionIncreaseHsa={annualContributionIncreaseHsa}
@@ -906,13 +930,12 @@ export function SavingsStackSummary({
         payrollLeaps={payrollLeaps}
         hasEmployerMatch={hasEmployerMatch}
         primary={primary}
-        annualContributionIncrease401k={annualContributionIncrease401k}
+        contributionSplit401k={contributionSplit401k}
         annualContributionIncreaseHsa={annualContributionIncreaseHsa}
         routing={routing}
         hasRouting={hasRouting}
         supportingLeaps={supportingLeaps}
         primaryTarget401kPct={primaryTarget401kPct}
-        impact401kAtYear30={impact401kAtYear30}
         costOfDelay12Mo={costOfDelay12Mo}
         impactHsaAtYear30={impactHsaAtYear30}
         costOfDelayHsa12Mo={costOfDelayHsa12Mo}

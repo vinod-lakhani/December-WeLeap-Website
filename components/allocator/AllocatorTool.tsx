@@ -13,7 +13,7 @@ import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
 import { buildLeaps } from '@/lib/allocator/buildLeaps';
-import { computeAnnualContributionIncrease401k, estimateHsaImpact30yr } from '@/lib/leapImpact/trajectory';
+import { computeAnnualContributionSplit401k, estimateHsaImpact30yr } from '@/lib/leapImpact/trajectory';
 import type { AllocatorUnlockData } from '@/lib/allocator/leapModel';
 import { selectPrimaryLeap, getSupportingLeaps } from '@/lib/allocator/selectPrimaryLeap';
 import { computeNetTakeHomeMonthly } from '@/lib/allocator/takeHome';
@@ -238,7 +238,7 @@ export function AllocatorTool() {
    * $3,400 a year behind" into "401(k) contribution (target) 5%". This holds it
    * back until the reveal has been seen.
    */
-  const [wedgeLeap, setWedgeLeap] = useState<{ label: string; from: number; to: number; annual: number; thirtyYear: number; delay: number } | null>(null);
+  const [wedgeLeap, setWedgeLeap] = useState<{ label: string; from: number; to: number; employee: number; employer: number; total: number } | null>(null);
   const [revealSeen, setRevealSeen] = useState(false);
 
   const prefillFromUrl = useMemo(() => searchParams ? parsePrefillFromSearchParams(searchParams) : null, [searchParams]);
@@ -494,9 +494,7 @@ export function AllocatorTool() {
         label: leap.label,
         from: current401k,
         to: leap.optimized401kPct,
-        annual: computeAnnualContributionIncrease401k(trajInputs),
-        thirtyYear: traj.delta30yr,
-        delay,
+        ...computeAnnualContributionSplit401k(trajInputs),
       });
     }
     track('allocator_wedge_completed', { salary: Math.round(salary / 10000) * 10000, state: wState, hasMatch: wHasMatch });
@@ -538,11 +536,10 @@ export function AllocatorTool() {
     [leaps, nextLeapId]
   );
   const nextLeapTitle = nextLeap?.title ?? null;
-  const impact401kAtYear30 = prefill?.leapDelta30yr ?? null;
   const costOfDelay12Mo = prefill?.costOfDelay12Mo ?? null;
-  const annualContributionIncrease401k = useMemo(() => {
+  const contributionSplit401k = useMemo(() => {
     if (!prefill?.salaryAnnual || prefill.current401kPct >= effectiveTarget401kPct) return null;
-    return computeAnnualContributionIncrease401k({
+    return computeAnnualContributionSplit401k({
       grossAnnual: prefill.salaryAnnual,
       current401kPct: prefill.current401kPct,
       optimized401kPct: effectiveTarget401kPct,
@@ -643,8 +640,12 @@ export function AllocatorTool() {
               server-rendered. It is a paragraph, not a heading, so the page
               keeps exactly one h1. */}
           <p className="text-base md:text-lg text-subtle leading-relaxed mb-8">
+            {/* "Leap Impact result" is our name for a tool, not the reader's.
+                They answered some questions; they did not produce a Leap Impact
+                result. Naming an internal artifact back at somebody is how a
+                page starts sounding like it was written for the team. */}
             {prefill
-              ? 'We’ve prefilled what we know from your Leap Impact result. Check it, then finish the plan below.'
+              ? 'We’ve carried over your answers. Check them, then finish below.'
               : 'Answer a few questions and your plan builds as you go.'}
           </p>
 
@@ -695,7 +696,7 @@ export function AllocatorTool() {
                       ? `The point where your employer stops matching. Below this you leave their money behind.`
                       : prefill.source === 'allocator_direct'
                         ? 'Where we think your contribution should get to, based on what you told us.'
-                        : 'We prefilled your 401(k) target based on your Leap Impact result.'}
+                        : 'Carried over from the answers you already gave us.'}
                   </p>
                 </div>
               </CardContent>
@@ -867,22 +868,26 @@ export function AllocatorTool() {
                   </p>
                 )}
 
-                {wedgeLeap.annual > 0 && (
-                  <p className="mt-4 text-3xl font-bold text-[#3F6B42]">
-                    +{formatCurrency(wedgeLeap.annual)} per year
-                  </p>
+                {/* The headline is the EMPLOYER half alone. This card used to
+                    lead with the two halves summed, which read as free money
+                    when half of it is the reader's own take-home moved into a
+                    401(k) — and it is the first number anyone sees here. */}
+                {wedgeLeap.employer > 0 && (
+                  <>
+                    <p className="mt-4 text-3xl font-bold text-[#3F6B42]">
+                      +{formatCurrency(wedgeLeap.employer)} per year from your employer
+                    </p>
+                    <p className="mt-1 text-sm text-gray-700">
+                      Your contribution rises by {formatCurrency(wedgeLeap.employee)} and your
+                      employer adds {formatCurrency(wedgeLeap.employer)}.
+                    </p>
+                    <p className="mt-1 text-sm text-red-700">
+                      Every month you wait costs{' '}
+                      {formatCurrency(Math.round(wedgeLeap.employer / 12))} of employer money. It
+                      does not carry forward.
+                    </p>
+                  </>
                 )}
-                {wedgeLeap.thirtyYear > 0 && (
-                  <p className="mt-1 text-sm text-gray-700">
-                    If invested consistently: ~{formatCurrency(wedgeLeap.thirtyYear)} over 30 years
-                  </p>
-                )}
-                {wedgeLeap.delay > 0 && (
-                  <p className="mt-1 text-sm text-red-700">
-                    Waiting 12 months could cost ~{formatCurrency(wedgeLeap.delay)}
-                  </p>
-                )}
-                <p className="mt-2 text-xs text-gray-500">Assumes 7% real return.</p>
 
                 <Button
                   onClick={() => {
@@ -1130,8 +1135,7 @@ export function AllocatorTool() {
                       preTax401k={prefill ? { currentPct: prefill.current401kPct, targetPct: effectiveTarget401kPct, matchRatePct: prefill.matchRatePct ?? 100, matchCapPct: prefill.matchCapPct ?? prefill.employerMatchPct } : null}
                       primaryTarget401kPct={primaryResult.kind === 'retirement_15' ? primaryResult.retirement15?.targetPct : primaryResult.kind === 'match' && primaryResult.leap ? (primaryResult.leap.targetValue as number) : undefined}
                       acknowledge401kFirst={primaryResult.kind === 'hsa' && prefill?.current401kPct != null && prefill?.recommended401kPct != null && prefill.current401kPct < prefill.recommended401kPct}
-                      impact401kAtYear30={impact401kAtYear30}
-                      annualContributionIncrease401k={annualContributionIncrease401k}
+                      contributionSplit401k={contributionSplit401k}
                       costOfDelay12Mo={costOfDelay12Mo}
                       impactHsaAtYear30={impactHsaAtYear30}
                       annualContributionIncreaseHsa={payrollLeaps.find((l) => l.category === 'hsa')?.deltaValue ?? null}
@@ -1166,12 +1170,31 @@ export function AllocatorTool() {
                               state: prefill?.state,
                               recommended_401k_pct: prefill?.recommended401kPct,
                             }}
-                            headline="Put this on autopilot."
-                            body="We'll recalculate when your income or expenses change, and tell you when the next move is worth making."
+                            /**
+                             * "Autopilot" is gone, and it was the problem.
+                             *
+                             * The word promises execution — that we will move
+                             * the money — on a page whose own footer says
+                             * WeLeap is not a registered investment adviser and
+                             * does not provide personalised advice. It also
+                             * asked a stranger for control of their money about
+                             * ninety seconds after they typed a salary into a
+                             * website.
+                             *
+                             * The replacement claims only what the product
+                             * actually does: recompute when the inputs change.
+                             * The feedback's draft ended "we will tell you when
+                             * it does", which trades an execution promise for a
+                             * notification one — no better if nothing sends
+                             * that notification. So the copy stops at the plan
+                             * keeping up, which is true today.
+                             */
+                            headline="See what changes next month."
+                            body="Your income moves, your card balance moves, and the right next move changes with them."
                             bullets={[
                               'This plan carried over, so you start where you left off',
-                              'Your buffer, debt and retirement tracked as the balances actually move',
-                              'A weekly focus, so the next move is never the thing you forgot',
+                              'Your buffer, debt and retirement recalculated as the balances move',
+                              'One move at a time, in the order that pays most',
                             ]}
                             image={{
                               src: '/images/product/setup-checklist.png',
@@ -1179,7 +1202,7 @@ export function AllocatorTool() {
                               width: 1720,
                               height: 680,
                             }}
-                            buttonLabel="Put this on autopilot →"
+                            buttonLabel="Keep my plan current →"
                           />
                         </div>
                       }

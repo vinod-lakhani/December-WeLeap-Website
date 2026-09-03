@@ -110,7 +110,7 @@ const ribbitQs = [
   { q: '"What should I do first?"', a: 'Names your highest-priority Leap with the dollar amount and reason why.' },
   { q: '"Why Roth and not Traditional for me?"', a: 'Explains the tax math using your income and expected future rate.' },
   { q: '"What does +2% savings mean for me?"', a: 'Shows the monthly dollar change and the 40-year compounded impact.' },
-  { q: '"I got a raise — what should I do with it?"', a: 'Recommends exactly how to allocate the increase across your savings stack.' },
+  { q: '"I got a raise — what should I do with it?"', a: 'Recommends exactly how to allocate the increase — match, buffer, debt, retirement, in that order.' },
   { q: '"Am I on track for retirement?"', a: 'Pulls your retirement balance and projects your trajectory.' },
   { q: '"Is my emergency fund target realistic?"', a: 'Shows your current balance, the gap, and your projected timeline.' },
 ]

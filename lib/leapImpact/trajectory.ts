@@ -214,6 +214,40 @@ export function computeAnnualContributionIncrease401k(inputs: TrajectoryInputs):
 }
 
 /**
+ * The same increase, split into whose money each half is.
+ *
+ * `computeAnnualContributionIncrease401k` returns the sum, and the sum was
+ * being shown under a heading about capturing the employer match — so on a
+ * $60,000 salary going from 3% to 5%, "$2,400 a year" read as employer money
+ * when $1,200 of it is the reader's own paycheck moving between accounts.
+ * Half of a headline gain being the reader's own money is the kind of thing
+ * that, once noticed, makes them distrust the other half too.
+ *
+ * Nothing is recomputed here: the same arithmetic, returned unsummed, so the
+ * two cannot drift from the total.
+ */
+export function computeAnnualContributionSplit401k(inputs: TrajectoryInputs): {
+  employee: number
+  employer: number
+  total: number
+} {
+  const matchRatePct = inputs.matchRatePct ?? 100;
+  const empCurAnnual = Math.min((inputs.grossAnnual * inputs.current401kPct) / 100, K401_EMPLOYEE_CAP);
+  const empOptAnnual = Math.min((inputs.grossAnnual * inputs.optimized401kPct) / 100, K401_EMPLOYEE_CAP);
+  const curPctForMatch = inputs.grossAnnual > 0 ? (empCurAnnual / inputs.grossAnnual) * 100 : 0;
+  const optPctForMatch = inputs.grossAnnual > 0 ? (empOptAnnual / inputs.grossAnnual) * 100 : 0;
+  const matchCur = inputs.hasEmployerMatch
+    ? (inputs.grossAnnual * Math.min((curPctForMatch * matchRatePct) / 100, inputs.matchPct) / 100)
+    : 0;
+  const matchOpt = inputs.hasEmployerMatch
+    ? (inputs.grossAnnual * Math.min((optPctForMatch * matchRatePct) / 100, inputs.matchPct) / 100)
+    : 0;
+  const employee = Math.round(empOptAnnual - empCurAnnual);
+  const employer = Math.round(matchOpt - matchCur);
+  return { employee, employer, total: employee + employer };
+}
+
+/**
  * Estimate 30-year compounded value of HSA annual contribution increase.
  * FV of monthly contributions (annualIncrease/12) at 7% real return over 30 years.
  */
