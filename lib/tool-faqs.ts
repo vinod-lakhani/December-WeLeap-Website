@@ -167,6 +167,28 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
+  '/whats-my-money-age': [
+    {
+      q: 'What is a money age?',
+      a: 'It is the age at which a reference saver would have held what you hold. That reference saver starts work at 22, earns less than you do early on and grows into your current salary by your current age, saves 12.1% of their pay every year, and earns 5% a year above inflation. If your money age is 31 and you are 24, it means someone on that path would have been 31 before they had what you have. The number is built from two things only: what you have saved, and what share of your pay you are putting away.',
+    },
+    {
+      q: 'Is a higher money age good or bad?',
+      a: 'Higher is better, which is the opposite of every other age-style metric like fitness age or lung age. That is why this tool leads with the gap rather than the age itself: being seven years ahead is the useful fact, and the raw number 31 tells you nothing on its own. If your money age is below your real age you are behind the reference saver, and the size of that gap is what the tool is actually for.',
+    },
+    {
+      q: 'How is money age calculated?',
+      a: 'Two terms, both in years, added together. The first asks how far up the reference saver\u2019s accumulation curve your savings sit \u2014 it is the age at which their balance equals yours. The second is a credit or debit for saving above or below the reference rate of 12.1%, capped at ten years in either direction so a single estimated input cannot dominate. The reference rate is the average total contribution rate, employee plus employer, from Vanguard\u2019s How America Saves 2026, covering roughly five million retirement plan participants.',
+    },
+    {
+      q: 'What raises your money age fastest?',
+      a: 'Raising the share of your pay that you save, because that term responds immediately while savings take time to compound. Capturing an employer match is the fastest version of this: the employer\u2019s contribution counts toward your savings rate the same as your own, so a dollar-for-dollar match up to 5% moves the number roughly twice as far as increasing your own contribution alone. Paying off a credit card balance also helps directly, because the balance is subtracted from what you hold before the calculation runs.',
+    },
+    {
+      q: 'Why does my money age go down when I get a raise?',
+      a: 'Because the bar is set as a share of what you earn, not as a fixed dollar figure. A bigger salary means the reference saver is putting away more each year, so they reach any given balance sooner \u2014 and your savings represent fewer of their years. This is intentional: it is measuring you against your own earning power rather than against a flat national number. It does mean a pay rise, on its own, moves the number the wrong way even though nothing about your saving has changed.',
+    },
+  ],
   '/how-much-emergency-fund-do-i-need': [
     {
       q: 'How much should I have in my emergency fund?',
