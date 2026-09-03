@@ -19,7 +19,7 @@ import {
   REFERENCE_SAVINGS_RATE,
   RATE_CREDIT_PER_UNIT,
   RATE_CREDIT_CLAMP_YEARS,
-  REAL_INCOME_GROWTH,
+  wageGrowthAt,
   CAREER_START_AGE,
   MIN_MONEY_AGE,
 } from './constants'
@@ -58,24 +58,55 @@ export interface MoneyAgeResult {
 }
 
 /**
+ * What the reference saver earned at age `t`, given the user's income now.
+ *
+ * Walks year by year from the user's age using the BLS band rates, so the path
+ * lands exactly on the user's income at the user's age and follows the real
+ * shape of a career on the way there — steep in the twenties, nearly flat after
+ * forty. A single growth rate cannot do that, and averaging the bands into one
+ * number is least accurate for the older users whose answer moves most.
+ */
+export function referenceIncomeAt(t: number, income: number, age: number): number {
+  if (income <= 0) return 0
+  let value = income
+  if (t < age) {
+    // Step backwards: undo each year's growth.
+    for (let a = age; a > t; a--) value /= 1 + wageGrowthAt(a - 1)
+  } else {
+    for (let a = age; a < t; a++) value *= 1 + wageGrowthAt(a)
+  }
+  return value
+}
+
+/**
  * What the yardstick holds at age `t`.
  *
- * A growing annuity: contributions rise with income at `g`, and each one
- * compounds at `r` until age `t`. The (1+g)^(START−A) factor rebases their pay
- * so it equals the user's income at the user's age rather than at 22.
+ * Accumulated year by year rather than in closed form. The growing-annuity
+ * formula this replaced needed a single constant growth rate, and the whole
+ * point of the band schedule is that a single rate misstates the career shape.
+ * Twenty-odd iterations of arithmetic is a cheap price for not having to pick
+ * one number, and it also disposes of the r === g edge case the closed form
+ * carried.
+ *
+ * Fractional ages are interpolated so the result stays continuous, which the
+ * bisection below relies on.
  */
 export function yardstickBalance(t: number, income: number, age: number): number {
-  const n = t - CAREER_START_AGE
-  if (n <= 0 || income <= 0) return 0
-  const g = REAL_INCOME_GROWTH
-  const firstYearContribution =
-    REFERENCE_SAVINGS_RATE * income * Math.pow(1 + g, CAREER_START_AGE - age)
-  // r === g would divide by zero. Not reachable with the shipped constants,
-  // but this file outlives its constants.
-  if (Math.abs(r - g) < 1e-9) {
-    return firstYearContribution * n * Math.pow(1 + r, n - 1)
+  if (t <= CAREER_START_AGE || income <= 0) return 0
+
+  const whole = Math.floor(t)
+  const balanceAt = (target: number): number => {
+    let balance = 0
+    for (let a = CAREER_START_AGE; a < target; a++) {
+      balance = balance * (1 + r) + REFERENCE_SAVINGS_RATE * referenceIncomeAt(a, income, age)
+    }
+    return balance
   }
-  return (firstYearContribution * (Math.pow(1 + r, n) - Math.pow(1 + g, n))) / (r - g)
+
+  const lower = balanceAt(whole)
+  const frac = t - whole
+  if (frac === 0) return lower
+  return lower + (balanceAt(whole + 1) - lower) * frac
 }
 
 /**

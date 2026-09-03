@@ -46,13 +46,48 @@ export const RATE_CREDIT_PER_UNIT = 8.9
 export const RATE_CREDIT_CLAMP_YEARS = 10
 
 /**
- * Real income growth for the reference saver's career.
+ * Real income growth over a career, by age band.
  *
- * PROVISIONAL. This is the one parameter still carrying a picked number rather
- * than a citation, and it changes the answer for older users most. Treat it the
- * way B was treated: source it before this leaves beta.
+ * Source: US Bureau of Labor Statistics, "Baby boomer earnings grew fastest
+ * during their late teens and early twenties", TED, 3 April 2015, from the
+ * National Longitudinal Surveys (cohort born 1957-1964). Real hourly earnings
+ * growth per year.
+ *
+ * A SCHEDULE RATHER THAN ONE NUMBER, and the honest reason is provenance, not
+ * precision. Averaged across this tool's age range these bands come to 3.14%,
+ * so a flat 3% turns out to be a good approximation: switching to the schedule
+ * moves the money age by at most half a year anywhere in range, and by nothing
+ * at all at 44. The on-track dollar figure the page prints moves more — about
+ * 5%, e.g. $180,433 to $171,117 for a 35-year-old on $105k — and that one is
+ * shown to users.
+ *
+ * The reason to keep the schedule anyway is that 3% was a number somebody
+ * chose, and these are numbers somebody published. The bands are also the real
+ * shape of a career — 6.2% in the early twenties, 0.7% after forty — which is
+ * worth being right about on a method page that invites checking.
+ *
+ * DIRECTION MATTERS. A higher g means the reference saver earned less early,
+ * so saved less, so the bar is lower and the user's money age is higher. Left
+ * as a single tunable number it is a flattery dial exactly like the reference
+ * rate, which is why it is a published schedule instead.
+ *
+ * Caveat worth keeping in view: this is one cohort, followed from 1979. It is
+ * the best public age-banded series available and it is cited on the page, but
+ * it is not this decade's twenty-somethings.
  */
-export const REAL_INCOME_GROWTH = 0.03
+export const REAL_WAGE_GROWTH_BANDS: readonly { from: number; to: number; rate: number }[] = [
+  { from: 0, to: 24, rate: 0.062 },
+  { from: 25, to: 29, rate: 0.041 },
+  { from: 30, to: 34, rate: 0.033 },
+  { from: 35, to: 39, rate: 0.031 },
+  { from: 40, to: 200, rate: 0.007 },
+]
+
+/** The band rate covering a given age. */
+export function wageGrowthAt(age: number): number {
+  const band = REAL_WAGE_GROWTH_BANDS.find((b) => age >= b.from && age <= b.to)
+  return band?.rate ?? 0.007
+}
 
 /** The reference career begins here. */
 export const CAREER_START_AGE = 22

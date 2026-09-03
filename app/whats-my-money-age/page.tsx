@@ -21,9 +21,10 @@ import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
  * their sources. That is not a compliance footnote — a number this shareable
  * gets reverse-engineered, and the method surviving that is the whole play.
  *
- * See docs/specs/money-age-v2.md. The two parameters that decide every answer
- * are REFERENCE_SAVINGS_RATE (sourced to Vanguard) and REAL_INCOME_GROWTH
- * (still provisional, and flagged as such below).
+ * See docs/specs/money-age-v2.md. Both parameters that decide the answer are
+ * sourced: the reference savings rate to Vanguard's How America Saves, and the
+ * pay-growth schedule to a BLS earnings series. Neither is a number anyone here
+ * picked, which is the property that has to survive the method being read.
  */
 
 export const metadata: Metadata = {
@@ -53,16 +54,16 @@ const STEPS: readonly MethodStep[] = [
     d: 'Not to a survey, not to your friends, and not to a national average of balances. Your money age is the age at which a single reference saver would have held what you hold. Everything below describes that one person, because once you know who they are the number is fully determined — there is no adjustment, no curve anyone drew, and nothing to tune after the fact.',
   },
   {
-    t: 'That saver has a career, not a salary',
-    d: 'They start work at 22 earning less than you do now, their pay grows about 3% a year above inflation, and it reaches your current income at your current age. This matters more than it sounds. The obvious shortcut is to assume they earned your current salary every year since 22 — but that makes them impossible, because nobody earns their age-35 salary at 22, and it sets the bar higher the longer your career has run. That shortcut cost a 40-year-old more than three years of money age for nothing.',
+    t: 'That saver has a career, so their pay rises the way real pay does',
+    d: 'They start work at 22 earning less than you do now, and their salary grows until it reaches your current income at your current age. This is pay growth, not investment growth — the two are separate and the next step covers the other one. How fast their pay rises comes from the Bureau of Labor Statistics: real earnings grow about 6.2% a year through the early twenties, 4.1% from 25 to 29, 3.3% from 30 to 34, 3.1% from 35 to 39, and only 0.7% after 40. We use that schedule rather than one averaged rate, because a single number is something we would have picked and this is something somebody published. The shortcut worth avoiding is assuming they earned your current salary every year since 22 — that makes them impossible, since nobody earns their age-35 salary at 22, and it raises the bar the longer your career has run.',
   },
   {
     t: 'They save 12.1% of their pay, every year, counting their employer',
-    d: 'This is the number that sets the bar, so it is sourced rather than chosen: 12.1% is the average total participant contribution rate — employee plus employer — from Vanguard’s How America Saves 2026, covering roughly five million retirement plan participants in the 2025 plan year. Employee-only contributions average 7.6%. We use the total because the savings rate you enter also counts your employer’s money, and the bar has to count the same things the input does or the comparison is meaningless.',
+    d: 'This is the number that sets the bar, so it is sourced rather than chosen: 12.1% is the average total participant contribution rate — employee plus employer — from Vanguard’s How America Saves 2026, covering roughly five million retirement plan participants in the 2025 plan year. Employee-only contributions average 7.6%. We use the total because the savings rate you enter also counts your employer’s money, and the bar has to count the same things the input does or the comparison is meaningless. Worth being plain about whose average this is: it describes people who already have a workplace retirement plan and are contributing to it, not the whole working population. That makes it a deliberately demanding bar. Measured against everyone, including people with no plan at all, almost anyone saving anything would look ahead — which would be a more flattering number and a far less useful one.',
   },
   {
-    t: 'Their balance grows 5% a year above inflation, and we find where you sit on it',
-    d: 'Their contributions compound at 5% real, which produces a rising balance for every age. Your money age is the point on that curve where their balance equals yours — your retirement accounts, investments, savings and cash, minus any credit card balance. Because there is no closed-form way to invert a growing annuity, the answer is found by bisection: the same arithmetic run about sixty times, narrowing on the age.',
+    t: 'Their balance grows 5% a year above inflation — this is the investment return, not their pay',
+    d: 'Two different rates are at work and it is easy to run them together: the step above is how fast their salary rises, and this one is what their invested balance earns. Their contributions compound at 5% real, which produces a rising balance for every age. Your money age is the point on that curve where their balance equals yours — your retirement accounts, investments, savings and cash, minus any credit card balance. Because there is no closed-form way to invert a growing annuity, the answer is found by bisection: the same arithmetic run about sixty times, narrowing on the age.',
   },
   {
     t: 'Then years are added or subtracted for what you are putting away now',
@@ -125,7 +126,7 @@ export default function MoneyAgePage() {
 
       <MethodSteps
         heading="How your money age is calculated"
-        intro="Six rules and two parameters, all published. Both parameters have a source, and where one of them is still provisional this page says so."
+        intro="Six rules and two parameters, all published. Both parameters come from a named public source rather than from us, so you can check the bar rather than take it on trust."
         summary={
           <>
             Your money age is the age at which one reference saver would have held what you hold. That
@@ -149,10 +150,12 @@ export default function MoneyAgePage() {
               &mdash; the Federal Reserve&rsquo;s Survey of Consumer Finances &mdash; is from 2022,
               reports households rather than individuals, and publishes its youngest bracket as
               &ldquo;under 35&rdquo;, which is too coarse to separate a 24-year-old from a
-              34-year-old. Rather than invent a peer line, this tool compares you to a reference saver
-              whose rate is published and cited, so you can check the bar for yourself. One parameter
-              is still provisional: the 3% real income growth used to build the reference career is a
-              working value and does not yet carry a citation the way the savings rate does.
+              34-year-old. Rather than invent a peer line, this tool compares you to a reference
+              saver whose savings rate and pay growth are both published figures, so you can check
+              the bar yourself. Both carry the same caveat: the savings rate describes people who
+              already have a workplace plan, and the pay-growth schedule follows one cohort tracked
+              from 1979. They are the best public sources for each, and they are not this
+              decade&rsquo;s twenty-somethings.
             </Caveat>
           </div>
         </Container>

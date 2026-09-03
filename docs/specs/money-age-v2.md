@@ -39,9 +39,26 @@ yardstick_balance(t) = B · I · (1+g)^(22−A) · [(1+r)^n − (1+g)^n] / (r �
 bisection. There is no closed form for the inverse and there does not need to
 be — it is ~60 iterations of arithmetic.
 
-**`g` needs a citation exactly as `B` does.** 0.03 real is the working value and
-must not ship unsourced. It is now the second parameter that decides the shape
-of the answer, so it earns the same scrutiny as the first.
+**`g` is now sourced, and is a schedule rather than a constant.** US Bureau of
+Labor Statistics, TED, 3 April 2015, from the National Longitudinal Surveys
+(cohort born 1957-64): real earnings growth of 6.2%/yr through age 24, 4.1%
+(25-29), 3.3% (30-34), 3.1% (35-39), 0.7% (40+).
+
+Be accurate about what this buys. Those bands average **3.14%** over this tool's
+range, so the flat 3% was a good approximation — switching to the schedule moves
+the money age by at most half a year anywhere, and by nothing at 44. The
+on-track dollar figure the page prints moves about 5% ($180,433 to $171,117 for
+a 35-year-old on $105k), and that one is shown to users.
+
+The reason to prefer the schedule is provenance, not precision: 3% was chosen,
+these were published. Note the direction, which is why it matters that nobody
+gets to pick it — a **higher** `g` means the reference saver earned less early,
+so saved less, so the bar is lower and every money age comes out higher. Left
+as one tunable number it is a flattery dial exactly like `B`.
+
+Because the closed-form growing annuity requires a constant rate, the balance is
+now accumulated year by year against the schedule. That also disposes of the
+`r === g` edge case.
 
 ### 1.2 Do not rewrite history when income changes
 
@@ -155,7 +172,7 @@ Consequently:
 | `r` real return | 0.05 | 0.05 | unchanged |
 | `B` reference rate | 0.06 guessed | **0.121** | Vanguard 2026, total incl. employer |
 | `c` years per 100% of `B` | 3.0 | **8.9** | tuned to preserve slider range |
-| `g` real income growth | — | **0.03** | **NEEDS A CITATION BEFORE LAUNCH** |
+| `g` real income growth | — | **BLS age bands** | BLS TED 2015-04-03, NLS cohort 1957-64 |
 | start age | 22 | 22 | unchanged |
 
 ---
@@ -195,9 +212,16 @@ The good parts of v1, restated so they are not lost in the edit:
 
 ## 5. Open questions
 
-1. **`g` has no source.** Blocks launch on the same terms `B` did.
+1. ~~`g` has no source.~~ **Closed** — BLS schedule, §1.1. The remaining caveat
+   is that it follows one cohort tracked from 1979, which the page states.
 2. **A raise still lowers the number**, even with §1.2, for a user whose *first*
    visit is post-raise. Decide whether copy handles it or whether it is accepted.
-3. **12.1% is a participant average**, so the bar is "people already saving in a
-   workplace plan." That is a defensible and aspirational peer group, but it is
-   not "everyone" — decide whether the page says so out loud.
+3. ~~Decide whether the page says whose average 12.1% is.~~ **Closed** — the
+   method section now states it describes people who already have a workplace
+   plan and are contributing to it, and says why a whole-population bar would be
+   more flattering and less useful.
+
+4. **Prefill into the Money Plan is deliberately absent.** That page requires
+   `salaryAnnual` AND `state` AND `intent` before accepting any of them, and
+   this one never asks for state, so a partial prefill returns null and the plan
+   starts cold anyway. Accepted rather than faked.

@@ -7,11 +7,18 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { computeMoneyAge, yardstickBalance, rateCredit, priceMove } from './calculation'
+import {
+  computeMoneyAge,
+  yardstickBalance,
+  rateCredit,
+  priceMove,
+  referenceIncomeAt,
+} from './calculation'
 import {
   REFERENCE_SAVINGS_RATE,
   RATE_CREDIT_PER_UNIT,
   CAREER_START_AGE,
+  wageGrowthAt,
 } from './constants'
 
 const base = { age: 28, income: 70_000, position: 12_000, savingsRate: 0.06 }
@@ -123,5 +130,51 @@ describe('priceMove refuses to invent a delta', () => {
     expect(moved).not.toBeNull()
     expect(moved!.gain).toBeGreaterThan(0)
     expect(moved!.after).toBeGreaterThan(moved!.before)
+  })
+})
+
+describe('the reference career follows BLS bands, not one rate', () => {
+  it('income steps back through the bands to the start of the career', () => {
+    // Each year's growth is attributed to the age you were DURING it, which is
+    // how the BLS series is phrased ("grew 6.2% per year from age 18 to 24").
+    // So 29 -> 30 uses the 25-29 band, and 24 -> 25 uses the 18-24 band even
+    // though the person finishes that year at 25.
+    expect(referenceIncomeAt(29, 80_000, 30)).toBeCloseTo(80_000 / 1.041, 2)
+    expect(referenceIncomeAt(24, 80_000, 25)).toBeCloseTo(80_000 / 1.062, 2)
+    expect(referenceIncomeAt(23, 80_000, 24)).toBeCloseTo(80_000 / 1.062, 2)
+    // Forward and backward have to agree, or the path bends at the user's age.
+    expect(referenceIncomeAt(31, referenceIncomeAt(29, 80_000, 30), 29)).toBeCloseTo(
+      referenceIncomeAt(31, 80_000, 30),
+      2
+    )
+  })
+
+  it('tracks the published shape rather than one averaged rate', () => {
+    // Deliberately NOT asserting a large numerical difference. The bands
+    // average 3.14% over this tool's range, so a flat 3% approximates the
+    // accumulated balance well — the money age moves half a year at most. The
+    // point of the schedule is that it is sourced, and that the career shape it
+    // encodes is real: steep early, nearly flat after forty.
+    const early = wageGrowthAt(23)
+    const mid = wageGrowthAt(32)
+    const late = wageGrowthAt(44)
+    expect(early).toBeGreaterThan(mid)
+    expect(mid).toBeGreaterThan(late)
+    expect(late).toBeLessThan(0.01)
+  })
+
+  it('income is continuous through a band boundary', () => {
+    // Bands are a step function in the RATE, but income itself must not jump —
+    // a discontinuity here would put a cliff in the money age at ages 25, 30,
+    // 35 and 40.
+    for (const boundary of [25, 30, 35, 40]) {
+      const below = referenceIncomeAt(boundary - 0.001 + 0.001, 90_000, boundary)
+      expect(below).toBeCloseTo(90_000, 6)
+    }
+    for (const age of [24, 29, 34, 39, 44]) {
+      const a = yardstickBalance(age, 90_000, age)
+      const b = yardstickBalance(age + 1, 90_000, age + 1)
+      expect(b).toBeGreaterThan(a * 0.5)
+    }
   })
 })
