@@ -21,6 +21,12 @@ const DISALLOW = [
    * anything having read robots.txt first.
    */
   '/s/',
+  /**
+   * Internal campaign link builder. Not a free tool, not in FREE_TOOLS, and
+   * `noindex` on the page itself — this only stops it being crawled in the
+   * first place.
+   */
+  '/create_link',
 ]
 
 export default function robots(): MetadataRoute.Robots {
