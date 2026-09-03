@@ -34,17 +34,40 @@ export interface RecommendedLeap {
   type: 'capture_match' | 'increase_contribution' | 'at_cap' | 'at_target';
 }
 
+export interface RecommendedLeapInputs {
+  hasEmployerMatch: boolean;
+  /** Percentage of salary the employer matches up to. */
+  matchPct: number;
+  current401kPct: number;
+  /** Used to check the 401(k) cap. Pass 0 (the default) to skip the cap check. */
+  salaryAnnual?: number;
+  /**
+   * Match rate: 100 = dollar-for-dollar, 50 = fifty cents on the dollar.
+   *
+   * Rule 3 needs it, because the target is 15% of gross INCLUDING the match,
+   * and a 50% match up to 6% contributes 3% of gross rather than 6%. Defaults
+   * to dollar-for-dollar, which is what this file assumed when it had no way
+   * to be told otherwise.
+   */
+  matchRatePct?: number;
+}
+
 /**
  * Returns the single highest-impact Leap and the optimized 401(k) %.
  * Never returns "Increase 401(k) from X → X" (from==to). Uses at_cap when maxed or no room.
- * @param salaryAnnual - Used to check 401(k) cap ($23,500). Pass 0 to skip cap check.
+ *
+ * Takes an object rather than four positionals. `matchPct` and `matchRatePct`
+ * are both percentages describing the same employer match, so in positional
+ * form a swapped pair type-checks cleanly and quietly returns wrong advice.
  */
-export function getRecommendedLeap(
-  hasEmployerMatch: boolean,
-  matchPct: number,
-  current401kPct: number,
-  salaryAnnual: number = 0
-): RecommendedLeap {
+export function getRecommendedLeap(inputs: RecommendedLeapInputs): RecommendedLeap {
+  const {
+    hasEmployerMatch,
+    matchPct,
+    current401kPct,
+    salaryAnnual = 0,
+    matchRatePct = 100,
+  } = inputs;
   // Rule 1: Not capturing full match → recommend capturing match (capped at IRS limit)
   if (hasEmployerMatch && current401kPct < matchPct) {
     let optimizedPct = matchPct;
@@ -94,10 +117,7 @@ export function getRecommendedLeap(
     current401kPct,
     hasEmployerMatch,
     matchCapPct: matchPct,
-    // The wedge collects a match rate, but this signature predates it and every
-    // caller passes a rate elsewhere. Dollar-for-dollar is the assumption the
-    // rest of this file already makes about `matchPct`.
-    matchRatePct: 100,
+    matchRatePct,
   });
 
   // No increase to recommend. Distinguished from Rule 2 because the reasons

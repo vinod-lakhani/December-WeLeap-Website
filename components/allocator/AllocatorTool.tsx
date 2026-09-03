@@ -464,7 +464,17 @@ export function AllocatorTool() {
     const matchCap = wHasMatch ? Math.max(0, parseFloat(wMatchCap) || 0) : 0;
     const matchRate = wHasMatch ? Math.max(0, parseFloat(wMatchRate) || 100) : 0;
 
-    const leap = getRecommendedLeap(wHasMatch, matchCap, current401k, salary);
+    const leap = getRecommendedLeap({
+      hasEmployerMatch: wHasMatch,
+      matchPct: matchCap,
+      current401kPct: current401k,
+      salaryAnnual: salary,
+      // The wedge already asked for this; it just had nowhere to go until now.
+      // Without it a 50%-matched employee saw a target set as though their
+      // employer paid dollar-for-dollar, so the wedge's first screen asked for
+      // less than the plan would a step later.
+      matchRatePct: matchRate,
+    });
     const traj = runTrajectory({
       grossAnnual: salary,
       current401kPct: current401k,
