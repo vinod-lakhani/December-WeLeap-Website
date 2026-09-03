@@ -98,7 +98,7 @@ describe('IRS limits', () => {
  */
 describe('getRecommendedLeap', () => {
   it('salary=100k, 401k%=15% => already at the 15% target, not "maxed"', () => {
-    const leap = getRecommendedLeap(true, 5, 15, SALARY_AT_CAP);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 15, salaryAnnual: SALARY_AT_CAP });
     // A 5% dollar-for-dollar match plus 15% of their own pay is 20% of gross,
     // past the target. Reported as at_target: they are $9,500 short of the IRS
     // limit, so the old at_cap answer ("hitting the annual 401(k) limit") was
@@ -109,7 +109,7 @@ describe('getRecommendedLeap', () => {
   });
 
   it('salary=100k, 401k%=5% => recommends 10%, which is 15% with the match', () => {
-    const leap = getRecommendedLeap(true, 5, 5, SALARY_AT_CAP);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: SALARY_AT_CAP });
     expect(leap.type).toBe('increase_contribution');
     expect(leap.optimized401kPct).toBe(10);
     // The old rule sent this person to CAP_PCT instead.
@@ -117,26 +117,57 @@ describe('getRecommendedLeap', () => {
   });
 
   it('the target no longer rises as salary falls', () => {
-    const at = (salaryAnnual: number) => getRecommendedLeap(true, 5, 5, salaryAnnual).optimized401kPct;
+    const at = (salaryAnnual: number) => getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual }).optimized401kPct;
     // Old rule: 54.4 / 40.8 / 24.5 / 12.2 — strictly worse for lower earners.
     expect([at(45_000), at(60_000), at(100_000), at(200_000)]).toEqual([10, 10, 10, 10]);
   });
 
   it('still clamps to the IRS limit where 15% of gross would exceed it', () => {
     // 10% of $300k is $30,000, past the $24,500 employee limit.
-    const leap = getRecommendedLeap(true, 5, 5, 300_000);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: 300_000 });
     expect((300_000 * leap.optimized401kPct) / 100).toBeLessThanOrEqual(K401_EMPLOYEE_CAP);
   });
 
   it('salary=200k, 401k%=15% => at_cap (maxed)', () => {
-    const leap = getRecommendedLeap(true, 5, 15, 200_000);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 15, salaryAnnual: 200_000 });
     expect(leap.type).toBe('at_cap');
     expect(leap.summary).toContain('Nice');
     expect(leap.summary).not.toContain('from 15% → 15%');
   });
 
+  /**
+   * The match rate is why this function takes an object now.
+   *
+   * It was assuming dollar-for-dollar because the old positional signature had
+   * nowhere to put a rate, so a 50%-matched employee got a target computed as
+   * though their employer paid twice what it does — and the wedge's first
+   * screen therefore asked for less than the allocator would a step later.
+   */
+  it('a 50% match up to 6% asks for 12%, not the 9% a full match would', () => {
+    const half = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 50,
+    });
+    const full = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 100,
+    });
+    // 50% of 6% is 3% of gross from the employer, so the employee covers 12%.
+    expect(half.optimized401kPct).toBe(12);
+    // Dollar-for-dollar on 6% is 6%, so the employee covers 9%.
+    expect(full.optimized401kPct).toBe(9);
+  });
+
+  it('defaults to dollar-for-dollar when no rate is given', () => {
+    const implied = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000,
+    });
+    const explicit = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 100,
+    });
+    expect(implied).toEqual(explicit);
+  });
+
   it('summary never uses the old "from X → Y" format', () => {
-    const leap = getRecommendedLeap(true, 5, 5, 100_000);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: 100_000 });
     expect(leap.summary).not.toMatch(/from .+% → .+%/);
     expect(leap.summary).toMatch(/Move toward/);
   });
