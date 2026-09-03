@@ -76,5 +76,25 @@ export function bandLabel(bands: readonly Band[], value: number | null): string 
   return bands.find((b) => b.value === value)?.label ?? 'exact'
 }
 
-/** The largest figure the bands can represent, above which typing is the only honest option. */
+/**
+ * The largest figure each band set can represent. Above these, typing is the
+ * only honest option, and the tool says so rather than quietly bucketing.
+ */
 export const POSITION_BAND_CEILING = 250_000
+export const INCOME_BAND_CEILING = 200_000
+
+/**
+ * Reads a typed money figure.
+ *
+ * Accepts what people actually type into a money field — "$320,000", "320000",
+ * "320,000 " — rather than only a bare integer. Returns null for anything it
+ * cannot read, so a half-typed value falls back to the tapped band instead of
+ * scoring the user as zero mid-keystroke.
+ */
+export function parseExactAmount(raw: string, opts?: { min?: number }): number | null {
+  if (!raw.trim()) return null
+  const n = Math.round(parseFloat(raw.replace(/[$,\s]/g, '')))
+  if (!Number.isFinite(n)) return null
+  if (n < (opts?.min ?? 0) || n > 100_000_000) return null
+  return n
+}

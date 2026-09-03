@@ -20,7 +20,7 @@ import {
   CAREER_START_AGE,
   wageGrowthAt,
 } from './constants'
-import { POSITION_BANDS, INCOME_BANDS, bandLabel } from './bands'
+import { POSITION_BANDS, INCOME_BANDS, bandLabel, parseExactAmount } from './bands'
 
 const base = { age: 28, income: 70_000, position: 12_000, savingsRate: 0.06 }
 
@@ -216,5 +216,40 @@ describe('the bands cover a plausible range (and where they cannot, say so)', ()
     expect(bandLabel(POSITION_BANDS, 320_000)).toBe('exact')
     expect(bandLabel(POSITION_BANDS, 37_500)).toBe('$25–50K')
     expect(bandLabel(POSITION_BANDS, null)).toBeNull()
+  })
+})
+
+describe('parseExactAmount reads what people actually type', () => {
+  it('accepts currency formatting, because money fields get money typed into them', () => {
+    expect(parseExactAmount('320000')).toBe(320_000)
+    expect(parseExactAmount('320,000')).toBe(320_000)
+    expect(parseExactAmount('$320,000')).toBe(320_000)
+    expect(parseExactAmount(' 320,000 ')).toBe(320_000)
+  })
+
+  it('returns null rather than zero for unreadable input', () => {
+    // Mid-keystroke and empty states must fall back to the tapped band. Scoring
+    // someone as $0 while they type is a visibly wrong number, not a blank one.
+    expect(parseExactAmount('')).toBeNull()
+    expect(parseExactAmount('   ')).toBeNull()
+    expect(parseExactAmount('$')).toBeNull()
+    expect(parseExactAmount('abc')).toBeNull()
+  })
+
+  it('enforces a floor, because income is a denominator', () => {
+    // Savings of 0 is a real answer. An income of 0 is not — it sits under the
+    // reference bar, so it would make the whole calculation undefined.
+    expect(parseExactAmount('0')).toBe(0)
+    expect(parseExactAmount('0', { min: 1 })).toBeNull()
+    expect(parseExactAmount('-5000', { min: 1 })).toBeNull()
+  })
+
+  it('rejects figures beyond anything this tool should price', () => {
+    expect(parseExactAmount('100000001')).toBeNull()
+  })
+
+  it('an exact income is reported as "exact", like an exact position', () => {
+    expect(bandLabel(INCOME_BANDS, 240_000)).toBe('exact')
+    expect(bandLabel(INCOME_BANDS, 105_000)).toBe('$90–120K')
   })
 })
