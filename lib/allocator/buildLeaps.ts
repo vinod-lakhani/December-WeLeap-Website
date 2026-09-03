@@ -117,6 +117,12 @@ export function buildLeaps(
   });
   const netMonthly = prefill?.estimatedNetMonthlyIncome ?? 0;
   const essentialsMonthly = unlock?.essentialMonthly ?? 0;
+  /**
+   * The buffer's starting balance. `efCurrent` is the name routing gives this
+   * number and `cashOnHand` is the name the user gave it; this is the one place
+   * the two meet, deliberately, rather than renaming either side.
+   */
+  const cashOnHand = unlock?.cashOnHand != null && unlock.cashOnHand > 0 ? unlock.cashOnHand : 0;
   const postTaxSavingsMonthly =
     options?.monthlyCapitalAvailable != null
       ? Math.max(0, options.monthlyCapitalAvailable)
@@ -124,7 +130,7 @@ export function buildLeaps(
 
   const routing: CapitalRoutingResult | null =
     postTaxSavingsMonthly > 0 || essentialsMonthly > 0 || (options?.monthlyCapitalAvailable != null && options.monthlyCapitalAvailable >= 0)
-      ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: 0, unlock })
+      ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: cashOnHand, unlock })
       : null;
 
   // 1) 401(k) Match (payroll)
@@ -217,22 +223,46 @@ export function buildLeaps(
   // 3) Emergency Fund — 3-month target, 40% of post-tax savings until target
   const efTarget = essentialsMonthly > 0 ? essentialsMonthly * EF_TARGET_MONTHS : 0;
   const monthsToEf = routing?.monthsToEfTarget;
+  /**
+   * A funded buffer is a completed step, not a queued one.
+   *
+   * This used to be unconditionally `queued` with `currentValue: 0`, so someone
+   * who had already saved six months of expenses was told to build a buffer
+   * they had, on a timeline computed from a balance of zero, while 40% of their
+   * surplus was withheld from the debt and retirement steps to fund it.
+   */
+  const efFunded = routing?.efFunded ?? false;
+  const efGap = routing?.efGap ?? (efTarget || 0);
   leaps.push({
     id: 'emergency_fund',
-    title: efTarget > 0
-      ? `Build a 3-month safety cushion — $${Math.round(efTarget).toLocaleString()} target`
-      : 'Build a 3-month safety cushion',
-    subtitle: efTarget > 0 ? 'Milestone: 1 month → 3 months.' : 'Unlock to see your target.',
-    status: 'queued',
+    title: efFunded
+      ? `Safety cushion funded — $${Math.round(cashOnHand).toLocaleString()} against a $${Math.round(efTarget).toLocaleString()} target`
+      : efTarget > 0
+        ? `Build a 3-month safety cushion — $${Math.round(efTarget).toLocaleString()} target`
+        : 'Build a 3-month safety cushion',
+    subtitle: efFunded
+      ? 'Done. This step is off, so its share goes to the next one.'
+      : cashOnHand > 0 && efTarget > 0
+        ? `$${Math.round(cashOnHand).toLocaleString()} saved, $${Math.round(efGap).toLocaleString()} to go.`
+        : efTarget > 0
+          ? 'Milestone: 1 month → 3 months.'
+          : 'Unlock to see your target.',
+    status: efFunded ? 'complete' : 'queued',
     category: 'emergency_fund',
     targetValue: efTarget || undefined,
-    currentValue: 0,
-    deltaValue: efTarget || undefined,
-    timelineText: monthsToEf != null ? `~${monthsToEf} months to 3-month buffer` : (hasUnlockData ? undefined : 'Unlock for estimate'),
-    impactText: 'Lowers the chance you need high-interest credit.',
+    currentValue: cashOnHand,
+    deltaValue: efFunded ? undefined : (efGap || undefined),
+    timelineText: efFunded
+      ? undefined
+      : monthsToEf != null ? `~${monthsToEf} months to 3-month buffer` : (hasUnlockData ? undefined : 'Unlock for estimate'),
+    impactText: efFunded
+      ? 'This is what keeps a surprise expense off a credit card.'
+      : 'Lowers the chance you need high-interest credit.',
     requiresUnlock: !unlock?.essentialMonthly,
     cta: !unlock?.essentialMonthly ? { label: 'Unlock details', action: 'unlock' } : undefined,
-    allocationBadge: '40%',
+    // Matches the '0% (inactive)' convention the debt step already uses for a
+    // step that is switched off — here because it is finished, not absent.
+    allocationBadge: efFunded ? '0% (funded)' : '40%',
     isPayroll: false,
   });
 
@@ -309,8 +339,9 @@ export function buildLeaps(
 
   // Flow summary: percent-only (we don't have postTaxSavingsAmount yet)
   const debtSegment = debtActive ? 'Debt: 40% of remaining' : 'Debt: 0% (inactive)';
+  const efSegment = efFunded ? 'EF: 0% (funded)' : 'EF: 40%';
   const flowSummary: FlowSummary = {
-    percentOnly: `EF: 40% → ${debtSegment} → Remaining split ${splitLabel} (retirement/brokerage)`,
+    percentOnly: `${efSegment} → ${debtSegment} → Remaining split ${splitLabel} (retirement/brokerage)`,
   };
 
   const nextLeap = leaps.find((l) => l.status === 'next');

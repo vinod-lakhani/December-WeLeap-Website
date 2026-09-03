@@ -402,9 +402,12 @@ function SupportingCard({
   const label = frameworkLabel(leap.category);
 
   if (leap.category === 'emergency_fund') {
-    const targetStr = leap.targetValue != null
-      ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(leap.targetValue)
-      : null;
+    const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
+    const targetStr = leap.targetValue != null ? fmt(leap.targetValue) : null;
+    // This card's heading and target line were hardcoded to "Build a 3-month
+    // safety cushion" / "Target: $X", so a funded buffer still read as work to
+    // do. buildLeaps decides that now; this renders what it decided.
+    const efFunded = leap.status === 'complete';
     return (
       <Card className="border border-gray-200 bg-white">
         <CardContent className="p-3">
@@ -417,15 +420,24 @@ function SupportingCard({
                 {leap.allocationBadge}
               </span>
             )}
-            <span className="font-medium text-sm text-[#111827]">Build a 3-month safety cushion</span>
+            <span className="font-medium text-sm text-[#111827]">
+              {efFunded ? 'Safety cushion funded' : 'Build a 3-month safety cushion'}
+            </span>
           </div>
-          {targetStr ? (
+          {efFunded && targetStr && leap.currentValue != null ? (
+            <p className="text-xs text-gray-700 mt-0.5">
+              ${fmt(leap.currentValue)} saved against a ${targetStr} target (3 months of essentials)
+            </p>
+          ) : targetStr ? (
             <p className="text-xs text-gray-700 mt-0.5">Target: ${targetStr} (3 months of essentials)</p>
           ) : (
             <p className="text-xs text-gray-700 mt-0.5">Target: 3 months of essentials</p>
           )}
+          {leap.subtitle && (
+            <p className="text-[10px] text-gray-600 mt-0.5">{leap.subtitle}</p>
+          )}
           <p className="text-[10px] text-gray-500 mt-0.5">
-            Lowers the chance you need high-interest credit.
+            {leap.impactText ?? 'Lowers the chance you need high-interest credit.'}
           </p>
           {leap.timelineText && (
             <p className="text-[10px] text-gray-400 mt-0.5">On pace: {leap.timelineText}</p>
@@ -722,7 +734,14 @@ function MoneyStructureSummary({
               <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 mb-2 text-sm text-gray-700 space-y-1">
                 <p className="font-medium">Here&apos;s where your {formatDollars(routing.postTaxSavingsMonthly)}/mo goes:</p>
                 <ul className="list-disc list-inside space-y-0.5">
-                  <li>{formatDollars(routing.efAlloc)} → Safety buffer (40%)</li>
+                  {/* Was unconditional, which printed "$0 → Safety buffer
+                      (40%)" for anyone whose buffer was already funded — a
+                      line that contradicts itself. */}
+                  {routing.efAlloc > 0 ? (
+                    <li>{formatDollars(routing.efAlloc)} → Safety buffer (40%)</li>
+                  ) : routing.efFunded ? (
+                    <li className="text-gray-500">Safety buffer already funded — its 40% goes below</li>
+                  ) : null}
                   {routing.debtAlloc > 0 && (
                     <li>{formatDollars(routing.debtAlloc)} → High-APR debt (40% of remainder)</li>
                   )}

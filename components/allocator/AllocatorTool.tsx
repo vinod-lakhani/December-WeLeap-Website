@@ -21,7 +21,7 @@ import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { US_STATES } from '@/lib/states';
-import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP, EF_TARGET_MONTHS } from '@/lib/allocator/constants';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
@@ -111,6 +111,12 @@ export function AllocatorTool() {
   const [prefillLoadedTracked, setPrefillLoadedTracked] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [efMonthly, setEfMonthly] = useState('');
+  /**
+   * Savings already set aside, asked alongside essentials because the two are
+   * one question: the buffer's target and the buffer's starting point. Empty
+   * routes as zero, which is the behaviour the tool had before it asked.
+   */
+  const [cashOnHand, setCashOnHand] = useState('');
   const [hasHighAprDebt, setHasHighAprDebt] = useState<boolean | null>(null);
   const [debtBalance, setDebtBalance] = useState<string>('');
   const [retirementFocus] = useState<'high' | 'medium' | 'low'>('medium');
@@ -272,12 +278,16 @@ export function AllocatorTool() {
 
   const unlockData: AllocatorUnlockData | null = useMemo(() => {
     const essentialNum = efMonthly.trim() ? parseFloat(efMonthly) : undefined;
+    const cashNum = cashOnHand.trim() ? parseFloat(cashOnHand) : undefined;
     const balanceNum = debtBalance.trim() ? parseFloat(debtBalance) : undefined;
     const hsaNum = currentHsaAnnual.trim() ? parseFloat(currentHsaAnnual) : undefined;
-    const hasAny = essentialNum != null || hasHighAprDebt != null || retirementFocus != null || hsaEligible != null;
+    const hasAny = essentialNum != null || cashNum != null || hasHighAprDebt != null || retirementFocus != null || hsaEligible != null;
     if (!hasAny) return null;
     return {
       essentialMonthly: essentialNum != null && !Number.isNaN(essentialNum) && essentialNum > 0 ? essentialNum : undefined,
+      // >= 0, not > 0: "I have nothing saved" is a real answer and differs
+      // from not having answered, even though both route the same.
+      cashOnHand: cashNum != null && !Number.isNaN(cashNum) && cashNum >= 0 ? cashNum : undefined,
       carriesBalance: hasHighAprDebt ?? undefined,
       debtAprRange: undefined,
       debtBalance: balanceNum != null && !Number.isNaN(balanceNum) && balanceNum > 0 ? balanceNum : undefined,
@@ -286,7 +296,7 @@ export function AllocatorTool() {
       currentHsaAnnual: hsaNum != null && !Number.isNaN(hsaNum) && hsaNum >= 0 ? hsaNum : undefined,
       hsaCoverageType: hsaCoverageType,
     };
-  }, [efMonthly, hasHighAprDebt, debtBalance, retirementFocus, hsaEligible, currentHsaAnnual, hsaCoverageType]);
+  }, [efMonthly, cashOnHand, hasHighAprDebt, debtBalance, retirementFocus, hsaEligible, currentHsaAnnual, hsaCoverageType]);
 
   const prefillForLeaps = useMemo(() => prefill ? {
     salaryAnnual: prefill.salaryAnnual,
@@ -348,6 +358,25 @@ export function AllocatorTool() {
     const essentials = unlockData?.essentialMonthly ?? 0;
     return Math.max(0, netTakeHomeAtTarget401k - essentials);
   }, [netTakeHomeAtTarget401k, unlockData?.essentialMonthly]);
+
+  /**
+   * The buffer verdict, shown on the step that asks for it.
+   *
+   * Reads the two raw inputs rather than `routing`, because the whole point is
+   * to answer while the user is still on this step — `routing` is derived from
+   * `unlockData`, which is available here, but the target arithmetic is the
+   * same three-month multiple and duplicating it beats waiting for a leap list
+   * that also depends on salary and prefill.
+   */
+  const bufferPreview = useMemo(() => {
+    const essentials = efMonthly.trim() ? parseFloat(efMonthly) : NaN;
+    if (!Number.isFinite(essentials) || essentials <= 0) return null;
+    const cash = cashOnHand.trim() ? parseFloat(cashOnHand) : NaN;
+    if (!Number.isFinite(cash) || cash < 0) return null;
+    const target = Math.round(essentials * EF_TARGET_MONTHS);
+    const current = Math.round(cash);
+    return { target, current, gap: Math.max(0, target - current), funded: current >= target };
+  }, [efMonthly, cashOnHand]);
 
   const { leaps, nextLeapId, flowSummary, matchCaptured, k401AtCap, routing } = useMemo(
     () => buildLeaps(prefillForLeaps, unlockData, { monthlyCapitalAvailable: prefill ? monthlyCapitalAtTarget401k : undefined }),
@@ -952,8 +981,42 @@ export function AllocatorTool() {
                       1-month: ${Math.round(parseFloat(efMonthly)).toLocaleString()} · 3-month target: ${Math.round(parseFloat(efMonthly) * 3).toLocaleString()} · 6-month: ${Math.round(parseFloat(efMonthly) * 6).toLocaleString()}
                     </p>
                   )}
+
+                  {/* The target's starting point. Asked here rather than as its
+                      own step because it is the same question as the one above:
+                      how big the buffer needs to be, and how much of it exists. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="ef-current">Savings you could use in an emergency (USD)</Label>
+                    <Input
+                      id="ef-current"
+                      type="number"
+                      placeholder="e.g. 2000"
+                      value={cashOnHand}
+                      onChange={(e) => { markEngaged('cash_on_hand'); setCashOnHand(e.target.value); }}
+                      className="border-[#D1D5DB] max-w-xs"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Cash and savings, not retirement accounts. Enter 0 if you&apos;re starting from
+                      scratch — leave it blank and we&apos;ll assume the same.
+                    </p>
+                  </div>
+
+                  {/* States the consequence while the answer is still editable.
+                      Whether the buffer is funded decides where 40% of every
+                      surplus dollar goes, so it should not be a surprise on the
+                      summary screen. */}
+                  {bufferPreview && (
+                    <p className={cn('text-sm font-medium', bufferPreview.funded ? 'text-[#3F6B42]' : 'text-gray-700')}>
+                      {bufferPreview.funded
+                        ? `Your buffer is already funded — $${bufferPreview.current.toLocaleString()} against a $${bufferPreview.target.toLocaleString()} target. That frees up 40% of your monthly surplus for the steps below it.`
+                        : `$${bufferPreview.gap.toLocaleString()} to go on a $${bufferPreview.target.toLocaleString()} target.`}
+                    </p>
+                  )}
+
                   <p className="text-xs text-gray-500">
-                    We'll put 40% of what you save each month toward your buffer until you hit the target.
+                    {bufferPreview?.funded
+                      ? "Your buffer is done, so its 40% share goes to the next step instead."
+                      : "We'll put 40% of what you save each month toward your buffer until you hit the target."}
                   </p>
                   <Button
                     onClick={() => handleStepComplete('emergency_fund')}

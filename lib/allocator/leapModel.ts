@@ -63,6 +63,12 @@ export interface CapitalRoutingResult {
   retirementAlloc: number;
   brokerageAlloc: number;
   efTarget: number;
+  /** Savings already banked, as routed against the target. */
+  efCurrent: number;
+  /** What is still missing from the target. Zero once funded. */
+  efGap: number;
+  /** The buffer is already at or above target, so nothing routes to it. */
+  efFunded: boolean;
   /** Months to reach EF target at current efAlloc (undefined if already at target or no target). */
   monthsToEfTarget?: number;
 }
@@ -71,6 +77,17 @@ export interface CapitalRoutingResult {
 export interface AllocatorUnlockData {
   /** Essential monthly spend (rent + bills + groceries, etc.) */
   essentialMonthly?: number;
+  /**
+   * Savings already available for an emergency — the buffer's starting point.
+   *
+   * Without it the routing has to assume zero, which is not a vaguer answer
+   * than the truth but a different one: it sends 40% of the monthly surplus to
+   * a buffer that may already be full, and takes that 40% away from debt and
+   * retirement, where it should have gone. Undefined means unanswered, and 0
+   * means answered with nothing — the routing treats them the same, but the
+   * copy does not have to.
+   */
+  cashOnHand?: number;
   /** Carries credit card balance month-to-month */
   carriesBalance?: boolean;
   /** APR range: "10-14" | "15-19" | "20+" */
