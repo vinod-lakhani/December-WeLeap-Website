@@ -122,6 +122,32 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: false,
   },
   {
+    /**
+     * The campaign front door.
+     *
+     * Present-day even though it reads like a projection: it answers a
+     * question about right now — is my money older or younger than I am —
+     * and it is the only tool here whose first screen asks for nothing a
+     * visitor has to look up. Four taps and a slider, and a number lands
+     * after the third.
+     *
+     * Deliberately does not lead with 401(k) vocabulary. The retirement
+     * machinery sits behind the slider, which is where an audience that
+     * bounces off "employer match" will still meet it.
+     */
+    name: "Money Age",
+    question: "Is my money older than I am?",
+    blurb: "One number for where you stand. Four taps, no account, no bank connection.",
+    cta: "Find my money age →",
+    href: "/whats-my-money-age",
+    // sparkles is shared with one other card. Every icon in this set is
+    // already spoken for and adding an asset is out of scope for this PR;
+    // trophy would have been the third use of the same image.
+    icon: "/images/tool-icons/sparkles.png",
+    slug: "money_age",
+    presentDay: true,
+  },
+  {
     // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
     // rate and then handed off to the allocation engine for everything else.
     // That engine can now start from nothing, so the two are one tool and this
