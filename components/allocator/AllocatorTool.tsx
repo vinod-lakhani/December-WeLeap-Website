@@ -22,6 +22,7 @@ import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { US_STATES } from '@/lib/states';
 import { K401_EMPLOYEE_CAP, EF_TARGET_MONTHS } from '@/lib/allocator/constants';
+import { computeRetirementTargetPct } from '@/lib/allocator/retirementTarget';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
 import { AppCta } from '@/components/AppCta';
@@ -319,19 +320,39 @@ export function AllocatorTool() {
 
   // Effective target 401k % for display and routing (same logic as selectPrimaryLeap)
   // Use prefill.recommended401kPct when from Leap Impact; otherwise compute toward IRS cap
+  /**
+   * The 401(k) percentage the whole plan is priced at.
+   *
+   * This feeds the displayed take-home, and the take-home feeds the monthly
+   * surplus, and the surplus feeds every post-tax step — so when it chased the
+   * IRS limit it did not merely give odd advice, it emptied the plan. On $60k
+   * with the match captured it returned 40.83%, which put take-home at $2,377
+   * against $2,400 of essentials and left buffer, debt and flex all blank.
+   */
   const effectiveTarget401kPct = useMemo(() => {
     if (!prefill?.salaryAnnual) return current401kPct;
     const matchNotCaptured = prefill?.employerMatchEnabled && current401kPct < matchCapPct;
     if (matchNotCaptured) return matchCapPct;
     const current401kAnnual = (prefill.salaryAnnual * current401kPct) / 100;
     if (current401kAnnual >= K401_EMPLOYEE_CAP) return current401kPct;
-    const capPct = (K401_EMPLOYEE_CAP / prefill.salaryAnnual) * 100;
-    // Prefill from Leap Impact has recommended401kPct (e.g. 23.5%); use it instead of capping at 15%
+    const ruleTarget = computeRetirementTargetPct({
+      salaryAnnual: prefill.salaryAnnual,
+      current401kPct,
+      hasEmployerMatch: !!prefill.employerMatchEnabled,
+      matchCapPct,
+      matchRatePct: prefill.matchRatePct ?? 100,
+      essentialsMonthly: unlockData?.essentialMonthly,
+      stateCode: prefill.state,
+      currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual ?? 0,
+    });
+    // A prefill can still ask for less than the rule (the wedge arrives with
+    // the match cap), but no longer for more: `recommended401kPct` used to be
+    // clamped only by the IRS limit, which is how 40.83% got through.
     if (prefill?.recommended401kPct != null && prefill.recommended401kPct > current401kPct) {
-      return Math.min(prefill.recommended401kPct, capPct);
+      return Math.min(prefill.recommended401kPct, ruleTarget);
     }
-    return capPct;
-  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, prefill?.recommended401kPct, current401kPct, matchCapPct]);
+    return ruleTarget;
+  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, prefill?.recommended401kPct, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, unlockData?.essentialMonthly, unlockData?.currentHsaAnnual, current401kPct, matchCapPct]);
 
   const netTakeHomeMonthly = useMemo(() => {
     if (!prefill?.salaryAnnual || !prefill.state) return 0;
@@ -443,7 +464,17 @@ export function AllocatorTool() {
     const matchCap = wHasMatch ? Math.max(0, parseFloat(wMatchCap) || 0) : 0;
     const matchRate = wHasMatch ? Math.max(0, parseFloat(wMatchRate) || 100) : 0;
 
-    const leap = getRecommendedLeap(wHasMatch, matchCap, current401k, salary);
+    const leap = getRecommendedLeap({
+      hasEmployerMatch: wHasMatch,
+      matchPct: matchCap,
+      current401kPct: current401k,
+      salaryAnnual: salary,
+      // The wedge already asked for this; it just had nowhere to go until now.
+      // Without it a 50%-matched employee saw a target set as though their
+      // employer paid dollar-for-dollar, so the wedge's first screen asked for
+      // less than the plan would a step later.
+      matchRatePct: matchRate,
+    });
     const traj = runTrajectory({
       grossAnnual: salary,
       current401kPct: current401k,
@@ -586,10 +617,14 @@ export function AllocatorTool() {
         matchCapPct,
         k401AtCap,
         salaryAnnual: prefill?.salaryAnnual,
+        matchRatePct: prefill?.matchRatePct ?? 100,
+        essentialsMonthly: unlockData?.essentialMonthly,
+        stateCode: prefill?.state,
+        currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill?.currentHsaAnnual ?? 0,
         unlock: unlockData,
         leaps,
       }),
-    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, matchCapPct, k401AtCap, unlockData, leaps]
+    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, matchCapPct, k401AtCap, unlockData, leaps]
   );
   const supportingLeaps = useMemo(
     () => getSupportingLeaps(leaps, primaryResult.kind),
@@ -709,7 +744,12 @@ export function AllocatorTool() {
                     </p>
                     {netTakeHomeAtTarget401k > 0 && (
                       <p className="text-xs text-gray-500 mt-0.5">
-                        At your {formatPct(prefill.recommended401kPct)} 401(k) target
+                        {/* effectiveTarget401kPct, not prefill.recommended401kPct:
+                            the figure above is computed from the former, so the
+                            caption has to name the same number. They diverge
+                            whenever the solvency floor lowers the target or a URL
+                            prefill carries a stale one. */}
+                        At your {formatPct(effectiveTarget401kPct)} 401(k) target
                         {netTakeHomeMonthly > netTakeHomeAtTarget401k
                           ? ` — $${Math.round(netTakeHomeMonthly - netTakeHomeAtTarget401k).toLocaleString()} less than today, because more of your pay goes in pre-tax.`
                           : '.'}
@@ -719,9 +759,9 @@ export function AllocatorTool() {
                 </div>
                 <div className="pt-2 border-t border-gray-200">
                   <Label className="text-[#111827]">401(k) contribution (target)</Label>
-                  <p className="text-lg font-medium text-[#3F6B42]">{formatPct(prefill.recommended401kPct)}</p>
+                  <p className="text-lg font-medium text-[#3F6B42]">{formatPct(effectiveTarget401kPct)}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {prefill.employerMatchEnabled && prefill.recommended401kPct <= (prefill.matchCapPct ?? 0) + 0.01
+                    {prefill.employerMatchEnabled && effectiveTarget401kPct <= (prefill.matchCapPct ?? 0) + 0.01
                       ? `The point where your employer stops matching. Below this you leave their money behind.`
                       : prefill.source === 'allocator_direct'
                         ? 'Where we think your contribution should get to, based on what you told us.'

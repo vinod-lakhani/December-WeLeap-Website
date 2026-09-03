@@ -5,9 +5,7 @@
  */
 
 import type { Leap } from './leapModel';
-import { K401_EMPLOYEE_CAP } from './constants';
-
-const TARGET_RETIREMENT_PCT = 15;
+import { computeRetirementTargetPct } from './retirementTarget';
 
 export type PrimaryKind = 'match' | 'hsa' | 'retirement_15' | 'debt' | 'growth_split';
 
@@ -28,6 +26,16 @@ export interface SelectPrimaryLeapInputs {
   k401AtCap?: boolean;
   /** Salary annual — used to cap retirement target at 401k limit. */
   salaryAnnual?: number;
+  /** Match rate (100 = dollar-for-dollar). The match counts toward the 15%. */
+  matchRatePct?: number;
+  /**
+   * Essential monthly spend and state, when known — they turn on the solvency
+   * floor in computeRetirementTargetPct, which stops this branch recommending
+   * a deferral that leaves take-home below essentials.
+   */
+  essentialsMonthly?: number;
+  stateCode?: string;
+  currentHsaAnnual?: number;
   unlock: {
     carriesBalance?: boolean;
     debtBalance?: number;
@@ -84,16 +92,29 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     return { kind: 'hsa', leap: hsaLeap ?? null };
   }
 
-  // Target = whatever % gets to IRS cap ($23,500), not fixed 15%
-  const capPct =
-    (inputs.salaryAnnual ?? 0) > 0
-      ? Math.min((K401_EMPLOYEE_CAP / inputs.salaryAnnual!) * 100, 100)
-      : TARGET_RETIREMENT_PCT;
-  if (current401kPct < capPct) {
+  /**
+   * 15% of gross including the match, not the IRS limit.
+   *
+   * Steering at the limit made the advice harsher the less someone earned —
+   * 40.8% of gross on $60k, 54.4% on $45k — because the same $24,500 is a
+   * bigger share of a smaller salary. See retirementTarget.ts for what that
+   * did to the plan downstream.
+   */
+  const targetPct = computeRetirementTargetPct({
+    salaryAnnual: inputs.salaryAnnual ?? 0,
+    current401kPct,
+    hasEmployerMatch: employerMatchEnabled,
+    matchCapPct,
+    matchRatePct: inputs.matchRatePct ?? 100,
+    essentialsMonthly: inputs.essentialsMonthly,
+    stateCode: inputs.stateCode,
+    currentHsaAnnual: inputs.currentHsaAnnual,
+  });
+  if (current401kPct < targetPct) {
     return {
       kind: 'retirement_15',
       leap: null,
-      retirement15: { currentPct: current401kPct, targetPct: capPct },
+      retirement15: { currentPct: current401kPct, targetPct },
     };
   }
 

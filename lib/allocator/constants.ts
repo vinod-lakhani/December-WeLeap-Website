@@ -32,6 +32,16 @@ export const DEFAULT_MATCH_RATE_PCT = 100;
 /** Default employer match cap (Y): up to 5% of salary. */
 export const DEFAULT_MATCH_CAP_PCT = 5;
 
+/**
+ * Total retirement contribution we steer toward, as a percentage of gross,
+ * INCLUDING the employer match.
+ *
+ * The tool used to steer at the IRS employee limit instead, which inverts with
+ * income — see retirementTarget.ts. Fifteen is the number the summary card has
+ * always claimed, and it was the fallback in selectPrimaryLeap the whole time.
+ */
+export const RETIREMENT_TARGET_PCT_OF_GROSS = 15;
+
 /** EF target = this many months of essential expenses. */
 export const EF_TARGET_MONTHS = 3;
 

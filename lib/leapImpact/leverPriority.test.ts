@@ -86,24 +86,88 @@ describe('IRS limits', () => {
   });
 });
 
+/**
+ * The two rewritten cases below used to assert the IRS limit as the target.
+ *
+ * That was the behaviour, so the tests were honest — but the behaviour was
+ * wrong, and pinning it made the wrongness look intentional. Steering at the
+ * limit makes the advice harsher the less someone earns (40.8% of gross on
+ * $60k, 54.4% on $45k), because the same $24,500 is a bigger share of a
+ * smaller salary. The target is now 15% of gross including the employer match,
+ * clamped to the limit. See lib/allocator/retirementTarget.ts.
+ */
 describe('getRecommendedLeap', () => {
-  it('salary=100k, 401k%=15% => not at cap, recommends increase toward the cap', () => {
-    const leap = getRecommendedLeap(true, 5, 15, SALARY_AT_CAP);
-    // 15% of 100k = 15k, below the cap. Should recommend increasing to CAP_PCT.
+  it('salary=100k, 401k%=15% => already at the 15% target, not "maxed"', () => {
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 15, salaryAnnual: SALARY_AT_CAP });
+    // A 5% dollar-for-dollar match plus 15% of their own pay is 20% of gross,
+    // past the target. Reported as at_target: they are $9,500 short of the IRS
+    // limit, so the old at_cap answer ("hitting the annual 401(k) limit") was
+    // simply untrue for them.
+    expect(leap.type).toBe('at_target');
+    expect(leap.optimized401kPct).toBe(15);
+    expect(leap.summary).not.toContain('limit');
+  });
+
+  it('salary=100k, 401k%=5% => recommends 10%, which is 15% with the match', () => {
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: SALARY_AT_CAP });
     expect(leap.type).toBe('increase_contribution');
-    expect(leap.optimized401kPct).toBe(CAP_PCT);
-    expect(leap.summary).toContain(`${CAP_PCT}%`);
+    expect(leap.optimized401kPct).toBe(10);
+    // The old rule sent this person to CAP_PCT instead.
+    expect(leap.optimized401kPct).toBeLessThan(CAP_PCT);
+  });
+
+  it('the target no longer rises as salary falls', () => {
+    const at = (salaryAnnual: number) => getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual }).optimized401kPct;
+    // Old rule: 54.4 / 40.8 / 24.5 / 12.2 — strictly worse for lower earners.
+    expect([at(45_000), at(60_000), at(100_000), at(200_000)]).toEqual([10, 10, 10, 10]);
+  });
+
+  it('still clamps to the IRS limit where 15% of gross would exceed it', () => {
+    // 10% of $300k is $30,000, past the $24,500 employee limit.
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: 300_000 });
+    expect((300_000 * leap.optimized401kPct) / 100).toBeLessThanOrEqual(K401_EMPLOYEE_CAP);
   });
 
   it('salary=200k, 401k%=15% => at_cap (maxed)', () => {
-    const leap = getRecommendedLeap(true, 5, 15, 200_000);
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 15, salaryAnnual: 200_000 });
     expect(leap.type).toBe('at_cap');
     expect(leap.summary).toContain('Nice');
     expect(leap.summary).not.toContain('from 15% → 15%');
   });
 
-  it('summary uses new format (no from X → Y)', () => {
-    const leap = getRecommendedLeap(true, 5, 15, 100_000);
+  /**
+   * The match rate is why this function takes an object now.
+   *
+   * It was assuming dollar-for-dollar because the old positional signature had
+   * nowhere to put a rate, so a 50%-matched employee got a target computed as
+   * though their employer paid twice what it does — and the wedge's first
+   * screen therefore asked for less than the allocator would a step later.
+   */
+  it('a 50% match up to 6% asks for 12%, not the 9% a full match would', () => {
+    const half = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 50,
+    });
+    const full = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 100,
+    });
+    // 50% of 6% is 3% of gross from the employer, so the employee covers 12%.
+    expect(half.optimized401kPct).toBe(12);
+    // Dollar-for-dollar on 6% is 6%, so the employee covers 9%.
+    expect(full.optimized401kPct).toBe(9);
+  });
+
+  it('defaults to dollar-for-dollar when no rate is given', () => {
+    const implied = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000,
+    });
+    const explicit = getRecommendedLeap({
+      hasEmployerMatch: true, matchPct: 6, current401kPct: 6, salaryAnnual: 60_000, matchRatePct: 100,
+    });
+    expect(implied).toEqual(explicit);
+  });
+
+  it('summary never uses the old "from X → Y" format', () => {
+    const leap = getRecommendedLeap({ hasEmployerMatch: true, matchPct: 5, current401kPct: 5, salaryAnnual: 100_000 });
     expect(leap.summary).not.toMatch(/from .+% → .+%/);
     expect(leap.summary).toMatch(/Move toward/);
   });
