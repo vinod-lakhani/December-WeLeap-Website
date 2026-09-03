@@ -4,12 +4,14 @@
  * MVP Leap decision rules (Savings Stack aligned):
  * - If employer match === Yes AND current_401k_pct < match_pct:
  *     Leap = "Capture full employer match"
- * - Else if at 401(k) employee cap ($23,500) OR already at target (no increase possible) → at_cap
+ * - Else if at 401(k) employee cap ($23,500) → at_cap
+ * - Else if already at the retirement target → at_target
  * - Else:
- *     Leap = "Increase retirement contribution" (target = % to hit $23,500 cap)
+ *     Leap = "Increase retirement contribution" (target = 15% of gross incl. match)
  */
 
 import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
+import { computeRetirementTargetPct } from '@/lib/allocator/retirementTarget';
 import { compute401kStatus } from './leverPriority';
 
 function formatPct(value: number): string {
@@ -23,8 +25,13 @@ export interface RecommendedLeap {
   summary: string;
   /** 401(k) contribution % after applying the Leap */
   optimized401kPct: number;
-  /** Whether the recommendation was "capture match" vs "increase" vs "at cap" */
-  type: 'capture_match' | 'increase_contribution' | 'at_cap';
+  /**
+   * Which rule fired. `at_cap` is the IRS limit; `at_target` is the 15% goal,
+   * which is a different thing and used to be reported as the limit — telling
+   * someone contributing 15% on $200k that they were "hitting the annual
+   * 401(k) limit" when they were $5,500 short of it.
+   */
+  type: 'capture_match' | 'increase_contribution' | 'at_cap' | 'at_target';
 }
 
 /**
@@ -69,29 +76,44 @@ export function getRecommendedLeap(
     };
   }
 
-  // Rule 3: Already at match (or no match) → recommend toward IRS cap ($23,500)
-  // Target = whatever % gets to the cap (e.g. 23.5% for 100k, 11.75% for 200k)
-  let targetPct: number;
-  if (salaryAnnual > 0) {
-    const capPct = (K401_EMPLOYEE_CAP / salaryAnnual) * 100;
-    targetPct = Math.min(capPct, 100); // Cap at 100% for very low salaries
-  } else {
-    targetPct = 15; // Fallback when no salary
-  }
+  /**
+   * Rule 3: already at the match (or there is none) → head for 15% of gross
+   * including the match, NOT the IRS limit.
+   *
+   * This used to target `K401_EMPLOYEE_CAP / salary`, which meant the smaller
+   * the salary the harsher the advice — 40.8% of gross on $60k, 54.4% on $45k
+   * — and the summary said "move toward max 401(k) contribution", naming the
+   * ceiling as the goal. See lib/allocator/retirementTarget.ts.
+   *
+   * No solvency floor here: this runs before the plan asks about essentials,
+   * so there is nothing to check against yet. The allocator applies it later,
+   * where the answer exists.
+   */
+  const targetPct = computeRetirementTargetPct({
+    salaryAnnual,
+    current401kPct,
+    hasEmployerMatch,
+    matchCapPct: matchPct,
+    // The wedge collects a match rate, but this signature predates it and every
+    // caller passes a rate elsewhere. Dollar-for-dollar is the assumption the
+    // rest of this file already makes about `matchPct`.
+    matchRatePct: 100,
+  });
 
-  // No increase possible (already at or above cap) → at_cap to avoid "from X → X"
+  // No increase to recommend. Distinguished from Rule 2 because the reasons
+  // differ: the IRS says no, versus the plan is satisfied.
   if (targetPct <= current401kPct) {
     return {
-      label: '401(k) is maxed',
-      summary: "Nice — you're already hitting the annual 401(k) limit. Let's tackle the next one.",
+      label: 'Retirement contribution is on track',
+      summary: `You're at ${formatPct(current401kPct)}, which puts you at or past the 15% of pay this plan aims for. Let's tackle the next one.`,
       optimized401kPct: current401kPct,
-      type: 'at_cap',
+      type: 'at_target',
     };
   }
 
   return {
     label: 'Increase retirement contribution',
-    summary: `Move toward max 401(k) contribution (${formatPct(targetPct)})`,
+    summary: `Move toward ${formatPct(targetPct)} 401(k) contribution — 15% of pay once your match is counted`,
     optimized401kPct: targetPct,
     type: 'increase_contribution',
   };
