@@ -17,7 +17,6 @@ import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient';
 import { appLink } from '@/lib/app-link';
-import { fbqTrack } from '@/lib/meta-pixel';
 import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
@@ -733,7 +732,6 @@ export function OfferAnalysisTool() {
           ? { tool: 'offer', leapType: 'employer_match', leapValueUsd: calc.annual401kMatch / 12 }
           : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
       );
-      fbqTrack('Lead', { content_name: 'offer_tool' });
     }
   }, [analysisComplete, calc, salary]);
 

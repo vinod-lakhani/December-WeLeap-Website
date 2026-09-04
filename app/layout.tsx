@@ -6,7 +6,6 @@ import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
 import { UtmCapture } from '@/components/utm-capture'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { PostHogPageView } from '@/components/posthog-pageview'
-import { MetaPixel } from '@/components/meta-pixel'
 import { Suspense } from 'react'
 import { JsonLd } from '@/components/JsonLd'
 import { organizationSchema, websiteSchema } from '@/lib/structured-data'
@@ -95,7 +94,6 @@ export default function RootLayout({
           <Analytics />
           <CookieConsent />
           <ConditionalGoogleAnalytics />
-          <MetaPixel />
         </PostHogProvider>
       </body>
     </html>

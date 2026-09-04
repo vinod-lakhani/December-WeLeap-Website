@@ -121,7 +121,7 @@ export default function PrivacyPolicyPage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>How We Share Information</h2>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  We may share information with trusted service providers that help us operate WeLeap, such as account connection providers, hosting providers, analytics providers, customer support tools, SMS providers, and email delivery providers.
+                  We may share information with trusted service providers that help us operate WeLeap, such as account connection providers, hosting providers, analytics providers, customer support tools, SMS providers, and email delivery providers. Our analytics are limited to understanding how the product is used and improving it &mdash; we use PostHog and Google Analytics for that, and we do not use advertising or retargeting pixels.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   For example, we may use Plaid to help connect financial accounts, Twilio to send SMS/text messages, and Postmark to send email communications.
@@ -138,6 +138,7 @@ export default function PrivacyPolicyPage() {
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>What We Don't Do</h2>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
                   <li>We do not sell your personal information.</li>
+                  <li>We do not run advertising or retargeting trackers on our site or app.</li>
                   <li>We do not access your financial accounts without your permission.</li>
                   <li>We do not sell your financial data.</li>
                   <li>We do not share your financial data with third parties for their own marketing purposes.</li>
@@ -148,7 +149,7 @@ export default function PrivacyPolicyPage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Your Rights and Choices</h2>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
-                  <li>You can view, update, or delete your data at any time. Account deletion is available directly in the app &mdash; see <strong>Deleting Your Account</strong> below.</li>
+                  <li>You can view, update, or delete your data at any time. Both are available directly in the app under Profile &mdash; see <strong>Closing Your Account</strong> below.</li>
                   <li>You can opt out of marketing emails by using the unsubscribe link in our emails.</li>
                   <li>You can opt out of SMS messages by replying <strong>STOP</strong>.</li>
                   <li>You can choose not to connect financial accounts or disconnect connected accounts where supported.</li>
@@ -157,12 +158,12 @@ export default function PrivacyPolicyPage() {
               </section>
 
               <section className="space-y-3 md:space-y-4">
-                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Deleting Your Account</h2>
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Closing Your Account</h2>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  You can delete your WeLeap account at any time from inside the app, without contacting us. Go to <strong>Settings &rarr; Account &rarr; Delete Account</strong> and confirm. You do not need to email us, and we will not ask you to complete a further step to make the request effective.
+                  You can close your WeLeap account at any time from inside the app, without contacting us. Go to <strong>Profile</strong>, then under <strong>Security &amp; Data</strong> choose <strong>Close my account</strong>. You do not need to email us, and we will not ask you to complete a further step to make the request effective.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Deleting your account does the following:
+                  Closing your account does the following:
                 </p>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
                   <li>Immediately revokes any connections to your financial accounts, so WeLeap stops receiving data from them.</li>
@@ -170,7 +171,7 @@ export default function PrivacyPolicyPage() {
                   <li>Cancels any further email or SMS communications, other than a confirmation that the deletion took place.</li>
                 </ul>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  Deletion is permanent and cannot be undone. If you would prefer to disconnect your financial accounts but keep your WeLeap account, you can do that separately in the same settings area.
+                  Closing your account is permanent and cannot be undone. Two related controls sit next to it, and they do different things: <strong>Delete my data</strong> erases the information we hold about you but leaves your account open, and <strong>Download my data</strong> gives you a copy of it first. If you only want to stop sharing a particular bank account, you can disconnect it on its own without using any of these.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   If you cannot access the app for any reason, you can also request deletion by emailing{' '}
@@ -201,10 +202,10 @@ export default function PrivacyPolicyPage() {
                   If you are a California resident, the California Consumer Privacy Act, as amended by the California Privacy Rights Act, gives you the rights set out below. We extend these rights to all California residents who use WeLeap.
                 </p>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
-                  <li><strong>Right to know:</strong> to request the categories and specific pieces of personal information we have collected about you, the sources, the purposes, and the categories of third parties we disclose it to.</li>
-                  <li><strong>Right to delete:</strong> to request deletion of the personal information we hold about you, subject to the exceptions the law allows. You can also do this yourself at any time &mdash; see <strong>Deleting Your Account</strong> above.</li>
+                  <li><strong>Right to know:</strong> to request the categories and specific pieces of personal information we have collected about you, the sources, the purposes, and the categories of third parties we disclose it to. You can get a copy yourself at any time using <strong>Download my data</strong> under Profile.</li>
+                  <li><strong>Right to delete:</strong> to request deletion of the personal information we hold about you, subject to the exceptions the law allows. You can also do this yourself at any time using <strong>Delete my data</strong> or <strong>Close my account</strong> under Profile &mdash; see <strong>Closing Your Account</strong> above.</li>
                   <li><strong>Right to correct:</strong> to request that we correct inaccurate personal information.</li>
-                  <li><strong>Right to opt out of sale or sharing:</strong> we do not sell personal information. We do use advertising and analytics technologies that may count as &ldquo;sharing&rdquo; for cross-context behavioural advertising under California law, and you may opt out of that.</li>
+                  <li><strong>Right to opt out of sale or sharing:</strong> we do not sell personal information, and we do not share it for cross-context behavioural advertising. We do not run advertising trackers on our site or app, so there is nothing here to opt out of. If that ever changes we will update this policy and provide a way to opt out before it does.</li>
                   <li><strong>Right to limit use of sensitive personal information:</strong> financial account information is treated as sensitive personal information under California law. We use it only to provide the service you asked for, and not to infer characteristics about you.</li>
                   <li><strong>Right to non-discrimination:</strong> we will not deny you service, charge you a different price, or give you a lower quality of service for exercising any of these rights.</li>
                 </ul>

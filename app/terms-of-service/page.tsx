@@ -203,7 +203,7 @@ export default function TermsOfServicePage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Closing Your Account</h2>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  You can delete your account at any time from inside the app, at <strong>Settings &rarr; Account &rarr; Delete Account</strong>. You do not need to contact us to do it. Deletion is permanent, revokes any connected financial account access, and ends further communications. What happens to your data afterwards, and how long anything is kept, is set out in our{' '}
+                  You can close your account at any time from inside the app: go to <strong>Profile</strong>, then under <strong>Security &amp; Data</strong> choose <strong>Close my account</strong>. You do not need to contact us to do it. Closing your account is permanent, revokes any connected financial account access, and ends further communications. Separate controls in the same place let you download your data, or delete your data while keeping the account open. What happens to your data afterwards, and how long anything is kept, is set out in our{' '}
                   <Link href="/privacy-policy" className="text-primary-600 hover:underline">Privacy Policy</Link>.
                 </p>
               </section>

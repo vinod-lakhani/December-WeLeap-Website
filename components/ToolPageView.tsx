@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { track } from '@/lib/analytics'
-import { fbqTrack } from '@/lib/meta-pixel'
 
 /**
  * Fires the first step of the tool funnel, and nothing else.
@@ -36,7 +35,6 @@ export function ToolPageView({
   legacyEvent,
   legacyPage,
   toolVersion,
-  pixelContentName,
 }: {
   /** Analytics slug — must match the tool's `slug` in FREE_TOOLS. */
   tool: string
@@ -47,7 +45,6 @@ export function ToolPageView({
   /** `page` value the legacy event has always sent. Defaults to `page`. */
   legacyPage?: string
   toolVersion?: string
-  pixelContentName?: string
 }) {
   useEffect(() => {
     // Waits for gtag (up to 3s) — page views are the one event worth waiting
@@ -63,10 +60,8 @@ export function ToolPageView({
       }
     }, 500)
 
-    if (pixelContentName) fbqTrack('ViewContent', { content_name: pixelContentName })
-
     return () => clearTimeout(timer)
-  }, [tool, page, legacyEvent, legacyPage, toolVersion, pixelContentName])
+  }, [tool, page, legacyEvent, legacyPage, toolVersion])
 
   return null
 }
