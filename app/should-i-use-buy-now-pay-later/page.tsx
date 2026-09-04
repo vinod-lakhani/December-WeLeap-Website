@@ -169,7 +169,6 @@ export default function SmartPurchaseCheckPage() {
         legacyEvent="purchase_tool_page_view"
         legacyPage="/smart-purchase-check"
         toolVersion="purchase_v1"
-        pixelContentName="smart_purchase_tool"
       />
       <Section variant="canvas" className="pb-10 pt-28 md:pt-32" isHero>
         <Container>

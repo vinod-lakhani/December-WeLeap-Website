@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
       <Section variant="brand" className="text-center" isHero>
         <Container maxWidth="narrow">
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-3 md:mb-4")}>Terms of Service</h1>
-          <p className={cn(TYPOGRAPHY.subtext, "text-white/85")}>Effective Date: August 5, 2025</p>
+          <p className={cn(TYPOGRAPHY.subtext, "text-white/85")}>Effective Date: September 4, 2026</p>
         </Container>
       </Section>
 
@@ -43,6 +43,18 @@ export default function TermsOfServicePage() {
               <p className={cn(TYPOGRAPHY.body, "text-gray-700")}>
                 Welcome to WeLeap. By using our services, website, waitlist, or related features, you agree to these Terms of Service. SMS messaging is optional and is governed by the SMS/Text Message Terms below. Using WeLeap or accepting these Terms does not opt you in to SMS.
               </p>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Who Can Use WeLeap</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  You must be at least 18 years old to create a WeLeap account or use our services. By using WeLeap, you represent that you are 18 or older and that you are able to enter into a binding agreement.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  WeLeap is not directed to children, and we do not knowingly collect personal information from anyone under 13. If we learn that we hold information from a child under 13, we will delete it. See our{' '}
+                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">Privacy Policy</Link>{' '}
+                  for more.
+                </p>
+              </section>
 
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>What We Provide</h2>
@@ -185,6 +197,14 @@ export default function TermsOfServicePage() {
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
                   Financial data, account information, transaction data, projections, and recommendations may be incomplete, delayed, inaccurate, or affected by third-party provider issues.
+                </p>
+              </section>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Closing Your Account</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  You can close your account at any time from inside the app: go to <strong>Profile</strong>, then under <strong>Security &amp; Data</strong> choose <strong>Close my account</strong>. You do not need to contact us to do it. Closing your account is permanent, revokes any connected financial account access, and ends further communications. Separate controls in the same place let you download your data, or delete your data while keeping the account open. What happens to your data afterwards, and how long anything is kept, is set out in our{' '}
+                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">Privacy Policy</Link>.
                 </p>
               </section>
 

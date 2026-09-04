@@ -25,7 +25,6 @@ import { track } from '@/lib/analytics';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { appLink } from '@/lib/app-link';
-import { fbqTrack } from '@/lib/meta-pixel';
 import {
   bucketSalary,
   bucketRentRatio,
@@ -119,7 +118,6 @@ export function OfferTool() {
     if (results && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
       track('tool_completed', { tool: 'rent', run_index: nextRunIndex('rent') });
-      fbqTrack('Lead', { content_name: 'rent_tool' });
     }
   }, [results]);
 

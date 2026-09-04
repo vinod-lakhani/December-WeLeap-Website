@@ -117,7 +117,6 @@ export default function HowMuchRentCanIAffordPage() {
         page="/how-much-rent-can-i-afford"
         legacyEvent="rent_tool_page_view"
         toolVersion="rent_tool_v1"
-        pixelContentName="rent_tool"
       />
 
       {/* Hero + tool. The form used to sit third on the page, behind a
