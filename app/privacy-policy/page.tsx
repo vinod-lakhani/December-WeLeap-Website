@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
       <Section variant="brand" className="text-center" isHero>
         <Container maxWidth="narrow">
           <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-3 md:mb-4")}>Privacy Policy</h1>
-          <p className={cn(TYPOGRAPHY.subtext, "text-white/85")}>Effective Date: August 5, 2025</p>
+          <p className={cn(TYPOGRAPHY.subtext, "text-white/85")}>Effective Date: September 4, 2026</p>
         </Container>
       </Section>
 
@@ -43,6 +43,17 @@ export default function PrivacyPolicyPage() {
               <p className={cn(TYPOGRAPHY.body, "text-gray-700")}>
                 At WeLeap, your privacy is our priority. This Privacy Policy explains how we collect, use, share, and protect your information when you use our services.
               </p>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Who Can Use WeLeap</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  WeLeap is intended only for individuals who are 18 years of age or older. By creating an account or using our services, you confirm that you are at least 18.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  We do not knowingly collect personal information from children under 13, and our services are not directed to children. If we learn that we have collected personal information from a child under 13, we will delete that information promptly. If you believe a child has provided us with personal information, please contact us at{' '}
+                  <a href="mailto:support@weleap.ai" className="text-primary-600 hover:underline">support@weleap.ai</a>.
+                </p>
+              </section>
 
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>What We Collect</h2>
@@ -137,12 +148,77 @@ export default function PrivacyPolicyPage() {
               <section className="space-y-3 md:space-y-4">
                 <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Your Rights and Choices</h2>
                 <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
-                  <li>You can request to view, delete, or update your data at any time.</li>
+                  <li>You can view, update, or delete your data at any time. Account deletion is available directly in the app &mdash; see <strong>Deleting Your Account</strong> below.</li>
                   <li>You can opt out of marketing emails by using the unsubscribe link in our emails.</li>
                   <li>You can opt out of SMS messages by replying <strong>STOP</strong>.</li>
                   <li>You can choose not to connect financial accounts or disconnect connected accounts where supported.</li>
                   <li>You can update your communication preferences or request help by contacting us.</li>
                 </ul>
+              </section>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Deleting Your Account</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  You can delete your WeLeap account at any time from inside the app, without contacting us. Go to <strong>Settings &rarr; Account &rarr; Delete Account</strong> and confirm. You do not need to email us, and we will not ask you to complete a further step to make the request effective.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  Deleting your account does the following:
+                </p>
+                <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
+                  <li>Immediately revokes any connections to your financial accounts, so WeLeap stops receiving data from them.</li>
+                  <li>Removes your profile, financial information, goals, and plan history from our active systems.</li>
+                  <li>Cancels any further email or SMS communications, other than a confirmation that the deletion took place.</li>
+                </ul>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  Deletion is permanent and cannot be undone. If you would prefer to disconnect your financial accounts but keep your WeLeap account, you can do that separately in the same settings area.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  If you cannot access the app for any reason, you can also request deletion by emailing{' '}
+                  <a href="mailto:support@weleap.ai" className="text-primary-600 hover:underline">support@weleap.ai</a>{' '}
+                  from the address associated with your account. This is an alternative route, not a requirement.
+                </p>
+              </section>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>How Long We Keep Your Information</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  We keep personal information only for as long as we need it to provide the service, and then for the limited periods described below.
+                </p>
+                <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
+                  <li><strong>While your account is open:</strong> we retain your information for as long as your account remains active, so that WeLeap can keep producing your plan and recommendations.</li>
+                  <li><strong>After you delete your account:</strong> we remove your personal information from our active systems within 30 days.</li>
+                  <li><strong>Backups:</strong> residual copies may persist in encrypted backups for up to 90 days after deletion, after which they are overwritten on our normal backup cycle. We do not restore deleted accounts from backups.</li>
+                  <li><strong>Financial account connections:</strong> access tokens for connected accounts are revoked immediately when you disconnect an account or delete your account.</li>
+                  <li><strong>Records we are required to keep:</strong> we may retain limited records for longer where the law requires it, or to resolve disputes, prevent fraud and abuse, and enforce our agreements. Where we do this, we keep only what is necessary for that purpose.</li>
+                  <li><strong>Opt-out records:</strong> if you unsubscribe from email or reply STOP to SMS, we keep a minimal record of that choice indefinitely. This is what allows us to honour your opt-out; deleting it would risk contacting you again.</li>
+                  <li><strong>Anonymised and aggregated data:</strong> information that can no longer be linked to you or your device may be retained indefinitely and is not subject to the periods above.</li>
+                </ul>
+              </section>
+
+              <section className="space-y-3 md:space-y-4">
+                <h2 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-6 md:mt-8 mb-3 md:mb-4")}>Your California Privacy Rights</h2>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  If you are a California resident, the California Consumer Privacy Act, as amended by the California Privacy Rights Act, gives you the rights set out below. We extend these rights to all California residents who use WeLeap.
+                </p>
+                <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.subtext, "text-gray-700")}>
+                  <li><strong>Right to know:</strong> to request the categories and specific pieces of personal information we have collected about you, the sources, the purposes, and the categories of third parties we disclose it to.</li>
+                  <li><strong>Right to delete:</strong> to request deletion of the personal information we hold about you, subject to the exceptions the law allows. You can also do this yourself at any time &mdash; see <strong>Deleting Your Account</strong> above.</li>
+                  <li><strong>Right to correct:</strong> to request that we correct inaccurate personal information.</li>
+                  <li><strong>Right to opt out of sale or sharing:</strong> we do not sell personal information. We do use advertising and analytics technologies that may count as &ldquo;sharing&rdquo; for cross-context behavioural advertising under California law, and you may opt out of that.</li>
+                  <li><strong>Right to limit use of sensitive personal information:</strong> financial account information is treated as sensitive personal information under California law. We use it only to provide the service you asked for, and not to infer characteristics about you.</li>
+                  <li><strong>Right to non-discrimination:</strong> we will not deny you service, charge you a different price, or give you a lower quality of service for exercising any of these rights.</li>
+                </ul>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  <strong>Categories we collect.</strong> In the past 12 months we may have collected identifiers (such as name, email address and phone number), commercial and financial information (such as account balances and transactions, where you have connected an account), internet and network activity (such as how you interact with our site and app), and inferences drawn from that information to produce your plan and recommendations. The sources, purposes and recipients are described in the sections above.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  <strong>How to exercise these rights.</strong> Use the in-app controls where they exist, or email{' '}
+                  <a href="mailto:support@weleap.ai" className="text-primary-600 hover:underline">support@weleap.ai</a>{' '}
+                  with the subject line &ldquo;California Privacy Request&rdquo;. We will verify your request by confirming control of the email address on the account, and may ask for additional information if we cannot verify you from that alone. We will respond within 45 days, and will tell you if we need a further 45 days.
+                </p>
+                <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
+                  You may use an authorised agent to submit a request on your behalf. We may ask the agent for proof that you gave them permission, and may ask you to verify your identity with us directly.
+                </p>
               </section>
 
               <section className="space-y-3 md:space-y-4">
