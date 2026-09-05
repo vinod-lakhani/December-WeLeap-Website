@@ -24,6 +24,9 @@ const CORE: { path: string; priority: number; freq: MetadataRoute.Sitemap[number
   { path: '/pricing', priority: 0.7, freq: 'monthly' },
   { path: '/about', priority: 0.5, freq: 'monthly' },
   { path: '/resources', priority: 0.6, freq: 'weekly' },
+  // Higher than the legal pages: this is the App Store support URL and the
+  // page people reach by searching "weleap support", so it has to be findable.
+  { path: '/support', priority: 0.6, freq: 'monthly' },
   { path: '/privacy-policy', priority: 0.3, freq: 'yearly' },
   { path: '/terms-of-service', priority: 0.3, freq: 'yearly' },
 ]

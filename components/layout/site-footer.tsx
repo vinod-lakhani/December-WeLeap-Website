@@ -37,6 +37,9 @@ export function SiteFooter() {
       links: [
         { t: "About", u: "/about" },
         { t: "Resources", u: "/resources" },
+        // Above the legal pages: someone scanning the footer for help is
+        // looking for this, not for the terms.
+        { t: "Support", u: "/support" },
         { t: "Privacy Policy", u: "/privacy-policy" },
         { t: "Terms of Service", u: "/terms-of-service" },
       ],
