@@ -264,7 +264,7 @@ export default function NetWorthImpactPage() {
         enormously over a working life. A 7% real return is a planning convention, not a forecast and not a product
         anyone is selling you; a different assumption gives a different answer, and no assumption makes the outcome
         certain. Read the output as a sense of scale rather than a balance on a date. Everything here is an estimate for
-        planning. WeLeap is not a registered investment adviser and nothing on this page is personalised financial
+        planning. WeLeap is not a registered investment adviser and nothing on this page is personalized financial
         advice.
       </Caveat>
 

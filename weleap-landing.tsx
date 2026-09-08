@@ -205,6 +205,21 @@ function Hero() {
             pays most — across every account you own.
           </p>
 
+          {/* WHO IT IS FOR, in the hero.
+              The clearest statement of the audience was on a tool page, below
+              the fold — so a visitor could read the whole offer without ever
+              confirming it was built for someone in their position, and the
+              default assumption when that happens is "someone more established
+              than me". This is the sentence from
+              /how-should-i-split-my-paycheck, moved to where the decision is
+              actually made. Deliberately states the CONDITION (pay covers the
+              month, something left over) rather than an age or an income, both
+              of which would exclude readers this is genuinely built for. */}
+          <p className="mx-auto mt-3 max-w-[48ch] text-[15px] leading-relaxed text-faint">
+            For people whose pay covers the month with something left over, and whose real
+            question is not how much to save but which account the next dollar goes into.
+          </p>
+
           <form
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
             onSubmit={(e) => {
@@ -620,8 +635,21 @@ function How() {
    Leap examples
    ========================================================================== */
 
+/**
+ * Worked examples, on one consistent salary.
+ *
+ * THE MATCH CARD USED TO READ +$9,000. That is the employee and employer
+ * contributions summed, which is the same overstatement the money plan was
+ * corrected for: half of it is the reader’s own take-home moved into a 401(k),
+ * not money the employer adds. It also silently implied a $150,000 salary,
+ * since 3 points from each side is 6% of pay — well above the people this is
+ * built for, on the card meant to show them themselves.
+ *
+ * Now the employer half only, on $80,000: 3 points of employer match is
+ * $2,400. Smaller number, and the only one that is actually free.
+ */
 const LEAPS = [
-  { tag: "Free money", tone: "text-cat-savings bg-cat-savings/10", t: "Capture your 401(k) match", d: "You’re at 3%, they match to 6%.", impact: "+$9,000", unit: "/year" },
+  { tag: "Free money", tone: "text-cat-savings bg-cat-savings/10", t: "Capture your 401(k) match", d: "You’re at 3%, they match to 6%. On $80k that’s $2,400 a year your employer adds.", impact: "+$2,400", unit: "/year from them" },
   { tag: "Idle cash", tone: "text-cat-wants bg-cat-wants/10", t: "Move $4,200 to a HYSA", d: "It’s earning 0.01% in checking today.", impact: "+$183", unit: "/year" },
   { tag: "Debt first", tone: "text-cat-needs bg-cat-needs/10", t: "Hit the 22% APR card before investing", d: "No portfolio reliably beats 22%.", impact: "$1,240", unit: "saved" },
   { tag: "Long game", tone: "text-brand-700 bg-brand-700/10", t: "Open a Roth IRA at $200/mo", d: "Tax-free growth, and you’re early.", impact: "+$61k", unit: "by 60" },
@@ -1196,7 +1224,13 @@ function Closing() {
                 {APP_CTA_LABEL}
               </Button>
             </EarlyAccessDialog>
-            <p className="mt-4 text-[13.5px] text-faint">Free to start · No card · Cancel whenever</p>
+            {/* Was "Cancel whenever", which offers to undo a subscription that
+                does not exist: the pricing page states there is no paid plan,
+                no checkout and no card. Reading both in one visit makes the
+                site look like it is describing a product it does not have.
+                "You approve every move" is what the other two closing CTAs
+                already say, and it is true. */}
+            <p className="mt-4 text-[13.5px] text-faint">Free to start · No card · You approve every move</p>
           </div>
         </Container>
       </Section>

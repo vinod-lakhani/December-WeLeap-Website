@@ -250,7 +250,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'Is this financial advice?',
-      a: 'No. This is an educational calculator that shows how one monthly change compounds over time using figures you enter yourself. WeLeap is not a registered investment adviser and does not provide personalised investment advice. For guidance specific to your situation, speak to a licensed financial professional.',
+      a: 'No. This is an educational calculator that shows how one monthly change compounds over time using figures you enter yourself. WeLeap is not a registered investment adviser and does not provide personalized investment advice. For guidance specific to your situation, speak to a licensed financial professional.',
     },
   ],
 
@@ -273,7 +273,7 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'What if my employer does not offer a 401(k) match?',
-      a: `Then the first step of the order simply does not apply to you, and the sequence starts at the safety buffer instead. The match sits at the front only because a dollar-for-dollar match is an immediate 100% return on the money you put in, and nothing else available to a normal earner pays that. With no match on offer there is nothing to capture, so there is no reason to prioritise retirement contributions above a buffer or above high-interest debt — a card at 22% APR is a guaranteed 22% return, which beats any expected market return. The rest of the order is unchanged.`,
+      a: `Then the first step of the order simply does not apply to you, and the sequence starts at the safety buffer instead. The match sits at the front only because a dollar-for-dollar match is an immediate 100% return on the money you put in, and nothing else available to a normal earner pays that. With no match on offer there is nothing to capture, so there is no reason to prioritize retirement contributions above a buffer or above high-interest debt — a card at 22% APR is a guaranteed 22% return, which beats any expected market return. The rest of the order is unchanged.`,
     },
     {
       q: 'Should I save or pay off debt first?',

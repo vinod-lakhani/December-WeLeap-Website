@@ -83,7 +83,7 @@ export function SiteFooter() {
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-hairline pt-6 md:flex-row">
           <span className="text-[13.5px] text-faint">© 2026 WeLeap. All rights reserved.</span>
           <span className="max-w-[620px] text-[12.5px] leading-relaxed text-faint md:text-right">
-            WeLeap is not a registered investment adviser and does not provide personalised investment advice.
+            WeLeap is not a registered investment adviser and does not provide personalized investment advice.
           </span>
         </div>
       </Container>

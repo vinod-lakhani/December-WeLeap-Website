@@ -15,7 +15,7 @@ import type { FaqItem } from '@/lib/tool-faqs'
 export const HOME_FAQS: readonly FaqItem[] = [
   {
     q: 'What is WeLeap?',
-    a: "WeLeap is a personal finance app built around an AI financial sidekick called Ribbit. You connect your accounts and Ribbit looks at the whole picture — cash, debt, 401(k), goals — then names the single move worth making next, called a Leap. It is not a budgeting app: it does not categorise last month's spending, it tells you what to do with the next dollar. It is free during early access, and the calculators need no account at all.",
+    a: "WeLeap is a personal finance app built around an AI financial sidekick called Ribbit. You connect your accounts and Ribbit looks at the whole picture — cash, debt, 401(k), goals — then names the single move worth making next, called a Leap. It is not a budgeting app: it does not categorize last month's spending, it tells you what to do with the next dollar. It is free during early access, and the calculators need no account at all.",
   },
   {
     q: 'What if I’m bad with money?',
@@ -31,7 +31,7 @@ export const HOME_FAQS: readonly FaqItem[] = [
   },
   {
     q: 'Are you financial advisors?',
-    a: 'No. WeLeap isn’t a registered investment adviser and doesn’t give personalised investment advice. We show you the math on your own numbers so you can make your own call — and we tell you when something is worth asking a professional about.',
+    a: 'No. WeLeap isn’t a registered investment adviser and doesn’t give personalized investment advice. We show you the math on your own numbers so you can make your own call — and we tell you when something is worth asking a professional about.',
   },
   {
     q: 'What if I’m still paying off debt?',

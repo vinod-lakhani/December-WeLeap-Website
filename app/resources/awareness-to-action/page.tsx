@@ -72,7 +72,7 @@ export default function AwarenessToActionPage() {
               <h3 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-8 md:mt-10 mb-4")}>1. Why Awareness Isn't Enough</h3>
               <p>
                 Most budgeting apps excel at reporting—they slice your past transactions into tidy categories. Awareness can
-                be empowering, but only when it sparks the next behaviour:
+                be empowering, but only when it sparks the next behavior:
               </p>
               <ul className={cn("list-disc pl-5 md:pl-6 space-y-2", TYPOGRAPHY.body, "text-gray-700")}>
                 <li>
@@ -86,7 +86,7 @@ export default function AwarenessToActionPage() {
                 </li>
               </ul>
               <p>
-                Behavioural research shows that meaningful change hinges on implementation intentions—specific if-then plans
+                Behavioral research shows that meaningful change hinges on implementation intentions—specific if-then plans
                 that turn insight into action.
               </p>
 

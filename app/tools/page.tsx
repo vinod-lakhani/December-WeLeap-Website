@@ -123,7 +123,7 @@ export default function ToolsPage() {
             <p className="mb-8 max-w-3xl text-[16.5px] leading-relaxed text-subtle">
               WeLeap is free during early access and needs no card. The {TOOL_COUNT_WORD} calculators above are free
               permanently and need no account at all. WeLeap is not a registered investment adviser, does not provide
-              personalised investment advice, and does not sell your data.
+              personalized investment advice, and does not sell your data.
             </p>
 
             <h3 className="mb-4 text-lg font-bold tracking-[-0.015em] text-ink">

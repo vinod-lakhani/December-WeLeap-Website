@@ -35,7 +35,7 @@ export const SUPPORT_FAQS: readonly FaqItem[] = [
   },
   {
     q: 'My bank connection stopped working. How do I fix it?',
-    a: 'Banks periodically require you to re-authorise the connection, usually every 90 days or after you change your password, and the connection stops updating until you do. Open the app, go to Profile, find the account under your connected accounts, and reconnect it. This is the most common thing that goes wrong and it is almost never a problem with your account. If reconnecting does not work, email support@weleap.ai with the name of the bank and we will look at it.',
+    a: 'Banks periodically require you to re-authorize the connection, usually every 90 days or after you change your password, and the connection stops updating until you do. Open the app, go to Profile, find the account under your connected accounts, and reconnect it. This is the most common thing that goes wrong and it is almost never a problem with your account. If reconnecting does not work, email support@weleap.ai with the name of the bank and we will look at it.',
   },
   {
     q: 'How do I disconnect a bank account?',
@@ -55,7 +55,7 @@ export const SUPPORT_FAQS: readonly FaqItem[] = [
   },
   {
     q: 'Is WeLeap financial advice?',
-    a: 'No. WeLeap is not a registered investment adviser, broker-dealer, tax professional or financial planner, and nothing in the product or from our support team is personalised investment, legal or tax advice. We show you what the arithmetic says about your own numbers so you can decide what to do. For advice specific to your situation, speak to a licensed professional.',
+    a: 'No. WeLeap is not a registered investment adviser, broker-dealer, tax professional or financial planner, and nothing in the product or from our support team is personalized investment, legal or tax advice. We show you what the arithmetic says about your own numbers so you can decide what to do. For advice specific to your situation, speak to a licensed professional.',
   },
   {
     q: 'I think I have found a security problem. Who do I tell?',

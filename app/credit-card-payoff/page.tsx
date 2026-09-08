@@ -86,7 +86,7 @@ const STEPS: readonly MethodStep[] = [
   },
   {
     t: 'With more than one card, the cheapest order is highest APR first',
-    d: 'The form above runs one card at a time, but the engine underneath it takes a set of them, and where the extra payment lands is a real decision. Sending it to the highest APR — the avalanche method — costs the least total interest and is the ordering used here; sending it to the smallest balance is the snowball, which clears individual cards sooner. What neither name tells you is that the two objectives can point in opposite directions. On a book of $6,000 at 11.99% and $1,800 at 28.99% with $100 extra, avalanche takes 56 months against 55 for paying the biggest balance down first — one month longer, because retiring the small card early would have removed its minimum payment — while paying $733.65 less in interest. Speed and cost are not the same target, and this calculator optimises cost.',
+    d: 'The form above runs one card at a time, but the engine underneath it takes a set of them, and where the extra payment lands is a real decision. Sending it to the highest APR — the avalanche method — costs the least total interest and is the ordering used here; sending it to the smallest balance is the snowball, which clears individual cards sooner. What neither name tells you is that the two objectives can point in opposite directions. On a book of $6,000 at 11.99% and $1,800 at 28.99% with $100 extra, avalanche takes 56 months against 55 for paying the biggest balance down first — one month longer, because retiring the small card early would have removed its minimum payment — while paying $733.65 less in interest. Speed and cost are not the same target, and this calculator optimizes cost.',
   },
   {
     t: 'And the last figure is what the payment becomes once the card clears',
@@ -267,7 +267,7 @@ export default function CreditCardPayoffPage() {
         highest-interest balance is not automatically the right destination. Every figure here is an estimate
         for planning: the minimum-payment formula used is a common US convention rather than your
         issuer&rsquo;s contract, so your statement is the authority on both your minimum and your rate.
-        WeLeap is not a registered investment adviser and nothing on this page is personalised financial
+        WeLeap is not a registered investment adviser and nothing on this page is personalized financial
         advice.
       </Caveat>
 

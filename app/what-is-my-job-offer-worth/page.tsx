@@ -326,7 +326,7 @@ export default function OfferAnalysisPage() {
               What this calculator does not account for
             </h2>
             <p className="mb-3 text-[15px] leading-relaxed text-subtle">
-              Every figure here is an estimate for planning, not personalised financial advice, and not a
+              Every figure here is an estimate for planning, not personalized financial advice, and not a
               representation of what you will actually be paid or what any investment will return. Tax is estimated
               for a single filer using federal brackets, your state&apos;s income tax and FICA. It does not model
               filing jointly, dependants, pre-tax deductions such as your own 401(k) or HSA contributions, itemised
@@ -337,7 +337,7 @@ export default function OfferAnalysisPage() {
             <p className="text-[15px] leading-relaxed text-subtle">
               Rent figures are market estimates for a metro area, not quotes for a specific apartment. Equity is shown
               at the value you enter, which for a private company is a scenario rather than a price. WeLeap is not a
-              registered investment adviser and does not provide personalised investment or tax advice — for your own
+              registered investment adviser and does not provide personalized investment or tax advice — for your own
               situation, speak to a licensed professional.
             </p>
           </div>

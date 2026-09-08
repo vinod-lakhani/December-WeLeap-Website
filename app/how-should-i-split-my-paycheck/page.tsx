@@ -72,11 +72,11 @@ const STEPS: readonly MethodStep[] = [
   },
   {
     t: 'Then a safety buffer, funded by 40% of what’s left',
-    d: 'Forty per cent of your monthly surplus goes to a three-month buffer until it is funded. Not because three months is magic, but because with no buffer at all, the next unexpected expense becomes credit card debt and undoes the step after this one.',
+    d: 'Forty percent of your monthly surplus goes to a three-month buffer until it is funded. Not because three months is magic, but because with no buffer at all, the next unexpected expense becomes credit card debt and undoes the step after this one.',
   },
   {
     t: 'Then high-interest debt, funded by 40% of the remainder',
-    d: 'Clearing a balance at 22% APR is a guaranteed 22% return, which beats any expected market return. Forty per cent of what is left after the buffer goes here while any high-APR balance exists, and this step switches itself off once it is clear.',
+    d: 'Clearing a balance at 22% APR is a guaranteed 22% return, which beats any expected market return. Forty percent of what is left after the buffer goes here while any high-APR balance exists, and this step switches itself off once it is clear.',
   },
   {
     t: 'Then tax-advantaged accounts — HSA, then retirement',
@@ -235,7 +235,7 @@ export default function AllocatorPage() {
       <Caveat label="What this can’t see:">
         the balances you actually hold, what you already contribute, and the goals you are part-way through. Those
         change the order, and they need your real accounts rather than five answers. WeLeap is not a registered
-        investment adviser and nothing here is personalised advice.
+        investment adviser and nothing here is personalized advice.
       </Caveat>
 
       <ToolFaq href="/how-should-i-split-my-paycheck" />

@@ -191,8 +191,8 @@ export default function PrivacyPolicyPage() {
                   <li><strong>Backups:</strong> residual copies may persist in encrypted backups for up to 90 days after deletion, after which they are overwritten on our normal backup cycle. We do not restore deleted accounts from backups.</li>
                   <li><strong>Financial account connections:</strong> access tokens for connected accounts are revoked immediately when you disconnect an account or delete your account.</li>
                   <li><strong>Records we are required to keep:</strong> we may retain limited records for longer where the law requires it, or to resolve disputes, prevent fraud and abuse, and enforce our agreements. Where we do this, we keep only what is necessary for that purpose.</li>
-                  <li><strong>Opt-out records:</strong> if you unsubscribe from email or reply STOP to SMS, we keep a minimal record of that choice indefinitely. This is what allows us to honour your opt-out; deleting it would risk contacting you again.</li>
-                  <li><strong>Anonymised and aggregated data:</strong> information that can no longer be linked to you or your device may be retained indefinitely and is not subject to the periods above.</li>
+                  <li><strong>Opt-out records:</strong> if you unsubscribe from email or reply STOP to SMS, we keep a minimal record of that choice indefinitely. This is what allows us to honor your opt-out; deleting it would risk contacting you again.</li>
+                  <li><strong>Anonymized and aggregated data:</strong> information that can no longer be linked to you or your device may be retained indefinitely and is not subject to the periods above.</li>
                 </ul>
               </section>
 
@@ -205,7 +205,7 @@ export default function PrivacyPolicyPage() {
                   <li><strong>Right to know:</strong> to request the categories and specific pieces of personal information we have collected about you, the sources, the purposes, and the categories of third parties we disclose it to. You can get a copy yourself at any time using <strong>Download my data</strong> under Profile.</li>
                   <li><strong>Right to delete:</strong> to request deletion of the personal information we hold about you, subject to the exceptions the law allows. You can also do this yourself at any time using <strong>Delete my data</strong> or <strong>Close my account</strong> under Profile &mdash; see <strong>Closing Your Account</strong> above.</li>
                   <li><strong>Right to correct:</strong> to request that we correct inaccurate personal information.</li>
-                  <li><strong>Right to opt out of sale or sharing:</strong> we do not sell personal information, and we do not share it for cross-context behavioural advertising. We do not run advertising trackers on our site or app, so there is nothing here to opt out of. If that ever changes we will update this policy and provide a way to opt out before it does.</li>
+                  <li><strong>Right to opt out of sale or sharing:</strong> we do not sell personal information, and we do not share it for cross-context behavioral advertising. We do not run advertising trackers on our site or app, so there is nothing here to opt out of. If that ever changes we will update this policy and provide a way to opt out before it does.</li>
                   <li><strong>Right to limit use of sensitive personal information:</strong> financial account information is treated as sensitive personal information under California law. We use it only to provide the service you asked for, and not to infer characteristics about you.</li>
                   <li><strong>Right to non-discrimination:</strong> we will not deny you service, charge you a different price, or give you a lower quality of service for exercising any of these rights.</li>
                 </ul>
@@ -218,7 +218,7 @@ export default function PrivacyPolicyPage() {
                   with the subject line &ldquo;California Privacy Request&rdquo;. We will verify your request by confirming control of the email address on the account, and may ask for additional information if we cannot verify you from that alone. We will respond within 45 days, and will tell you if we need a further 45 days.
                 </p>
                 <p className={cn(TYPOGRAPHY.subtext, "text-gray-700")}>
-                  You may use an authorised agent to submit a request on your behalf. We may ask the agent for proof that you gave them permission, and may ask you to verify your identity with us directly.
+                  You may use an authorized agent to submit a request on your behalf. We may ask the agent for proof that you gave them permission, and may ask you to verify your identity with us directly.
                 </p>
               </section>
 

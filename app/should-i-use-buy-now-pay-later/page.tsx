@@ -262,7 +262,7 @@ export default function SmartPurchaseCheckPage() {
         your real emergency fund, your retirement contributions, the goals you are part-way through, and the pay-later
         plans you already have running. Those change the answer, and they need your actual accounts rather than three
         estimates. Everything here is an estimate for planning. WeLeap is not a registered investment adviser and
-        nothing on this page is personalised financial advice.
+        nothing on this page is personalized financial advice.
       </Caveat>
 
       <ToolFaq href="/should-i-use-buy-now-pay-later" />
