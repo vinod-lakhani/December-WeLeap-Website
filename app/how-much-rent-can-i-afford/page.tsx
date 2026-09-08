@@ -247,7 +247,7 @@ export default function HowMuchRentCanIAffordPage() {
               What this calculator does not account for
             </h2>
             <p className="text-[15px] leading-relaxed text-subtle">
-              Every figure here is an estimate for planning, not personalised financial advice. Tax is estimated for a
+              Every figure here is an estimate for planning, not personalized financial advice. Tax is estimated for a
               single filer from federal brackets, your state&apos;s income tax and FICA; it does not model filing
               jointly, dependants, pre-tax deductions such as your own 401(k) or HSA contributions, itemised
               deductions, or the local and city income taxes that apply in places like New York City. Rent figures are

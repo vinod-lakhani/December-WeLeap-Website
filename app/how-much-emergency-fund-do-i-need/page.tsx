@@ -275,7 +275,7 @@ export default function EmergencyFundTargetPage() {
         overstates it the moment contributions stop. Every figure here is an estimate for planning: the
         months-of-expenses convention is a heuristic rather than a rule from any regulator or lender, and the
         adjustments applied to it are this tool&apos;s own. WeLeap is not a registered investment adviser and
-        nothing on this page is personalised financial advice.
+        nothing on this page is personalized financial advice.
       </Caveat>
 
       <ToolFaq href="/how-much-emergency-fund-do-i-need" />

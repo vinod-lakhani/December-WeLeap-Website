@@ -156,7 +156,7 @@ export default function SupportPage() {
               <p className={cn(TYPOGRAPHY.subtext, 'text-gray-700')}>
                 We can help with anything about the product: your account, your connections, a
                 number that looks wrong, a feature that will not work. We cannot give you
-                personalised financial, investment, legal or tax advice, because we are not licensed
+                personalized financial, investment, legal or tax advice, because we are not licensed
                 to and it would be the wrong thing to take from a support inbox. If a question needs
                 that, we will say so rather than guess.
               </p>

@@ -498,7 +498,7 @@ export default function VideosPage() {
 
             {submitted && (
               <p className="mt-3 text-sm text-[#386641] font-medium">
-                ✓ Got it — thank you! We'll prioritise this.
+                ✓ Got it — thank you! We'll prioritize this.
               </p>
             )}
           </div>

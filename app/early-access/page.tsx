@@ -44,7 +44,7 @@ const steps = [
   {
     num: 6,
     title: 'See your net worth over time',
-    desc: "Before you've even connected your bank, you'll see your projected net worth grow over 40 years. Adjust the savings rate and watch the number change — this is the moment most people realise what's at stake.",
+    desc: "Before you've even connected your bank, you'll see your projected net worth grow over 40 years. Adjust the savings rate and watch the number change — this is the moment most people realize what's at stake.",
     time: '~1 min',
   },
   {

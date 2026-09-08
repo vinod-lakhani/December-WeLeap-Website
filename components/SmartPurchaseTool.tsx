@@ -389,7 +389,7 @@ export function SmartPurchaseTool() {
 
           <p className="text-center text-[12px] leading-relaxed text-faint">
             Estimates only, based on the five figures you entered. WeLeap is not a registered
-            investment adviser and does not provide personalised investment advice.
+            investment adviser and does not provide personalized investment advice.
           </p>
         </>
       )}

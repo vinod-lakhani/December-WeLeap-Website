@@ -118,8 +118,11 @@ export default function FeaturedArticlePage() {
                 <li>
                   We align your plan with your paycheck cycle so you always know what's safe to spend, save, or pause.
                 </li>
-                <li>We automate smart decisions based on your goals, habits, and real-world needs.</li>
-                <li>We give you nudges before things go off track — not just reports after the fact.</li>
+                <li>
+                  We do the analysis for you and name the single move worth making next, with the arithmetic shown.
+                  You decide whether to make it &mdash; nothing happens to your money without your approval.
+                </li>
+                <li>We tell you before things go off track &mdash; not just report after the fact.</li>
                 <li>We flex when life changes. Because life always does.</li>
               </ul>
 
@@ -130,13 +133,14 @@ export default function FeaturedArticlePage() {
               </p>
               <p>We're flipping that model.</p>
               <p>
-                WeLeap is building a transparent financial marketplace — one where you choose what works best for you, not
-                what makes someone else the most money. No sponsored placements. No gimmicks. Just personalized
-                recommendations powered by AI, aligned with your goals.
+                So we built WeLeap to make money one way: a simple subscription, eventually. We take no commission for
+                steering you toward anyone's product. If that ever changes &mdash; if we ever earn a referral fee &mdash;
+                we will say so on the screen where it happens, every time.
               </p>
               <p>
-                Whether it's finding a better loan, setting up a savings buffer, or adjusting your paycheck strategy, WeLeap
-                gives you clear next steps — not confusing choices.
+                Whether it is capturing an employer match you are leaving behind, sizing a savings buffer, or deciding
+                which balance to clear first, WeLeap gives you one clear next step and the reasoning behind it &mdash;
+                not a page of options to choose between.
               </p>
 
               <h3 className={cn(TYPOGRAPHY.h3, "text-gray-900 mt-8 md:mt-10 mb-4")}>Built for Our Daughters. Built for You.</h3>
