@@ -1315,15 +1315,22 @@ export function OfferAnalysisTool() {
                 on the other side. `intent` is no longer sent; the app link
                 already guarded for its absence, and the question is better
                 asked in onboarding where it can change something. */}
-            {/* Names the action that is already on screen two inches above,
-                rather than a product concept a cold visitor has never met.
-                Branches with the card above it: "capture this match" is false
-                for an offer that has no match, and this is the one button on
-                the page that must not describe something the reader was not
-                just shown. */}
+            {/* NAMES WHAT THEY WANT NOW, NOT THE MATCH.
+                This read "Capture this match", which is the right noun and the
+                wrong moment: capturing a match happens after you accept the job
+                and enrol in a plan you do not have yet — weeks or months out —
+                while the decision in front of this reader is days old. It also
+                asked for a bank connection in order to act on a salary they may
+                not have agreed to.
+
+                The plan is the thing they want today, it is true whether or not
+                the offer carries a match, and it is what the tile underneath
+                already promises: "a savings, debt and retirement plan built on
+                this salary". One label for both branches, so the branching added
+                with the previous wording collapses. */}
             <Button onClick={() => handleSignUp('button')}
               className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
-              {calc.annual401kMatch > 0 ? 'Capture this match →' : 'Put this to work →'}
+              Build my plan on this salary →
             </Button>
 
             {/* The whole tile is the target, not just the button above it —
@@ -1333,11 +1340,7 @@ export function OfferAnalysisTool() {
             <button
               type="button"
               onClick={() => handleSignUp('preview_tile')}
-              aria-label={
-                calc.annual401kMatch > 0
-                  ? 'Create your free account and track this match'
-                  : 'Create your free account and put this money to work'
-              }
+              aria-label="Create your free account and build your plan on this salary"
               className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
