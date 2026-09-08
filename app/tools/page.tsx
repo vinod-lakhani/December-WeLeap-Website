@@ -4,6 +4,7 @@ import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
+import { CategoryComparison } from "@/components/CategoryComparison"
 
 /** "Eight" — the count, capitalised for the start of a sentence. */
 const COUNT_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
@@ -25,37 +26,6 @@ export const metadata: Metadata = {
   },
 }
 
-/**
- * The category comparison.
- *
- * Nowhere on the site said, in crawlable text, what category WeLeap belongs to
- * or how it differs from the two things a reader will assume it is. "Not a
- * budgeting app" appeared as a rhetorical line in a few places; the actual
- * distinction — budgeting apps report backwards, robo-advisers manage one
- * account forwards, this does neither — was never written down. A model cannot
- * infer positioning that only exists in a founder's head, and a table is the
- * form this comparison is actually in.
- */
-const CATEGORIES = [
-  {
-    what: 'Budgeting apps',
-    examples: 'Mint-style spend trackers, envelope apps',
-    does: 'Categorises money you already spent and shows it back to you',
-    misses: 'It tells you what happened, not what to do next',
-  },
-  {
-    what: 'Robo-advisers',
-    examples: 'Automated investing platforms',
-    does: 'Manages an investment account for you, for a fee on assets',
-    misses: 'It only sees the account it manages — not your debt, cash or 401(k)',
-  },
-  {
-    what: 'WeLeap',
-    examples: 'Ribbit, plus these free calculators',
-    does: 'Reads the whole picture and names the single next move, which you approve',
-    misses: 'It does not move money on its own and it does not manage investments',
-  },
-] as const
 
 export default function ToolsPage() {
   return (
@@ -129,31 +99,7 @@ export default function ToolsPage() {
             <h3 className="mb-4 text-lg font-bold tracking-[-0.015em] text-ink">
               How WeLeap differs from budgeting apps and robo-advisers
             </h3>
-            <div className="overflow-x-auto rounded-card border border-hairline bg-white">
-              <table className="w-full min-w-[680px] border-collapse text-left text-[15px]">
-                <caption className="sr-only">
-                  Comparison of budgeting apps, robo-advisers and WeLeap: what each one does and what it does not do.
-                </caption>
-                <thead>
-                  <tr className="border-b border-hairline bg-canvas">
-                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">Category</th>
-                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">Examples</th>
-                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">What it does</th>
-                    <th scope="col" className="px-5 py-3.5 font-bold text-ink">What it doesn&apos;t</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CATEGORIES.map((c) => (
-                    <tr key={c.what} className="border-b border-hairline last:border-b-0">
-                      <th scope="row" className="px-5 py-4 align-top font-semibold text-ink">{c.what}</th>
-                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.examples}</td>
-                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.does}</td>
-                      <td className="px-5 py-4 align-top leading-relaxed text-subtle">{c.misses}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <CategoryComparison />
           </div>
 
           <p className="mt-10 text-center text-[13px] leading-relaxed text-faint">

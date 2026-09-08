@@ -9,6 +9,7 @@ import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { cn } from "@/lib/utils"
 import { PRESENT_DAY_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { ToolCard } from "@/components/ToolCard"
+import { CategoryComparison } from "@/components/CategoryComparison"
 import { HOME_FAQS } from "@/lib/home-faqs"
 import { track } from "@/lib/analytics"
 import { appLink } from "@/lib/app-link"
@@ -626,6 +627,28 @@ function How() {
             </div>
           ))}
         </div>
+        {/* THE CATEGORY COMPARISON, directly under the three steps.
+            It was written for /tools and sat three quarters of the way down a
+            page most homepage visitors never open — so the sharpest
+            competitive argument on the site was working in a minority of
+            sessions. An external review found two of three simulated visitors
+            reaching the point of asking "why this rather than what I already
+            use", with the answer on a page they had not opened.
+
+            After the steps rather than before them on purpose: "how is this
+            different" is a question someone asks once they understand what the
+            thing does, and answering it earlier is answering it to nobody.
+            Same component and same array as /tools, so the two cannot drift. */}
+        <div className="mt-20 md:mt-24">
+          <h3 className="mb-2 text-[clamp(1.3rem,2vw,1.7rem)] font-extrabold tracking-[-0.025em] text-ink">
+            How this differs from what you are probably using
+          </h3>
+          <p className="mb-6 max-w-[62ch] text-[16px] leading-relaxed text-subtle">
+            Budgeting apps and robo-advisers both do something well. Neither does this.
+          </p>
+          <CategoryComparison />
+        </div>
+
       </Container>
     </Section>
   )
