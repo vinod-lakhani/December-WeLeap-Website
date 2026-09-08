@@ -683,7 +683,7 @@ export function AllocatorTool() {
             >
               {intent === 'lock_plan' ? (
                 <>
-                  <p className="font-semibold text-ink">Your first Leap is locked: 401(k) match update</p>
+                  <p className="font-semibold text-ink">Your first move is locked: 401(k) match update</p>
                   <p className="text-subtle mt-1">Now let’s finish your plan.</p>
                 </>
               ) : (

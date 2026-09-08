@@ -71,7 +71,7 @@ export function EarlyAccessDialog({
             <p className="font-semibold mb-2">What you get:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Your full financial picture in one place</li>
-              <li>One clear next step — a smart Leap</li>
+              <li>One clear next step, with the math behind it</li>
               <li>AI-powered guidance built around you</li>
               <li>Free to start</li>
             </ul>

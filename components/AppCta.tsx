@@ -48,11 +48,31 @@ export interface AppCtaProps {
   headline: string;
   /** One line on why the next step follows from what they just saw. */
   body?: string;
+  /**
+   * What the button says. Name the action this tool just produced — "Build my
+   * $12,000 buffer", "Capture this match" — not a product concept.
+   *
+   * The default is deliberately generic rather than "Get my first Leap". A
+   * Leap is a word a cold visitor on a calculator page has never met, and a
+   * default is what a tool inherits by forgetting to think about it.
+   */
   buttonLabel?: string;
   /** What's actually waiting on the other side — concrete, not features. */
   bullets: string[];
   image?: { src: string; alt: string; width: number; height: number };
   footnote?: string;
+}
+
+/**
+ * "Build my $12,000 buffer →" -> "build my $12,000 buffer", so it can be read
+ * into a sentence. Strips the arrow and lowercases a leading verb only; the
+ * dollar figures and any proper nouns inside are left alone.
+ */
+function ctaVerbPhrase(label: string): string {
+  return label
+    .replace(/\s*(?:→|&rarr;)\s*$/, '')
+    .trim()
+    .replace(/^(Get|Show|Build|Start|Capture|Create|See|Put|Find|Analyze)\b/, (w) => w.toLowerCase())
 }
 
 export function AppCta({
@@ -63,7 +83,7 @@ export function AppCta({
   eyebrow,
   headline,
   body,
-  buttonLabel = 'Get my first Leap →',
+  buttonLabel = 'Create my free account →',
   bullets,
   image,
   footnote = 'Free · 2 minutes · No credit card.',
@@ -116,10 +136,15 @@ export function AppCta({
       </Button>
       {footnote && <p className="mt-2 text-center text-xs text-gray-500">{footnote}</p>}
 
+        {/* Derived from the visible label rather than hardcoded. This read
+            "Create your free account and get your first Leap" on every tool
+            using AppCta — so a screen-reader user got internal vocabulary on
+            all five, and heard something different from the button beside it.
+            Deriving it means the two cannot disagree again. */}
       <button
         type="button"
         onClick={() => go('preview_tile')}
-        aria-label="Create your free account and get your first Leap"
+        aria-label={`Create your free account and ${ctaVerbPhrase(buttonLabel)}`}
         className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
       >
         <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">

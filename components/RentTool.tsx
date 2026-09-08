@@ -58,7 +58,7 @@ interface MetroOption {
   value: string;
 }
 
-export function OfferTool() {
+export function RentTool() {
   const [salary, setSalary] = useState('');
   const [city, setCity] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -162,7 +162,7 @@ export function OfferTool() {
     if (showOtherState && otherState && !loadingMetros) {
       setLoadingMetros(true);
       const url = `/api/zori?state=${otherState}`;
-      console.log('[OfferTool] Loading metro options from:', url);
+      console.log('[RentTool] Loading metro options from:', url);
       fetch(url)
         .then(res => {
           if (!res.ok) {
@@ -171,16 +171,16 @@ export function OfferTool() {
           return res.json();
         })
         .then(data => {
-          console.log('[OfferTool] Metro options received:', data);
+          console.log('[RentTool] Metro options received:', data);
           if (data.options && Array.isArray(data.options)) {
             setMetroOptions(data.options);
           } else {
-            console.warn('[OfferTool] Invalid options format:', data);
+            console.warn('[RentTool] Invalid options format:', data);
             setMetroOptions([]);
           }
         })
         .catch(err => {
-          console.error('[OfferTool] Error loading metro options:', err);
+          console.error('[RentTool] Error loading metro options:', err);
           setMetroOptions([]);
         })
         .finally(() => {
@@ -653,7 +653,7 @@ export function OfferTool() {
                       generic "we'll build you a plan". The number is already
                       computed; showing it is what makes signing up concrete. */}
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">
-                    Your first Leap
+                    Your first move
                   </p>
                   <h3 className="text-xl font-bold text-[#111827]">
                     Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
@@ -715,7 +715,7 @@ export function OfferTool() {
                           found the money, the app decides where it goes. */}
                       {leapMonthly > 0
                         ? `Show me where my ${formatCurrency(leapMonthly)}/mo should go →`
-                        : 'Get my first Leap →'}
+                        : 'Create my free account →'}
                     </Button>
                     <p className="text-xs text-gray-500 mt-2">
                       Free · 2 minutes · No credit card.

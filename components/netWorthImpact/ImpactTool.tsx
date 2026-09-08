@@ -369,7 +369,7 @@ export function ImpactTool() {
               ? `Turn that ${formatCurrencySigned(monthlyDelta)}/month into a plan`
               : 'See what that change does to the rest of your plan'
           }
-          body="A number on a slider is a hypothetical. The same amount, set up once and tracked every month, is a Leap."
+          body="A number on a slider is a hypothetical. The same amount, set up once and tracked every month, is a plan."
           bullets={[
             'This amount set up as a real, tracked monthly move',
             'A savings, debt and retirement plan it fits inside',
