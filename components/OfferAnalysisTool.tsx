@@ -1272,39 +1272,6 @@ export function OfferAnalysisTool() {
             </div>
           </div>
 
-          {/* Tool feedback. This tool had no prompt at all.
-              The question is about expectation, not helpfulness: the tool's
-              whole premise is that base salary is most of what people think
-              an offer is worth, so whether the total surprised them is the
-              finding. Placed after the result and above the CTA, so it never
-              competes with a scroll past the thing designed to end the session.
-
-              NOTE the axis differs from every other tool. Elsewhere
-              yes/not_sure/no is a sentiment ("this makes sense" → "not for
-              me"); here it is a direction (higher → lower), and "lower than I
-              thought" is a real answer rather than a complaint. `scale` marks
-              that so these responses are not pooled into a blended sentiment
-              rate by mistake. */}
-          {feedbackRevealed && (
-          <ToolFeedbackQuestionnaire
-            page="/offer"
-              tool="offer"
-            eventName="offer_tool_feedback_submitted"
-            question="Is this total higher or lower than you thought your offer was worth?"
-            buttonLabels={{
-              yes: 'Higher than I thought',
-              not_sure: 'About what I expected',
-              no: 'Lower than I thought',
-            }}
-            feedbackResponseMessages={{
-              yes: "That gap is the point — your plan starts from the real number.",
-              not_sure: "Good — you already know what you're working with.",
-              no: "Worth knowing before you sign. Your plan works from the real number.",
-            }}
-            extraTrackParams={{ scale: 'expectation' }}
-            onFeedbackSubmitted={() => {}}
-          />
-          )}
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">
@@ -1348,15 +1315,22 @@ export function OfferAnalysisTool() {
                 on the other side. `intent` is no longer sent; the app link
                 already guarded for its absence, and the question is better
                 asked in onboarding where it can change something. */}
-            {/* Names the action that is already on screen two inches above,
-                rather than a product concept a cold visitor has never met.
-                Branches with the card above it: "capture this match" is false
-                for an offer that has no match, and this is the one button on
-                the page that must not describe something the reader was not
-                just shown. */}
+            {/* NAMES WHAT THEY WANT NOW, NOT THE MATCH.
+                This read "Capture this match", which is the right noun and the
+                wrong moment: capturing a match happens after you accept the job
+                and enrol in a plan you do not have yet — weeks or months out —
+                while the decision in front of this reader is days old. It also
+                asked for a bank connection in order to act on a salary they may
+                not have agreed to.
+
+                The plan is the thing they want today, it is true whether or not
+                the offer carries a match, and it is what the tile underneath
+                already promises: "a savings, debt and retirement plan built on
+                this salary". One label for both branches, so the branching added
+                with the previous wording collapses. */}
             <Button onClick={() => handleSignUp('button')}
               className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
-              {calc.annual401kMatch > 0 ? 'Capture this match →' : 'Put this to work →'}
+              Build my plan on this salary →
             </Button>
 
             {/* The whole tile is the target, not just the button above it —
@@ -1366,11 +1340,7 @@ export function OfferAnalysisTool() {
             <button
               type="button"
               onClick={() => handleSignUp('preview_tile')}
-              aria-label={
-                calc.annual401kMatch > 0
-                  ? 'Create your free account and track this match'
-                  : 'Create your free account and put this money to work'
-              }
+              aria-label="Create your free account and build your plan on this salary"
               className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
@@ -1404,6 +1374,46 @@ export function OfferAnalysisTool() {
 
             <p className="text-center text-xs text-gray-400 mt-4">Free · No credit card · ~2 minutes</p>
           </div>
+
+          {/* Tool feedback, BELOW the CTA.
+              It used to sit between the result and the CTA, on the theory that it
+              would be seen before a reader scrolled past. What that actually did
+              was put a question with three buttons directly above the one button
+              the page exists to get pressed — so the first interactive thing after
+              the answer was not the action, and the CTA had to win attention back
+              from a survey we had put in its way. Feedback is worth having and it
+              is not worth that.
+
+              Still inside the results block, so it only appears once there is
+              something to have an opinion about, and still gated on
+              `feedbackRevealed` so it waits for real engagement rather than
+              greeting a first render.
+
+              NOTE the axis differs from every other tool. Elsewhere yes/not_sure/no
+              is a sentiment ("this makes sense" → "not for me"); here it is a
+              direction (higher → lower), and "lower than I thought" is a real
+              answer rather than a complaint. `scale` marks that so these responses
+              are not pooled into a blended sentiment rate by mistake. */}
+          {feedbackRevealed && (
+          <ToolFeedbackQuestionnaire
+            page="/offer"
+            tool="offer"
+            eventName="offer_tool_feedback_submitted"
+            question="Is this total higher or lower than you thought your offer was worth?"
+            buttonLabels={{
+              yes: 'Higher than I thought',
+              not_sure: 'About what I expected',
+              no: 'Lower than I thought',
+            }}
+            feedbackResponseMessages={{
+              yes: "That gap is the point — your plan starts from the real number.",
+              not_sure: "Good — you already know what you're working with.",
+              no: "Worth knowing before you sign. Your plan works from the real number.",
+            }}
+            extraTrackParams={{ scale: 'expectation' }}
+            onFeedbackSubmitted={() => {}}
+          />
+          )}
         </div>
       )}
       </>)}
