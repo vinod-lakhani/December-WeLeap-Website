@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { OfferTool } from '@/components/OfferTool'
+import { RentTool } from '@/components/RentTool'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
 import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
@@ -22,7 +22,10 @@ import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
  * `ScrollBeacon`, the page-view effect is `ToolPageView`, and the only client
  * leaf left is the calculator itself.
  *
- * `OfferTool` is that calculator despite the name — it predates the split
+ * `RentTool` is that calculator. It was called `OfferTool` until the offer
+ * analyzer arrived and made the name actively misleading: two different tools,
+ * one named after the other. Renamed rather than left with a comment
+ * explaining the trap, because a comment does not help someone grepping.
  * between this route and /what-is-my-job-offer-worth, and every analytics
  * identifier inside it (`rent_form_start`, `tool: 'rent'`, `rent_tool_v1`) is
  * joined to history under those names. Do not rename it.
@@ -137,7 +140,7 @@ export default function HowMuchRentCanIAffordPage() {
           </div>
 
           <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
-            <OfferTool />
+            <RentTool />
           </div>
 
           {/* YMYL disclosure — kept verbatim, directly under the widget that

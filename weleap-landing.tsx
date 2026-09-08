@@ -32,7 +32,7 @@ const NUM = "tabular-nums tracking-[-0.02em]"
  * re-decide whether it IS the same offer.
  *
  * Why this wording and not the sitewide AppCta default ("Get my first Leap"):
- * the hero result card is headed "Your first Leap", so a button beneath it
+ * the hero result card is headed "Your first move", so a button beneath it
  * offering to get you your first Leap contradicts what you are looking at.
  * And the hero's own "Unlock the rest of my plan" fails the opposite way in
  * the closing — someone who scrolled past the calculator has no "rest" to
@@ -245,7 +245,13 @@ function Hero() {
               type="submit"
               className="rounded-full bg-brand-700 px-8 py-[18px] text-[16.5px] font-bold text-white shadow-pill transition hover:-translate-y-px hover:bg-brand-800"
             >
-              Find my Leap →
+              {/* Was "Find my Leap". This is the first interactive element on
+                  the site, and "What a Leap looks like" — the section that
+                  introduces the word — is nearly four hundred lines below it.
+                  A visitor is asked to press a button naming a concept the
+                  page has not defined yet. Echoes the h1 instead, which is the
+                  outcome they came for. */}
+              Find my next move →
             </Button>
           </form>
 
@@ -263,7 +269,7 @@ function Hero() {
               <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
                 <div className="min-w-[220px] flex-1">
                   <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
-                    Your first Leap
+                    Your first move
                   </span>
                   <h2 className="mt-2 text-[19px] font-extrabold tracking-[-0.02em] text-ink">
                     Capture your full 401(k) match

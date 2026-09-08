@@ -481,7 +481,7 @@ export function EmergencyFundTool() {
           <Card className="border-2 border-[#3F6B42] bg-white">
             <CardHeader>
               <CardTitle className="text-xl text-[#111827]">
-                {hasMetTarget ? "You're on track" : 'Your next Leap'}
+                {hasMetTarget ? "You're on track" : 'Your next move'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
