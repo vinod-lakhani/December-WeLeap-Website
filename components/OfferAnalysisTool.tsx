@@ -1316,7 +1316,7 @@ export function OfferAnalysisTool() {
             {calc.annual401kMatch > 0 ? (
               <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
-                  Your first Leap
+                  Your first move
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900 leading-tight">
                   Capture the full {fc(calc.annual401kMatch)}/yr match
@@ -1329,7 +1329,7 @@ export function OfferAnalysisTool() {
             ) : (
               <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
-                  Your first Leap
+                  Your first move
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900 leading-tight">
                   Put {fc(calc.monthlyWealth)}/mo to work
@@ -1348,9 +1348,15 @@ export function OfferAnalysisTool() {
                 on the other side. `intent` is no longer sent; the app link
                 already guarded for its absence, and the question is better
                 asked in onboarding where it can change something. */}
+            {/* Names the action that is already on screen two inches above,
+                rather than a product concept a cold visitor has never met.
+                Branches with the card above it: "capture this match" is false
+                for an offer that has no match, and this is the one button on
+                the page that must not describe something the reader was not
+                just shown. */}
             <Button onClick={() => handleSignUp('button')}
               className="w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition-all hover:bg-[#2d5a26]">
-              Get my first Leap →
+              {calc.annual401kMatch > 0 ? 'Capture this match →' : 'Put this to work →'}
             </Button>
 
             {/* The whole tile is the target, not just the button above it —
@@ -1360,7 +1366,11 @@ export function OfferAnalysisTool() {
             <button
               type="button"
               onClick={() => handleSignUp('preview_tile')}
-              aria-label="Create your free account and get your first Leap"
+              aria-label={
+                calc.annual401kMatch > 0
+                  ? 'Create your free account and track this match'
+                  : 'Create your free account and put this money to work'
+              }
               className="group mt-5 block w-full rounded-xl border border-gray-200 bg-gray-50 p-4 text-left transition hover:-translate-y-[2px] hover:border-[#386641] hover:bg-white hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#386641]"
             >
               <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-widest text-gray-400">
