@@ -21,7 +21,7 @@ import { getRecommendedLeap } from '@/lib/leapImpact/leapDecision';
 import { runTrajectory, costOfDelay } from '@/lib/leapImpact/trajectory';
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { US_STATES } from '@/lib/states';
-import { K401_EMPLOYEE_CAP, EF_TARGET_MONTHS } from '@/lib/allocator/constants';
+import { K401_EMPLOYEE_CAP, EF_TARGET_MONTHS, k401LimitForAge } from '@/lib/allocator/constants';
 import { computeRetirementTargetPct } from '@/lib/allocator/retirementTarget';
 import { formatPct, formatCurrency } from '@/lib/format';
 import { SavingsStackSummary } from '@/components/allocator/SavingsStackSummary';
@@ -111,6 +111,15 @@ export function AllocatorTool() {
   const [prefill, setPrefill] = useState<AllocatorPrefillFromUrl | null>(null);
   const [prefillLoadedTracked, setPrefillLoadedTracked] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  /**
+   * Age, optional, asked only because the contribution limits move at 50 and
+   * again between 60 and 63. Left blank it changes nothing: every calculation
+   * falls back to the base limits, which is what the plan used before it asked.
+   * Deliberately NOT in the four-field cold start — it would be a fifth
+   * question on the fastest path, for a correction that binds only on people
+   * contributing near the maximum.
+   */
+  const [planAge, setPlanAge] = useState('');
   const [efMonthly, setEfMonthly] = useState('');
   /**
    * Savings already set aside, asked alongside essentials because the two are
@@ -277,6 +286,12 @@ export function AllocatorTool() {
     }
   }, [prefill, prefillLoadedTracked]);
 
+  /** Parsed age, or null. Out-of-range values are ignored rather than clamped. */
+  const planAgeNum = useMemo(() => {
+    const n = parseInt(planAge, 10);
+    return Number.isFinite(n) && n >= 18 && n <= 100 ? n : null;
+  }, [planAge]);
+
   const unlockData: AllocatorUnlockData | null = useMemo(() => {
     const essentialNum = efMonthly.trim() ? parseFloat(efMonthly) : undefined;
     const cashNum = cashOnHand.trim() ? parseFloat(cashOnHand) : undefined;
@@ -308,12 +323,13 @@ export function AllocatorTool() {
     employerMatchPct: prefill.matchCapPct ?? prefill.employerMatchPct,
     current401kPct: prefill.current401kPct,
     recommended401kPct: prefill.recommended401kPct,
+    age: planAgeNum,
     estimatedNetMonthlyIncome: prefill.estimatedNetMonthlyIncome,
     leapDelta30yr: prefill.leapDelta30yr,
     hsaEligible: unlockData?.hsaEligible ?? prefill.hsaEligible,
     currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual,
     hsaCoverageType: unlockData?.hsaCoverageType ?? prefill.hsaCoverageType,
-  } : null, [prefill, unlockData?.hsaEligible, unlockData?.currentHsaAnnual, unlockData?.hsaCoverageType]);
+  } : null, [prefill, unlockData?.hsaEligible, unlockData?.currentHsaAnnual, unlockData?.hsaCoverageType, planAgeNum]);
 
   const matchCapPct = prefill?.matchCapPct ?? prefill?.employerMatchPct ?? 5;
   const current401kPct = prefill?.current401kPct ?? 0;
@@ -341,6 +357,7 @@ export function AllocatorTool() {
       hasEmployerMatch: !!prefill.employerMatchEnabled,
       matchCapPct,
       matchRatePct: prefill.matchRatePct ?? 100,
+      age: planAgeNum,
       essentialsMonthly: unlockData?.essentialMonthly,
       stateCode: prefill.state,
       currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill.currentHsaAnnual ?? 0,
@@ -352,7 +369,7 @@ export function AllocatorTool() {
       return Math.min(prefill.recommended401kPct, ruleTarget);
     }
     return ruleTarget;
-  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, prefill?.recommended401kPct, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, unlockData?.essentialMonthly, unlockData?.currentHsaAnnual, current401kPct, matchCapPct]);
+  }, [prefill?.salaryAnnual, prefill?.employerMatchEnabled, prefill?.recommended401kPct, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, unlockData?.essentialMonthly, unlockData?.currentHsaAnnual, current401kPct, matchCapPct, planAgeNum]);
 
   const netTakeHomeMonthly = useMemo(() => {
     if (!prefill?.salaryAnnual || !prefill.state) return 0;
@@ -618,13 +635,14 @@ export function AllocatorTool() {
         k401AtCap,
         salaryAnnual: prefill?.salaryAnnual,
         matchRatePct: prefill?.matchRatePct ?? 100,
+        age: planAgeNum,
         essentialsMonthly: unlockData?.essentialMonthly,
         stateCode: prefill?.state,
         currentHsaAnnual: unlockData?.currentHsaAnnual ?? prefill?.currentHsaAnnual ?? 0,
         unlock: unlockData,
         leaps,
       }),
-    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, matchCapPct, k401AtCap, unlockData, leaps]
+    [prefill?.employerMatchEnabled, prefill?.current401kPct, prefill?.salaryAnnual, prefill?.matchRatePct, prefill?.state, prefill?.currentHsaAnnual, matchCapPct, k401AtCap, unlockData, leaps, planAgeNum]
   );
   const supportingLeaps = useMemo(
     () => getSupportingLeaps(leaps, primaryResult.kind),
@@ -766,6 +784,38 @@ export function AllocatorTool() {
                       : prefill.source === 'allocator_direct'
                         ? 'Where we think your contribution should get to, based on what you told us.'
                         : 'Carried over from the answers you already gave us.'}
+                  </p>
+                </div>
+
+                {/* AGE, OPTIONAL, and asked here rather than in the cold start.
+                    It changes exactly one thing: the contribution limits, which rise at
+                    50 and again between 60 and 63. Left blank everything falls back to
+                    the base limits, which is what the plan used before it asked — so
+                    this can never make an answer worse, only less conservative for
+                    somebody the law actually allows more.
+                
+                    Not a fifth field on the four-question cold start: that path is the
+                    fastest route to a number, and this correction binds only on people
+                    already contributing near the maximum. */}
+                <div className="pt-2 border-t border-gray-200">
+                  <Label htmlFor="w-age" className="text-[#111827]">
+                    Your age <span className="text-gray-400 font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="w-age"
+                    type="number"
+                    inputMode="numeric"
+                    min={18}
+                    max={100}
+                    placeholder="e.g. 52"
+                    value={planAge}
+                    onChange={(e) => { markEngaged('age'); setPlanAge(e.target.value); }}
+                    className="mt-1 border-[#D1D5DB] max-w-[9rem]"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {planAgeNum != null && planAgeNum >= 50
+                      ? `At ${planAgeNum} you can put in ${formatCurrency(k401LimitForAge(planAgeNum))} rather than ${formatCurrency(K401_EMPLOYEE_CAP)}, so we have raised your limits.`
+                      : 'Only used for contribution limits, which rise at 50. Leave it blank and we use the standard ones.'}
                   </p>
                 </div>
               </CardContent>

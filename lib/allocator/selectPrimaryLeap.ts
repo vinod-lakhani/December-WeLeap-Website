@@ -33,6 +33,8 @@ export interface SelectPrimaryLeapInputs {
    * floor in computeRetirementTargetPct, which stops this branch recommending
    * a deferral that leaves take-home below essentials.
    */
+  /** Age, when known, so the catch-up contribution limits apply. */
+  age?: number | null;
   essentialsMonthly?: number;
   stateCode?: string;
   currentHsaAnnual?: number;
@@ -106,6 +108,7 @@ export function selectPrimaryLeap(inputs: SelectPrimaryLeapInputs): PrimaryLeapR
     hasEmployerMatch: employerMatchEnabled,
     matchCapPct,
     matchRatePct: inputs.matchRatePct ?? 100,
+    age: inputs.age,
     essentialsMonthly: inputs.essentialsMonthly,
     stateCode: inputs.stateCode,
     currentHsaAnnual: inputs.currentHsaAnnual,

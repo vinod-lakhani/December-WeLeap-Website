@@ -7,7 +7,7 @@ import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, 
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { computeAnnualContributionIncrease401k } from '@/lib/leapImpact/trajectory';
 import { compute401kStatus } from '@/lib/leapImpact/leverPriority';
-import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START, K401_EMPLOYEE_CAP, IRA_LIMIT } from './constants';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START, k401LimitForAge, iraLimitForAge } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
 import { formatPct } from '@/lib/format';
 
@@ -147,10 +147,11 @@ export function buildLeaps(
    * do — while overstating it recommends a contribution somebody is not
    * allowed to make.
    */
+  const planAge = prefill?.age ?? null;
   const k401TargetAnnual = (salaryAnnual * recommended401k) / 100;
   const retirementHeadroomAnnual =
     salaryAnnual > 0
-      ? Math.max(0, K401_EMPLOYEE_CAP - k401TargetAnnual) + IRA_LIMIT
+      ? Math.max(0, k401LimitForAge(planAge) - k401TargetAnnual) + iraLimitForAge(planAge)
       : undefined;
 
   const routing: CapitalRoutingResult | null =
