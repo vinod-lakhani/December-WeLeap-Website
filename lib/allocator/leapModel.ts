@@ -61,6 +61,12 @@ export interface CapitalRoutingResult {
   efAlloc: number;
   debtAlloc: number;
   retirementAlloc: number;
+  /**
+   * True when the retirement line was reduced to the contribution limit and
+   * the difference moved to brokerage. Lets a surface explain the number
+   * rather than leave it looking arbitrary.
+   */
+  retirementCapped?: boolean;
   brokerageAlloc: number;
   efTarget: number;
   /** Savings already banked, as routed against the target. */

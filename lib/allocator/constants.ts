@@ -20,6 +20,22 @@ export const TAX_YEAR = 2026;
 /** 401(k) employee deferral cap. */
 export const K401_EMPLOYEE_CAP = 24500;
 
+/**
+ * IRA employee contribution limit, all IRAs combined.
+ *
+ * 2026 figure from IRS Notice 2025-67. Deliberately the BASE limit: the plan
+ * never asks anyone's age, so it cannot know whether the $1,100 catch-up at 50+
+ * applies. Understating the room routes a little extra to a brokerage account,
+ * which is legal for anyone; overstating it recommends a contribution somebody
+ * is not allowed to make.
+ *
+ * This exists because the post-tax "Retirement" line had no ceiling at all. On
+ * $140,000 the plan was recommending $30,073 a year into it — four times what
+ * anyone can put in an IRA — because the routing split a surplus by percentage
+ * and never asked where the money was allowed to go.
+ */
+export const IRA_LIMIT = 7500;
+
 /** HSA max contribution, self-only. */
 export const HSA_LIMIT_SINGLE = 4400;
 

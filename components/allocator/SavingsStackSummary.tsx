@@ -749,6 +749,16 @@ function MoneyStructureSummary({
                     <li>{formatDollars(routing.debtAlloc)} → High-APR debt (40% of remainder)</li>
                   )}
                   <li>{formatDollars(routing.retirementAlloc)} → Retirement</li>
+                  {/* Says why the retirement line stopped where it did. Without
+                      this the number looks arbitrary the moment it stops tracking
+                      the percentage split — a reader checking the arithmetic finds
+                      60/40 not holding and has nothing to attribute it to. */}
+                  {routing.retirementCapped && (
+                    <li className="text-gray-500">
+                      Retirement stops at this year&apos;s contribution limit — the rest goes to
+                      brokerage, which has none.
+                    </li>
+                  )}
                   <li>{formatDollars(routing.brokerageAlloc)} → Brokerage (flex)</li>
                 </ul>
               </div>
