@@ -253,3 +253,55 @@ describe('parseExactAmount reads what people actually type', () => {
     expect(bandLabel(INCOME_BANDS, 105_000)).toBe('$90–120K')
   })
 })
+
+describe('the age range the tool accepts', () => {
+  it('produces a sensible answer well past 45, which is why the cap was raised', () => {
+    // The tool used to reject anything over 45, so typing 55 made the page go
+    // quiet. That bound came from who the product is for, not from the model:
+    // the reference curve is defined at any age and the BLS growth bands run
+    // to 40-and-over. These are the ages that were dead.
+    for (const [age, income, position] of [
+      [50, 105_000, 250_000],
+      [55, 120_000, 400_000],
+      [60, 120_000, 600_000],
+      [70, 90_000, 700_000],
+    ] as const) {
+      const r = computeMoneyAge({ age, income, position, savingsRate: 0.121 })
+      expect(Number.isFinite(r.moneyAge)).toBe(true)
+      expect(r.moneyAge).toBeGreaterThanOrEqual(20)
+      expect(r.deltaYears).toBe(r.moneyAge - age)
+      expect(r.onTrackPosition).toBeGreaterThan(0)
+    }
+  })
+
+  it('has no cliff at any age, including the growth-band boundaries', () => {
+    // Same holdings and rate, rising age. The answer drifts up gently — 39 at
+    // age 30 to 44 at age 70 — because the reference saver's income path is
+    // rebased on the user's own age, and the BLS bands it walks back through
+    // differ. What matters is that it is SMOOTH: the bands are a step function
+    // in the growth rate, and a step there would put a cliff in the answer at
+    // 25, 30, 35 and 40. Those boundaries are sampled deliberately.
+    const at = (age: number) =>
+      computeMoneyAge({ age, income: 105_000, position: 300_000, savingsRate: 0.121 }).moneyAge
+    const ages = [30, 35, 38, 39, 40, 41, 45, 50, 55, 60, 65, 70]
+    const vals = ages.map(at)
+    for (let i = 1; i < vals.length; i++) {
+      // Never goes backwards, and never jumps more than a year between
+      // adjacent samples — a cliff at a band edge would break this.
+      expect(vals[i]!).toBeGreaterThanOrEqual(vals[i - 1]!)
+      expect(vals[i]! - vals[i - 1]!).toBeLessThanOrEqual(1)
+    }
+    expect(vals[vals.length - 1]! - vals[0]!).toBeLessThanOrEqual(6)
+  })
+
+  it('still holds the on-track property at the ages that were unreachable', () => {
+    // Saving the reference rate while holding the reference balance puts you at
+    // your own age. If that breaks above 45 the number stops meaning anything.
+    for (const age of [50, 60, 70]) {
+      const onTrack = yardstickBalance(age, 105_000, age)
+      const r = computeMoneyAge({ age, income: 105_000, position: onTrack, savingsRate: REFERENCE_SAVINGS_RATE })
+      expect(r.moneyAge).toBe(age)
+      expect(r.deltaYears).toBe(0)
+    }
+  })
+})

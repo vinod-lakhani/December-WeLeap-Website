@@ -58,6 +58,23 @@ const REFERENCE_RATE_LABEL = `${(REFERENCE_SAVINGS_RATE * 100).toFixed(1)}%`
  */
 const MAX_RATE_PCT = 25
 
+/**
+ * The age range the tool will answer for.
+ *
+ * The top was 45, chosen from who the product is for rather than from what the
+ * model can do — and the model is fine well past it. The reference saver's
+ * curve is defined at any age, the BLS growth bands run to 40-and-over, and
+ * spot checks at 50, 55, 60 and 65 all produce sensible, monotonic answers.
+ *
+ * Raised because a wrong cap is not a neutral default here. Somebody in their
+ * fifties reaches this page — a parent checking it before sending it to their
+ * child is a real and identified visitor — and 45 turned that into a dead
+ * page. 70 is where a career-shaped model genuinely stops describing anyone,
+ * and past it the tool now says so instead of going quiet.
+ */
+const MIN_AGE = 18
+const MAX_AGE = 70
+
 function BandRow({
   bands,
   value,
@@ -216,7 +233,32 @@ export function MoneyAgeTool() {
 
   const ageNum = useMemo(() => {
     const n = parseInt(age, 10)
-    return Number.isFinite(n) && n >= 18 && n <= 45 ? n : null
+    return Number.isFinite(n) && n >= MIN_AGE && n <= MAX_AGE ? n : null
+  }, [age])
+
+  /**
+   * Why an age was rejected, so the page never just stops.
+   *
+   * The upper bound used to be 45, and an age outside it produced null — which
+   * meant the next question simply did not render. Type 55 and the tool went
+   * quiet: no message, nothing to click, nothing to correct. Silence is the
+   * worst available response to an answer that looked perfectly valid to the
+   * person who typed it.
+   *
+   * Held back until two characters are present. On the way to "55" the field
+   * passes through "5", and flashing "18 and over" under somebody's cursor
+   * mid-keystroke is its own kind of broken.
+   */
+  const ageError = useMemo(() => {
+    const raw = age.trim()
+    if (raw.length < 2) return null
+    const n = parseInt(raw, 10)
+    if (!Number.isFinite(n)) return null
+    if (n < MIN_AGE) return `WeLeap is built for people ${MIN_AGE} and over.`
+    if (n > MAX_AGE) {
+      return `This one is built around a working career, so it stops describing anyone much past ${MAX_AGE}. The other calculators still work.`
+    }
+    return null
   }, [age])
 
   const markEngaged = useCallback((field: string) => {
@@ -371,8 +413,8 @@ export function MoneyAgeTool() {
                 id="ma-age"
                 type="number"
                 inputMode="numeric"
-                min={18}
-                max={45}
+                min={MIN_AGE}
+                max={MAX_AGE}
                 placeholder="e.g. 27"
                 value={age}
                 onChange={(e) => {
@@ -381,7 +423,14 @@ export function MoneyAgeTool() {
                   setEditing(null)
                 }}
                 className="mt-2 max-w-[9rem] border-[#D1D5DB] text-lg"
+                aria-describedby={ageError ? 'ma-age-error' : undefined}
+                aria-invalid={ageError ? true : undefined}
               />
+              {ageError && (
+                <p id="ma-age-error" role="status" className="mt-2 text-sm text-gray-700">
+                  {ageError}
+                </p>
+              )}
             </>
           )}
         </CardContent>
