@@ -114,3 +114,58 @@ describe('computeCapitalRouting — the buffer against real savings', () => {
     expect(r.efAlloc).toBe(0)
   })
 })
+
+describe('retirement contributions respect the legal maximum', () => {
+  const base = {
+    postTaxSavingsMonthly: 4000,
+    efCurrent: 999_999, // buffer funded, so nothing diverts there
+    unlock: { essentialMonthly: 3000, carriesBalance: false, retirementFocus: 'medium' as const },
+  }
+
+  it('caps the retirement line at the room available', () => {
+    // Without a ceiling this split by preference alone and recommended several
+    // times the legal maximum. On $140,000 the old routing produced $30,073 a
+    // year into "Retirement" against an IRA limit of $7,500.
+    const r = computeCapitalRouting({ ...base, retirementHeadroomAnnual: 12_000 })
+    expect(r.retirementAlloc).toBeCloseTo(1000, 2)
+    expect(r.retirementCapped).toBe(true)
+  })
+
+  it('moves the overflow to brokerage rather than losing it', () => {
+    // The money is still there to invest; it just cannot go somewhere
+    // sheltered this year. A plan that quietly dropped it would be worse than
+    // one that never capped.
+    const capped = computeCapitalRouting({ ...base, retirementHeadroomAnnual: 12_000 })
+    const uncapped = computeCapitalRouting(base)
+    const total = (r: typeof capped) =>
+      r.efAlloc + r.debtAlloc + r.retirementAlloc + r.brokerageAlloc
+    expect(total(capped)).toBeCloseTo(total(uncapped), 2)
+    expect(capped.brokerageAlloc).toBeGreaterThan(uncapped.brokerageAlloc)
+  })
+
+  it('does not cap when there is room to spare', () => {
+    const r = computeCapitalRouting({ ...base, retirementHeadroomAnnual: 200_000 })
+    const uncapped = computeCapitalRouting(base)
+    expect(r.retirementAlloc).toBeCloseTo(uncapped.retirementAlloc, 2)
+    expect(r.retirementCapped).toBe(false)
+  })
+
+  it('stays uncapped when the room is unknown, so an old caller is unchanged', () => {
+    // Omitted means unknown. A caller that cannot compute headroom must get the
+    // behaviour it always got rather than a silently different plan.
+    const r = computeCapitalRouting(base)
+    expect(r.retirementCapped).toBe(false)
+    expect(r.retirementAlloc).toBeGreaterThan(0)
+  })
+
+  it('sends everything to brokerage when there is no room at all', () => {
+    // Someone already at both limits. Retirement is zero and nothing is lost.
+    const r = computeCapitalRouting({ ...base, retirementHeadroomAnnual: 0 })
+    expect(r.retirementAlloc).toBe(0)
+    expect(r.retirementCapped).toBe(true)
+    expect(r.efAlloc + r.debtAlloc + r.retirementAlloc + r.brokerageAlloc).toBeCloseTo(
+      base.postTaxSavingsMonthly,
+      2
+    )
+  })
+})

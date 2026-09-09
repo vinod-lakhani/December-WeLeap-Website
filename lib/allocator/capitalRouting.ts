@@ -32,6 +32,21 @@ export interface CapitalRoutingInputs {
    * "your buffer is done, all of it goes to debt".
    */
   efCurrent?: number;
+
+  /**
+   * Annual room left in tax-advantaged retirement accounts, in dollars.
+   *
+   * Without it this function had no idea what the law allows and split the
+   * surplus by percentage alone — so on $140,000 it routed $30,073 a year to
+   * "Retirement", four times the IRA limit, with nothing to say where the
+   * money could actually go. Money above the room does not vanish; it moves to
+   * the brokerage line, which has no limit.
+   *
+   * Omitted means unknown, and unknown means uncapped — the previous
+   * behaviour, kept so a caller that cannot compute it is not silently handed
+   * a different plan.
+   */
+  retirementHeadroomAnnual?: number;
   unlock: AllocatorUnlockData | null;
 }
 
@@ -39,7 +54,7 @@ export interface CapitalRoutingInputs {
  * Routing: efAlloc = 40% until target; debtAlloc = 40% of remaining if high-APR debt; split rest.
  */
 export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRoutingResult {
-  const { postTaxSavingsMonthly, efCurrent = 0, unlock } = inputs;
+  const { postTaxSavingsMonthly, efCurrent = 0, retirementHeadroomAnnual, unlock } = inputs;
   const essentialsMonthly = unlock?.essentialMonthly ?? 0;
   const efTarget = essentialsMonthly > 0 ? essentialsMonthly * EF_TARGET_MONTHS : 0;
 
@@ -61,8 +76,23 @@ export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRout
 
   const focus = unlock?.retirementFocus ?? 'medium';
   const split = getRetirementBrokerageSplit(focus);
-  const retirementAlloc = remaining2 * (split.retirementPct / 100);
-  const brokerageAlloc = remaining2 * (split.brokeragePct / 100);
+  const uncappedRetirement = remaining2 * (split.retirementPct / 100);
+
+  /**
+   * The split decides the PREFERENCE; the law decides the ceiling.
+   *
+   * A percentage split is the right way to express "retirement before taxable
+   * investing", and the wrong way to express it on its own, because there is a
+   * point past which no amount of preference makes a contribution legal. The
+   * overflow goes to the brokerage line rather than disappearing — it is still
+   * money to invest, it just cannot go into a sheltered account this year.
+   */
+  const headroomMonthly =
+    retirementHeadroomAnnual != null ? Math.max(0, retirementHeadroomAnnual) / 12 : Infinity;
+  const retirementAlloc = Math.min(uncappedRetirement, headroomMonthly);
+  const retirementCapped = retirementAlloc < uncappedRetirement - 0.005;
+  const brokerageAlloc =
+    remaining2 * (split.brokeragePct / 100) + (uncappedRetirement - retirementAlloc);
 
   // Reported rather than left to each caller to re-derive. Three surfaces need
   // "is the buffer done" and two need the gap; computing it here keeps the
@@ -83,6 +113,7 @@ export function computeCapitalRouting(inputs: CapitalRoutingInputs): CapitalRout
     debtAlloc,
     retirementAlloc,
     brokerageAlloc,
+    retirementCapped,
     efTarget,
     efCurrent,
     efGap,

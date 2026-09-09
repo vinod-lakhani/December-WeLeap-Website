@@ -7,7 +7,7 @@ import type { Leap, AllocatorUnlockData, AllocatorPrefillForLeaps, FlowSummary, 
 import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 import { computeAnnualContributionIncrease401k } from '@/lib/leapImpact/trajectory';
 import { compute401kStatus } from '@/lib/leapImpact/leverPriority';
-import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START } from './constants';
+import { DEFAULT_MATCH_RATE_PCT, DEFAULT_MATCH_CAP_PCT, HSA_LIMIT_SINGLE, HSA_LIMIT_FAMILY, EF_TARGET_MONTHS, HSA_RECOMMENDED_START, K401_EMPLOYEE_CAP, IRA_LIMIT } from './constants';
 import { computeCapitalRouting } from './capitalRouting';
 import { formatPct } from '@/lib/format';
 
@@ -128,9 +128,39 @@ export function buildLeaps(
       ? Math.max(0, options.monthlyCapitalAvailable)
       : Math.max(0, netMonthly - essentialsMonthly);
 
+  /**
+   * How much tax-advantaged retirement room is actually left this year.
+   *
+   * Two buckets, and both are needed. The 401(k) target above is a
+   * RECOMMENDATION, not the legal maximum — somebody following it at 10% of
+   * $220,000 still has $2,500 of employee deferral available, reachable by
+   * raising the payroll election. The IRA sits on top of that and is where
+   * post-tax surplus most naturally goes.
+   *
+   * Without this the routing had no ceiling and split the surplus on
+   * preference alone, recommending several times the legal maximum into
+   * "Retirement" for anyone with a healthy surplus. See capitalRouting.
+   *
+   * Both figures are the BASE limits. The plan never asks anyone's age, so it
+   * cannot know whether the catch-up provisions at 50+ apply, and understating
+   * the room sends a little extra to a brokerage account — which anybody may
+   * do — while overstating it recommends a contribution somebody is not
+   * allowed to make.
+   */
+  const k401TargetAnnual = (salaryAnnual * recommended401k) / 100;
+  const retirementHeadroomAnnual =
+    salaryAnnual > 0
+      ? Math.max(0, K401_EMPLOYEE_CAP - k401TargetAnnual) + IRA_LIMIT
+      : undefined;
+
   const routing: CapitalRoutingResult | null =
     postTaxSavingsMonthly > 0 || essentialsMonthly > 0 || (options?.monthlyCapitalAvailable != null && options.monthlyCapitalAvailable >= 0)
-      ? computeCapitalRouting({ postTaxSavingsMonthly, efCurrent: cashOnHand, unlock })
+      ? computeCapitalRouting({
+          postTaxSavingsMonthly,
+          efCurrent: cashOnHand,
+          retirementHeadroomAnnual,
+          unlock,
+        })
       : null;
 
   // 1) 401(k) Match (payroll)
