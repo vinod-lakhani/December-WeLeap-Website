@@ -124,6 +124,12 @@ export interface AllocatorPrefillForLeaps {
   current401kPct: number;
   /** Recommended 401k % to capture full match = matchCapPct when match enabled. */
   recommended401kPct: number;
+  /**
+   * Age, when the visitor gave it. Optional throughout: it changes only the
+   * contribution limits, and undefined means the base ones — the answer this
+   * gave before the plan asked.
+   */
+  age?: number | null;
   estimatedNetMonthlyIncome?: number;
   leapDelta30yr?: number;
   /** HSA eligible (from allocator step or URL). */

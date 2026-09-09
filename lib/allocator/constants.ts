@@ -36,6 +36,43 @@ export const K401_EMPLOYEE_CAP = 24500;
  */
 export const IRA_LIMIT = 7500;
 
+/**
+ * Catch-up contributions, and the odd shape they have in 2026.
+ *
+ * All from IRS Notice 2025-67. The 60-to-63 band is not a typo and not
+ * cumulative: SECURE 2.0 gives those four ages a LARGER catch-up than 50-plus,
+ * and at 64 it drops back to the standard one. Encoding that as a lookup
+ * rather than a comparison is the only way it stays right.
+ *
+ *   under 50   401(k) $24,500   IRA $7,500
+ *   50 to 59   401(k) $32,500   IRA $8,600
+ *   60 to 63   401(k) $35,750   IRA $8,600
+ *   64 plus    401(k) $32,500   IRA $8,600
+ */
+export const K401_CATCHUP_50 = 8000;
+export const K401_CATCHUP_60_TO_63 = 11250;
+export const IRA_CATCHUP_50 = 1100;
+
+/**
+ * The 401(k) employee deferral limit for someone of this age.
+ *
+ * Age is optional throughout the plan, and undefined means the base limit —
+ * the same answer the tool gave before it asked. Understating the limit routes
+ * a little extra to a brokerage account, which anyone may do; overstating it
+ * recommends a contribution somebody is not allowed to make.
+ */
+export function k401LimitForAge(age?: number | null): number {
+  if (age == null || age < 50) return K401_EMPLOYEE_CAP;
+  if (age >= 60 && age <= 63) return K401_EMPLOYEE_CAP + K401_CATCHUP_60_TO_63;
+  return K401_EMPLOYEE_CAP + K401_CATCHUP_50;
+}
+
+/** The IRA limit for someone of this age. One catch-up, no 60-to-63 band. */
+export function iraLimitForAge(age?: number | null): number {
+  if (age == null || age < 50) return IRA_LIMIT;
+  return IRA_LIMIT + IRA_CATCHUP_50;
+}
+
 /** HSA max contribution, self-only. */
 export const HSA_LIMIT_SINGLE = 4400;
 

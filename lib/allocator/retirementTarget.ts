@@ -23,7 +23,7 @@
  * a 20% total, which is a different (and unstated) rule.
  */
 
-import { K401_EMPLOYEE_CAP, RETIREMENT_TARGET_PCT_OF_GROSS } from './constants'
+import { RETIREMENT_TARGET_PCT_OF_GROSS, k401LimitForAge } from './constants'
 import { computeNetTakeHomeMonthly } from './takeHome'
 
 export interface RetirementTargetInputs {
@@ -44,6 +44,15 @@ export interface RetirementTargetInputs {
   essentialsMonthly?: number
   stateCode?: string
   currentHsaAnnual?: number
+  /**
+   * Age, when known, so the catch-up limits apply.
+   *
+   * Optional everywhere: undefined means the base limit, which is the answer
+   * this returned before the plan asked. Only binds for someone contributing
+   * near the maximum, which is exactly the person for whom being wrong by
+   * $8,000 of allowance matters.
+   */
+  age?: number | null
 }
 
 /** Employer contribution as a percentage of gross, once the match is captured. */
@@ -83,10 +92,17 @@ function rulePct(inputs: RetirementTargetInputs): number {
   return Math.max(0, RETIREMENT_TARGET_PCT_OF_GROSS - employerShare)
 }
 
-/** The IRS employee deferral limit, as a percentage of this salary. */
-function irsCeilingPct(salaryAnnual: number): number {
+/**
+ * The IRS employee deferral limit, as a percentage of this salary.
+ *
+ * Age-aware: at 50 the limit rises by the catch-up, and between 60 and 63 by
+ * more again. Someone at 62 on $120,000 can defer 29.8% rather than 20.4%, and
+ * capping them at the base figure would have been the tool telling them the law
+ * forbids something it permits.
+ */
+function irsCeilingPct(salaryAnnual: number, age?: number | null): number {
   if (salaryAnnual <= 0) return 100
-  return Math.min((K401_EMPLOYEE_CAP / salaryAnnual) * 100, 100)
+  return Math.min((k401LimitForAge(age) / salaryAnnual) * 100, 100)
 }
 
 /**
@@ -133,7 +149,7 @@ function applySolvencyFloor(inputs: RetirementTargetInputs, ceiling: number, flo
  */
 export function computeRetirementTargetPct(inputs: RetirementTargetInputs): number {
   const floor = floorPct(inputs)
-  const ceiling = Math.max(floor, Math.min(rulePct(inputs), irsCeilingPct(inputs.salaryAnnual)))
+  const ceiling = Math.max(floor, Math.min(rulePct(inputs), irsCeilingPct(inputs.salaryAnnual, inputs.age)))
   return applySolvencyFloor(inputs, ceiling, floor)
 }
 
