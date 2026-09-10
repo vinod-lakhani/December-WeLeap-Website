@@ -22,7 +22,12 @@ import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnair
 import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
-import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants';
+import {
+  computeOfferValue,
+  MARKET_PTO_DAYS,
+  type OfferInputs,
+  type TaxResult,
+} from '@/lib/offer/calculate';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
@@ -52,14 +57,6 @@ const US_STATES = [
 ];
 
 
-const MARKET_PTO_DAYS = 15;
-
-interface TaxResult {
-  netIncomeAnnual: number;
-  federalTaxAnnual: number;
-  stateTaxAnnual: number;
-  ficaTaxAnnual: number;
-}
 
 const fc = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(Math.abs(n)));
@@ -447,63 +444,24 @@ export function OfferAnalysisTool() {
   }, [salary, jobState]);
 
   // ── Calculations ─────────────────────────────────────────────────────────────
-  const calc = useMemo(() => {
-    if (salary <= 0) return null;
-    const takeHomeMonthly = taxResult ? Math.round(taxResult.netIncomeAnnual / 12) : Math.round(salary * 0.72 / 12);
+  /**
+   * The fourteen fields the value of an offer actually depends on, gathered out
+   * of the component's own state.
+   *
+   * They stay as separate useState scalars up here because every one of them is
+   * bound to its own input, and collapsing them into an object would mean a new
+   * handler for each. The object exists only at the boundary, which is also the
+   * shape a second offer will arrive in.
+   */
+  const offerInputs = useMemo<OfferInputs>(() => ({
+    salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
+    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+  }), [
+    salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
+    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+  ]);
 
-    // Effective tax rate on the base salary — used to approximate tax on bonus/equity.
-    // RSUs, bonuses, and ESPP are taxed as ordinary income (supplemental withholding),
-    // so applying the same effective rate is a reasonable estimate.
-    const effectiveTaxRate = taxResult
-      ? (taxResult.federalTaxAnnual + taxResult.stateTaxAnnual + taxResult.ficaTaxAnnual) / salary
-      : 0.28; // fallback ~28% when no API result yet
-
-    const annualBonus = salary * bonusPct / 100;
-    /**
-     * Capped at the IRS employee deferral limit.
-     *
-     * An employer matches what the employee actually defers, and above the cap
-     * they cannot defer any more — so the match stops growing. Without this the
-     * formula is salary x cap% x rate% with nothing to stop it, which held up
-     * only because the defaults are 100% up to 6% and 6% of a salary is rarely
-     * near the limit.
-     *
-     * A real benefits guide broke it: "Company match is $0.30 on every $1
-     * employee deferral up to 60% of salary." Read faithfully — and it is
-     * faithful, those are the document's words — that is 18% of pay in employer
-     * match, $27,000 on a $150,000 salary against a true maximum of $7,350.
-     * The same guard already exists in lib/hero/matchLeap.ts for the homepage.
-     */
-    const matchedDeferral = Math.min(salary * (matchUpToPct / 100), K401_EMPLOYEE_CAP);
-    const annual401kMatch = matchedDeferral * (matchRatePct / 100);
-    const annualHsa = hsaMonthly * 12;
-    const annualHealthcare = -(healthcarePremium * 12);
-    const annualEspp = showEspp ? Math.round(salary * esppContrib / 100 * esppDiscount / 100) : 0;
-
-    // totalPackage is pre-tax total comp — industry standard for comp discussions
-    const totalPackage = salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare + rsuAnnual + annualEspp;
-    const ptoValue = Math.round((salary / 260) * Math.max(0, ptoDays - MARKET_PTO_DAYS));
-
-    // After-tax values for wealth-building — bonus and equity are taxed before you keep them
-    const annualBonusAfterTax = annualBonus * (1 - effectiveTaxRate);
-    const annualRsuAfterTax   = rsuAnnual   * (1 - effectiveTaxRate);
-    const annualEsppAfterTax  = annualEspp  * (1 - effectiveTaxRate);
-
-    // Monthly wealth = after-tax savings rate + employer contributions (pre-tax benefit) + after-tax equity
-    const monthlyWealth = Math.round(takeHomeMonthly * savingsPct / 100)
-      + (annual401kMatch + annualHsa) / 12
-      + (annualBonusAfterTax + annualRsuAfterTax + annualEsppAfterTax) / 12;
-
-    const nw40yr = Math.round(monthlyWealth * ((Math.pow(1 + 0.07 / 12, 480) - 1) / (0.07 / 12)));
-    const rentPct = rentMonthly > 0 && takeHomeMonthly > 0 ? Math.round(rentMonthly / takeHomeMonthly * 100) : null;
-
-    return {
-      takeHomeMonthly, effectiveTaxRate,
-      annualBonus, annual401kMatch, annualHsa, annualHealthcare, annualEspp,
-      annualBonusAfterTax, annualRsuAfterTax, annualEsppAfterTax,
-      ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
-    };
-  }, [salary, taxResult, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium, rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct]);
+  const calc = useMemo(() => computeOfferValue(offerInputs, taxResult), [offerInputs, taxResult]);
 
   // ── Market rent data load ────────────────────────────────────────────────────
   useEffect(() => {
