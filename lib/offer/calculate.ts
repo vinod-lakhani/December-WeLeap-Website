@@ -98,6 +98,21 @@ export interface OfferValue {
  *   degrades rather than failing: a flat 72% take-home and a 28% effective rate
  *   stand in, so the package number means something before the call returns.
  */
+/**
+ * A priced offer with nothing in it.
+ *
+ * computeOfferValue returns null below a salary, which is right for the single
+ * offer — there is no result to show. The comparison needs the opposite: its
+ * table is the input for the second offer, so the table has to render before
+ * that offer has a salary to price. This fills the column until it does.
+ */
+export const EMPTY_OFFER_VALUE: OfferValue = {
+  takeHomeMonthly: 0, effectiveTaxRate: 0,
+  annualBonus: 0, annual401kMatch: 0, annualHsa: 0, annualHealthcare: 0, annualEspp: 0,
+  annualBonusAfterTax: 0, annualRsuAfterTax: 0, annualEsppAfterTax: 0,
+  ptoValue: 0, totalPackage: 0, monthlyWealth: 0, nw40yr: 0, rentPct: null,
+}
+
 export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): OfferValue | null {
   const {
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,

@@ -262,26 +262,26 @@ export default function OfferAnalysisPage() {
               How do you compare two job offers?
             </h2>
             <p className="mb-6 text-base leading-relaxed text-subtle md:text-lg">
-              The calculator takes one offer at a time. Run it twice — once per offer, with each one&apos;s own state
-              and city — and write down four numbers each time.
+              Add the second offer above and the calculator does it for you, priced side by side. These are the four
+              things it puts next to each other, and why each one matters.
             </p>
             <ol className="space-y-5">
               {[
                 {
                   t: 'Total package, not base salary',
-                  d: 'Enter both offers in full, including the bonus target, the match terms and the annual vesting value of any equity. Offers quoted a few thousand apart routinely land closer together once the match and bonus are priced, and they routinely swap places.',
+                  d: 'Both offers are priced in full — bonus target, match terms, employer HSA, the annual vesting value of any equity, and paid time off above the market fifteen days. Offers quoted a few thousand apart routinely land closer together once all of that is counted, and they routinely swap places.',
                 },
                 {
                   t: 'Monthly take-home in each offer’s own state',
-                  d: 'Set the work state for each. Nine states levy no income tax on wages and the highest-tax states sit at the other end of the range, so two identical salaries do not produce identical paycheques.',
+                  d: 'Each offer is taxed in its own state. Nine states levy no income tax on wages and the highest-tax states sit at the other end of the range, so two identical salaries do not produce identical paycheques.',
                 },
                 {
                   t: 'What is left after rent in each city',
-                  d: 'Take monthly take-home and subtract a realistic rent for where you would actually live. This is the figure that decides how the two offers feel to live on, and it is the one a base-salary comparison never shows.',
+                  d: 'Monthly take-home minus market rent for each city. This is the figure that decides how the two offers feel to live on, and it is the one a base-salary comparison never shows — the bigger package is often not the one that leaves you more.',
                 },
                 {
                   t: 'Then weigh what has no dollar value',
-                  d: 'Vesting cliffs, whether the private-company equity is worth anything, how much of the PTO you would really take, the commute, and how much you want the job. The calculator deliberately leaves equity as its own line rather than folding it into the total, so the comparison stays honest when one offer is mostly paper.',
+                  d: 'Vesting cliffs, whether the private-company equity is worth anything, how much of the PTO you would really take, the commute, and how much you want the job. Equity and time off are counted, but each keeps its own line rather than disappearing into a single number, so an offer that is mostly paper is legible as one.',
                 },
               ].map((step, i) => (
                 <li key={step.t} className="flex gap-4 md:gap-5">
