@@ -140,70 +140,73 @@ button[aria-label*="Play"],
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Fix mobile date input styling - ensure consistent appearance */
+/* Date inputs.
+   Chrome and Safari render `input[type=date]` in their own font, at their own
+   colour, with their own idea of where the calendar glyph goes — so a date
+   field sits visibly apart from the text inputs beside it. These rules put it
+   back in line with the shared Input component.
+
+   What was here before made that worse in three ways you could see on
+   /first-paycheck-setup, where Start Date sits beside Salary in a three-column
+   grid:
+
+   - It FORCED system-ui, so Start Date rendered in a different typeface from
+     every field next to it, and hardcoded #111827 against the #3A3F4B the
+     others inherit.
+   - Between the wider font and 0.25em of padding on each "/" separator, the
+     content outgrew its own box: "09 / 25 / 2026" rendered as "09 / 25 / 202",
+     with the last digit cut off at the border.
+   - The calendar glyph was `position: absolute; right: 0.75rem` inside an
+     input that is not a positioned ancestor, so it resolved against the page
+     instead. It did not sit at the right edge of the field — it left the card
+     altogether and drew itself against the right edge of the window.
+
+   Nothing here is !important now: the Input component's own px-3 should win,
+   which is the whole point. Verify changes with a screenshot rather than
+   getComputedStyle — these -webkit- pseudo-elements report the host input's
+   values, not their own. */
 input[type="date"] {
-  text-align: left !important;
-  padding-right: 2.5rem !important;
-  color: #111827 !important;
-  /* Force consistent date format display */
-  font-family: system-ui, -apple-system, sans-serif !important;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  /* Some mobile Safari builds centre the date text; the fields beside it
+     start at the left edge. */
+  text-align: left;
 }
 
-@media (min-width: 768px) {
-  input[type="date"] {
-    padding-right: 0.75rem !important;
-  }
-}
-
-/* Calendar picker icon - desktop webkit browsers */
+/* Left in flow at the right edge, where the browser puts it. Dimmed to sit
+   with the field rather than shout, and lifted on hover — the whole field
+   opens the picker via showPicker(), but the glyph is still the affordance
+   somebody looks for. */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  position: absolute;
-  right: 0.75rem;
   cursor: pointer;
-  opacity: 1 !important;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  margin: 0;
+  opacity: 0.45;
+  transition: opacity 150ms ease;
 }
 
-/* Mobile browser calendar icon - ensure visibility */
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 0.75;
+}
+
+/* The spinner and the clear "x" both crowd a 40px-tall field, and the clear
+   button in particular is a destructive control a thumb finds by accident. */
 input[type="date"]::-webkit-inner-spin-button,
 input[type="date"]::-webkit-clear-button {
   display: none;
   -webkit-appearance: none;
 }
 
-/* Ensure date fields are properly styled */
 input[type="date"]::-webkit-datetime-edit {
-  padding-right: 0;
-  color: #111827;
+  padding: 0;
 }
 
 input[type="date"]::-webkit-datetime-edit-fields-wrapper {
-  padding-right: 0;
+  padding: 0;
 }
 
+/* The "/" separators, held back so the numbers read first. */
 input[type="date"]::-webkit-datetime-edit-text {
-  color: #111827;
-  padding: 0 0.25em;
-}
-
-input[type="date"]::-webkit-datetime-edit-month-field,
-input[type="date"]::-webkit-datetime-edit-day-field,
-input[type="date"]::-webkit-datetime-edit-year-field {
-  color: #111827;
-  padding: 0 0.25em;
-}
-
-/* Mobile iOS Safari - force icon display */
-@supports (-webkit-touch-callout: none) {
-  input[type="date"] {
-    padding-right: 2.5rem !important;
-  }
-  
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    opacity: 1 !important;
-    display: block !important;
-  }
+  padding: 0 0.15em;
+  opacity: 0.5;
 }

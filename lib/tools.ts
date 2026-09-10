@@ -72,9 +72,6 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: "One number for where you stand. Four taps, no account, no bank connection.",
     cta: "Find my money age →",
     href: "/whats-my-money-age",
-    // sparkles is shared with one other card. Every icon in this set is
-    // already spoken for and adding an asset is out of scope for this PR;
-    // trophy would have been the third use of the same image.
     icon: "/images/tool-icons/sparkles.png",
     slug: "money_age",
     presentDay: true,
@@ -126,7 +123,10 @@ export const FREE_TOOLS: FreeTool[] = [
     // stayed "allocator": it is the analytics id, and every event and saved
     // report keyed on it would otherwise lose its own history.
     href: "/how-should-i-split-my-paycheck",
-    icon: "/images/tool-icons/rocket.png",
+    // Was a second rocket, which put two identical icons side by side in the
+    // first row of /tools. A compass says the thing this tool alone does —
+    // point at the one move worth making first.
+    icon: "/images/tool-icons/compass.png",
     slug: "allocator",
     presentDay: true,
   },
@@ -245,7 +245,9 @@ export const FREE_TOOLS: FreeTool[] = [
     // output of the projection rather than the subject, so the breadcrumb leaf
     // named a concept the URL, the H1 and the FAQ had all stopped using.
     href: "/what-is-saving-monthly-worth",
-    icon: "/images/tool-icons/sparkles.png",
+    // Was a second sparkles, sharing with Money Age. A seedling is the tool's
+    // actual subject: a small amount, left alone, thirty years on.
+    icon: "/images/tool-icons/seedling.png",
     slug: "net_worth_impact",
     presentDay: false,
   },
