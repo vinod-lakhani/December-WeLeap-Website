@@ -144,10 +144,25 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
     ? Math.round(((salary * esppContrib) / 100) * (esppDiscount / 100))
     : 0
 
-  // totalPackage is pre-tax total comp — industry standard for comp discussions
-  const totalPackage =
-    salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare + rsuAnnual + annualEspp
+  // Leave above market is compensation: days you are paid for and do not work.
+  // Valued at salary, and only the days above the market baseline — matching
+  // fifteen days is the going rate, not a benefit.
   const ptoValue = Math.round((salary / WORKING_DAYS) * Math.max(0, ptoDays - MARKET_PTO_DAYS))
+
+  /**
+   * Pre-tax total comp — the industry-standard figure for a comp discussion,
+   * and everything the result screen lists above it.
+   *
+   * PTO used to be left out while the row for it sat in that list, so the lines
+   * on screen did not add up to the total printed under them: a $100,000 offer
+   * with 25 days showed a $3,846 PTO row and a $116,000 total, which is
+   * $119,846 of rows. Equity has always counted. Both belong here — they are
+   * both real, they are both already shown, and a total that silently drops one
+   * of its own line items is worse than either convention.
+   */
+  const totalPackage =
+    salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare +
+    rsuAnnual + annualEspp + ptoValue
 
   // After-tax values for wealth-building — bonus and equity are taxed before
   // you keep them

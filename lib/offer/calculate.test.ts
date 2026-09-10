@@ -89,19 +89,39 @@ describe('computeOfferValue', () => {
       expect(v.annualHealthcare).toBe(-2_400)
     })
 
-    it('leaves PTO out of the total, and values it only above market', () => {
+    it('values PTO only above market, and counts it', () => {
       const atMarket = computeOfferValue(offer(), taxAt(100_000))!
       expect(atMarket.ptoValue).toBe(0)
 
+      // Matching the market baseline is the going rate, not a benefit, and
+      // neither is falling short of it — the value floors at zero rather than
+      // going negative and quietly shrinking the package.
       const below = computeOfferValue(offer({ ptoDays: MARKET_PTO_DAYS - 5 }), taxAt(100_000))!
       expect(below.ptoValue).toBe(0)
+      expect(below.totalPackage).toBe(atMarket.totalPackage)
 
       const above = computeOfferValue(offer({ ptoDays: MARKET_PTO_DAYS + 5 }), taxAt(100_000))!
       // Five days at 100,000 / 260 working days.
       expect(above.ptoValue).toBe(Math.round((100_000 / 260) * 5))
+      expect(above.totalPackage).toBe(atMarket.totalPackage + above.ptoValue)
+    })
 
-      // PTO is shown beside the package, never inside it.
-      expect(above.totalPackage).toBe(atMarket.totalPackage)
+    it('adds up to the rows the result screen lists', () => {
+      /**
+       * The regression this guards: the PTO row rendered in the list above the
+       * total while the total left it out, so the lines on screen did not sum
+       * to the figure printed under them.
+       */
+      const v = computeOfferValue(
+        offer({ hsaMonthly: 100, healthcarePremium: 200, rsuAnnual: 25_000, showEspp: true, ptoDays: 25 }),
+        taxAt(100_000),
+      )!
+
+      const rows = [
+        100_000, v.annualBonus, v.annual401kMatch, v.annualHsa,
+        v.annualHealthcare, 25_000, v.annualEspp, v.ptoValue,
+      ]
+      expect(rows.reduce((a, b) => a + b, 0)).toBe(v.totalPackage)
     })
 
     it('counts the ESPP only when the offer has one', () => {
