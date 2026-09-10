@@ -33,7 +33,11 @@ export const metadata: Metadata = {
 export default function ToolsPage() {
   return (
     <PageShell className="bg-canvas">
-      <Section variant="canvas" isHero className="text-center">
+      {/* pb trimmed from the shared hero's pb-16 md:pb-20 to roughly pay for
+          the ordering line below, so adding it does not push the second row of
+          cards under the fold. There was ~160px between the hero copy and the
+          grid; it can spare this. */}
+      <Section variant="canvas" isHero className="pb-10 text-center md:pb-12">
         <Container maxWidth="narrow">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[13.5px] font-semibold text-brand-700">
             Free · No account · No email wall
@@ -50,6 +54,19 @@ export default function ToolsPage() {
 
       <Section variant="canvas" className="pt-0">
         <Container maxWidth="wide">
+          {/* FREE_TOOLS is ordered as a life sequence — offer letter, then the
+              benefits forms, then the plan, then rent, then the buffer. On a
+              3x3 grid with no labels that reads as an unordered list, so a
+              visitor who is not job-hunting meets two cards they cannot use
+              and has no reason to think the third row is any different.
+
+              One line is the cheap version of section headers: it makes the
+              sequence legible for ~24px, where three headers would cost ~180px
+              and split the grid into rows of 3, 4 and 2. */}
+          <p className="mx-auto mb-6 max-w-3xl text-center text-[14.5px] leading-relaxed text-subtle">
+            Listed roughly in the order you&rsquo;ll need them &mdash; offer letter, first paycheck, then everything after.
+          </p>
+
           {/* Centred wrap rather than a grid: an odd count in three columns
               left an orphan hanging off the left of the last row. This centres
               the trailing row and survives the count changing again. */}
