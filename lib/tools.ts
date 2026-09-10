@@ -18,26 +18,34 @@
  * joinable funnel rather than two unrelated event streams.
  *
  * ORDER IS LOAD-BEARING, on three surfaces at once: the /tools grid, the
- * footer column, and — through PRESENT_DAY_TOOLS — the homepage. From the C2
- * session: "I'd have seen the first two and stopped exploring." So the first
- * two entries are doing most of the work and the rest are a long tail.
+ * footer column, and the /create_link destination list. From the C2 session:
+ * "I'd have seen the first two and stopped exploring." So the first two
+ * entries are doing most of the work and the rest are a long tail.
  *
- * Ordered by how little a stranger has to have ready, not by how much each
- * tool does. Money Age asks an age and three taps and needs nothing looked up,
- * which makes it the cheapest thing to start and the only one whose output is
- * shareable — so it leads. Money Plan follows because it is where Money Age
- * hands off and where the product actually lives. Rent is third on reach: it
- * has the broadest search intent of the set and needs one number.
+ * The list is a life sequence, not a difficulty ramp: offer, then the benefits
+ * forms that offer turns into, then the plan for the money, then rent, then
+ * the buffer, then where all of it leaves you. /tools lays out three to a row
+ * above `sm`, so the sequence also has to survive being read in threes — and
+ * it does. Row one is the new job in the order it happens. Row two is the
+ * "am I OK" questions. Row three is debt, spending and saving.
  *
- * The tail is ordered by how hypothetical the question is. Emergency Fund and
- * Monthly Saving Impact both ask about a situation you are not in yet, which is
- * the same reason they are the two that are not `presentDay`.
+ * This replaced an ordering by how little a stranger had to have ready, which
+ * led with Money Age because it needs nothing looked up. The trade is
+ * deliberate and it is not free: Offer Letter needs an offer in hand, and
+ * First Paycheck is worthless outside a roughly 30-day enrolment window, so
+ * the two slots the C2 quote says get seen are now the two with the smallest
+ * addressable audience. What pays for it is where the traffic comes from —
+ * Money Age is the campaign front door and campaign links point straight at
+ * /whats-my-money-age, so /tools is browsed by people who already arrived,
+ * for whom intent is a better sort key than friction.
  *
  * `presentDay` marks the tools that answer a decision someone is facing right
  * now, as opposed to a projection. From the C2 research session: "offer is
  * present-day, retirement is hypothetical… I'd have seen the first two and
- * stopped exploring." The homepage leads with the present-day three for
- * exactly that reason; /tools carries the full set.
+ * stopped exploring." It no longer correlates with position, because the
+ * sequence puts Emergency Fund fifth. Nothing reads PRESENT_DAY_TOOLS today —
+ * the homepage stopped rendering these cards — so the flag is documentation
+ * and a filter waiting for a caller, not a live ordering rule.
  */
 export interface FreeTool {
   name: string
@@ -54,26 +62,13 @@ export interface FreeTool {
 export const FREE_TOOLS: FreeTool[] = [
   {
 
-    /**
-     * The campaign front door.
-     *
-     * Present-day even though it reads like a projection: it answers a
-     * question about right now — is my money older or younger than I am —
-     * and it is the only tool here whose first screen asks for nothing a
-     * visitor has to look up. Four taps and a slider, and a number lands
-     * after the third.
-     *
-     * Deliberately does not lead with 401(k) vocabulary. The retirement
-     * machinery sits behind the slider, which is where an audience that
-     * bounces off "employer match" will still meet it.
-     */
-    name: "Money Age",
-    question: "Is my money older than I am?",
-    blurb: "One number for where you stand. Four taps, no account, no bank connection.",
-    cta: "Find my money age →",
-    href: "/whats-my-money-age",
-    icon: "/images/tool-icons/sparkles.png",
-    slug: "money_age",
+    name: "Offer Letter Analyzer",
+    question: "Is this offer as good as it sounds?",
+    blurb: "Seven numbers hide in an offer letter. See what the package is really worth.",
+    cta: "Analyze my offer →",
+    href: "/what-is-my-job-offer-worth",
+    icon: "/images/tool-icons/trophy.png",
+    slug: "offer",
     presentDay: true,
   },
   {
@@ -86,9 +81,10 @@ export const FREE_TOOLS: FreeTool[] = [
      * not reopen until the autumn, and the match never backfills — so the
      * urgency is real rather than manufactured, which is rare on a calculator.
      *
-     * Placed second, behind Money Age. Money Age asks for nothing and suits
-     * anybody; this one is the sharpest tool on the site for the small number
-     * of people in the week it describes, and worthless outside it.
+     * Placed second, behind the Offer Letter Analyzer, because that is the
+     * order the two happen in: you accept the offer, then payroll asks you for
+     * numbers. It is the sharpest tool on the site for the small number of
+     * people in the week it describes, and worthless outside it.
      */
     name: "First Paycheck Setup",
     question: "What do I type into my benefits forms?",
@@ -143,13 +139,56 @@ export const FREE_TOOLS: FreeTool[] = [
   },
   {
 
-    name: "Offer Letter Analyzer",
-    question: "Is this offer as good as it sounds?",
-    blurb: "Seven numbers hide in an offer letter. See what the package is really worth.",
-    cta: "Analyze my offer →",
-    href: "/what-is-my-job-offer-worth",
-    icon: "/images/tool-icons/trophy.png",
-    slug: "offer",
+    name: "Emergency Fund Target",
+    question: "How much do I actually need saved?",
+    blurb: "Not everyone needs six months. Find the number that fits your situation.",
+    cta: "Find my target →",
+    // Renamed from /emergency-fund-target, which was half product language:
+    // "emergency fund" is what people type, "target" is ours, and nobody
+    // searches the pair. 308 in next.config.mjs. Same reasoning as /offer,
+    // /allocator, /smart-purchase-check and /net-worth-impact above — on a site
+    // whose tools sit at flat top-level routes, the slug is the strongest
+    // on-page signal, so it now says the query the page targets, which is the
+    // question the h1 was already asking before the URL caught up.
+    //
+    // `slug` deliberately stayed "emergency_fund": it is the analytics id every
+    // event in this tool's funnel joins on, and it did not move with the URL.
+    // The per-tool events keep the old path too — `emergency_fund_page_view`
+    // via `legacyPage` on ToolPageView, the six in EmergencyFundTool via the
+    // annotated `PAGE` const there — because that is the value their history is
+    // recorded under.
+    //
+    // `name` stayed as well. It is the card label, the breadcrumb leaf, the OG
+    // eyebrow and the schema `name`, it is an accurate noun phrase for the
+    // tool, and the card renders `question` directly beneath it — a question in
+    // both slots would print near enough the same sentence twice.
+    href: "/how-much-emergency-fund-do-i-need",
+    icon: "/images/tool-icons/lock.png",
+    slug: "emergency_fund",
+    presentDay: false,
+  },
+  {
+
+    /**
+     * The campaign front door.
+     *
+     * Present-day even though it reads like a projection: it answers a
+     * question about right now — is my money older or younger than I am —
+     * and it is the only tool here whose first screen asks for nothing a
+     * visitor has to look up. Four taps and a slider, and a number lands
+     * after the third.
+     *
+     * Deliberately does not lead with 401(k) vocabulary. The retirement
+     * machinery sits behind the slider, which is where an audience that
+     * bounces off "employer match" will still meet it.
+     */
+    name: "Money Age",
+    question: "Is my money older than I am?",
+    blurb: "One number for where you stand. Four taps, no account, no bank connection.",
+    cta: "Find my money age →",
+    href: "/whats-my-money-age",
+    icon: "/images/tool-icons/sparkles.png",
+    slug: "money_age",
     presentDay: true,
   },
   {
@@ -189,36 +228,6 @@ export const FREE_TOOLS: FreeTool[] = [
     icon: "/images/tool-icons/smart-purchase.png",
     slug: "smart_purchase",
     presentDay: true,
-  },
-  {
-
-    name: "Emergency Fund Target",
-    question: "How much do I actually need saved?",
-    blurb: "Not everyone needs six months. Find the number that fits your situation.",
-    cta: "Find my target →",
-    // Renamed from /emergency-fund-target, which was half product language:
-    // "emergency fund" is what people type, "target" is ours, and nobody
-    // searches the pair. 308 in next.config.mjs. Same reasoning as /offer,
-    // /allocator, /smart-purchase-check and /net-worth-impact above — on a site
-    // whose tools sit at flat top-level routes, the slug is the strongest
-    // on-page signal, so it now says the query the page targets, which is the
-    // question the h1 was already asking before the URL caught up.
-    //
-    // `slug` deliberately stayed "emergency_fund": it is the analytics id every
-    // event in this tool's funnel joins on, and it did not move with the URL.
-    // The per-tool events keep the old path too — `emergency_fund_page_view`
-    // via `legacyPage` on ToolPageView, the six in EmergencyFundTool via the
-    // annotated `PAGE` const there — because that is the value their history is
-    // recorded under.
-    //
-    // `name` stayed as well. It is the card label, the breadcrumb leaf, the OG
-    // eyebrow and the schema `name`, it is an accurate noun phrase for the
-    // tool, and the card renders `question` directly beneath it — a question in
-    // both slots would print near enough the same sentence twice.
-    href: "/how-much-emergency-fund-do-i-need",
-    icon: "/images/tool-icons/lock.png",
-    slug: "emergency_fund",
-    presentDay: false,
   },
   {
 
