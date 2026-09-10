@@ -80,6 +80,29 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
+    /**
+     * The narrowest tool here, and deliberately so.
+     *
+     * Every other one answers a question about money. This answers a question
+     * about a FORM, in the week somebody has their employer's payroll portal
+     * open and a field asking for a percentage. The window is short, it does
+     * not reopen until the autumn, and the match never backfills — so the
+     * urgency is real rather than manufactured, which is rare on a calculator.
+     *
+     * Placed second, behind Money Age. Money Age asks for nothing and suits
+     * anybody; this one is the sharpest tool on the site for the small number
+     * of people in the week it describes, and worthless outside it.
+     */
+    name: "First Paycheck Setup",
+    question: "What do I type into my benefits forms?",
+    blurb: "Upload your offer and benefits guide. Get the exact numbers for the 401(k), HSA and W-4 boxes.",
+    cta: "Set up my first paycheck →",
+    href: "/first-paycheck-setup",
+    icon: "/images/tool-icons/rocket.png",
+    slug: "first_paycheck",
+    presentDay: true,
+  },
+  {
 
     // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
     // rate and then handed off to the allocation engine for everything else.
