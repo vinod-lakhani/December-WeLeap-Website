@@ -167,7 +167,7 @@ export function FirstPaycheckTool() {
     <div className="space-y-4">
       <Card className="border-[#D1D5DB] bg-white">
         <CardContent className="pt-6 space-y-5">
-          <OfferLetterUpload onParsed={(parsed) => applyParsed(parsed)} />
+          <OfferLetterUpload dense onParsed={(parsed) => applyParsed(parsed)} />
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-200" />
@@ -181,10 +181,21 @@ export function FirstPaycheckTool() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <Label htmlFor="fp-start" className="text-[#111827]">Start date</Label>
+              {/* Clicking the field opens the picker.
+                  A bare date input only opens on the small calendar glyph at
+                  its right edge — clicking the text does nothing, which reads
+                  as a broken control rather than as a rule about where to
+                  click. showPicker() fixes that, is guarded because it throws
+                  without a user gesture and does not exist in older Safari,
+                  and typing the date still works either way. */}
               <Input
                 id="fp-start" type="date" value={startDate}
                 onChange={(e) => { markEngaged('start_date'); setStartDate(e.target.value) }}
-                className="mt-1 border-[#D1D5DB]"
+                onClick={(e) => {
+                  const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void }
+                  try { el.showPicker?.() } catch { /* no gesture, or unsupported */ }
+                }}
+                className="mt-1 cursor-pointer border-[#D1D5DB]"
               />
             </div>
             <div>

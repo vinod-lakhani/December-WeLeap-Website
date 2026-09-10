@@ -5,10 +5,13 @@ import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
 import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
 import { CategoryComparison } from "@/components/CategoryComparison"
-
-/** "Eight" — the count, capitalised for the start of a sentence. */
-const COUNT_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
 import { ToolCard } from "@/components/ToolCard"
+
+// The word form of TOOL_COUNT, capitalised for the start of a sentence. It
+// deliberately does not name the current number: the last comment here spelled
+// it out, and went stale the next time a tool shipped — which is the exact
+// failure the derived count was added to end.
+const COUNT_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
 
 export const metadata: Metadata = {
   title: "Free money tools",
