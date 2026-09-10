@@ -167,6 +167,28 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
+  '/first-paycheck-setup': [
+    {
+      q: 'How much should I contribute to my 401(k) at my first job?',
+      a: 'At least enough to capture the full employer match, and that number is set by your employer rather than by any rule of thumb. A match is money your employer adds only in the months you contribute, and it is not paid retroactively for the months you skipped, so the cost of waiting is permanent rather than delayed. Above the match, how much to contribute depends on high-interest debt, whether you have a cash buffer, and whether an HSA is available — a wider question than this tool answers.',
+    },
+    {
+      q: 'Roth or traditional 401(k) when I am starting out?',
+      a: 'It turns on the tax bracket you land in after your contributions come out. Below the 22% bracket, Roth is usually stronger: you are probably paying the lowest rate you will ever pay, so paying it now and taking qualified withdrawals tax-free later is the better trade. At 22% and above, the deduction today usually wins. Your contributions themselves can move you across that line, which is why this tool reads the bracket after them rather than before.',
+    },
+    {
+      q: 'How long do I have to enrol in benefits at a new job?',
+      a: 'Usually about 30 days from your start date, but plans set their own windows and some are as short as two weeks. Miss it and the next guaranteed chance is open enrolment in the autumn, which can be most of a year away. The one exception is often the 401(k): many plans let you change your contribution at any time even when health elections are locked, so it is worth asking HR specifically about that rather than assuming everything is closed.',
+    },
+    {
+      q: 'Should I pick the high-deductible plan to get the HSA?',
+      a: 'An HSA is the only account that is untaxed going in, untaxed as it grows, and untaxed coming out for medical costs — and a payroll contribution also escapes FICA, which a 401(k) contribution does not. That makes a dollar into an HSA cheaper than a dollar into a 401(k). It is the right call if you are healthy and could cover the deductible from savings. If you have ongoing prescriptions or expect a procedure, the lower-deductible plan is often cheaper overall despite the worse tax treatment.',
+    },
+    {
+      q: 'Why do I need my benefits guide and not just my offer letter?',
+      a: 'The offer letter almost never contains the numbers that matter here. Across the real offer letters we tested, every one stated the salary and the work state, and none stated the 401(k) match formula, the HSA contribution or the health premium. Those live in the benefits guide, typically around page 30. That is the document this tool reads for you.',
+    },
+  ],
   '/whats-my-money-age': [
     {
       q: 'What is a money age?',

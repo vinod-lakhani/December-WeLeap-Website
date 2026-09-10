@@ -75,9 +75,21 @@ const DOC: Record<DocKind, { button: string; analytics: string; found: string }>
 export interface OfferLetterUploadProps {
   /** Called with whatever survived validation. Never called with nothing. */
   onParsed: (parsed: ParsedOffer, kind: DocKind) => void
+  /**
+   * Trims the second explanatory paragraph.
+   *
+   * On the offer tool the upload IS the story and the full explanation earns
+   * its space. On the first-paycheck tool it is a shortcut past a form that
+   * works without it, and at full height it took 450px — 55% of a phone screen
+   * — sitting above the path every visitor can actually use and pushing the
+   * first field 1.4 screens down. Same buttons, same behaviour, less prose. The
+   * sentence it drops is on that page's method section instead, so nothing is
+   * lost, only moved to where somebody is reading rather than deciding.
+   */
+  dense?: boolean
 }
 
-export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
+export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUploadProps) {
   const offerRef = useRef<HTMLInputElement>(null)
   const benefitsRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<DocKind | null>(null)
@@ -227,9 +239,14 @@ export function OfferLetterUpload({ onParsed }: OfferLetterUploadProps) {
         <span className="font-semibold text-gray-700">
           No documents to hand? Skip this and fill in the form below — it works the same either
           way.
-        </span>{' '}
-        Uploading just saves the typing. Most offer letters say nothing about the 401(k) match, HSA
-        or health premium; the benefits guide does.
+        </span>
+        {!dense && (
+          <>
+            {' '}
+            Uploading just saves the typing. Most offer letters say nothing about the 401(k)
+            match, HSA or health premium; the benefits guide does.
+          </>
+        )}
       </p>
 
       {filled !== null && (

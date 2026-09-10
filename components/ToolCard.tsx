@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * One free-tool card, shared by the homepage and /tools.
+ * One free-tool card. Rendered by /tools.
  *
  * Exists as its own client component for two reasons. /tools is a server
  * component that exports `metadata`, so it can't carry an onClick itself —
@@ -48,18 +48,34 @@ export function ToolCard({
       href={tool.href}
       onClick={() => track('tool_card_clicked', { tool: tool.slug, surface })}
       className={cn(
-        'group flex h-full flex-col rounded-card border border-hairline p-7 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift',
+        'group flex h-full flex-col rounded-card border border-hairline p-5 shadow-card transition hover:-translate-y-[3px] hover:border-lime hover:shadow-lift sm:p-7',
         background === 'canvas' ? 'bg-canvas' : 'bg-white'
       )}
     >
-      <Image src={tool.icon} alt="" width={48} height={48} className="mb-5 h-12 w-12 object-contain" />
-      <Heading className="mb-2 text-[18.5px] font-extrabold tracking-[-0.018em] text-ink">
-        {tool.name}
-      </Heading>
-      <p className="mb-3 text-[15.5px] font-semibold leading-snug text-brand-700">
+      {/* Icon above the title from `sm` up, beside it below.
+          One column of nine cards was 8.2 screens on a 375px phone, with only
+          two cards visible at a time and the last one 3.8 screens down — and
+          124px of each 297px card was a decorative icon, its margin and the
+          padding, not text. Pulling the icon onto the title's line and easing
+          the padding takes roughly 80px off every card without dropping a word
+          of the blurb. The stacked layout above `sm` is unchanged: the 3x3 grid
+          has the room, and the taller card is the better-looking one. */}
+      <div className="mb-2 flex items-center gap-3 sm:mb-0 sm:block">
+        <Image
+          src={tool.icon}
+          alt=""
+          width={48}
+          height={48}
+          className="h-9 w-9 shrink-0 object-contain sm:mb-5 sm:h-12 sm:w-12"
+        />
+        <Heading className="text-[18.5px] font-extrabold tracking-[-0.018em] text-ink sm:mb-2">
+          {tool.name}
+        </Heading>
+      </div>
+      <p className="mb-2 text-[15.5px] font-semibold leading-snug text-brand-700 sm:mb-3">
         &ldquo;{tool.question}&rdquo;
       </p>
-      <p className="mb-5 flex-1 text-[14.5px] leading-relaxed text-subtle">{tool.blurb}</p>
+      <p className="mb-4 flex-1 text-[14.5px] leading-relaxed text-subtle sm:mb-5">{tool.blurb}</p>
       <span className="text-[13.5px] font-bold text-brand-700 group-hover:underline">
         {tool.cta}
       </span>
