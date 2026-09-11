@@ -119,6 +119,8 @@ function OfferBFields({
             onChange={(n) => onChangeB({ bonusPct: n })} />
           <Field id="cmp-rsu" label="Equity, per year" value={b.rsuAnnual} placeholder="0"
             onChange={(n) => onChangeB({ rsuAnnual: n })} />
+          <Field id="cmp-signing" label="Signing bonus" value={b.signingBonus} placeholder="0"
+            onChange={(n) => onChangeB({ signingBonus: n })} />
         </div>
       </div>
 
@@ -336,6 +338,18 @@ export function OfferCompare(props: OfferCompareProps) {
                 </span>
               </td>
             </tr>
+
+            {/* Below the per-year total, never inside it: a signing bonus is
+                not what the job pays, it is what it pays to start. */}
+            {comparison.firstYear.applies && (
+              <tr className="border-b border-gray-100">
+                <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">
+                  With the signing bonus, first year only
+                </td>
+                <td className={cell}><Money value={comparison.firstYear.a} muted /></td>
+                <td className={cell}><Money value={comparison.firstYear.b} /></td>
+              </tr>
+            )}
 
             <tr>
               <td colSpan={3} className="px-3 pb-2 pt-5 text-left text-[12.5px] font-bold uppercase tracking-wide text-gray-500">

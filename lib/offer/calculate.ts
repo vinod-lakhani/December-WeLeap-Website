@@ -60,6 +60,15 @@ export interface OfferInputs {
   healthcarePremium: number
   /** Equity vesting per year, in dollars. */
   rsuAnnual: number
+  /**
+   * Signing bonus, paid once.
+   *
+   * Kept out of totalPackage on purpose. That figure is labelled "per year" and
+   * is what the offer pays every year; folding a one-off into it would make
+   * year one right and every year after it wrong, by exactly this amount. It
+   * gets its own line and its own total instead.
+   */
+  signingBonus: number
   /** Whether the offer includes an ESPP worth counting. */
   showEspp: boolean
   /** Share of salary contributed to the ESPP. */
@@ -86,7 +95,12 @@ export interface OfferValue {
   annualRsuAfterTax: number
   annualEsppAfterTax: number
   ptoValue: number
+  /** What the offer pays every year. Excludes the signing bonus. */
   totalPackage: number
+  /** totalPackage plus the signing bonus — year one, and year one only. */
+  firstYearTotal: number
+  /** The signing bonus, after tax at the effective rate. */
+  signingBonusAfterTax: number
   monthlyWealth: number
   nw40yr: number
   /** Rent as a share of take-home, or null when either is unknown. */
@@ -110,13 +124,15 @@ export const EMPTY_OFFER_VALUE: OfferValue = {
   takeHomeMonthly: 0, effectiveTaxRate: 0,
   annualBonus: 0, annual401kMatch: 0, annualHsa: 0, annualHealthcare: 0, annualEspp: 0,
   annualBonusAfterTax: 0, annualRsuAfterTax: 0, annualEsppAfterTax: 0,
-  ptoValue: 0, totalPackage: 0, monthlyWealth: 0, nw40yr: 0, rentPct: null,
+  ptoValue: 0, totalPackage: 0, firstYearTotal: 0, signingBonusAfterTax: 0,
+  monthlyWealth: 0, nw40yr: 0, rentPct: null,
 }
 
 export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): OfferValue | null {
   const {
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
     rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    signingBonus,
   } = inputs
 
   if (salary <= 0) return null
@@ -194,6 +210,9 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
 
   const monthlyRate = ANNUAL_RETURN / 12
   const nw40yr = Math.round(monthlyWealth * ((Math.pow(1 + monthlyRate, 480) - 1) / monthlyRate))
+  const signingBonusAfterTax = signingBonus * (1 - effectiveTaxRate)
+  const firstYearTotal = totalPackage + signingBonus
+
   const rentPct =
     rentMonthly > 0 && takeHomeMonthly > 0 ? Math.round((rentMonthly / takeHomeMonthly) * 100) : null
 
@@ -201,6 +220,7 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
     takeHomeMonthly, effectiveTaxRate,
     annualBonus, annual401kMatch, annualHsa, annualHealthcare, annualEspp,
     annualBonusAfterTax, annualRsuAfterTax, annualEsppAfterTax,
-    ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
+    ptoValue, totalPackage, firstYearTotal, signingBonusAfterTax,
+    monthlyWealth, nw40yr, rentPct,
   }
 }

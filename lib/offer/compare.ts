@@ -42,6 +42,13 @@ export interface Comparison {
   /** Monthly figures — living on it. */
   monthlyRows: ComparisonRow[]
   totals: { a: number; b: number; winner: Winner; delta: number }
+  /**
+   * Year one, where the signing bonuses land. Deliberately separate from
+   * `totals`, which is what each offer pays every year — a one-off belongs in
+   * neither the per-year total nor nowhere at all. `applies` is false when
+   * neither offer has one, in which case there is nothing to show.
+   */
+  firstYear: { a: number; b: number; winner: Winner; delta: number; applies: boolean }
   leftAfterRent: { a: number; b: number; winner: Winner; delta: number }
   /**
    * Null until both offers have a rent figure. Without it the comparison is a
@@ -141,10 +148,19 @@ export function compareOffers(a: OfferSide, b: OfferSide): Comparison {
 
   const bothHaveRent = a.inputs.rentMonthly > 0 && b.inputs.rentMonthly > 0
 
+  const firstYear = {
+    a: a.value.firstYearTotal,
+    b: b.value.firstYearTotal,
+    winner: pick(a.value.firstYearTotal, b.value.firstYearTotal, ANNUAL_NOISE),
+    delta: b.value.firstYearTotal - a.value.firstYearTotal,
+    applies: a.inputs.signingBonus > 0 || b.inputs.signingBonus > 0,
+  }
+
   return {
     packageRows,
     monthlyRows,
     totals,
+    firstYear,
     leftAfterRent: left,
     verdict: bothHaveRent ? buildVerdict(a, b, totals, left) : null,
   }

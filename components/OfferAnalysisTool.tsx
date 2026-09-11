@@ -30,6 +30,8 @@ import {
   type TaxResult,
 } from '@/lib/offer/calculate';
 import { compareOffers } from '@/lib/offer/compare';
+import { computeLevers } from '@/lib/offer/levers';
+import { OfferLevers } from '@/components/OfferLevers';
 import { OfferCompare } from '@/components/OfferCompare';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
@@ -213,6 +215,7 @@ export function OfferAnalysisTool() {
 
   // 5. Equity
   const [rsuAnnual, setRsuAnnual] = useState(0);
+  const [signingBonus, setSigningBonus] = useState(0);
   const [showEspp, setShowEspp] = useState(false);
   const [esppContrib, setEsppContrib] = useState(10);
   const [esppDiscount, setEsppDiscount] = useState(15);
@@ -458,13 +461,14 @@ export function OfferAnalysisTool() {
    */
   const offerInputs = useMemo<OfferInputs>(() => ({
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
-    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    rsuAnnual, signingBonus, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
   }), [
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
-    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    rsuAnnual, signingBonus, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
   ]);
 
   const calc = useMemo(() => computeOfferValue(offerInputs, taxResult), [offerInputs, taxResult]);
+  const levers = useMemo(() => computeLevers(offerInputs, taxResult), [offerInputs, taxResult]);
 
   // ── The second offer ─────────────────────────────────────────────────────────
   /**
@@ -488,7 +492,7 @@ export function OfferAnalysisTool() {
     // Seeded from the first offer, because the fields most likely to be equal
     // are the ones nobody wants to retype: match terms, HSA, premium, leave.
     // Salary and location start empty — those are the reason there are two.
-    setOfferB({ ...offerInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0 });
+    setOfferB({ ...offerInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
     track('offer_compare_started', { tool: 'offer' });
   }, [offerInputs]);
 
@@ -1030,6 +1034,24 @@ export function OfferAnalysisTool() {
             </div>
             <p className="text-xs text-gray-400 mt-1">Total grant ÷ vesting years. E.g. $100k over 4 years = $25,000/yr</p>
           </div>
+          {/* Signing bonus.
+              Kept out of the per-year package on purpose — it is paid once, so
+              folding it in would make year one right and every year after it
+              wrong by exactly this amount. It gets its own line and its own
+              first-year total instead. */}
+          <div>
+            <Label className="text-sm font-semibold text-gray-700 mb-1 block">Signing bonus<FieldSource {...sourceOf('signingBonus')} src={fromLetter.signingBonus} /></Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <Input type="text" inputMode="numeric" placeholder="0" value={signingBonus || ''}
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setSigningBonus(newVal);
+                  if (newVal > 0) trackFieldChange('signing_bonus', newVal);
+                }} className="pl-6" />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Paid once, taxed as income. Shown separately from the yearly package.</p>
+          </div>
           <button type="button" onClick={() => {
             const newVal = !showEspp;
             setShowEspp(newVal);
@@ -1259,6 +1281,21 @@ export function OfferAnalysisTool() {
               <span className="text-sm font-bold text-white">Total package</span>
               <span className="text-2xl font-black text-[#A7C957]">{fc(calc.totalPackage)}</span>
             </div>
+            {/* A signing bonus is not part of what the job pays every year, so
+                it sits below the per-year total rather than inside it. Both
+                numbers are true; only one of them is true twice. */}
+            {signingBonus > 0 && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <div className="flex justify-between items-baseline py-1">
+                  <span className="text-sm text-white/50">Signing bonus, paid once</span>
+                  <span className="text-sm font-bold text-[#A7C957]">{fc(signingBonus)}</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-bold text-white/90">First year only</span>
+                  <span className="text-lg font-black text-white">{fc(calc.firstYearTotal)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 50/30/20 */}
@@ -1380,6 +1417,12 @@ export function OfferAnalysisTool() {
               </span>
             </button>
           )}
+
+          {/* Which ask moves the number. Between the result and the CTA
+              because that is where the visitor actually is — they know what
+              the offer is worth, and the next thing they do is accept,
+              counter or walk. */}
+          <OfferLevers levers={levers} fromLetter={letterUploaded} />
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">

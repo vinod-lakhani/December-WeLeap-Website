@@ -11,6 +11,7 @@ const BASE: OfferInputs = {
   hsaMonthly: 0,
   healthcarePremium: 0,
   rsuAnnual: 0,
+  signingBonus: 0,
   showEspp: false,
   esppContrib: 10,
   esppDiscount: 15,
@@ -188,6 +189,31 @@ describe('compareOffers', () => {
       expect(c.totals.delta).toBe(-3_600)
       expect(c.totals.winner).toBe('a')
     })
+  })
+})
+
+describe('the signing bonus', () => {
+  it('stays out of the per-year total and lands in year one', () => {
+    const a = side('Offer A', 'Austin, TX', { salary: 100_000 })
+    const b = side('Offer B', 'Dallas, TX', { salary: 100_000, signingBonus: 20_000 })
+
+    const c = compareOffers(a, b)
+    // The job pays the same every year. Only the first one differs.
+    expect(c.totals.winner).toBe('tie')
+    expect(c.firstYear.applies).toBe(true)
+    expect(c.firstYear.winner).toBe('b')
+    expect(c.firstYear.delta).toBe(20_000)
+    // And it is still absent from the rows that sum to the per-year total.
+    expect(c.packageRows.reduce((t, r) => t + r.b, 0)).toBe(c.totals.b)
+  })
+
+  it('is not shown when neither offer has one', () => {
+    const c = compareOffers(
+      side('Offer A', 'Austin, TX', { salary: 100_000 }),
+      side('Offer B', 'Dallas, TX', { salary: 120_000 }),
+    )
+    expect(c.firstYear.applies).toBe(false)
+    expect(c.firstYear.a).toBe(c.totals.a)
   })
 })
 

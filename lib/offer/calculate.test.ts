@@ -18,6 +18,7 @@ const BASE: OfferInputs = {
   hsaMonthly: 0,
   healthcarePremium: 0,
   rsuAnnual: 0,
+  signingBonus: 0,
   showEspp: false,
   esppContrib: 10,
   esppDiscount: 15,
@@ -132,6 +133,28 @@ describe('computeOfferValue', () => {
       // 10% of salary at a 15% discount.
       expect(withEspp.annualEspp).toBe(1_500)
       expect(withEspp.totalPackage - without.totalPackage).toBe(1_500)
+    })
+  })
+
+  describe('the signing bonus', () => {
+    it('is left out of the per-year package and added to year one', () => {
+      const v = computeOfferValue(offer({ signingBonus: 20_000 }), taxAt(100_000))!
+      const without = computeOfferValue(offer(), taxAt(100_000))!
+
+      // Folding a one-off into a figure labelled "per year" would make year one
+      // right and every year after it wrong by exactly this amount.
+      expect(v.totalPackage).toBe(without.totalPackage)
+      expect(v.firstYearTotal).toBe(without.totalPackage + 20_000)
+    })
+
+    it('is taxed as income', () => {
+      const v = computeOfferValue(offer({ signingBonus: 20_000 }), taxAt(100_000))!
+      expect(v.signingBonusAfterTax).toBeCloseTo(20_000 * 0.7, 6)
+    })
+
+    it('leaves firstYearTotal equal to the package when there is none', () => {
+      const v = computeOfferValue(offer(), taxAt(100_000))!
+      expect(v.firstYearTotal).toBe(v.totalPackage)
     })
   })
 
