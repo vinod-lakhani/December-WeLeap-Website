@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /how-much-emergency-fund-do-i-need — the emergency fund sizing calculator.
@@ -120,6 +121,23 @@ const RELATED: readonly RelatedTool[] = [
   {
     href: '/how-much-rent-can-i-afford',
     why: 'If your essentials came to more than 65% of your income, rent is almost certainly why — and that single ratio added a month or more to your target. This works out what a rent line sized to take-home pay rather than gross would actually be.',
+  },
+]
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/emergency-fund-guess',
+    why: 'Most people carry a rough idea rather than a figure. This is the case for replacing the guess with a target, which is what the calculator above produces.',
+  },
+  {
+    href: '/resources/emergency-fund',
+    why: 'A target is the easy half. This walks through funding one from a standing start, including where the monthly contribution realistically comes from.',
   },
 ]
 
@@ -286,6 +304,8 @@ export default function EmergencyFundTargetPage() {
         heading="Once you have a target"
         intro="A target is a number until something funds it. Two of these decide where the monthly contribution comes from, and the third addresses the input that pushed your target up in the first place."
       />
+
+      <RelatedReading from="emergency_fund" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

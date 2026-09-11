@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /whats-my-money-age — the campaign front door.
@@ -94,6 +95,19 @@ const RELATED: readonly RelatedTool[] = [
   },
 ]
 
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/traditional-tools-fail',
+    why: 'Money age is deliberately not a budget. This is the argument for why the familiar tools leave the question it answers unasked.',
+  },
+]
+
 export default function MoneyAgePage() {
   return (
     <PageShell className="bg-canvas">
@@ -173,6 +187,8 @@ export default function MoneyAgePage() {
         heading="Once you have a number"
         intro="Your money age says where you stand. These three change it."
       />
+
+      <RelatedReading from="money_age" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

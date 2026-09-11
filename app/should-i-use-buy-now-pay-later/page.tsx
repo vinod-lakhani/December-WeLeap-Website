@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /should-i-use-buy-now-pay-later — the purchase funding decision.
@@ -148,6 +149,19 @@ const OPTIONS = [
   },
 ] as const
 
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/awareness-to-action',
+    why: 'The calculator settles one purchase. This is the pattern underneath it — why reviewing spending after the fact so rarely changes the next decision.',
+  },
+]
+
 export default function SmartPurchaseCheckPage() {
   return (
     <PageShell className="bg-canvas">
@@ -273,6 +287,8 @@ export default function SmartPurchaseCheckPage() {
         heading="Before the next purchase decision"
         intro="Two of the three numbers this calculator asks for are guesses for most people, and the context you picked is what set the threshold it judged you against. These work out the real versions."
       />
+
+      <RelatedReading from="smart_purchase" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>
