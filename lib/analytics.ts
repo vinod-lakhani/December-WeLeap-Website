@@ -26,6 +26,14 @@
  * - tool_shared (tool, method: native|copy_link|download) — only rent and
  *   offer have a share affordance at all, so this covers two of seven by
  *   design rather than by omission.
+ * - slider_moved (tool, slider, from_rate, savings_rate, direction, money_age,
+ *   delta_years, move_index) — one event per GESTURE, not per step. A range
+ *   input fires onChange on every point it passes, so tracking it raw counts
+ *   how far somebody dragged rather than how many people dragged; Money Age
+ *   debounces to the end of the movement. Only Money Age emits it so far.
+ *   CreditCardPayoffTool and EmergencyFundTool still fire their own per-tool
+ *   slider events straight off onChange, and those two series should not be
+ *   read as comparable to this one until they move over.
  *
  * `tool_completed` also carries `run_index`: which run this was for this
  * browser, counting from 1. count() and uniq(person_id) already separate runs
