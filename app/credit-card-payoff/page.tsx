@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /credit-card-payoff — the credit card payoff calculator.
@@ -113,6 +114,19 @@ const RELATED: readonly RelatedTool[] = [
   {
     href: '/how-should-i-split-my-paycheck',
     why: 'The extra payment has to come from somewhere, and the honest question is what it displaces — an employer match, a retirement contribution, the buffer. This takes a real paycheck and works out the order, so the extra payment you entered above has a place in the rest of the month rather than sitting outside it.',
+  },
+]
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/credit-score-myths',
+    why: 'Paying a card down changes your credit file, and not always in the direction people expect. This covers what actually moves a score and what does not.',
   },
 ]
 
@@ -279,6 +293,8 @@ export default function CreditCardPayoffPage() {
         heading="What to work out next"
         intro="A payoff date holds only if the extra payment survives contact with the rest of the month. Each of these starts from a figure this page has already produced."
       />
+
+      <RelatedReading from="credit_card_payoff" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

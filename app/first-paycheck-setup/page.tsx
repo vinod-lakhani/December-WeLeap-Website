@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 import { TAX_YEAR_FIRST_PAYCHECK } from '@/lib/firstPaycheck/constants'
 
 /**
@@ -90,6 +91,19 @@ const RELATED: readonly RelatedTool[] = [
   },
 ]
 
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/featured-article',
+    why: 'The reasoning behind this tool and the rest of them: why a clear answer to "what do I do next" is so rarely available at the moment you actually need it.',
+  },
+]
+
 export default function FirstPaycheckSetupPage() {
   return (
     <PageShell className="bg-canvas">
@@ -160,6 +174,8 @@ export default function FirstPaycheckSetupPage() {
         heading="Once the forms are in"
         intro="This page covers the first week. These cover the rest."
       />
+
+      <RelatedReading from="first_paycheck" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

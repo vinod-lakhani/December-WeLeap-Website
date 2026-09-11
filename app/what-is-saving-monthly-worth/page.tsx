@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 import { computeInvestingImpact } from '@/lib/networthImpact/math'
 
 /**
@@ -138,6 +139,23 @@ const RELATED: readonly RelatedTool[] = [
   {
     href: '/how-much-emergency-fund-do-i-need',
     why: 'The cash setting shows no growth at all, which is the correct answer for money you might need next month and the wrong one for money you will not. That works out how much of your saving genuinely belongs in reach, so the rest can be invested.',
+  },
+]
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/psychology-of-spending',
+    why: 'Every figure above assumes the monthly amount keeps arriving. This is about making it arrive without the month feeling worse, which is what decides whether it keeps happening.',
+  },
+  {
+    href: '/resources/financial-autopilot',
+    why: 'The projections run for years, and nobody sustains a manual transfer for years. Automating it is the difference between a plan and an intention.',
   },
 ]
 
@@ -280,6 +298,8 @@ export default function NetWorthImpactPage() {
         heading="Where the monthly amount comes from"
         intro="This page assumes you already know the number and are deciding whether it is worth it. These work out what the number should be, and whether it has somewhere more urgent to be first."
       />
+
+      <RelatedReading from="net_worth_impact" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

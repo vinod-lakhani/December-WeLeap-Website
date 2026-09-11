@@ -7,6 +7,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb';
 import { ToolJsonLd } from '@/components/ToolJsonLd';
 import { ToolPageView } from '@/components/ToolPageView';
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools';
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 import { AllocatorTool, AllocatorToolFallback } from '@/components/allocator/AllocatorTool';
 import {
   K401_EMPLOYEE_CAP,
@@ -110,6 +111,23 @@ const RELATED: readonly RelatedTool[] = [
     why: 'The split above is a monthly number. This compounds any monthly amount out to one, ten and thirty years, which is the honest way to see what the last step of the order is doing while the first four get the attention.',
   },
 ];
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/income-allocation',
+    why: 'The same order in longer form — why each step sits where it does, rather than simply what the order is.',
+  },
+  {
+    href: '/resources/adaptable-money-system',
+    why: 'The plan above assumes this month resembles the next one. This is what to do when it does not, which is most of the time.',
+  },
+]
 
 export default function AllocatorPage() {
   return (
@@ -246,6 +264,8 @@ export default function AllocatorPage() {
         heading="Sizing the steps in your plan"
         intro="The order comes out of this page. Three of the five steps have a calculator of their own, and each one starts from a number you have just produced."
       />
+
+      <RelatedReading from="allocator" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

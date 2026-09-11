@@ -6,6 +6,7 @@ import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /what-is-my-job-offer-worth — the total-compensation calculator.
@@ -84,6 +85,19 @@ const RELATED: readonly RelatedTool[] = [
   {
     href: '/what-is-saving-monthly-worth',
     why: 'An offer’s 401(k) match is a monthly amount. This compounds any monthly amount out to one, ten and thirty years, which is the honest way to see what capturing a match is worth over a career.',
+  },
+]
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/income-allocation',
+    why: 'Once the offer is signed the number becomes a paycheck that has to be divided. This is the blueprint for doing that.',
   },
 ]
 
@@ -315,6 +329,8 @@ export default function OfferAnalysisPage() {
         heading="What to work out next"
         intro="An offer sets the ceiling. These three decide where inside it you land — and each one starts from a number this page already produced."
       />
+
+      <RelatedReading from="offer" items={RELATED_READING} />
 
       {/* YMYL disclosure. Sits after the content it qualifies and names the
           specific simplifications, because "estimates only" on a page that

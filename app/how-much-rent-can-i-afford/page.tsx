@@ -7,6 +7,7 @@ import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { ScrollBeacon } from '@/components/ScrollBeacon'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
+import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
 
 /**
  * /how-much-rent-can-i-afford — the rent affordability calculator.
@@ -104,6 +105,19 @@ const RELATED: readonly RelatedTool[] = [
   {
     href: '/how-much-emergency-fund-do-i-need',
     why: 'The cash you need to get keys and the cash you need for an emergency are two different pots, and move-in costs empty the first one on day one. This sizes the second against your essential expenses rather than against a blanket three-to-six-month rule.',
+  },
+]
+
+/**
+ * Articles worth reading after this calculator.
+ *
+ * These also give /resources a crawl path from a page Google actually
+ * fetches — see components/RelatedReading.tsx for why that matters.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/the-rent-check-panic',
+    why: 'The range above is arithmetic. This is the week the rent actually leaves your account, and why a number that looked fine on a spreadsheet can still feel tight.',
   },
 ]
 
@@ -239,6 +253,8 @@ export default function HowMuchRentCanIAffordPage() {
         heading="What to work out next"
         intro="A rent number is one line in a monthly budget. These three decide whether it holds — and each one starts from a figure this page has already produced."
       />
+
+      <RelatedReading from="rent" items={RELATED_READING} />
 
       {/* The specific simplifications behind the numbers above. "Estimates
           only" on a page that prints a tax figure to the dollar is a label,
