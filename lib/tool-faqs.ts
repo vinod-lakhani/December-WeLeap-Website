@@ -188,6 +188,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
       q: 'Why do I need my benefits guide and not just my offer letter?',
       a: 'The offer letter almost never contains the numbers that matter here. Across the real offer letters we tested, every one stated the salary and the work state, and none stated the 401(k) match formula, the HSA contribution or the health premium. Those live in the benefits guide, typically around page 30. That is the document this tool reads for you.',
     },
+    {
+      q: 'How much will my take-home pay actually drop if I contribute?',
+      a: 'By less than you contribute, because a traditional 401(k) contribution comes out before income tax is calculated. A dollar into the plan reduces take-home by less than a dollar — how much less depends on your marginal rate. This calculator shows both figures side by side for exactly that reason: what goes into the account per paycheck, and what it costs you out of take-home once the tax saving is counted. The gap between those two numbers is the part people most often do not expect, and it is usually the reason a contribution that looked unaffordable turns out not to be.',
+    },
+    {
+      q: 'What is the difference between an HSA and an FSA?',
+      a: 'An HSA is attached to a qualifying high-deductible health plan, the money is yours permanently, it rolls over every year, it moves with you when you change jobs, and it can be invested. An FSA is offered regardless of plan type, is owned by the employer arrangement rather than by you, is generally forfeited if unspent by the end of the plan year beyond a small carryover, and does not follow you to a new job. Both reduce taxable income. This calculator covers the HSA case, because that is the one tied to a plan choice you are making during enrolment.',
+    },
   ],
   '/whats-my-money-age': [
     {
@@ -209,6 +217,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     {
       q: 'Why does my money age go down when I get a raise?',
       a: 'Because the bar is set as a share of what you earn, not as a fixed dollar figure. A bigger salary means the reference saver is putting away more each year, so they reach any given balance sooner \u2014 and your savings represent fewer of their years. This is intentional: it is measuring you against your own earning power rather than against a flat national number. It does mean a pay rise, on its own, moves the number the wrong way even though nothing about your saving has changed.',
+    },
+    {
+      q: 'Can my money age be younger than my real age?',
+      a: 'Yes, and that is the outcome the calculation is built to surface. Money age is not a restatement of how old you are — it is where your savings sit against a reference path for your income, expressed in years. Save at a rate ahead of that path and the result lands below your actual age; save behind it and the result lands above. Someone of 27 can come out at 24, and someone of 27 can come out at 35.',
+    },
+    {
+      q: 'Why does the calculation start at 22?',
+      a: 'Twenty-two is the reference path\u2019s starting point \u2014 the age it assumes a career and the first savings begin. It is an assumption rather than a measured fact, and it is worth knowing because it anchors everything else: the model measures your position against that path rather than against other people your age. The adjustment for your savings rate is also capped at ten years in either direction, so an unusually high or low rate moves the answer by at most a decade. Neither of those is visible from the result on its own.',
     },
   ],
   '/how-much-emergency-fund-do-i-need': [

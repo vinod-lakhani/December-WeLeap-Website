@@ -41,10 +41,25 @@ function JoinContent() {
 
 export default function JoinPage() {
   return (
+    /**
+     * The fallback carries the hero, not a spinner.
+     *
+     * Only `ref` needs useSearchParams, but the whole page sat behind this
+     * boundary — so the served HTML was the word "Loading" and the <h1> existed
+     * for nobody. Same defect that made /allocator ship no heading at all.
+     * Repeating the hero here means the served markup always has exactly one
+     * h1, and a visitor on a slow connection sees the page rather than a
+     * placeholder. The interactive dialog is the only thing that waits.
+     */
     <Suspense fallback={
       <PageShell>
-        <Section variant="brand" className="min-h-[40vh] flex items-center justify-center">
-          <p className="text-white/80">Loading...</p>
+        <Section variant="brand" className="text-center min-h-[40vh] flex flex-col justify-center">
+          <Container maxWidth="narrow">
+            <h1 className={cn(TYPOGRAPHY.h1, "text-white mb-4")}>Create free account</h1>
+            <p className={cn(TYPOGRAPHY.body, "text-white/85 max-w-xl mx-auto")}>
+              Be the first to know when our self-service app launches with AI-powered financial guidance.
+            </p>
+          </Container>
         </Section>
       </PageShell>
     }>
