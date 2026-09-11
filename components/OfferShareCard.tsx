@@ -45,6 +45,15 @@ interface OfferShareCardProps {
   shareUrl: string;
   /** The claim the link asserts, used as the share text. */
   shareText: string;
+  /**
+   * Present only when a second offer has been priced, in which case the card
+   * shows the comparison instead of the uplift.
+   *
+   * Percentages, never dollars — the rule the whole share mechanic follows.
+   * Salary is exactly the number an offer post cannot contain, and a
+   * comparison carries two of them.
+   */
+  compare?: { pkgPct: number; monthPct: number; split: boolean } | null;
   trigger: React.ReactNode;
 }
 
@@ -53,6 +62,7 @@ export function OfferShareCard({
   componentsCounted,
   shareUrl,
   shareText,
+  compare,
   trigger,
 }: OfferShareCardProps) {
   const [open, setOpen] = useState(false);
@@ -160,18 +170,53 @@ export function OfferShareCard({
           align="start"
         >
           <div className="min-w-[320px] max-w-[400px] p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
-              My offer is worth
-            </p>
-            <p className="text-4xl font-extrabold text-[#386641] leading-none mb-1">
-              +{Math.round(upliftPct)}%
-            </p>
-            <p className="text-sm text-[#111827] mb-4">more than the base salary they quoted me.</p>
+            {compare ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+                  Two offers, compared
+                </p>
+                <p className="text-4xl font-extrabold text-[#386641] leading-none mb-1">
+                  +{compare.pkgPct}%
+                </p>
+                <p className="text-sm text-[#111827] mb-4">more on paper, one offer over the other.</p>
 
-            <p className="text-sm text-[#111827]/80">
-              An offer has <strong>7 numbers</strong>
-              {componentsCounted ? <> — mine had {componentsCounted}</> : null}. Most people only read one.
-            </p>
+                <p
+                  className={`text-4xl font-extrabold leading-none mb-1 ${
+                    compare.split ? 'text-[#B91C1C]' : 'text-[#386641]'
+                  }`}
+                >
+                  {compare.split ? '−' : '+'}{compare.monthPct}%
+                </p>
+                <p className="text-sm text-[#111827] mb-4">
+                  {compare.split
+                    ? 'left every month, once tax and rent are paid.'
+                    : 'more left every month, once tax and rent are paid.'}
+                </p>
+
+                <p className="text-sm text-[#111827]/80">
+                  {compare.split ? (
+                    <>The <strong>bigger package</strong> was not the better offer.</>
+                  ) : (
+                    <>Taxed in each state, and after rent in each city.</>
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#6B7280] mb-2">
+                  My offer is worth
+                </p>
+                <p className="text-4xl font-extrabold text-[#386641] leading-none mb-1">
+                  +{Math.round(upliftPct)}%
+                </p>
+                <p className="text-sm text-[#111827] mb-4">more than the base salary they quoted me.</p>
+
+                <p className="text-sm text-[#111827]/80">
+                  An offer has <strong>7 numbers</strong>
+                  {componentsCounted ? <> — mine had {componentsCounted}</> : null}. Most people only read one.
+                </p>
+              </>
+            )}
 
             {/* URL lives in the image: a screenshot is how this actually travels. */}
             <div className="mt-5 border-t border-[#E5E7EB] pt-3">

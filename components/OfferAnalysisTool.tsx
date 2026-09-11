@@ -19,15 +19,25 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 import { appLink } from '@/lib/app-link';
 import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
-import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
+import {
+  buildOfferClaim,
+  buildOfferCompareClaim,
+  encodeOfferClaim,
+  offerClaimHeadline,
+} from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
 import {
   computeOfferValue,
+  EMPTY_OFFER_VALUE,
   MARKET_PTO_DAYS,
   type OfferInputs,
   type TaxResult,
 } from '@/lib/offer/calculate';
+import { compareOffers } from '@/lib/offer/compare';
+import { computeLevers } from '@/lib/offer/levers';
+import { OfferLevers } from '@/components/OfferLevers';
+import { OfferCompare } from '@/components/OfferCompare';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
@@ -210,6 +220,7 @@ export function OfferAnalysisTool() {
 
   // 5. Equity
   const [rsuAnnual, setRsuAnnual] = useState(0);
+  const [signingBonus, setSigningBonus] = useState(0);
   const [showEspp, setShowEspp] = useState(false);
   const [esppContrib, setEsppContrib] = useState(10);
   const [esppDiscount, setEsppDiscount] = useState(15);
@@ -455,13 +466,112 @@ export function OfferAnalysisTool() {
    */
   const offerInputs = useMemo<OfferInputs>(() => ({
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
-    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    rsuAnnual, signingBonus, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
   }), [
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
-    rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    rsuAnnual, signingBonus, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
   ]);
 
   const calc = useMemo(() => computeOfferValue(offerInputs, taxResult), [offerInputs, taxResult]);
+  const levers = useMemo(() => computeLevers(offerInputs, taxResult), [offerInputs, taxResult]);
+
+  // ── The second offer ─────────────────────────────────────────────────────────
+  /**
+   * One piece of state, not fourteen more.
+   *
+   * The first offer's fields stay as separate scalars because each is bound to
+   * its own input. A second set of those would double a form that is already
+   * the longest on the site, so the comparison table is the input for this one:
+   * every cell in its column is editable, and an uploaded second letter fills
+   * them in.
+   */
+  const [offerB, setOfferB] = useState<OfferInputs | null>(null);
+  const [bState, setBState] = useState('');
+  const [bCity, setBCity] = useState('');
+  const [bTax, setBTax] = useState<TaxResult | null>(null);
+  const [bTaxLoading, setBTaxLoading] = useState(false);
+  const [bMetros, setBMetros] = useState<Array<{ label: string; value: string }>>([]);
+  const [bLoadingMetros, setBLoadingMetros] = useState(false);
+
+  const startCompare = useCallback(() => {
+    // Seeded from the first offer, because the fields most likely to be equal
+    // are the ones nobody wants to retype: match terms, HSA, premium, leave.
+    // Salary and location start empty — those are the reason there are two.
+    setOfferB({ ...offerInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
+    track('offer_compare_started', { tool: 'offer' });
+  }, [offerInputs]);
+
+  const clearCompare = useCallback(() => {
+    setOfferB(null);
+    setBState('');
+    setBCity('');
+    setBTax(null);
+  }, []);
+
+  const patchB = useCallback((patch: Partial<OfferInputs>) => {
+    setOfferB(prev => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
+  // Tax for the second offer, in its own state. Two calls rather than one is
+  // the price of the whole feature: "take-home in each offer's own state" is
+  // meaningless if both are taxed in the first offer's.
+  useEffect(() => {
+    if (!offerB || offerB.salary <= 0) { setBTax(null); return; }
+    let cancelled = false;
+    setBTaxLoading(true);
+    fetch('/api/tax', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ salaryAnnual: offerB.salary, state: bState || jobState || 'CA' }),
+    })
+      .then(r => r.json())
+      .then((data: TaxResult) => { if (!cancelled) { setBTax(data); setBTaxLoading(false); } })
+      .catch(() => { if (!cancelled) setBTaxLoading(false); });
+    return () => { cancelled = true; };
+  }, [offerB, bState, jobState]);
+
+  useEffect(() => {
+    if (!bState) { setBMetros([]); return; }
+    let cancelled = false;
+    setBLoadingMetros(true);
+    fetch(`/api/zori?state=${bState}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then(data => { if (!cancelled) setBMetros(Array.isArray(data.options) ? data.options : []); })
+      .catch(() => { if (!cancelled) setBMetros([]); })
+      .finally(() => { if (!cancelled) setBLoadingMetros(false); });
+    return () => { cancelled = true; };
+  }, [bState]);
+
+  // Market rent for the second city, so the rent line is filled rather than
+  // asked for. Only when it is still empty — a typed figure is the real one.
+  useEffect(() => {
+    if (!bCity || !bState) return;
+    let cancelled = false;
+    fetch(`/api/zori?state=${bState}&region=${encodeURIComponent(bCity)}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then(data => {
+        if (cancelled || !data.medianRent) return;
+        setOfferB(prev => (prev && prev.rentMonthly === 0
+          ? { ...prev, rentMonthly: Math.round(data.medianRent) }
+          : prev));
+      })
+      .catch(() => { /* the field stays empty and asks for itself */ });
+    return () => { cancelled = true; };
+  }, [bCity, bState]);
+
+  const calcB = useMemo(() => (offerB ? computeOfferValue(offerB, bTax) : null), [offerB, bTax]);
+
+  const comparison = useMemo(() => {
+    if (!calc || !offerB) return null;
+    // calcB is null until the second offer has a salary, and the place you
+    // type that salary is inside this table — so it renders empty rather than
+    // not at all.
+    return compareOffers(
+      { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc },
+      { label: 'Offer B', location: bCity ? `${bCity}, ${bState}` : '', inputs: offerB, value: calcB ?? EMPTY_OFFER_VALUE },
+    );
+  }, [calc, calcB, offerInputs, offerB, city, jobState, bCity, bState]);
+
 
   // ── Market rent data load ────────────────────────────────────────────────────
   useEffect(() => {
@@ -595,10 +705,32 @@ export function OfferAnalysisTool() {
    * Relative on the server so a preview deploy does not point its shares at
    * production.
    */
-  const shareClaim = buildOfferClaim({
-    totalPackage: calc?.totalPackage ?? 0,
-    base: salary,
-  });
+  /**
+   * Once there are two offers, the shareable finding is the comparison, not the
+   * uplift. "One offer paid 24% more and left me 15% less every month" is the
+   * only genuinely surprising sentence this tool produces; "my package is 16%
+   * above base" is true of nearly every offer.
+   */
+  const shareClaim = comparison
+    ? buildOfferCompareClaim({
+        totalA: comparison.totals.a,
+        totalB: comparison.totals.b,
+        leftA: comparison.leftAfterRent.a,
+        leftB: comparison.leftAfterRent.b,
+      })
+    : buildOfferClaim({
+        totalPackage: calc?.totalPackage ?? 0,
+        base: salary,
+      });
+
+  const shareCompare =
+    shareClaim.kind === 'compare_split' || shareClaim.kind === 'compare_agree'
+      ? {
+          pkgPct: shareClaim.pkgPct,
+          monthPct: shareClaim.monthPct,
+          split: shareClaim.kind === 'compare_split',
+        }
+      : null;
   const shareUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/s/offer/${encodeOfferClaim(shareClaim)}`
@@ -929,6 +1061,24 @@ export function OfferAnalysisTool() {
             </div>
             <p className="text-xs text-gray-400 mt-1">Total grant ÷ vesting years. E.g. $100k over 4 years = $25,000/yr</p>
           </div>
+          {/* Signing bonus.
+              Kept out of the per-year package on purpose — it is paid once, so
+              folding it in would make year one right and every year after it
+              wrong by exactly this amount. It gets its own line and its own
+              first-year total instead. */}
+          <div>
+            <Label className="text-sm font-semibold text-gray-700 mb-1 block">Signing bonus<FieldSource {...sourceOf('signingBonus')} src={fromLetter.signingBonus} /></Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <Input type="text" inputMode="numeric" placeholder="0" value={signingBonus || ''}
+                onChange={e => {
+                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                  setSigningBonus(newVal);
+                  if (newVal > 0) trackFieldChange('signing_bonus', newVal);
+                }} className="pl-6" />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Paid once, taxed as income. Shown separately from the yearly package.</p>
+          </div>
           <button type="button" onClick={() => {
             const newVal = !showEspp;
             setShowEspp(newVal);
@@ -1118,6 +1268,7 @@ export function OfferAnalysisTool() {
               <div className="mt-5 border-t border-hairline pt-4">
                 <OfferShareCard
                   upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  compare={shareCompare}
                   shareUrl={shareUrl}
                   shareText={shareText}
                   trigger={
@@ -1126,7 +1277,7 @@ export function OfferAnalysisTool() {
                       onClick={() => track('offer_share_card_opened', { page: '/offer' })}
                       className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
                     >
-                      Share this without showing your salary →
+                      {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
                     </button>
                   }
                 />
@@ -1158,6 +1309,21 @@ export function OfferAnalysisTool() {
               <span className="text-sm font-bold text-white">Total package</span>
               <span className="text-2xl font-black text-[#A7C957]">{fc(calc.totalPackage)}</span>
             </div>
+            {/* A signing bonus is not part of what the job pays every year, so
+                it sits below the per-year total rather than inside it. Both
+                numbers are true; only one of them is true twice. */}
+            {signingBonus > 0 && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <div className="flex justify-between items-baseline py-1">
+                  <span className="text-sm text-white/50">Signing bonus, paid once</span>
+                  <span className="text-sm font-bold text-[#A7C957]">{fc(signingBonus)}</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-bold text-white/90">First year only</span>
+                  <span className="text-lg font-black text-white">{fc(calc.firstYearTotal)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 50/30/20 */}
@@ -1230,6 +1396,61 @@ export function OfferAnalysisTool() {
             </div>
           </div>
 
+          {/* ── The second offer ──────────────────────────────────────────────
+              Sits after the single-offer result rather than replacing it. Most
+              people have one offer, and the page told the other ones to run the
+              calculator twice and write four numbers down — this is that, done
+              for them. Costs a visitor with one offer a single line of copy. */}
+          {offerB && comparison ? (
+            <OfferCompare
+              a={{ label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc }}
+              b={offerB}
+              bLocation={bCity}
+              bState={bState}
+              comparison={comparison}
+              onChangeB={patchB}
+              onLocationB={(nextCity, nextState) => {
+                if (nextState !== bState) { setBState(nextState); setBCity(''); }
+                else { setBCity(nextCity); }
+              }}
+              onParsedB={(parsed) => {
+                // Only what the letter actually spoke to. Everything absent
+                // keeps the value seeded from the first offer, which is the
+                // point of seeding it.
+                patchB({
+                  ...(parsed.baseSalaryAnnual ? { salary: Math.round(parsed.baseSalaryAnnual.value) } : {}),
+                  ...(parsed.targetBonusPct ? { bonusPct: Math.round(parsed.targetBonusPct.value) } : {}),
+                  ...(parsed.matchRatePct ? { matchRatePct: Math.round(parsed.matchRatePct.value) } : {}),
+                  ...(parsed.matchUpToPct ? { matchUpToPct: Math.round(parsed.matchUpToPct.value) } : {}),
+                });
+              }}
+              onClear={clearCompare}
+              states={US_STATES}
+              cities={bMetros.map(m => m.value)}
+              loadingCities={bLoadingMetros}
+              loadingTax={bTaxLoading}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={startCompare}
+              className="w-full rounded-2xl border-2 border-dashed border-gray-300 bg-white px-5 py-5 text-center transition hover:border-[#386641] hover:bg-gray-50"
+            >
+              <span className="block text-[15px] font-bold text-gray-900">
+                Comparing this against another offer?
+              </span>
+              <span className="mt-1 block text-[13.5px] leading-relaxed text-gray-500">
+                Add the second one and see both priced side by side — including what each leaves after rent,
+                which is where they usually swap places.
+              </span>
+            </button>
+          )}
+
+          {/* Which ask moves the number. Between the result and the CTA
+              because that is where the visitor actually is — they know what
+              the offer is worth, and the next thing they do is accept,
+              counter or walk. */}
+          <OfferLevers levers={levers} fromLetter={letterUploaded} />
 
           {/* CTA */}
           <div className="bg-white rounded-2xl border-2 border-gray-200 px-6 py-6">
@@ -1317,7 +1538,11 @@ export function OfferAnalysisTool() {
                 {[
                   'Your match, tracked until you actually capture it',
                   'A savings, debt and retirement plan built on this salary',
-                  'Add a second offer any time and compare side by side',
+                  // Was "Add a second offer any time and compare side by
+                  // side", which this tool now does for free, directly above
+                  // this tile. Selling it as an app benefit here would be
+                  // asking someone to sign up for what they just used.
+                  'Every raise and job change repriced, without starting over',
                 ].map(item => (
                   <div key={item} className="flex items-start gap-2 text-xs text-gray-600">
                     <span className="mt-[3px] shrink-0 text-[#386641]">✓</span>

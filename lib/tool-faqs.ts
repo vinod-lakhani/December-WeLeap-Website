@@ -94,11 +94,11 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
     {
       q: 'How do I compare two job offers in different cities?',
-      a: 'Convert both offers to monthly take-home pay in their own state, then subtract a realistic rent for each city — the same job at the same salary leaves very different amounts depending on where it is. A $120,000 offer in a state with no income tax and $1,800 rent leaves substantially more each month than $135,000 in a high-tax state with $3,200 rent. This calculator puts market rent for the city next to the take-home figure so the comparison is made on what is left over, not on the headline.',
+      a: 'Convert both offers to monthly take-home pay in their own state, then subtract a realistic rent for each city — the same job at the same salary leaves very different amounts depending on where it is. A $120,000 offer in a state with no income tax and $1,800 rent leaves substantially more each month than $135,000 in a high-tax state with $3,200 rent. Add both offers to this calculator and it prices them side by side, taxing each in its own state and putting market rent for each city against the take-home, so the comparison is made on what is left over rather than on the headline.',
     },
     {
       q: 'Should I count equity as part of my salary?',
-      a: 'Equity is compensation, but it is not the same kind of compensation as salary: it vests over time, is usually forfeited if you leave early, and in a private company it cannot be sold until an exit that may never happen. The common approach is to value public-company RSUs at their current grant value divided over the vesting schedule, and to treat private-company options as upside rather than income you can spend. This calculator shows equity as a separate line so it never quietly inflates the number you plan your rent against.',
+      a: 'Equity is compensation, but it is not the same kind of compensation as salary: it vests over time, is usually forfeited if you leave early, and in a private company it cannot be sold until an exit that may never happen. The common approach is to value public-company RSUs at their current grant value divided over the vesting schedule, and to treat private-company options as upside rather than income you can spend. This calculator counts equity in the package but keeps it on its own line, so you can see how much of an offer is paper before you plan your rent against it.',
     },
   ],
 

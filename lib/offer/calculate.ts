@@ -60,6 +60,15 @@ export interface OfferInputs {
   healthcarePremium: number
   /** Equity vesting per year, in dollars. */
   rsuAnnual: number
+  /**
+   * Signing bonus, paid once.
+   *
+   * Kept out of totalPackage on purpose. That figure is labelled "per year" and
+   * is what the offer pays every year; folding a one-off into it would make
+   * year one right and every year after it wrong, by exactly this amount. It
+   * gets its own line and its own total instead.
+   */
+  signingBonus: number
   /** Whether the offer includes an ESPP worth counting. */
   showEspp: boolean
   /** Share of salary contributed to the ESPP. */
@@ -86,7 +95,12 @@ export interface OfferValue {
   annualRsuAfterTax: number
   annualEsppAfterTax: number
   ptoValue: number
+  /** What the offer pays every year. Excludes the signing bonus. */
   totalPackage: number
+  /** totalPackage plus the signing bonus — year one, and year one only. */
+  firstYearTotal: number
+  /** The signing bonus, after tax at the effective rate. */
+  signingBonusAfterTax: number
   monthlyWealth: number
   nw40yr: number
   /** Rent as a share of take-home, or null when either is unknown. */
@@ -98,10 +112,27 @@ export interface OfferValue {
  *   degrades rather than failing: a flat 72% take-home and a 28% effective rate
  *   stand in, so the package number means something before the call returns.
  */
+/**
+ * A priced offer with nothing in it.
+ *
+ * computeOfferValue returns null below a salary, which is right for the single
+ * offer — there is no result to show. The comparison needs the opposite: its
+ * table is the input for the second offer, so the table has to render before
+ * that offer has a salary to price. This fills the column until it does.
+ */
+export const EMPTY_OFFER_VALUE: OfferValue = {
+  takeHomeMonthly: 0, effectiveTaxRate: 0,
+  annualBonus: 0, annual401kMatch: 0, annualHsa: 0, annualHealthcare: 0, annualEspp: 0,
+  annualBonusAfterTax: 0, annualRsuAfterTax: 0, annualEsppAfterTax: 0,
+  ptoValue: 0, totalPackage: 0, firstYearTotal: 0, signingBonusAfterTax: 0,
+  monthlyWealth: 0, nw40yr: 0, rentPct: null,
+}
+
 export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): OfferValue | null {
   const {
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
     rsuAnnual, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
+    signingBonus,
   } = inputs
 
   if (salary <= 0) return null
@@ -144,10 +175,25 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
     ? Math.round(((salary * esppContrib) / 100) * (esppDiscount / 100))
     : 0
 
-  // totalPackage is pre-tax total comp — industry standard for comp discussions
-  const totalPackage =
-    salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare + rsuAnnual + annualEspp
+  // Leave above market is compensation: days you are paid for and do not work.
+  // Valued at salary, and only the days above the market baseline — matching
+  // fifteen days is the going rate, not a benefit.
   const ptoValue = Math.round((salary / WORKING_DAYS) * Math.max(0, ptoDays - MARKET_PTO_DAYS))
+
+  /**
+   * Pre-tax total comp — the industry-standard figure for a comp discussion,
+   * and everything the result screen lists above it.
+   *
+   * PTO used to be left out while the row for it sat in that list, so the lines
+   * on screen did not add up to the total printed under them: a $100,000 offer
+   * with 25 days showed a $3,846 PTO row and a $116,000 total, which is
+   * $119,846 of rows. Equity has always counted. Both belong here — they are
+   * both real, they are both already shown, and a total that silently drops one
+   * of its own line items is worse than either convention.
+   */
+  const totalPackage =
+    salary + annualBonus + annual401kMatch + annualHsa + annualHealthcare +
+    rsuAnnual + annualEspp + ptoValue
 
   // After-tax values for wealth-building — bonus and equity are taxed before
   // you keep them
@@ -164,6 +210,9 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
 
   const monthlyRate = ANNUAL_RETURN / 12
   const nw40yr = Math.round(monthlyWealth * ((Math.pow(1 + monthlyRate, 480) - 1) / monthlyRate))
+  const signingBonusAfterTax = signingBonus * (1 - effectiveTaxRate)
+  const firstYearTotal = totalPackage + signingBonus
+
   const rentPct =
     rentMonthly > 0 && takeHomeMonthly > 0 ? Math.round((rentMonthly / takeHomeMonthly) * 100) : null
 
@@ -171,6 +220,7 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
     takeHomeMonthly, effectiveTaxRate,
     annualBonus, annual401kMatch, annualHsa, annualHealthcare, annualEspp,
     annualBonusAfterTax, annualRsuAfterTax, annualEsppAfterTax,
-    ptoValue, totalPackage, monthlyWealth, nw40yr, rentPct,
+    ptoValue, totalPackage, firstYearTotal, signingBonusAfterTax,
+    monthlyWealth, nw40yr, rentPct,
   }
 }
