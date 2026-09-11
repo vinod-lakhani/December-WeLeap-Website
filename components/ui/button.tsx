@@ -19,11 +19,25 @@ const buttonVariants = cva(
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
+      /**
+       * Minimum heights, not fixed ones.
+       *
+       * These were `h-10` / `h-9` / `h-11`, which pin a button to that height
+       * whatever padding is put on it. Around fourteen call sites had already
+       * written `py-4` or `py-[17px]` to get a chunky hero CTA and were
+       * silently getting 40px instead — including the primary button on the
+       * offer tool, which is the whole reason this changed.
+       *
+       * 44px is the floor because that is Apple's minimum tap target and the
+       * one the App Store review checks for. A `min-h` keeps it as a floor:
+       * padding can still make a button taller, which is what the call sites
+       * were asking for in the first place.
+       */
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        default: 'min-h-11 px-4 py-2',
+        sm: 'min-h-11 rounded-md px-3 py-1.5',
+        lg: 'min-h-11 rounded-md px-8',
+        icon: 'h-11 w-11',
       },
     },
     defaultVariants: {
