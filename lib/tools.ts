@@ -225,7 +225,11 @@ export const FREE_TOOLS: FreeTool[] = [
     // later. It stays a noun phrase rather than becoming the question, because
     // the card renders `question` directly beneath it.
     href: "/should-i-use-buy-now-pay-later",
-    icon: "/images/tool-icons/smart-purchase.png",
+    // Was smart-purchase.png, a pair of banknotes. Cash is one of the three
+    // answers this tool weighs, not the question — so the icon argued for an
+    // option before the page had asked anything. Shopping bags are the
+    // purchase itself, which is what the decision is about.
+    icon: "/images/tool-icons/shopping-bags.png",
     slug: "smart_purchase",
     presentDay: true,
   },
