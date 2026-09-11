@@ -22,7 +22,7 @@
  * See docs/specs/money-age-v2.md.
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -306,12 +306,63 @@ export function MoneyAgeTool() {
     track('provisional_shown', { tool: TOOL, provisional_age: result.moneyAge })
   }
 
+  /**
+   * The slider, reported once per gesture rather than once per pixel.
+   *
+   * A range input fires onChange on every step of a drag, so this slider —
+   * step 1 across 25 points — emits a couple of dozen changes for one pull.
+   * The two other sliders on the site track straight off onChange and do
+   * exactly that; the resulting series counts how far people dragged, not how
+   * many people dragged.
+   *
+   * Debounced to the end of the gesture instead, which also covers the
+   * keyboard: arrow keys emit the same onChange, and holding one down is a
+   * drag by another name.
+   */
+  const SETTLE_MS = 400
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const settledRate = useRef(DEFAULT_RATE_PCT)
+  const settledMoves = useRef(0)
+  /** Read at fire time, after the debounce, so the event carries what landed. */
+  const latest = useRef({ result, ratePct })
+  latest.current = { result, ratePct }
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current)
+  }, [])
+
   const onSlider = useCallback(
     (v: number) => {
       markEngaged('savings_rate')
       setRateTouched(true)
       sliderMoves.current += 1
       setRatePct(v)
+
+      if (settleTimer.current) clearTimeout(settleTimer.current)
+      settleTimer.current = setTimeout(() => {
+        const { result: settled, ratePct: rate } = latest.current
+        // A gesture that ends where it started is not a move. Dragging out and
+        // back is the commonest way that happens.
+        if (!settled || rate === settledRate.current) return
+
+        const from = settledRate.current
+        settledRate.current = rate
+        settledMoves.current += 1
+
+        track('slider_moved', {
+          // Literal, matching every other event in this file — the
+          // instrumentation test reads this source as text and cannot resolve
+          // a const.
+          tool: 'money_age',
+          slider: 'savings_rate',
+          from_rate: from,
+          savings_rate: rate,
+          direction: rate > from ? 'up' : 'down',
+          money_age: settled.moneyAge,
+          delta_years: settled.deltaYears,
+          move_index: settledMoves.current,
+        })
+      }, SETTLE_MS)
     },
     [markEngaged]
   )
