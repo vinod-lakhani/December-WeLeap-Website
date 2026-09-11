@@ -35,7 +35,7 @@ import { trackDocFieldEdited, stampFirstDocClass } from '@/lib/offer-parse/doc-a
 const PAGE = '/first-paycheck-setup'
 const TOOL = 'first_paycheck'
 
-const SELECT = 'mt-1 w-full rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#111827]'
+const SELECT = 'mt-1 h-11 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-sm text-[#111827]'
 
 const FREQUENCY_LABELS: Record<PayFrequency, string> = {
   weekly: 'Every week',

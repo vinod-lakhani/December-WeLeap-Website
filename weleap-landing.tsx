@@ -237,7 +237,14 @@ function Hero() {
             >
               Your annual salary
             </label>
-            <div className="flex items-center gap-1.5 rounded-full border-[1.5px] border-hairline bg-white px-6 py-3.5 shadow-sm focus-within:border-brand-700">
+            {/* The whole pill focuses the field, the way a label would.
+                The input is w-[7.5ch] so the "$" sits against the number, which
+                left the homepage's primary interaction as a 90x39 target
+                floating inside a 69px-tall pill of dead space. */}
+            <div
+              onClick={() => document.getElementById("hero-salary")?.focus()}
+              className="flex cursor-text items-center gap-1.5 rounded-full border-[1.5px] border-hairline bg-white px-6 py-3.5 shadow-sm focus-within:border-brand-700"
+            >
               <span aria-hidden className="text-[22px] font-semibold text-faint">$</span>
               <input
                 id="hero-salary"
@@ -771,7 +778,7 @@ function AskRibbit() {
                 key={item.q}
                 onClick={() => pick(n)}
                 className={cn(
-                  "rounded-full border px-[18px] py-2.5 text-sm font-semibold transition",
+                  "inline-flex min-h-11 items-center rounded-full border px-[18px] py-2.5 text-sm font-semibold transition",
                   n === i
                     ? "border-brand-700 bg-brand-700 text-white"
                     : "border-hairline bg-canvas text-ink-soft hover:border-brand-200",

@@ -1084,7 +1084,7 @@ export function OfferAnalysisTool() {
             setShowEspp(newVal);
             trackEsppToggle(newVal);
           }}
-            className="text-sm font-semibold text-[#386641] flex items-center gap-1 bg-transparent border-none cursor-pointer">
+            className="-my-2 flex min-h-11 cursor-pointer items-center gap-1 border-none bg-transparent text-sm font-semibold text-[#386641]">
             {showEspp ? '▾' : '▸'} Employee Stock Purchase Plan (ESPP)
           </button>
           {showEspp && (
@@ -1275,7 +1275,7 @@ export function OfferAnalysisTool() {
                     <button
                       type="button"
                       onClick={() => track('offer_share_card_opened', { page: '/offer' })}
-                      className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+                      className="-my-2 inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
                     >
                       {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
                     </button>

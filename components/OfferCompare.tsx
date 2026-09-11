@@ -54,7 +54,7 @@ function Money({ value, muted }: { value: number; muted?: boolean }) {
 }
 
 const SELECT =
-  'mt-1 h-10 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-base disabled:bg-gray-50 md:text-sm'
+  'mt-1 h-11 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-base disabled:bg-gray-50 md:text-sm'
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -238,7 +238,7 @@ export function OfferCompare(props: OfferCompareProps) {
           <button
             type="button"
             onClick={() => { track('offer_compare_cleared', { tool: 'offer' }); onClear() }}
-            className="text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
+            className="-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
           >
             Cancel
           </button>
@@ -289,7 +289,7 @@ export function OfferCompare(props: OfferCompareProps) {
         <button
           type="button"
           onClick={() => { track('offer_compare_cleared', { tool: 'offer' }); onClear() }}
-          className="text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
+          className="-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
         >
           Remove the second offer
         </button>
@@ -413,7 +413,7 @@ export function OfferCompare(props: OfferCompareProps) {
         <button
           type="button"
           onClick={() => setShowEdit((v) => !v)}
-          className="text-[13.5px] font-bold text-[#386641] underline underline-offset-2"
+          className="-my-2 inline-flex min-h-11 items-center text-[13.5px] font-bold text-[#386641] underline underline-offset-2"
         >
           {showEdit ? 'Hide the second offer’s numbers' : 'Edit the second offer’s numbers'}
         </button>

@@ -83,9 +83,12 @@ export function Navigation() {
           </nav>
 
           <div className="flex items-center gap-4">
+            {/* p-2 around a 24px icon gave a 40px target. This is the only
+                control some visitors ever press on a phone, and it sat under
+                the 44px minimum. */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              className="-m-0.5 flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 transition-colors duration-200 hover:bg-gray-50 hover:text-gray-900 md:hidden"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
