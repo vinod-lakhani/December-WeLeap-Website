@@ -1,5 +1,10 @@
 import { decodeRentClaim, rentClaimHeadline } from './rentClaim'
-import { decodeOfferClaim, offerClaimHeadline, offerClaimFootnote } from './offerClaim'
+import {
+  decodeOfferClaim,
+  offerClaimHeadline,
+  offerClaimFootnote,
+  offerClaimSupporting,
+} from './offerClaim'
 import { getRegionNameBySlug } from '@/lib/zori'
 
 /**
@@ -84,9 +89,10 @@ export async function resolveShareClaim(
     return {
       headline: offerClaimHeadline(claim),
       footnote: offerClaimFootnote(claim),
-      supporting:
-        'Base salary is most of what people think an offer is worth. Bonus, employer match, equity, HSA, healthcare and PTO are the rest — and they are where offers actually differ.',
-      eyebrow: 'Offer reality check',
+      // Varies by claim: the seven-numbers line explains what one offer hides
+      // and explains nothing about why two of them swapped places.
+      supporting: offerClaimSupporting(claim),
+      eyebrow: claim.kind.startsWith('compare') ? 'Two offers, compared' : 'Offer reality check',
       toolHref: '/what-is-my-job-offer-worth',
       ctaLabel: 'Check what my offer is worth →',
       toolSlug: 'offer',

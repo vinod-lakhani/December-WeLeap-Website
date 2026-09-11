@@ -19,7 +19,12 @@ import { calculateMarketRentRange, compareMarketToSafe } from '@/lib/zoriClient'
 import { appLink } from '@/lib/app-link';
 import { OfferShareCard } from '@/components/OfferShareCard';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
-import { buildOfferClaim, encodeOfferClaim, offerClaimHeadline } from '@/lib/share/offerClaim';
+import {
+  buildOfferClaim,
+  buildOfferCompareClaim,
+  encodeOfferClaim,
+  offerClaimHeadline,
+} from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { cn } from '@/lib/utils';
 import {
@@ -700,10 +705,32 @@ export function OfferAnalysisTool() {
    * Relative on the server so a preview deploy does not point its shares at
    * production.
    */
-  const shareClaim = buildOfferClaim({
-    totalPackage: calc?.totalPackage ?? 0,
-    base: salary,
-  });
+  /**
+   * Once there are two offers, the shareable finding is the comparison, not the
+   * uplift. "One offer paid 24% more and left me 15% less every month" is the
+   * only genuinely surprising sentence this tool produces; "my package is 16%
+   * above base" is true of nearly every offer.
+   */
+  const shareClaim = comparison
+    ? buildOfferCompareClaim({
+        totalA: comparison.totals.a,
+        totalB: comparison.totals.b,
+        leftA: comparison.leftAfterRent.a,
+        leftB: comparison.leftAfterRent.b,
+      })
+    : buildOfferClaim({
+        totalPackage: calc?.totalPackage ?? 0,
+        base: salary,
+      });
+
+  const shareCompare =
+    shareClaim.kind === 'compare_split' || shareClaim.kind === 'compare_agree'
+      ? {
+          pkgPct: shareClaim.pkgPct,
+          monthPct: shareClaim.monthPct,
+          split: shareClaim.kind === 'compare_split',
+        }
+      : null;
   const shareUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/s/offer/${encodeOfferClaim(shareClaim)}`
@@ -1241,6 +1268,7 @@ export function OfferAnalysisTool() {
               <div className="mt-5 border-t border-hairline pt-4">
                 <OfferShareCard
                   upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  compare={shareCompare}
                   shareUrl={shareUrl}
                   shareText={shareText}
                   trigger={
@@ -1249,7 +1277,7 @@ export function OfferAnalysisTool() {
                       onClick={() => track('offer_share_card_opened', { page: '/offer' })}
                       className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
                     >
-                      Share this without showing your salary →
+                      {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
                     </button>
                   }
                 />
