@@ -33,7 +33,12 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: '/first-paycheck-setup' },
   openGraph: {
-    title: 'What do I type into my benefits forms? | WeLeap',
+    // Byte-identical to what `title` above renders through the root layout's
+    // `%s | WeLeap` template. openGraph.title does not inherit that template,
+    // so a hand-written suffix drops whatever the title says after the
+    // question — here, the words the route is named for. scripts/checkMetadata.js
+    // now fails the build on this rather than leaving it to review.
+    title: 'What do I type into my benefits forms? First paycheck setup | WeLeap',
     description: DESCRIPTION,
     url: '/first-paycheck-setup',
   },
