@@ -63,6 +63,39 @@ export function FirstPaycheckTool() {
   /** Fields a document filled, so an edit to one is a correction we can learn from. */
   const fromDoc = useRef<Set<string>>(new Set())
 
+  /**
+   * The hero's two controls, matching the offer tool's.
+   *
+   * The button does not compute — the plan recomputes on every keystroke — it
+   * carries the visitor to it. The answer sits below six more controls, all of
+   * which have working defaults, so without this the person who types one
+   * number has no idea the page has already answered them.
+   */
+  const salaryRef = useRef<HTMLInputElement>(null)
+
+  const scrollTo = useCallback((id: string) => {
+    const go = () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    go()
+    // The first salary reveals the result card and the deadline note beneath
+    // it, so the target moves after the scroll starts. Re-aim as it settles.
+    ;[500, 1200].forEach((ms) => setTimeout(go, ms))
+  }, [])
+
+  const revealPlan = useCallback(() => {
+    if (!salary.trim()) {
+      salaryRef.current?.focus()
+      track('first_paycheck_quickstart_cta', { tool: TOOL, outcome: 'no_salary' })
+      return
+    }
+    track('first_paycheck_quickstart_cta', { tool: TOOL, outcome: 'scrolled_to_plan' })
+    scrollTo('fp-plan')
+  }, [salary, scrollTo])
+
+  const jumpToUpload = useCallback(() => {
+    track('first_paycheck_quickstart_upload_link', { tool: TOOL })
+    scrollTo('fp-upload')
+  }, [scrollTo])
+
   const markEngaged = useCallback((field: string) => {
     if (engaged.current) return
     engaged.current = true
@@ -102,7 +135,13 @@ export function FirstPaycheckTool() {
   }, [salary])
 
   const plan = useMemo(() => {
-    if (!salaryNum || !state) return null
+    // Salary alone. State used to be required, which is what put the first
+    // answerable question two controls deep — but stateRate() has always
+    // fallen back to a 4% blend for a code it does not know, so the gate was
+    // withholding an answer the calculation could already produce. The state
+    // select is still there, marked optional, and the estimate says when it is
+    // running on the blend.
+    if (!salaryNum) return null
     return computeFirstPaycheck({
       salaryAnnual: salaryNum,
       stateCode: state,
@@ -165,9 +204,63 @@ export function FirstPaycheckTool() {
 
   return (
     <div className="space-y-4">
+      {/* ── The first screen ──────────────────────────────────────────────
+          Measured at 375x812: the upload block sat at 509px and the first
+          field a visitor could fill — Start date — at 1,140px, 328px below the
+          fold. Same shape as the offer tool before it was reordered: everything
+          reachable on arrival asked for a document, and the thing that needs
+          nothing was off screen.
+
+          Salary is the whole minimum. The headline answer — the percentage to
+          type in the 401(k) box — is the match cap and needs neither salary nor
+          state; salary is what turns it into dollars a person recognises. */}
+      <Card className="border-2 border-[#3F6B42] bg-white">
+        <CardContent className="space-y-4 pt-6">
+          <div>
+            <Label htmlFor="fp-salary" className="text-sm font-semibold text-[#111827]">
+              What does the offer pay?
+            </Label>
+            <div className="relative mt-1.5">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-gray-400">$</span>
+              <Input
+                id="fp-salary"
+                ref={salaryRef}
+                type="text" inputMode="numeric" placeholder="e.g. 72,000" value={salary}
+                onChange={(e) => { markEngaged('salary'); noteEdit('salary'); setSalary(e.target.value) }}
+                className="h-14 border-[#3F6B42] pl-9 text-2xl font-bold tracking-[-0.02em] text-[#3F6B42]"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                per year
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={revealPlan}
+            className="w-full rounded-xl bg-[#3F6B42] py-4 text-[17px] font-bold text-white transition hover:bg-[#35593a]"
+          >
+            Show me what to type →
+          </button>
+
+          <p className="text-center text-[15px] text-gray-600">
+            Have the offer letter?{' '}
+            <button
+              type="button"
+              onClick={jumpToUpload}
+              className="font-semibold text-[#3F6B42] underline underline-offset-[3px]"
+            >
+              Upload it and skip the typing.
+            </button>
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="border-[#D1D5DB] bg-white">
         <CardContent className="pt-6 space-y-5">
-          <OfferLetterUpload dense onParsed={(parsed) => applyParsed(parsed)} />
+          <div id="fp-upload" className="scroll-mt-24">
+            <OfferLetterUpload dense onParsed={(parsed) => applyParsed(parsed)} />
+          </div>
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-200" />
@@ -199,15 +292,9 @@ export function FirstPaycheckTool() {
               />
             </div>
             <div>
-              <Label htmlFor="fp-salary" className="text-[#111827]">Salary</Label>
-              <Input
-                id="fp-salary" type="text" inputMode="numeric" placeholder="e.g. 72,000" value={salary}
-                onChange={(e) => { markEngaged('salary'); noteEdit('salary'); setSalary(e.target.value) }}
-                className="mt-1 border-[#D1D5DB]"
-              />
-            </div>
-            <div>
-              <Label htmlFor="fp-state" className="text-[#111827]">State</Label>
+              <Label htmlFor="fp-state" className="text-[#111827]">
+                State <span className="font-normal text-gray-400">(optional)</span>
+              </Label>
               <select
                 id="fp-state" value={state} className={SELECT}
                 onChange={(e) => { markEngaged('state'); noteEdit('state'); setState(e.target.value) }}
@@ -270,7 +357,7 @@ export function FirstPaycheckTool() {
       </Card>
 
       {plan && (
-        <Card className="border-2 border-[#3F6B42] bg-white">
+        <Card id="fp-plan" className="scroll-mt-24 border-2 border-[#3F6B42] bg-white">
           <CardContent className="pt-6">
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
               What to type into the forms
@@ -309,6 +396,18 @@ export function FirstPaycheckTool() {
                   It starts the day you enrol and is not paid retroactively for the months you missed.
                 </p>
               </div>
+            )}
+
+            {!state && (
+              /* Say which assumption is standing in. The plan renders without a
+                 state because stateRate() blends to 4%, which is a fair national
+                 middle and wrong for any particular person — worth one line and
+                 a way to fix it, rather than a silent approximation. */
+              <p className="mt-4 rounded-lg bg-[#3F6B42]/[0.06] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-[#2f5233]">
+                <span className="font-bold">No state set,</span> so this assumes a 4% state tax — about the
+                national middle, and wrong for you if you are in Texas or California. Set it below and these
+                numbers sharpen.
+              </p>
             )}
 
             <p className="mt-4 text-xs leading-relaxed text-gray-500">
