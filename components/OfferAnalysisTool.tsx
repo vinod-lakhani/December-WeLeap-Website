@@ -36,6 +36,7 @@ import {
 } from '@/lib/offer/calculate';
 import { compareOffers } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
+import { EXAMPLE } from '@/lib/offer/example';
 import { OfferLevers } from '@/components/OfferLevers';
 import { OfferCompare } from '@/components/OfferCompare';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
@@ -913,7 +914,12 @@ export function OfferAnalysisTool() {
           <Input
             id="offer-salary"
             ref={salaryRef}
-            type="text" inputMode="numeric" placeholder="e.g. 150,000"
+            /* 62,000, not 150,000. The Yik Yak campaign's creative opens
+               "Your offer says $62k", and the audience there skews students
+               and new grads. A placeholder at 2.4x the number they just read
+               says "this is not built for you" in the first field on the
+               first screen. */
+            type="text" inputMode="numeric" placeholder="e.g. 62,000"
             value={salaryInput}
             onChange={e => {
               const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -936,6 +942,20 @@ export function OfferAnalysisTool() {
         >
           See what it&apos;s really worth →
         </button>
+
+        {/* The ad's own arithmetic, shown as somebody else's offer.
+            Someone arriving from the campaign has just read "$62k … worth
+            ~$78.5k … the other $16.5k" and has about two seconds to decide the
+            page is the thing that said it. Every figure is computed by the
+            same function that prices a real offer, so it cannot drift away
+            from what this tool would actually report — and example.test.ts
+            fails if it stops matching the creative. */}
+        <p className="mt-4 rounded-xl bg-canvas px-4 py-3 text-center text-[13.5px] leading-relaxed text-subtle">
+          A {fc(EXAMPLE.salary)} offer with a {EXAMPLE.bonusPct}% bonus, a{' '}
+          {EXAMPLE.matchUpToPct}% match and {fc(EXAMPLE.equity)} of equity comes out at{' '}
+          <strong className="font-bold text-ink">{fc(EXAMPLE.total)}</strong>. That is{' '}
+          {fc(EXAMPLE.found)} most people never add up.
+        </p>
 
         {/* The upload, demoted to one line. It is a shortcut, and it reads as
             one now rather than as the price of entry. */}
