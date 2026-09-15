@@ -40,21 +40,34 @@ const ACCEPT = 'application/pdf,image/png,image/jpeg'
  * reading a status code. None of them suggest retrying the same file: if a
  * scan is unreadable it will be unreadable twice, and the form is right there.
  */
-const MESSAGES: Record<string, string> = {
+export const MESSAGES: Record<string, string> = {
   too_large: 'That file is over 4MB. A PDF export is usually much smaller than a photo.',
   unsupported_type: 'We can read PDF, PNG and JPG files.',
   empty_file: 'That file looks empty.',
   no_fields:
-    'We could not find the numbers in that one. It may be a scan we cannot read, or not an offer letter — the form below still works.',
-  upload_unavailable: 'Upload is unavailable right now. The form below still works.',
-  busy: 'We are busy right now. Try again in a moment, or use the form below.',
+    'We could not find the numbers in that one. It may be a scan we cannot read, or not an offer letter — {the form} still works.',
+  upload_unavailable: 'Upload is unavailable right now. {The form} still works.',
+  busy: 'We are busy right now. Try again in a moment, or use {the form}.',
   // Distinct from `busy`, which blames us. This one tells the reader the limit
   // is theirs and that the form still works, because it does.
   rate_limited:
-    'You have uploaded a few documents in a short time. Give it an hour, or fill the form in below — it works the same.',
+    'You have uploaded a few documents in a short time. Give it an hour, or use {the form} — it works the same.',
   timeout:
-    'That one took too long to read — it may be a large or complex file. The form below still works.',
-  default: 'Something went wrong reading that. The form below still works.',
+    'That one took too long to read — it may be a large or complex file. {The form} still works.',
+  default: 'Something went wrong reading that. {The form} still works.',
+}
+
+/**
+ * Every failure here ends by pointing at the form, and the direction depends on
+ * the surface. The offer tool now asks for the salary above this block, so
+ * "the form below" sends people the wrong way down a page seventeen screens
+ * long; the first-paycheck tool and the compare panel still have their fields
+ * underneath.
+ */
+export function withFormDirection(message: string, formAbove: boolean): string {
+  return message
+    .replace('{the form}', formAbove ? 'the form above' : 'the form below')
+    .replace('{The form}', formAbove ? 'The form above' : 'The form below')
 }
 
 export type DocKind = 'offer' | 'benefits'
@@ -87,9 +100,16 @@ export interface OfferLetterUploadProps {
    * lost, only moved to where somebody is reading rather than deciding.
    */
   dense?: boolean
+  /**
+   * True when the fields this block is a shortcut for sit ABOVE it rather than
+   * below. Changes which way the copy points, and drops the "no documents to
+   * hand" line entirely — a visitor who has already scrolled past the form does
+   * not need to be told it exists.
+   */
+  formAbove?: boolean
 }
 
-export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUploadProps) {
+export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }: OfferLetterUploadProps) {
   const offerRef = useRef<HTMLInputElement>(null)
   const benefitsRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<DocKind | null>(null)
@@ -111,7 +131,7 @@ export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUpload
     setFilled(null)
 
     if (file.size > MAX_BYTES) {
-      setError(MESSAGES.too_large!)
+      setError(withFormDirection(MESSAGES.too_large!, formAbove))
       track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'too_large' })
       return
     }
@@ -131,7 +151,7 @@ export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUpload
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        setError(MESSAGES[data?.error as string] ?? MESSAGES.default!)
+        setError(withFormDirection(MESSAGES[data?.error as string] ?? MESSAGES.default!, formAbove))
         track('doc_parse_failed', {
           doc_class: DOC[kind].analytics,
           failure_reason: String(data?.error ?? response.status),
@@ -143,7 +163,7 @@ export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUpload
       // A parse that finds nothing is a failure from where the user is
       // standing, whatever the status code said.
       if (count === 0) {
-        setError(MESSAGES.no_fields!)
+        setError(withFormDirection(MESSAGES.no_fields!, formAbove))
         track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'no_fields' })
         return
       }
@@ -165,7 +185,7 @@ export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUpload
       })
     } catch (e) {
       const timedOut = e instanceof DOMException && e.name === 'TimeoutError'
-      setError((timedOut ? MESSAGES.timeout : MESSAGES.default)!)
+      setError(withFormDirection((timedOut ? MESSAGES.timeout : MESSAGES.default)!, formAbove))
       track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: timedOut ? 'client_timeout' : 'network' })
     } finally {
       setBusy(null)
@@ -236,13 +256,14 @@ export function OfferLetterUpload({ onParsed, dense = false }: OfferLetterUpload
           medical premium. Those live in the benefits guide, which is a separate
           document nobody thinks to reach for unless asked. */}
       <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
-        <span className="font-semibold text-gray-700">
-          No documents to hand? Skip this and fill in the form below — it works the same either
-          way.
-        </span>
+        {!formAbove && (
+          <span className="font-semibold text-gray-700">
+            No documents to hand? Skip this and fill in the form below — it works the same either
+            way.{' '}
+          </span>
+        )}
         {!dense && (
           <>
-            {' '}
             Uploading just saves the typing. Most offer letters say nothing about the 401(k)
             match, HSA or health premium; the benefits guide does.
           </>

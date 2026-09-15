@@ -221,6 +221,51 @@ export function OfferAnalysisTool() {
   // 5. Equity
   const [rsuAnnual, setRsuAnnual] = useState(0);
   const [signingBonus, setSigningBonus] = useState(0);
+
+  /**
+   * The hero's two controls.
+   *
+   * The button does not compute — the tool already recomputes on every
+   * keystroke, so by the time it is pressed the answer exists further down the
+   * page. What it does is carry the visitor to it, which from their side is
+   * the same thing and is the whole promise of the label. With no salary yet
+   * there is nothing to show, so it puts the cursor in the field instead of
+   * scrolling to an empty screen.
+   */
+  const salaryRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Aim, then re-aim.
+   *
+   * A single scrollIntoView lands short here, and badly. The first salary
+   * renders six more sections beneath the button, and the tax call adds rows
+   * to them as it resolves — measured at roughly 1,800px of growth arriving
+   * after the scroll had already started, which left the answer a screen and a
+   * half below where the browser stopped. Re-running it as the layout settles
+   * costs nothing when the page is already still.
+   */
+  const scrollToAnswer = useCallback(() => {
+    const go = () =>
+      document.getElementById('offer-answer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    go();
+    const timers = [600, 1400, 2400].map((ms) => setTimeout(go, ms));
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const revealAnswer = useCallback(() => {
+    if (salary <= 0) {
+      salaryRef.current?.focus();
+      track('offer_quickstart_cta', { tool: 'offer', outcome: 'no_salary' });
+      return;
+    }
+    track('offer_quickstart_cta', { tool: 'offer', outcome: 'scrolled_to_answer' });
+    scrollToAnswer();
+  }, [salary, scrollToAnswer]);
+
+  const jumpToUpload = useCallback(() => {
+    track('offer_quickstart_upload_link', { tool: 'offer' });
+    document.getElementById('offer-upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   const [showEspp, setShowEspp] = useState(false);
   const [esppContrib, setEsppContrib] = useState(10);
   const [esppDiscount, setEsppDiscount] = useState(15);
@@ -844,7 +889,75 @@ export function OfferAnalysisTool() {
         </div>
       )}
 
-      <OfferLetterUpload onParsed={applyParsed} />
+      {/* ── The first screen ────────────────────────────────────────────────
+          Ad traffic from a phone used to land on two upload buttons and a
+          PDF/PNG/JPG disclaimer. Measured on the live page at 375x812: the
+          upload block ran from 461px to past the fold, both buttons above it,
+          and the salary field sat at 987px — 175px out of sight. Every control
+          a visitor could reach asked for a document most of them did not have,
+          and the escape hatch was a sentence of body copy underneath two
+          buttons.
+
+          One number is genuinely enough. A bare salary already produces the
+          package, the take-home, the match to capture and the counters worth
+          asking for; the defaults behind it are the same ones the sections
+          below start from. So the first thing on the page is the one field
+          that needs nothing looked up, and the upload becomes what it always
+          was — a shortcut for the minority holding the letter. */}
+      <div className="mb-4 rounded-2xl border border-hairline bg-white px-5 py-6 shadow-card sm:px-6">
+        <Label htmlFor="offer-salary" className="mb-1.5 block text-sm font-semibold text-gray-700">
+          Base salary in the offer
+        </Label>
+        <div className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-gray-400">$</span>
+          <Input
+            id="offer-salary"
+            ref={salaryRef}
+            type="text" inputMode="numeric" placeholder="e.g. 150,000"
+            value={salaryInput}
+            onChange={e => {
+              const raw = e.target.value.replace(/[^0-9]/g, '');
+              setSalaryInput(raw ? Number(raw).toLocaleString() : '');
+              const newSalary = raw ? Number(raw) : 0;
+              setSalary(newSalary);
+              if (newSalary > 0) trackFieldChange('salary', newSalary);
+            }}
+            className="h-14 pl-9 text-2xl font-bold tracking-[-0.02em] text-[#386641] border-[#386641] focus-visible:ring-[#386641]"
+          />
+          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+            per year
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={revealAnswer}
+          className="mt-3 w-full rounded-xl bg-[#386641] py-4 text-[17px] font-bold text-white transition hover:bg-[#2d5a26]"
+        >
+          See what it&apos;s really worth →
+        </button>
+
+        {/* The upload, demoted to one line. It is a shortcut, and it reads as
+            one now rather than as the price of entry. */}
+        <p className="mt-4 text-center text-[15px] text-subtle">
+          Have the offer letter?{' '}
+          <button
+            type="button"
+            onClick={jumpToUpload}
+            className="font-semibold text-brand-700 underline underline-offset-[3px]"
+          >
+            Upload it and skip the typing.
+          </button>
+        </p>
+
+        {/* No trust pill here: the page already carries "Free · No account
+            required" above the H1, and two of them in one screen reads as
+            protesting too much. */}
+      </div>
+
+      <div id="offer-upload" className="scroll-mt-24">
+        <OfferLetterUpload onParsed={applyParsed} formAbove />
+      </div>
 
       {benefitsUploaded && (
         /* The one assumption the benefits path makes, stated in plain words.
@@ -907,27 +1020,17 @@ export function OfferAnalysisTool() {
       )}
 
       {/* ── 1. Base Salary ─────────────────────────────────────────────────── */}
-      <Section num={1} title="Base Salary" subtitle="The headline number on your offer letter" annualValue={salary || null}>
+      {/* The salary input itself is in the hero block at the top of the tool,
+          not here. This section keeps the number as its headline value and
+          owns the one thing that sharpens it — the state the tax is paid in.
+          FieldSource still reports when a letter supplied the salary. */}
+      <Section num={1} title="Base Salary" subtitle="Entered above. Your work state sharpens the tax on it." annualValue={salary || null}>
         <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Annual base salary<FieldSource {...sourceOf('salary')} src={fromLetter.salary} /></Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <Input
-                type="text" inputMode="numeric" placeholder="e.g. 150,000"
-                value={salaryInput}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  setSalaryInput(raw ? Number(raw).toLocaleString() : '');
-                  const newSalary = raw ? Number(raw) : 0;
-                  setSalary(newSalary);
-                  if (newSalary > 0) trackFieldChange('salary', newSalary);
-                }}
-                className="pl-6 text-base font-semibold border-[#386641] focus-visible:ring-[#386641]"
-                autoFocus
-              />
-            </div>
-          </div>
+          {fromLetter.salary && (
+            <p className="text-xs text-gray-500">
+              Base salary<FieldSource {...sourceOf('salary')} src={fromLetter.salary} />
+            </p>
+          )}
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">
               Work state <span className="font-normal text-gray-400">(optional — improves tax accuracy)</span><FieldSource {...sourceOf('jobState')} src={fromLetter.jobState} />
@@ -1243,7 +1346,7 @@ export function OfferAnalysisTool() {
               than the base number — but that finding was rendering as
               "+$15,200 more than base salary" in 12px white/30 at the bottom of
               the breakdown card. It leads now; the breakdown below is the proof. */}
-          <div className="rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
+          <div id="offer-answer" className="scroll-mt-24 rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
               Your offer is actually worth
             </p>
