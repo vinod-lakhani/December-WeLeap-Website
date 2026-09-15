@@ -14,7 +14,7 @@
  * rather than a retry loop or a modal.
  */
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
 import { stampFirstDocClass, type DocClass } from '@/lib/offer-parse/doc-analytics'
 import { cn } from '@/lib/utils'
@@ -34,6 +34,9 @@ const MAX_BYTES = 4 * 1024 * 1024
 const REQUEST_TIMEOUT_MS = 70_000
 
 const ACCEPT = 'application/pdf,image/png,image/jpeg'
+
+/** How long to wait for a picker to take the page out of the foreground. */
+const PICKER_GRACE_MS = 2500
 
 /**
  * One message per failure, written for someone holding a document rather than
@@ -117,6 +120,50 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
   const [filled, setFilled] = useState<{ count: number; kind: DocKind } | null>(null)
 
   /**
+   * Did the file picker actually open?
+   *
+   * In-app browsers — the one a tap from a Yik Yak ad lands in, and most social
+   * apps — frequently do not implement the file chooser. The button then does
+   * nothing at all: no picker, no error, no way for the visitor to know the
+   * control is dead rather than slow. That is the worst kind of dead end,
+   * because it looks like the page is broken and there is nothing to react to.
+   *
+   * A plain timer would misfire on anyone who simply takes a while choosing a
+   * file. The reliable tell is focus: opening a picker takes the page out of
+   * the foreground on every platform that has one — a separate activity on
+   * Android, a sheet that blurs the window on iOS. If nothing has taken focus
+   * a couple of seconds after the tap, no picker opened.
+   *
+   * Cancelling a picker does not trip this, because cancelling means it opened.
+   */
+  const [pickerStalled, setPickerStalled] = useState(false)
+  const stallTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (stallTimer.current) clearTimeout(stallTimer.current)
+  }, [])
+
+  const watchForPicker = useCallback((kind: DocKind) => {
+    setPickerStalled(false)
+    if (stallTimer.current) clearTimeout(stallTimer.current)
+
+    let leftForeground = false
+    const noteLeft = () => { leftForeground = true }
+    window.addEventListener('blur', noteLeft, { once: true })
+    document.addEventListener('visibilitychange', noteLeft, { once: true })
+
+    stallTimer.current = setTimeout(() => {
+      window.removeEventListener('blur', noteLeft)
+      document.removeEventListener('visibilitychange', noteLeft)
+      if (leftForeground) return
+      setPickerStalled(true)
+      // Worth its own event: this measures the broken-picker rate directly,
+      // rather than inferring it from doc_upload_started with no doc_uploaded.
+      track('doc_picker_no_response', { doc_class: DOC[kind].analytics })
+    }, PICKER_GRACE_MS)
+  }, [])
+
+  /**
    * Which document this is comes from the button, not a classifier.
    *
    * The spec's pipeline detects the class from the content, and it has to —
@@ -127,6 +174,9 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
    * failure the validation layer cannot catch.
    */
   async function handleFile(file: File, kind: DocKind) {
+    // A file is proof the picker opened, whatever the focus events said.
+    if (stallTimer.current) clearTimeout(stallTimer.current)
+    setPickerStalled(false)
     setError(null)
     setFilled(null)
 
@@ -202,6 +252,7 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
         disabled={busy !== null}
         onClick={() => {
           track('doc_upload_started', { doc_class: DOC[kind].analytics, surface: 'tool', authed: false })
+          watchForPicker(kind)
           refObj.current?.click()
         }}
         className={cn(
@@ -255,6 +306,18 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
           not one stated a 401(k) match, an employer HSA contribution or a
           medical premium. Those live in the benefits guide, which is a separate
           document nobody thinks to reach for unless asked. */}
+      {pickerStalled && (
+        /* Deliberately not phrased as a diagnosis. We know the picker did not
+           open; we do not know why, and telling somebody their browser is
+           broken helps nobody. It names the likely cause once and then points
+           at the path that always works. */
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-amber-900">
+          <span className="font-bold">Nothing happened?</span> Some apps block file uploads from
+          inside them. {formAbove ? 'The salary field above is all this needs' : 'The form below works the same'} —
+          nothing here is required.
+        </p>
+      )}
+
       <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
         {!formAbove && (
           <span className="font-semibold text-gray-700">
