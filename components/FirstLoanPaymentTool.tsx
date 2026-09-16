@@ -19,7 +19,7 @@
  * are shown, and the gap between them is what keeping the match costs.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppCta } from '@/components/AppCta'
 import { track } from '@/lib/analytics'
@@ -161,11 +161,45 @@ export function FirstLoanPaymentTool() {
     })
   }, [result, balance, rate, salary, state])
 
-  const seeWhatToDo = useCallback(() => {
-    complete()
-    track('first_loan_cta', { tool: TOOL })
-    belowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [complete])
+  /**
+   * Completion is reaching the advice, not pressing a button to be taken to it.
+   *
+   * There used to be a full-width green button here whose only job was to
+   * scroll. It cost 71px of the first screen to say "there is more below" —
+   * and the card it scrolled to sits 49px under the fold, so removing it lets
+   * that card peek instead. The content is a better affordance than a control
+   * that does nothing, and a primary button that only scrolls teaches people
+   * the buttons on this page are decorative, which is expensive three cards
+   * later where the real one is.
+   */
+  useEffect(() => {
+    if (!result) return
+    const el = belowRef.current
+    if (!el) return
+
+    /**
+     * Fires when the advice has actually been scrolled to, which is what
+     * reaching the end of this tool means now that there is no button to press.
+     *
+     * A scroll listener rather than an IntersectionObserver, which is the
+     * tidier API and did not fire reliably here. This is one passive listener
+     * that removes itself the moment it has something to report, and the
+     * condition is a comparison of two numbers that can be read off the page.
+     */
+    const seen = () => {
+      // Half the viewport past the top of the card: far enough that the card
+      // peeking above the fold on load does not count as having read it.
+      const top = el.getBoundingClientRect().top + window.scrollY
+      if (window.scrollY + window.innerHeight * 0.5 >= top) {
+        complete()
+        window.removeEventListener('scroll', seen)
+      }
+    }
+
+    window.addEventListener('scroll', seen, { passive: true })
+    seen()
+    return () => window.removeEventListener('scroll', seen)
+  }, [complete, result])
 
   const stateNamed = hasStateRate(state)
 
@@ -245,13 +279,6 @@ export function FirstLoanPaymentTool() {
         </p>
 
 
-        <button
-          type="button"
-          onClick={seeWhatToDo}
-          className="mt-5 w-full rounded-xl bg-[#386641] py-4 text-[17px] font-bold text-white transition hover:bg-[#2d5a26]"
-        >
-          See what to do about it
-        </button>
 
         {/* Below the button, not between the answer and it. Ninety pixels of
             small print sitting in that gap was the difference between the
