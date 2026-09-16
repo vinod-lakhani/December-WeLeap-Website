@@ -296,10 +296,18 @@ export function FirstLoanPaymentTool() {
 
             <section className="mt-4 rounded-2xl border border-hairline bg-white px-5 py-5 sm:px-6">
               <h3 className="text-[15px] font-bold text-[#1A3320]">Where the money goes</h3>
+              {/* Reconciles to the paycheck the advice above produces, not the
+                  one somebody gets by ignoring it. The contribution used to be
+                  missing from this list while the card above recommended
+                  making it, so the two disagreed by $164 on the same screen. */}
+              <p className="mt-1 text-[12.5px] text-[#9AA39B]">
+                Following the one move, with the {MATCH_DEFERRAL_PCT}% contribution running.
+              </p>
               <dl className="mt-3 text-sm">
                 {[
                   { k: 'Monthly gross', v: result.grossMonthly },
-                  { k: 'Taxes (estimated)', v: result.taxMonthly },
+                  { k: `Your 401(k), ${MATCH_DEFERRAL_PCT}%`, v: result.deferralMonthly },
+                  { k: 'Taxes (estimated)', v: result.taxWithDeferralMonthly },
                   { k: 'Loan payment', v: result.payment },
                 ].map((row) => (
                   <div key={row.k} className="flex justify-between border-b border-hairline py-2 text-[#636B64]">
@@ -309,10 +317,35 @@ export function FirstLoanPaymentTool() {
                 ))}
                 <div className="flex justify-between py-2.5 font-bold text-[#0C0F0C]">
                   <dt>What lands</dt>
-                  <dd className="tabular-nums">{money(result.takeHomeAfter)}</dd>
+                  <dd className="tabular-nums">{money(result.takeHomeWithMatch)}</dd>
                 </div>
               </dl>
-              <p className="mt-2 text-xs leading-relaxed text-[#9AA39B]">
+
+              {/* The trade, priced. The contribution is the only line above
+                  that is not actually gone: it is the one that comes back
+                  bigger, and saying so is the whole argument for not cutting
+                  retirement to attack a 6% loan. */}
+              {result.retirementMonthly > 0 && (
+                <div className="mt-4 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-3.5">
+                  <p className="text-[14.5px] font-bold leading-snug text-[#1A3320]">
+                    That {money(result.deferralCostMonthly)} a month is the only line here you keep.
+                  </p>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-[#2f5233]">
+                    It costs {money(result.deferralCostMonthly)} of spending money, because the contribution
+                    lowers your tax. Your employer adds {money(result.employerMatchMonthly)}. So{' '}
+                    {money(result.deferralCostMonthly)} out of your pocket becomes{' '}
+                    <strong className="font-bold">{money(result.retirementMonthly)} a month</strong> in
+                    retirement, from the first paycheck.
+                  </p>
+                  <p className="mt-2 text-[12px] leading-relaxed text-[#636B64]">
+                    Assumes your employer matches dollar for dollar up to {MATCH_DEFERRAL_PCT}%, which is the
+                    commonest arrangement. Your benefits guide has the real terms, and they are worth checking
+                    before you set the number.
+                  </p>
+                </div>
+              )}
+
+              <p className="mt-3 text-xs leading-relaxed text-[#9AA39B]">
                 Over the full {STANDARD_TERM_MONTHS / 12} years this loan costs about{' '}
                 {money(result.interestTotal)} in interest if nothing changes.
               </p>

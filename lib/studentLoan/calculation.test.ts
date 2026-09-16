@@ -140,6 +140,37 @@ describe('computeLoanPayment', () => {
     })
   })
 
+  describe('the ledger, and what the match is worth', () => {
+    it('reconciles to the paycheck the advice produces, not the one that ignores it', () => {
+      /**
+       * The ledger used to list gross, tax and the loan payment and total to
+       * the no-contribution figure, directly under a card recommending a
+       * contribution. The two disagreed by the cost of the advice.
+       */
+      const r = computeLoanPayment(base())!
+      const sum =
+        r.grossMonthly - r.deferralMonthly - r.taxWithDeferralMonthly - r.payment
+      expect(sum).toBeCloseTo(r.takeHomeWithMatch, 6)
+    })
+
+    it('prices the deferral as a trade rather than a cost', () => {
+      const r = computeLoanPayment(base())!
+      // $200 a month deferred on $60,000, matched dollar for dollar.
+      expect(r.deferralMonthly).toBeCloseTo(200, 6)
+      expect(r.employerMatchMonthly).toBeCloseTo(200, 6)
+      expect(r.retirementMonthly).toBeCloseTo(400, 6)
+      // And it costs less out of pocket than it puts away, by a wide margin:
+      // the tax saved plus the employer's half.
+      expect(r.deferralCostMonthly).toBeLessThan(r.retirementMonthly / 2)
+    })
+
+    it('has nothing to say about a match when nothing is deferred', () => {
+      const r = computeLoanPayment(base({ deferralPct: 0 }))!
+      expect(r.retirementMonthly).toBe(0)
+      expect(r.employerMatchMonthly).toBe(0)
+    })
+  })
+
   it('reports the interest the standard term costs', () => {
     const r = computeLoanPayment(base())!
     // $341 a month for ten years against a $30,000 balance.

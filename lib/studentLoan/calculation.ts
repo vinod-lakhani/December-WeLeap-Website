@@ -40,6 +40,16 @@ export const HIGH_APR_THRESHOLD = 0.10
 /** A default 401(k) deferral, only used to price what keeping a match costs. */
 export const MATCH_DEFERRAL_PCT = 4
 
+/**
+ * Assumed dollar for dollar, up to the same cap.
+ *
+ * This tool does not ask for match terms, because it has one screen and the
+ * grace period is the thing it is about. A full match to about 4% is the
+ * commonest arrangement, and the page says it is assuming it rather than
+ * presenting it as a reading of anybody's benefits.
+ */
+export const ASSUMED_MATCH_RATE_PCT = 100
+
 export interface LoanPaymentInputs {
   /** Loan balance in dollars. */
   balance: number
@@ -76,6 +86,18 @@ export interface LoanPaymentResult {
   /** Gross, tax and payment, for the ledger. */
   grossMonthly: number
   taxMonthly: number
+  /** The recommended deferral, monthly. */
+  deferralMonthly: number
+  /** What the employer adds for making it, monthly. */
+  employerMatchMonthly: number
+  /** Deferral plus match: what actually reaches retirement each month. */
+  retirementMonthly: number
+  /**
+   * Tax with the deferral running, so a ledger that includes the contribution
+   * reconciles to takeHomeWithMatch rather than to the figure somebody gets by
+   * ignoring the advice above it.
+   */
+  taxWithDeferralMonthly: number
   /** True when the rate is high enough to attack before optional saving. */
   highApr: boolean
   /** Total interest over the standard term, if nothing changes. */
@@ -130,7 +152,15 @@ export function computeLoanPayment(inputs: LoanPaymentInputs): LoanPaymentResult
   const grossMonthly = salary / 12
   const taxMonthly = grossMonthly - takeHomeBefore
 
+  const deferralMonthly = deferralAnnual / 12
+  const employerMatchMonthly = deferralMonthly * (ASSUMED_MATCH_RATE_PCT / 100)
+  const taxWithDeferralMonthly = grossMonthly - deferralMonthly - takeHomeWithDeferral
+
   return {
+    deferralMonthly,
+    employerMatchMonthly,
+    retirementMonthly: deferralMonthly + employerMatchMonthly,
+    taxWithDeferralMonthly,
     payment,
     takeHomeBefore,
     takeHomeAfter,
