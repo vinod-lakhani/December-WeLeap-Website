@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import {
+  federalTax,
+  ficaTax,
+  stateRate,
+  taxableIncome,
+} from '@/lib/firstPaycheck/calculation';
+import {
+  STANDARD_DEDUCTION_2026_SINGLE as STANDARD_DEDUCTION,
+  TAX_YEAR_FIRST_PAYCHECK as TAX_YEAR,
+} from '@/lib/firstPaycheck/constants';
+
 interface TaxCalculationResponse {
   federalTaxAnnual: number;
   stateTaxAnnual: number;
@@ -10,58 +21,35 @@ interface TaxCalculationResponse {
 }
 
 /**
- * Calculate conservative fallback tax estimate
- * Uses effective tax rates as a conservative estimate
+ * Fallback when API Ninjas is unavailable.
+ *
+ * This used to keep its own tax code, and got it wrong three ways at once: it
+ * applied a MARGINAL rate to GROSS income as though it were an effective rate,
+ * from a 2023 bracket table, with no standard deduction. On $60,000 that
+ * produced $13,200 of federal tax against a true figure of $5,020.
+ *
+ * It now runs the same functions every calculator on the site uses, so the
+ * fallback and the API agree to within rounding and no tool can quote a
+ * take-home that depends on whether a third party happened to answer.
  */
-function calculateFallbackTax(annualIncome: number, stateCode: string): TaxCalculationResponse {
-  // Federal tax brackets (simplified effective rate approach)
-  let federalEffectiveRate = 0.10; // Conservative default
-  
-  if (annualIncome > 578125) {
-    federalEffectiveRate = 0.37;
-  } else if (annualIncome > 231250) {
-    federalEffectiveRate = 0.35;
-  } else if (annualIncome > 182050) {
-    federalEffectiveRate = 0.32;
-  } else if (annualIncome > 95350) {
-    federalEffectiveRate = 0.24;
-  } else if (annualIncome > 44725) {
-    federalEffectiveRate = 0.22;
-  } else if (annualIncome > 11000) {
-    federalEffectiveRate = 0.12;
-  }
-  
-  // State tax (simplified by state)
-  const stateRates: Record<string, number> = {
-    CA: 0.09, // CA has progressive rates, using conservative estimate
-    NY: 0.06,
-    TX: 0.00, // TX has no state income tax
-    WA: 0.00, // WA has no state income tax
-    MA: 0.05,
-    IL: 0.0495,
-  };
-  
-  const stateEffectiveRate = stateRates[stateCode] || 0.04;
-  
-  // FICA (Social Security + Medicare)
-  const socialSecurityRate = 0.062; // 6.2% up to wage base (we'll simplify)
-  const medicareRate = 0.0145; // 1.45%
-  const ficaRate = socialSecurityRate + medicareRate;
-  
-  // Calculate taxes
-  const federalTaxAnnual = annualIncome * federalEffectiveRate;
-  const stateTaxAnnual = annualIncome * stateEffectiveRate;
-  const ficaTaxAnnual = annualIncome * ficaRate;
+function calculateFallbackTax(
+  annualIncome: number,
+  stateCode: string,
+  pretaxAnnual = 0,
+): TaxCalculationResponse {
+  const federalTaxAnnual = federalTax(taxableIncome(annualIncome, pretaxAnnual));
+  const stateTaxAnnual =
+    Math.max(0, annualIncome - pretaxAnnual - STANDARD_DEDUCTION) * stateRate(stateCode);
+  const ficaTaxAnnual = ficaTax(annualIncome);
   const totalTaxAnnual = federalTaxAnnual + stateTaxAnnual + ficaTaxAnnual;
-  const netIncomeAnnual = annualIncome - totalTaxAnnual;
-  
+
   return {
     federalTaxAnnual: Math.round(federalTaxAnnual),
     stateTaxAnnual: Math.round(stateTaxAnnual),
     ficaTaxAnnual: Math.round(ficaTaxAnnual),
     totalTaxAnnual: Math.round(totalTaxAnnual),
-    netIncomeAnnual: Math.round(netIncomeAnnual),
-    taxSource: 'fallback',
+    netIncomeAnnual: Math.round(annualIncome - totalTaxAnnual),
+    taxSource: 'fallback' as const,
   };
 }
 
@@ -97,6 +85,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { salaryAnnual, takeHomeAnnual, state } = body;
+    /**
+     * Pre-tax money coming out before tax: a 401(k) deferral, a payroll HSA.
+     * Optional, and added to the standard deduction rather than subtracted
+     * from the salary — taking it off the salary would understate FICA, which
+     * a 401(k) deferral still pays.
+     */
+    const pretaxAnnual = Math.max(0, Number(body.pretaxAnnual) || 0);
 
     // Validate required fields
     if (!state) {
@@ -137,6 +132,22 @@ export async function POST(request: NextRequest) {
         apiUrl.searchParams.set('region', state);
         apiUrl.searchParams.set('income', salaryAnnual.toString());
         apiUrl.searchParams.set('filing_status', 'single'); // Required for US; default to single
+        /**
+         * The standard deduction, which the API does not apply on its own.
+         *
+         * Without it the request asks for tax on GROSS income, and the
+         * response says so plainly — it returns `deductions: 0` and
+         * `taxable_income` equal to the salary we sent. Nobody read that, so
+         * two shipped tools were quoting a take-home $328 a month too low on a
+         * $60,000 salary. It compounds: state tax is charged on the same
+         * taxable income, so California went out at $2,260 instead of $1,211.
+         *
+         * tax_year is pinned to the same year the deduction comes from. Left
+         * to default, the API would advance to the next year's brackets while
+         * we kept sending this year's deduction.
+         */
+        apiUrl.searchParams.set('deductions', String(STANDARD_DEDUCTION + pretaxAnnual));
+        apiUrl.searchParams.set('tax_year', String(TAX_YEAR));
 
         const response = await fetch(apiUrl.toString(), {
           method: 'GET',
@@ -187,7 +198,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback calculation
-    const fallbackResult = calculateFallbackTax(salaryAnnual, state);
+    const fallbackResult = calculateFallbackTax(salaryAnnual, state, pretaxAnnual);
     return NextResponse.json(fallbackResult);
 
   } catch (error) {

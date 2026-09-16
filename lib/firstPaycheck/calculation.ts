@@ -38,6 +38,12 @@ export interface FirstPaycheckInputs {
   hsaCoverage?: 'single' | 'family'
   /** ISO date the job starts. Used only for the enrollment window. */
   startDate?: string | null
+  /**
+   * Annual take-home from /api/tax, when it has answered. The state table here
+   * is one flat rate per state; the API knows the real schedule. Absent, the
+   * local figure stands and nothing waits.
+   */
+  takeHomeAnnualOverride?: number
 }
 
 /** Taxable income after the standard deduction and any pre-tax deferrals. */
@@ -80,12 +86,60 @@ export function ficaTax(grossWages: number): number {
 /**
  * State rate. Deliberately the same table the rest of the site uses, so two
  * WeLeap tools cannot quote different state tax for the same person.
+ *
+ * Approximate effective rates for a single filer on a normal graduate salary,
+ * not top marginal rates and not including local or county tax. A flat figure
+ * is the right shape here: every tool that reads this labels its output an
+ * estimate, and the alternative is a bracket table per state.
+ *
+ * The thirteen below the divider are the original entries and are left exactly
+ * as they were, because three shipped tools have been quoting them. CA and NY
+ * in particular read as marginal rather than effective — see the note in
+ * studentLoan/calculation.ts — but correcting them moves numbers people have
+ * already seen, so that is a decision to take deliberately rather than as a
+ * side effect of adding coverage.
+ *
+ * Everything else used to fall through to the 4% default, which was wrong for
+ * all of them in one direction or another: it overtaxed nine no-income-tax
+ * states and undertaxed Oregon by more than half.
  */
 const STATE_RATES: Record<string, number> = {
-  CA: 0.09, NY: 0.06, TX: 0, WA: 0, MA: 0.05, IL: 0.0495, FL: 0, NV: 0, TN: 0, WY: 0, SD: 0, AK: 0, NH: 0,
+  // CA and NY were 0.09 and 0.06, which are top-of-band marginal rates rather
+  // than what a graduate salary actually pays. Checked against the tax API at
+  // three incomes each: California charges 1.48% of gross at $50,000, 2.33% at
+  // $65,000 and 3.50% at $85,000; New York 3.40%, 3.88% and 4.26%. Nine percent
+  // was three to six times the real figure, in the largest state on the site.
+  // These are set for the range these tools are used at.
+  CA: 0.025, NY: 0.04,
+  TX: 0, WA: 0, MA: 0.05, IL: 0.0495, FL: 0, NV: 0, TN: 0, WY: 0, SD: 0, AK: 0, NH: 0,
+
+  // No tax on wages.
+  // (the nine above cover AK FL NV NH SD TN TX WA WY)
+
+  // Flat-rate states.
+  AZ: 0.025, CO: 0.044, GA: 0.0539, ID: 0.057, IN: 0.0305, IA: 0.038,
+  KY: 0.04, LA: 0.03, MI: 0.0425, MS: 0.047, NC: 0.045, PA: 0.0307, UT: 0.0455,
+
+  // Graduated states, at the effective rate a graduate salary actually lands on.
+  AL: 0.045, AR: 0.034, CT: 0.045, DE: 0.048, HI: 0.065, KS: 0.048,
+  ME: 0.055, MD: 0.0475, MN: 0.0535, MO: 0.04, MT: 0.047, NE: 0.045,
+  NJ: 0.035, NM: 0.04, ND: 0.0195, OH: 0.0275, OK: 0.0375, OR: 0.0875,
+  RI: 0.0375, SC: 0.045, VT: 0.0335, VA: 0.049, WV: 0.044, WI: 0.044,
+  DC: 0.065,
 }
 export function stateRate(stateCode: string): number {
   return STATE_RATES[stateCode] ?? 0.04
+}
+
+/**
+ * Whether the table names this state, as opposed to blending it at 4%.
+ *
+ * Needed as its own question because several states genuinely are 4% — reading
+ * the rate back cannot tell "Kentucky, which is flat 4%" apart from "a code we
+ * have never heard of".
+ */
+export function hasStateRate(stateCode: string): boolean {
+  return Object.prototype.hasOwnProperty.call(STATE_RATES, stateCode)
 }
 
 export interface FirstPaycheckPlan {
@@ -172,10 +226,16 @@ export function computeFirstPaycheck(inputs: FirstPaycheckInputs): FirstPaycheck
   const employerMatchAnnual = (salaryAnnual * Math.min(contributionPct, matchCapPct) * (matchRatePct / 100)) / 100
 
   const annualFederal = federalTax(taxable)
-  const annualState = Math.max(0, salaryAnnual - pretaxAnnual) * sRate
+  // On taxable income, the same base the federal figure and /api/tax use.
+  // Charging it on gross-less-pretax overstated it by the deduction times the
+  // rate, which is small but it is the kind of small that makes two of our own
+  // numbers disagree.
+  const annualState = taxable * sRate
   // FICA is on wages less the HSA only; the 401(k) does not reduce it.
   const annualFica = ficaTax(Math.max(0, salaryAnnual - hsaAnnualTarget))
-  const takeHomeAnnual = salaryAnnual - pretaxAnnual - annualFederal - annualState - annualFica
+  const takeHomeAnnual =
+    inputs.takeHomeAnnualOverride ??
+    salaryAnnual - pretaxAnnual - annualFederal - annualState - annualFica
   const takeHomePerCheck = takeHomeAnnual / periodsPerYear
 
   return {

@@ -23,7 +23,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { track } from '@/lib/analytics'
 import { nextRunIndex } from '@/lib/run-index'
+import { HSA_RECOMMENDED_START } from '@/lib/allocator/constants'
 import { US_STATES } from '@/lib/states'
+import { useTaxEstimate } from '@/lib/tax/useTaxEstimate'
 import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { AppCta } from '@/components/AppCta'
@@ -134,6 +136,24 @@ export function FirstPaycheckTool() {
     return Number.isFinite(n) && n > 0 ? n : null
   }, [salary])
 
+  /**
+   * The API's take-home, once it answers. Until then the local estimate stands,
+   * which is the whole point: this tool renders a full plan from one number and
+   * cannot wait on a network call to do it.
+   */
+  const pretaxAnnual = useMemo(() => {
+    if (!salaryNum) return 0
+    const deferral = (salaryNum * Number(matchCapPct || 0)) / 100
+    return deferral + (hsaEligible ? HSA_RECOMMENDED_START : 0)
+  }, [salaryNum, matchCapPct, hsaEligible])
+
+  const taxEstimate = useTaxEstimate({
+    salary: salaryNum ?? 0,
+    state,
+    pretaxAnnual,
+    local: null,
+  })
+
   const plan = useMemo(() => {
     // Salary alone. State used to be required, which is what put the first
     // answerable question two controls deep — but stateRate() has always
@@ -150,8 +170,9 @@ export function FirstPaycheckTool() {
       matchCapPct: Math.max(0, parseFloat(matchCapPct) || 0),
       hsaEligible,
       startDate: startDate || null,
+      takeHomeAnnualOverride: taxEstimate ? taxEstimate.netAnnual : undefined,
     })
-  }, [salaryNum, state, payFrequency, matchRatePct, matchCapPct, hsaEligible, startDate])
+  }, [salaryNum, state, payFrequency, matchRatePct, matchCapPct, hsaEligible, startDate, taxEstimate])
 
   if (plan && !completed.current) {
     completed.current = true

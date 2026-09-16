@@ -96,6 +96,28 @@ export const FREE_TOOLS: FreeTool[] = [
     presentDay: true,
   },
   {
+    /**
+     * The second moment, six months after the first.
+     *
+     * The offer tool catches somebody the week they get an offer. This one
+     * catches them the week their paycheck shrinks for the first time, which
+     * for a May graduate is November. It is the wedge for last year's
+     * graduates, who have no offer letter to upload and are not where the
+     * offer tool's traffic comes from.
+     *
+     * Third in the sequence rather than beside the other debt tools, because
+     * the audience is the one arriving from the two above it.
+     */
+    name: "First Loan Payment",
+    question: "What does my student loan do to my paycheck?",
+    blurb: "Grace period ending? See the payment, and what actually lands in your account after it.",
+    cta: "See what lands →",
+    href: "/first-student-loan-payment",
+    icon: "/images/tool-icons/graduation-cap.png",
+    slug: "first_loan_payment",
+    presentDay: true,
+  },
+  {
 
     // Was the "Leap Impact Simulator", which only ever modelled the 401(k)
     // rate and then handed off to the allocation engine for everything else.
