@@ -167,6 +167,29 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
+  '/first-student-loan-payment': [
+    {
+      q: 'When does my student loan grace period end?',
+      a: 'Federal loans give most borrowers six months after leaving school, so a May graduate is usually due their first payment in November and a December graduate in June. The date is set by when you dropped below half-time enrolment rather than by your graduation ceremony, and your servicer is the authority on it. The useful thing to know is that the grace period ending is not a notification you can rely on receiving: servicers change, addresses go stale, and the first payment is due whether or not the reminder reached you.',
+    },
+    {
+      q: 'What will my first student loan payment be?',
+      a: 'Unless you choose otherwise, you are placed on the standard ten-year plan, and the payment is the amount that clears the balance in 120 months at your interest rate. On $30,000 at 6.5% that is about $341 a month. The figure this tool shows is that calculation, which is also the answer to "what happens if I do nothing" — the situation most borrowers are actually in during the weeks before the first payment.',
+    },
+    {
+      q: 'Should I pay extra on my student loans or contribute to my 401(k)?',
+      a: 'If your employer matches, the match comes first. A dollar-for-dollar match is an immediate 100% return, which no loan interest rate competes with, and it is only paid in the months you contribute. Below roughly 10% interest, the usual order is: capture the full match, build a small cash cushion, then send extra at the loan. Above 10% the loan moves ahead of anything optional. Most federal undergraduate loans sit well under that line, which is why the common instinct to cut retirement contributions to attack a 6% loan is usually the wrong trade.',
+    },
+    {
+      q: 'Why is the payment bigger than I expected as a share of my paycheck?',
+      a: 'Because a loan payment comes out of take-home rather than salary. A $60,000 salary is about $5,000 a month gross, but roughly $4,000 after federal tax, FICA and state tax, so a $341 payment is closer to 9% of what actually lands than the 7% it looks like against gross. That gap is the reason this tool shows the paycheck before and after rather than the payment on its own.',
+    },
+    {
+      q: 'Does this cover income-driven repayment plans?',
+      a: 'Not yet, and deliberately. Federal repayment plans changed under 2025 legislation and the plans a new borrower can enrol in differ from what most calculators still assume. Quoting a plan name or a payment formula that is out of date would be worse than not offering the comparison, so this tool prices the standard plan only and says so. Check studentaid.gov for what you can currently enrol in.',
+    },
+  ],
+
   '/first-paycheck-setup': [
     {
       q: 'How much should I contribute to my 401(k) at my first job?',
