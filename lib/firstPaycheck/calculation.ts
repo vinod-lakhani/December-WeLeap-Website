@@ -38,6 +38,12 @@ export interface FirstPaycheckInputs {
   hsaCoverage?: 'single' | 'family'
   /** ISO date the job starts. Used only for the enrollment window. */
   startDate?: string | null
+  /**
+   * Annual take-home from /api/tax, when it has answered. The state table here
+   * is one flat rate per state; the API knows the real schedule. Absent, the
+   * local figure stands and nothing waits.
+   */
+  takeHomeAnnualOverride?: number
 }
 
 /** Taxable income after the standard deduction and any pre-tax deferrals. */
@@ -220,10 +226,16 @@ export function computeFirstPaycheck(inputs: FirstPaycheckInputs): FirstPaycheck
   const employerMatchAnnual = (salaryAnnual * Math.min(contributionPct, matchCapPct) * (matchRatePct / 100)) / 100
 
   const annualFederal = federalTax(taxable)
-  const annualState = Math.max(0, salaryAnnual - pretaxAnnual) * sRate
+  // On taxable income, the same base the federal figure and /api/tax use.
+  // Charging it on gross-less-pretax overstated it by the deduction times the
+  // rate, which is small but it is the kind of small that makes two of our own
+  // numbers disagree.
+  const annualState = taxable * sRate
   // FICA is on wages less the HSA only; the 401(k) does not reduce it.
   const annualFica = ficaTax(Math.max(0, salaryAnnual - hsaAnnualTarget))
-  const takeHomeAnnual = salaryAnnual - pretaxAnnual - annualFederal - annualState - annualFica
+  const takeHomeAnnual =
+    inputs.takeHomeAnnualOverride ??
+    salaryAnnual - pretaxAnnual - annualFederal - annualState - annualFica
   const takeHomePerCheck = takeHomeAnnual / periodsPerYear
 
   return {

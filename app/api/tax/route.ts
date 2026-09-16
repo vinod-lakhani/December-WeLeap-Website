@@ -32,9 +32,14 @@ interface TaxCalculationResponse {
  * fallback and the API agree to within rounding and no tool can quote a
  * take-home that depends on whether a third party happened to answer.
  */
-function calculateFallbackTax(annualIncome: number, stateCode: string): TaxCalculationResponse {
-  const federalTaxAnnual = federalTax(taxableIncome(annualIncome, 0));
-  const stateTaxAnnual = Math.max(0, annualIncome - STANDARD_DEDUCTION) * stateRate(stateCode);
+function calculateFallbackTax(
+  annualIncome: number,
+  stateCode: string,
+  pretaxAnnual = 0,
+): TaxCalculationResponse {
+  const federalTaxAnnual = federalTax(taxableIncome(annualIncome, pretaxAnnual));
+  const stateTaxAnnual =
+    Math.max(0, annualIncome - pretaxAnnual - STANDARD_DEDUCTION) * stateRate(stateCode);
   const ficaTaxAnnual = ficaTax(annualIncome);
   const totalTaxAnnual = federalTaxAnnual + stateTaxAnnual + ficaTaxAnnual;
 
@@ -80,6 +85,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { salaryAnnual, takeHomeAnnual, state } = body;
+    /**
+     * Pre-tax money coming out before tax: a 401(k) deferral, a payroll HSA.
+     * Optional, and added to the standard deduction rather than subtracted
+     * from the salary — taking it off the salary would understate FICA, which
+     * a 401(k) deferral still pays.
+     */
+    const pretaxAnnual = Math.max(0, Number(body.pretaxAnnual) || 0);
 
     // Validate required fields
     if (!state) {
@@ -134,7 +146,7 @@ export async function POST(request: NextRequest) {
          * to default, the API would advance to the next year's brackets while
          * we kept sending this year's deduction.
          */
-        apiUrl.searchParams.set('deductions', String(STANDARD_DEDUCTION));
+        apiUrl.searchParams.set('deductions', String(STANDARD_DEDUCTION + pretaxAnnual));
         apiUrl.searchParams.set('tax_year', String(TAX_YEAR));
 
         const response = await fetch(apiUrl.toString(), {
@@ -186,7 +198,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback calculation
-    const fallbackResult = calculateFallbackTax(salaryAnnual, state);
+    const fallbackResult = calculateFallbackTax(salaryAnnual, state, pretaxAnnual);
     return NextResponse.json(fallbackResult);
 
   } catch (error) {

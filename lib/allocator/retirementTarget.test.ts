@@ -90,15 +90,24 @@ describe('the solvency floor', () => {
   it('leaves a workable surplus in the case that used to go negative', () => {
     // $60k / TX / $2,400 essentials. The old target of 40.83% produced a
     // take-home of $2,377 — below essentials — so the plan came out empty.
+    // (Take-home at $60k is $3,759/mo at 10%, so $2,400 of essentials is
+    // comfortably affordable and the rule applies untouched.)
     const pct = computeRetirementTargetPct({ ...base, salaryAnnual: 60_000, essentialsMonthly: 2400 })
     expect(pct).toBe(10)
   })
 
   it('backs off when 15% would not leave the essentials covered', () => {
-    // $60k in TX nets $3,342/mo at the 5% match and $3,166 at 10%. Essentials
-    // of $3,250 sit between the two, so 15%-including-match is unaffordable
-    // here and the target has to land partway.
-    const inputs = { ...base, salaryAnnual: 60_000, essentialsMonthly: 3250 }
+    /**
+     * $60k in TX nets $3,979/mo at the 5% match and $3,759 at 10%. Essentials
+     * of $3,900 sit between the two, so the full rule is unaffordable here and
+     * the target lands partway, at 6.5%.
+     *
+     * These figures moved when the take-home model was corrected: it had been
+     * charging a marginal rate as an effective one, on 2023 brackets, with no
+     * standard deduction, which put this same person at $3,342 and made the
+     * floor fire on an income they did not have.
+     */
+    const inputs = { ...base, salaryAnnual: 60_000, essentialsMonthly: 3900 }
     const pct = computeRetirementTargetPct(inputs)
     expect(pct).toBeLessThan(10)
     expect(pct).toBeGreaterThanOrEqual(5)
@@ -107,7 +116,7 @@ describe('the solvency floor', () => {
   it('falls back to capturing the match when nothing else fits', () => {
     // Essentials above take-home even at the match cap. The answer is the
     // match and no more, not an increase the budget cannot absorb.
-    const pct = computeRetirementTargetPct({ ...base, salaryAnnual: 60_000, current401kPct: 5, essentialsMonthly: 3400 })
+    const pct = computeRetirementTargetPct({ ...base, salaryAnnual: 60_000, current401kPct: 5, essentialsMonthly: 4200 })
     expect(pct).toBe(5)
   })
 

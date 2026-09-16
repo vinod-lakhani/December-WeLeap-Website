@@ -51,6 +51,15 @@ export interface LoanPaymentInputs {
   state: string
   /** Percent of salary deferred to a 401(k) to capture the match. */
   deferralPct: number
+  /**
+   * Monthly take-home from /api/tax, when it has answered. The flat state
+   * table is a national average; the API knows the actual schedule, and
+   * California alone ranges from 1.5% of gross to 3.5% across the salaries
+   * this tool sees. Absent, the local estimate stands.
+   */
+  takeHomeBeforeOverride?: number
+  /** The same figure with the recommended deferral running. */
+  takeHomeWithDeferralOverride?: number
 }
 
 export interface LoanPaymentResult {
@@ -85,8 +94,14 @@ export function monthlyPayment(balance: number, aprPct: number, months = STANDAR
   return (balance * r) / (1 - Math.pow(1 + r, -months))
 }
 
-/** Monthly take-home for a salary, with an optional pre-tax deferral. */
-function takeHome(salary: number, state: string, deferralAnnual: number): number {
+/**
+ * Monthly take-home for a salary, with an optional pre-tax deferral.
+ *
+ * Exported because the same arithmetic is the instant answer and the fallback:
+ * the tool shows this immediately and replaces it with /api/tax when that
+ * returns, which knows the real state schedule rather than one flat rate.
+ */
+export function localTakeHomeMonthly(salary: number, state: string, deferralAnnual: number): number {
   if (!(salary > 0)) return 0
   const pretax = Math.min(Math.max(deferralAnnual, 0), salary)
   const federal = federalTax(taxableIncome(salary, pretax))
@@ -104,11 +119,12 @@ export function computeLoanPayment(inputs: LoanPaymentInputs): LoanPaymentResult
 
   const payment = monthlyPayment(balance, aprPct)
 
-  const takeHomeBefore = takeHome(salary, state, 0)
+  const takeHomeBefore = inputs.takeHomeBeforeOverride ?? localTakeHomeMonthly(salary, state, 0)
   const takeHomeAfter = takeHomeBefore - payment
 
   const deferralAnnual = salary * (Math.max(deferralPct, 0) / 100)
-  const takeHomeWithDeferral = takeHome(salary, state, deferralAnnual)
+  const takeHomeWithDeferral =
+    inputs.takeHomeWithDeferralOverride ?? localTakeHomeMonthly(salary, state, deferralAnnual)
   const takeHomeWithMatch = takeHomeWithDeferral - payment
 
   const grossMonthly = salary / 12

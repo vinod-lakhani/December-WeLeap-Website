@@ -28,9 +28,11 @@ import { US_STATES } from '@/lib/states'
 import { hasStateRate } from '@/lib/firstPaycheck/calculation'
 import {
   computeLoanPayment,
+  localTakeHomeMonthly,
   MATCH_DEFERRAL_PCT,
   STANDARD_TERM_MONTHS,
 } from '@/lib/studentLoan/calculation'
+import { useTaxEstimate } from '@/lib/tax/useTaxEstimate'
 
 const TOOL = 'first_loan_payment'
 const PAGE = '/first-student-loan-payment'
@@ -99,16 +101,42 @@ export function FirstLoanPaymentTool() {
     track('tool_form_start', { tool: TOOL, page: PAGE })
   }, [])
 
+  const salaryNum = toNumber(salary)
+  const deferralAnnual = (salaryNum * MATCH_DEFERRAL_PCT) / 100
+
+  /**
+   * The local figure is what renders first, and the API's replaces it a moment
+   * later. A flat state rate is a national average and wrong for any actual
+   * person; /api/tax knows the real schedule. Nothing waits for it.
+   */
+  const noDeferral = useTaxEstimate({
+    salary: salaryNum,
+    state,
+    local: salaryNum > 0
+      ? { federalAnnual: 0, stateAnnual: 0, ficaAnnual: 0, netAnnual: localTakeHomeMonthly(salaryNum, state, 0) * 12, source: 'local' }
+      : null,
+  })
+  const withDeferral = useTaxEstimate({
+    salary: salaryNum,
+    state,
+    pretaxAnnual: deferralAnnual,
+    local: salaryNum > 0
+      ? { federalAnnual: 0, stateAnnual: 0, ficaAnnual: 0, netAnnual: localTakeHomeMonthly(salaryNum, state, deferralAnnual) * 12, source: 'local' }
+      : null,
+  })
+
   const result = useMemo(
     () =>
       computeLoanPayment({
         balance: toNumber(balance),
         aprPct: toNumber(rate),
-        salary: toNumber(salary),
+        salary: salaryNum,
         state,
         deferralPct: MATCH_DEFERRAL_PCT,
+        takeHomeBeforeOverride: noDeferral ? noDeferral.netAnnual / 12 : undefined,
+        takeHomeWithDeferralOverride: withDeferral ? withDeferral.netAnnual / 12 : undefined,
       }),
-    [balance, rate, salary, state],
+    [balance, rate, salaryNum, state, noDeferral, withDeferral],
   )
 
   /**
@@ -230,7 +258,7 @@ export function FirstLoanPaymentTool() {
           Estimates. Standard {STANDARD_TERM_MONTHS / 12}-year plan, single filer, monthly take-home rather than one
           paycheck.{' '}
           {stateNamed
-            ? `State tax estimated for ${state}.`
+            ? `State tax for ${state}${noDeferral?.source === 'api' ? ', from current tax tables' : ''}.`
             : 'No state picked, so state tax is estimated at 4%, about the national middle. Pick yours above and these sharpen.'}
         </p>
 

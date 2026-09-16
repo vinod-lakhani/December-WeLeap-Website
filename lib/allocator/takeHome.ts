@@ -1,42 +1,46 @@
 /**
- * Realistic take-home model for the Trajectory Plan.
- * Take-home = gross − 401(k) − HSA − tax(taxable income).
- * Taxable income = gross − 401(k) − HSA.
- * Uses same simplified effective-rate logic as API fallback.
+ * Take-home for the Trajectory Plan.
+ *
+ * This file used to carry its own tax code, and it was the worst of the three
+ * copies on the site. It applied a MARGINAL rate as though it were an effective
+ * rate, from a 2023 bracket table, with no standard deduction, and charged FICA
+ * on income net of the 401(k) — which does not escape FICA. The compounding
+ * error understated take-home by $629 to $968 a month across ordinary
+ * salaries.
+ *
+ * That mattered more here than anywhere else, because everything the Money Plan
+ * produces is an allocation OF take-home. A number a thousand dollars light did
+ * not just misreport one figure; it shrank the buffer, the debt payment and the
+ * retirement line together, and the solvency floor in retirementTarget.ts was
+ * being measured against an income nobody had.
+ *
+ * It now calls the same functions the tax API route and every other calculator
+ * use. One tax model, one place.
  */
 
-/** Federal effective rates by bracket (simplified). */
-function federalEffectiveRate(annualIncome: number): number {
-  if (annualIncome > 578125) return 0.37;
-  if (annualIncome > 231250) return 0.35;
-  if (annualIncome > 182050) return 0.32;
-  if (annualIncome > 95350) return 0.24;
-  if (annualIncome > 44725) return 0.22;
-  if (annualIncome > 11000) return 0.12;
-  return 0.10;
-}
-
-const STATE_RATES: Record<string, number> = {
-  CA: 0.09,
-  NY: 0.06,
-  TX: 0,
-  WA: 0,
-  MA: 0.05,
-  IL: 0.0495,
-};
-
-const FICA_RATE = 0.062 + 0.0145; // Social Security + Medicare
+import { federalTax, ficaTax, stateRate, taxableIncome } from '@/lib/firstPaycheck/calculation'
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 
 /**
- * Estimate total annual tax from taxable income (after 401k and HSA).
+ * Total annual tax, given gross and the pre-tax money coming out of it.
+ *
+ * FICA is deliberately charged on gross less the HSA rather than on taxable
+ * income. A 401(k) deferral escapes income tax and not FICA; an HSA
+ * contribution made through payroll escapes both. Treating them alike was
+ * worth 7.65 cents on every deferred dollar, in the wrong direction.
  */
-export function estimateTaxAnnual(taxableIncomeAnnual: number, stateCode: string): number {
-  if (taxableIncomeAnnual <= 0) return 0;
-  const federal = taxableIncomeAnnual * federalEffectiveRate(taxableIncomeAnnual);
-  const stateRate = STATE_RATES[stateCode] ?? 0.04;
-  const state = taxableIncomeAnnual * stateRate;
-  const fica = taxableIncomeAnnual * FICA_RATE;
-  return Math.round(federal + state + fica);
+export function estimateTaxAnnual(
+  grossAnnual: number,
+  pretax401kAnnual: number,
+  pretaxHsaAnnual: number,
+  stateCode: string,
+): number {
+  if (grossAnnual <= 0) return 0
+  const pretax = pretax401kAnnual + pretaxHsaAnnual
+  const federal = federalTax(taxableIncome(grossAnnual, pretax))
+  const state = Math.max(0, grossAnnual - pretax - STANDARD_DEDUCTION_2026_SINGLE) * stateRate(stateCode)
+  const fica = ficaTax(Math.max(0, grossAnnual - pretaxHsaAnnual))
+  return Math.round(federal + state + fica)
 }
 
 export interface TakeHomeInputs {
@@ -52,12 +56,10 @@ export interface TakeHomeInputs {
  */
 export function computeNetTakeHomeMonthly(inputs: TakeHomeInputs): number {
   const { salaryAnnual, employee401kPct, currentHsaAnnual, stateCode } = inputs;
-  const grossAnnual = salaryAnnual;
-  const pretax401kAnnual = (grossAnnual * employee401kPct) / 100;
+  const pretax401kAnnual = (salaryAnnual * employee401kPct) / 100;
   const pretaxHsaAnnual = currentHsaAnnual;
-  const taxableIncomeAnnual = grossAnnual - pretax401kAnnual - pretaxHsaAnnual;
-  if (taxableIncomeAnnual <= 0) return 0;
-  const totalTaxAnnual = estimateTaxAnnual(taxableIncomeAnnual, stateCode);
-  const netAnnual = taxableIncomeAnnual - totalTaxAnnual;
-  return netAnnual / 12;
+  const afterPretax = salaryAnnual - pretax401kAnnual - pretaxHsaAnnual;
+  if (afterPretax <= 0) return 0;
+  const totalTaxAnnual = estimateTaxAnnual(salaryAnnual, pretax401kAnnual, pretaxHsaAnnual, stateCode);
+  return (afterPretax - totalTaxAnnual) / 12;
 }
