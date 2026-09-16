@@ -98,8 +98,14 @@ export function ficaTax(grossWages: number): number {
  * states and undertaxed Oregon by more than half.
  */
 const STATE_RATES: Record<string, number> = {
-  // Original thirteen, unchanged.
-  CA: 0.09, NY: 0.06, TX: 0, WA: 0, MA: 0.05, IL: 0.0495, FL: 0, NV: 0, TN: 0, WY: 0, SD: 0, AK: 0, NH: 0,
+  // CA and NY were 0.09 and 0.06, which are top-of-band marginal rates rather
+  // than what a graduate salary actually pays. Checked against the tax API at
+  // three incomes each: California charges 1.48% of gross at $50,000, 2.33% at
+  // $65,000 and 3.50% at $85,000; New York 3.40%, 3.88% and 4.26%. Nine percent
+  // was three to six times the real figure, in the largest state on the site.
+  // These are set for the range these tools are used at.
+  CA: 0.025, NY: 0.04,
+  TX: 0, WA: 0, MA: 0.05, IL: 0.0495, FL: 0, NV: 0, TN: 0, WY: 0, SD: 0, AK: 0, NH: 0,
 
   // No tax on wages.
   // (the nine above cover AK FL NV NH SD TN TX WA WY)

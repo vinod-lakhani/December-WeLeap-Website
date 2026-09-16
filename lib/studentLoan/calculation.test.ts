@@ -121,6 +121,19 @@ describe('computeLoanPayment', () => {
       expect(US_STATES.filter((code) => !hasStateRate(code))).toEqual([])
     })
 
+    it('prices California at what a graduate salary pays, not the top band', () => {
+      /**
+       * CA sat at 9% for a long time, which is a marginal rate near the top of
+       * the schedule. The tax API puts the real figure between 1.5% and 3.5% of
+       * gross across $50,000 to $85,000, so the table was three to six times
+       * over in the state more of this audience lives in than any other.
+       */
+      expect(stateRate('CA')).toBeLessThan(0.05)
+      expect(stateRate('CA')).toBeGreaterThan(0.01)
+      // And still above a no-income-tax state, which is the ordering that matters.
+      expect(stateRate('CA')).toBeGreaterThan(stateRate('TX'))
+    })
+
     it('still blends anything that is not a state', () => {
       expect(stateRate('')).toBe(0.04)
       expect(stateRate('ZZ')).toBe(0.04)
