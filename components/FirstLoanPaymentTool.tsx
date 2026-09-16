@@ -231,8 +231,10 @@ export function FirstLoanPaymentTool() {
             {result.deferralCostMonthly > 0 && (
               <p className="mt-2.5 text-[15px] leading-relaxed text-[#636B64]">
                 Keep a {MATCH_DEFERRAL_PCT}% 401(k) contribution and it is{' '}
-                <span className="font-bold text-[#0C0F0C]">{money(result.takeHomeWithMatch)}</span>. That is the
-                version worth having, and it costs {money(result.deferralCostMonthly)} a month.
+                <span className="font-bold text-[#0C0F0C]">{money(result.takeHomeWithMatch)}</span>. That costs{' '}
+                {money(result.deferralCostMonthly)} a month and puts{' '}
+                <span className="font-bold text-[#0C0F0C]">{money(result.retirementMonthly)} a month</span> into
+                retirement.
               </p>
             )}
           </>
