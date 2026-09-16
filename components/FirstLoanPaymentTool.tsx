@@ -321,21 +321,27 @@ export function FirstLoanPaymentTool() {
                 </div>
               </dl>
 
-              {/* The trade, priced. The contribution is the only line above
-                  that is not actually gone: it is the one that comes back
-                  bigger, and saying so is the whole argument for not cutting
-                  retirement to attack a 6% loan. */}
+              {/* The three numbers here are $200 in, $400 out and $168 of
+                  take-home, and an earlier draft put them in competition: it
+                  called $168 "the only line here you keep" while the line
+                  directly above said $200, so the reader's first question was
+                  which of the two was real rather than what either meant.
+
+                  They are a sequence, not a comparison. The contribution is
+                  $200, the employer doubles it, and the reason the paycheck
+                  only moves by $168 is named rather than left to be worked
+                  out — because "why not $200" is exactly what somebody asks
+                  at this point. */}
               {result.retirementMonthly > 0 && (
                 <div className="mt-4 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-3.5">
-                  <p className="text-[14.5px] font-bold leading-snug text-[#1A3320]">
-                    That {money(result.deferralCostMonthly)} a month is the only line here you keep.
+                  <p className="text-[15px] font-bold leading-snug text-[#1A3320]">
+                    Your {money(result.deferralMonthly)} is matched.{' '}
+                    {money(result.retirementMonthly)} a month goes in.
                   </p>
-                  <p className="mt-1.5 text-[13px] leading-relaxed text-[#2f5233]">
-                    It costs {money(result.deferralCostMonthly)} of spending money, because the contribution
-                    lowers your tax. Your employer adds {money(result.employerMatchMonthly)}. So{' '}
-                    {money(result.deferralCostMonthly)} out of your pocket becomes{' '}
-                    <strong className="font-bold">{money(result.retirementMonthly)} a month</strong> in
-                    retirement, from the first paycheck.
+                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-[#2f5233]">
+                    Your employer adds a dollar for every dollar, from the first paycheck. And the{' '}
+                    {money(result.deferralMonthly)} comes out before tax, so your take-home drops by{' '}
+                    {money(result.deferralCostMonthly)} rather than the full {money(result.deferralMonthly)}.
                   </p>
                   <p className="mt-2 text-[12px] leading-relaxed text-[#636B64]">
                     Assumes your employer matches dollar for dollar up to {MATCH_DEFERRAL_PCT}%, which is the
