@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { FirstPaycheckTool } from '@/components/FirstPaycheckTool'
+import { CAMPAIGN_ROBOTS, isCampaign } from '@/lib/campaign'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
 import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
@@ -29,7 +30,7 @@ import { TAX_YEAR_FIRST_PAYCHECK } from '@/lib/firstPaycheck/constants'
 const DESCRIPTION =
   'Starting a new job? Upload your offer letter and benefits guide and get the exact numbers for the 401(k), HSA and W-4 boxes — per paycheck, before your enrolment window closes. Free, no account.'
 
-export const metadata: Metadata = {
+const BASE_METADATA: Metadata = {
   title: 'What do I type into my benefits forms? First paycheck setup',
   description: DESCRIPTION,
   alternates: { canonical: '/first-paycheck-setup' },
@@ -43,6 +44,24 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: '/first-paycheck-setup',
   },
+}
+
+/**
+ * Campaign landings are noindex.
+ *
+ * Same route, same content, minus the parts that make it a page. Left
+ * crawlable it competes with its own canonical for the query it was built
+ * from. `alternates.canonical` above still points at the clean URL, so link
+ * equity lands where it should. Matches the offer tool — see
+ * app/what-is-my-job-offer-worth/page.tsx.
+ */
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}): Metadata {
+  if (!isCampaign(searchParams)) return BASE_METADATA
+  return { ...BASE_METADATA, robots: CAMPAIGN_ROBOTS }
 }
 
 /**
@@ -104,33 +123,54 @@ const RELATED_READING: readonly RelatedArticle[] = [
   },
 ]
 
-export default function FirstPaycheckSetupPage() {
+export default function FirstPaycheckSetupPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}) {
+  const campaign = isCampaign(searchParams)
+
   return (
-    <PageShell className="bg-canvas">
+    <PageShell className="bg-canvas" bare={campaign}>
       <ToolJsonLd href="/first-paycheck-setup" />
       <ToolPageView tool="first_paycheck" page="/first-paycheck-setup" toolVersion="first_paycheck_v1" />
 
-      <Section variant="canvas" className="pb-10 pt-28 md:pt-32" isHero>
+      {/* Hero. Campaign traffic gets none of it: FirstPaycheckCampaignHero
+          carries its own h1 and its own free/no-account line, and the
+          breadcrumb, the heading and the subhead are three blocks of site
+          standing between an ad's promise and the number that keeps it. */}
+      <Section
+        variant="canvas"
+        className={campaign ? 'pb-10 pt-8' : 'pb-10 pt-28 md:pt-32'}
+        isHero
+      >
         <Container>
-          <div className="mx-auto max-w-3xl text-center">
-            <ToolBreadcrumb href="/first-paycheck-setup" />
-            <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
-              What do I type into my benefits forms?
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
-              New job? Drop in your offer letter and benefits guide. We read the match formula, the HSA and
-              the premium, then give you the exact numbers for each box — before your enrolment window
-              closes.
+          {!campaign && (
+            <div className="mx-auto max-w-3xl text-center">
+              <ToolBreadcrumb href="/first-paycheck-setup" />
+              <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
+                What do I type into my benefits forms?
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
+                New job? Drop in your offer letter and benefits guide. We read the match formula, the HSA and
+                the premium, then give you the exact numbers for each box — before your enrolment window
+                closes.
+              </p>
+            </div>
+          )}
+
+          <div
+            id="calculator"
+            className={campaign ? 'mx-auto max-w-3xl scroll-mt-24' : 'mx-auto mt-10 max-w-3xl scroll-mt-24'}
+          >
+            <FirstPaycheckTool campaign={campaign} />
+          </div>
+
+          {!campaign && (
+            <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
+              Free · No account · We never store your documents · Estimates only
             </p>
-          </div>
-
-          <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
-            <FirstPaycheckTool />
-          </div>
-
-          <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
-            Free · No account · We never store your documents · Estimates only
-          </p>
+          )}
         </Container>
       </Section>
 

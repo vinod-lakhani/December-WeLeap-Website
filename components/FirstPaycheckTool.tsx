@@ -30,6 +30,8 @@ import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { AppCta } from '@/components/AppCta'
 import { computeFirstPaycheck } from '@/lib/firstPaycheck/calculation'
+import { FirstPaycheckCampaignHero } from '@/components/FirstPaycheckCampaignHero'
+import { PAYCHECK_EXAMPLE } from '@/lib/firstPaycheck/example'
 import { TAX_YEAR_FIRST_PAYCHECK, TYPICAL_ENROLLMENT_WINDOW_DAYS } from '@/lib/firstPaycheck/constants'
 import { PAY_FREQUENCIES, type PayFrequency, type ParsedOffer } from '@/lib/offer-parse/fields'
 import { trackDocFieldEdited, stampFirstDocClass } from '@/lib/offer-parse/doc-analytics'
@@ -52,9 +54,27 @@ const money = (n: number) =>
 const dateLabel = (iso: string) =>
   new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
-export function FirstPaycheckTool() {
+export interface FirstPaycheckToolProps {
+  /**
+   * Paid-traffic landing. Replaces the first screen with the campaign hero —
+   * see components/FirstPaycheckCampaignHero.tsx. Everything below it is
+   * identical, so a visitor who scrolls gets the same tool either way.
+   */
+  campaign?: boolean
+}
+
+export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps = {}) {
   const [startDate, setStartDate] = useState('')
-  const [salary, setSalary] = useState('')
+  /**
+   * Campaign traffic starts on the worked example from the creative, so the
+   * first screen is a result rather than an empty field. Organic traffic
+   * starts empty: the page above it already explains what the tool does, and
+   * pre-filling a stranger's salary there would be answering a question
+   * nobody asked.
+   */
+  const [salary, setSalary] = useState(
+    campaign ? PAYCHECK_EXAMPLE.salary.toLocaleString('en-US') : '',
+  )
   const [state, setState] = useState('')
   const [payFrequency, setPayFrequency] = useState<PayFrequency>('semimonthly')
   const [matchRatePct, setMatchRatePct] = useState('100')
@@ -174,7 +194,23 @@ export function FirstPaycheckTool() {
     })
   }, [salaryNum, state, payFrequency, matchRatePct, matchCapPct, hsaEligible, startDate, taxEstimate])
 
-  if (plan && !completed.current) {
+  /**
+   * Still showing the creative's example rather than anything the visitor said.
+   *
+   * Campaign mode pre-fills the salary so the first screen is a working result,
+   * which means `plan` is non-null on arrival — and firing tool_completed off
+   * that would mark every bounce as a completion and make the funnel step
+   * report the opposite of what it measures. Completion here means the numbers
+   * on screen are the visitor's own.
+   *
+   * A visitor whose salary genuinely is the example figure is not counted until
+   * they touch something else. That undercounts by a hair and is the right
+   * direction to be wrong in, given this number decides whether a channel gets
+   * funded.
+   */
+  const showingExample = campaign && salaryNum === PAYCHECK_EXAMPLE.salary
+
+  if (plan && !showingExample && !completed.current) {
     completed.current = true
     track('tool_completed', {
       tool: 'first_paycheck',
@@ -235,6 +271,25 @@ export function FirstPaycheckTool() {
           Salary is the whole minimum. The headline answer — the percentage to
           type in the 401(k) box — is the match cap and needs neither salary nor
           state; salary is what turns it into dollars a person recognises. */}
+      {campaign ? (
+        <FirstPaycheckCampaignHero
+          salaryInput={salary}
+          salary={salaryNum}
+          plan={plan}
+          payFrequency={payFrequency}
+          onSalaryChange={(raw) => {
+            markEngaged('salary')
+            noteEdit('salary')
+            // Grouped as you type. The plain field below is fine unformatted —
+            // it sits under a label and among six other inputs — but this one
+            // is set in 24px as the centrepiece of the first screen, where
+            // "62000" reads as a number somebody forgot to finish.
+            const digits = raw.replace(/[^0-9]/g, '')
+            setSalary(digits ? Number(digits).toLocaleString('en-US') : '')
+          }}
+          onUploadClick={jumpToUpload}
+        />
+      ) : (
       <Card className="border-2 border-[#3F6B42] bg-white">
         <CardContent className="space-y-4 pt-6">
           <div>
@@ -276,6 +331,7 @@ export function FirstPaycheckTool() {
           </p>
         </CardContent>
       </Card>
+      )}
 
       <Card className="border-[#D1D5DB] bg-white">
         <CardContent className="pt-6 space-y-5">
