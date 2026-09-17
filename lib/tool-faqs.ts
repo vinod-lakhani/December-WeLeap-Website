@@ -188,6 +188,14 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
       q: 'Does this cover income-driven repayment plans?',
       a: 'Not yet, and deliberately. Federal repayment plans changed under 2025 legislation and the plans a new borrower can enrol in differ from what most calculators still assume. Quoting a plan name or a payment formula that is out of date would be worse than not offering the comparison, so this tool prices the standard plan only and says so. Check studentaid.gov for what you can currently enrol in.',
     },
+    {
+      q: 'How long does the standard student loan repayment plan take?',
+      a: 'Ten years — 120 monthly payments — which is the default federal repayment term and what this calculator models unless you are on something else. It is worth knowing that is an assumption rather than a fact about your loan: income-driven plans run longer and cost more in total interest, and refinancing privately can shorten or extend it. The payment shown here is what a ten-year standard schedule requires on the balance and rate you entered.',
+    },
+    {
+      q: 'How much interest will I pay in total on my student loans?',
+      a: 'On a standard ten-year schedule the total is your monthly payment multiplied by 120, minus the amount you originally borrowed — which is the figure this calculator shows alongside the payment. It is usually larger than people expect, because the early payments are mostly interest. Every extra dollar sent above the required payment reduces that total, and reduces it more the earlier it is sent, since it removes principal that would otherwise accrue interest for the remaining years.',
+    },
   ],
 
   '/first-paycheck-setup': [

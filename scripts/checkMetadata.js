@@ -18,6 +18,14 @@
  *  3. Exactly one `<h1>` per page. Broken when a page's h1 sat inside a
  *     Suspense boundary whose fallback was a skeleton, so the served HTML had
  *     none at all.
+ *  4. Every calculator carries the full FAQ set. Broken three times running —
+ *     each of the last three tools shipped with five entries where the rest
+ *     have seven. The pattern was unmissable once the first three invariants
+ *     were enforced and this one was not: what the build checks gets done, and
+ *     what it does not check drifts.
+ *
+ * A calculator is identified by emitting `WebApplication` schema rather than by
+ * a route list, so a tool added tomorrow is covered without touching this file.
  *
  * Add an invariant here when something breaks, not in anticipation. A check
  * that has never caught anything is a check nobody trusts.
@@ -33,6 +41,14 @@ const APP_DIR = join(process.cwd(), '.next', 'server', 'app')
  * correctly — it is not a page anyone shares or ranks.
  */
 const EXEMPT = new Set(['_not-found.html'])
+
+/**
+ * FAQ entries every calculator carries. Not an arbitrary target — it is the
+ * count the whole set was brought to, and the number the newest tool is
+ * measured against so the set stays uniform. Raising it means raising it
+ * everywhere.
+ */
+const MIN_TOOL_FAQ = 7
 
 function htmlFiles(dir) {
   const out = []
@@ -90,6 +106,19 @@ function main() {
         `    If it is 0, check whether the h1 is behind a Suspense boundary.`
       )
     }
+
+    // Calculators only. A page emitting WebApplication is a tool by definition,
+    // which keeps this from needing a route list that would go stale.
+    if (html.includes('"@type":"WebApplication"')) {
+      const faqs = (html.match(/"@type":"Question"/g) || []).length
+      if (faqs < MIN_TOOL_FAQ) {
+        failures.push(
+          `${route}\n    ${faqs} FAQ entries, expected at least ${MIN_TOOL_FAQ}.\n` +
+          `    Add them to this route's key in lib/tool-faqs.ts — the page and the\n` +
+          `    FAQPage schema both read that array, so they stay in step.`
+        )
+      }
+    }
   }
 
   if (failures.length) {
@@ -98,7 +127,7 @@ function main() {
     process.exit(1)
   }
 
-  console.log(`[checkMetadata] ${files.length} prerendered pages OK — title/og:title parity, og:image, single h1.`)
+  console.log(`[checkMetadata] ${files.length} prerendered pages OK — title/og:title parity, og:image, single h1, FAQ coverage.`)
 }
 
 main()
