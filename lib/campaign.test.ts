@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { CAMPAIGN_PARAM, CAMPAIGN_ROBOTS, isCampaign } from './campaign'
@@ -45,5 +48,38 @@ describe('isCampaign', () => {
   it('keeps campaign landings out of the index but follows their links', () => {
     expect(CAMPAIGN_ROBOTS.index).toBe(false)
     expect(CAMPAIGN_ROBOTS.follow).toBe(true)
+  })
+})
+
+/**
+ * The share control sits inside the campaign hero, next to the number, because
+ * that is the only free-reach loop a paid page has and it used to sit 2.7
+ * screens below the result in 13px grey text.
+ *
+ * Read from source rather than rendered: this repo has no component-test
+ * setup, and the property worth protecting is a single condition that is easy
+ * to lose in a refactor and expensive to lose quietly.
+ */
+describe('the campaign hero share slot', () => {
+  const src = readFileSync(
+    join(process.cwd(), 'components/OfferCampaignHero.tsx'),
+    'utf8',
+  )
+
+  it('is withheld while the figures on screen are the ad’s example', () => {
+    /**
+     * Until the visitor types, the number is somebody else’s offer. Sharing it
+     * would be posting a claim about a stranger’s salary under your own name.
+     * It also gives typing a payoff: the thing worth posting only exists once
+     * you have made the result yours.
+     */
+    expect(src).toMatch(/\{!isExample && shareSlot &&/)
+  })
+
+  it('renders the slot inside the result card, above the example note', () => {
+    const slotAt = src.indexOf('shareSlot}</div>')
+    const noteAt = src.indexOf('{isExample && (')
+    expect(slotAt).toBeGreaterThan(-1)
+    expect(noteAt).toBeGreaterThan(slotAt)
   })
 })

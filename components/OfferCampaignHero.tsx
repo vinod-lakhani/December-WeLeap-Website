@@ -45,10 +45,17 @@ export interface OfferCampaignHeroProps {
   equityAnnual: number
   /** Scrolls to the upload block further down. */
   onUploadClick: () => void
+  /**
+   * The share control, rendered by the tool where the claim already lives.
+   *
+   * Passed in rather than plumbed through as five props, and shown only once
+   * the number on screen is the visitor's own — see below.
+   */
+  shareSlot?: React.ReactNode
 }
 
 export function OfferCampaignHero({
-  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick,
+  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick, shareSlot,
 }: OfferCampaignHeroProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -140,6 +147,20 @@ export function OfferCampaignHero({
               )}
             </div>
           </>
+        )}
+
+        {/* Sharing, next to the result and only once the result is theirs.
+            The share affordance used to sit 2.7 screens down in 13px grey
+            text, which is a strange place for the only free-reach loop a paid
+            campaign has: a visitor who arrived from a feed and got a number
+            worth posting is the cheapest traffic this page will ever produce.
+
+            Gated on the number being their own, which does two things. It
+            stops anybody sharing a claim about somebody else's offer, and it
+            gives typing a payoff beyond curiosity — the thing worth posting
+            only exists once you have made it yours. */}
+        {!isExample && shareSlot && (
+          <div className="mt-4 border-t border-hairline pt-4">{shareSlot}</div>
         )}
 
         {isExample && (

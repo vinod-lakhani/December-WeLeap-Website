@@ -937,6 +937,25 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
             if (newSalary > 0) trackFieldChange('salary', newSalary);
           }}
           onUploadClick={jumpToUpload}
+          shareSlot={
+            calc && calc.totalPackage > salary ? (
+              <OfferShareCard
+                upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                compare={shareCompare}
+                shareUrl={shareUrl}
+                shareText={shareText}
+                trigger={
+                  <button
+                    type="button"
+                    onClick={() => track('offer_share_card_opened', { page: '/offer', placement: 'campaign_hero' })}
+                    className="flex min-h-11 w-full items-center justify-center rounded-xl border-2 border-[#386641] px-4 py-3 text-[15px] font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white"
+                  >
+                    Share this without showing your salary →
+                  </button>
+                }
+              />
+            ) : null
+          }
         />
       ) : (
         <>
