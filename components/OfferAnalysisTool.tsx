@@ -37,6 +37,7 @@ import {
 import { compareOffers } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
 import { EXAMPLE } from '@/lib/offer/example';
+import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
 import { OfferCompare } from '@/components/OfferCompare';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
@@ -200,10 +201,25 @@ const ANALYTICS_TO_MARK: Record<string, string> = {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export function OfferAnalysisTool() {
+export interface OfferAnalysisToolProps {
+  /**
+   * Paid-traffic layout: the ad's result is the first screen, with the salary
+   * field inside it. See components/OfferCampaignHero.tsx. Everything below
+   * the first screen is identical — same sections, same math, same results.
+   */
+  campaign?: boolean
+}
+
+export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps = {}) {
   // 1. Base salary
-  const [salaryInput, setSalaryInput] = useState('');
-  const [salary, setSalary] = useState(0);
+  /**
+   * Campaign traffic opens on the figure from the creative, so the promise in
+   * the ad is already on screen and the first action is correcting it rather
+   * than producing it. Organic traffic starts empty, as it should: nobody
+   * arriving from search has been told a number.
+   */
+  const [salaryInput, setSalaryInput] = useState(campaign ? EXAMPLE.salary.toLocaleString() : '');
+  const [salary, setSalary] = useState(campaign ? EXAMPLE.salary : 0);
   const [jobState, setJobState] = useState('');
   const [taxResult, setTaxResult] = useState<TaxResult | null>(null);
   const [taxLoading, setTaxLoading] = useState(false);
@@ -220,7 +236,18 @@ export function OfferAnalysisTool() {
   const [healthcarePremium, setHealthcarePremium] = useState(0);
 
   // 5. Equity
-  const [rsuAnnual, setRsuAnnual] = useState(0);
+  /**
+   * Campaign traffic inherits the ad's equity along with its salary.
+   *
+   * The creative's offer has $6,580 of vesting in it, and that is what carries
+   * $62,000 to the $78,500 it promises. Displaying it in the hero without the
+   * tool actually holding it produced two totals on one page: $78,500 at the
+   * top and $71,920 in the result card below, which is the same
+   * message-to-page break the hero exists to close. It is a pre-filled line
+   * like the bonus and the match, visible in the breakdown and editable in
+   * section five.
+   */
+  const [rsuAnnual, setRsuAnnual] = useState(campaign ? EXAMPLE.equity : 0);
   const [signingBonus, setSigningBonus] = useState(0);
 
   /**
@@ -879,7 +906,13 @@ export function OfferAnalysisTool() {
           belongs to the answer card below, and showing both spoiled the reveal
           before the user reached it. Sticky, so it follows you through seven
           sections of inputs. */}
-      {hasResults && calc && (
+      {/* No running total in campaign mode.
+          It is a progress indicator for somebody working down seven sections,
+          and campaign traffic opens on the finished number instead. Left in, it
+          covered the headline and — worse — disagreed with it: the sticky bar
+          reads totalPackage, which excludes the example's equity, so the screen
+          showed $71,920 nine pixels above a card saying $78,500. */}
+      {!campaign && hasResults && calc && (
         <div className="sticky top-[86px] z-20 mb-4 flex items-center justify-between gap-3 rounded-xl bg-[#2d5a26] px-4 py-2.5">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
             Package so far
@@ -890,6 +923,23 @@ export function OfferAnalysisTool() {
         </div>
       )}
 
+      {campaign ? (
+        <OfferCampaignHero
+          salaryInput={salaryInput}
+          salary={salary}
+          equityAnnual={rsuAnnual}
+          calc={calc}
+          onSalaryChange={(raw) => {
+            const digits = raw.replace(/[^0-9]/g, '');
+            setSalaryInput(digits ? Number(digits).toLocaleString() : '');
+            const newSalary = digits ? Number(digits) : 0;
+            setSalary(newSalary);
+            if (newSalary > 0) trackFieldChange('salary', newSalary);
+          }}
+          onUploadClick={jumpToUpload}
+        />
+      ) : (
+        <>
       {/* ── The first screen ────────────────────────────────────────────────
           Ad traffic from a phone used to land on two upload buttons and a
           PDF/PNG/JPG disclaimer. Measured on the live page at 375x812: the
@@ -974,6 +1024,8 @@ export function OfferAnalysisTool() {
             required" above the H1, and two of them in one screen reads as
             protesting too much. */}
       </div>
+        </>
+      )}
 
       <div id="offer-upload" className="scroll-mt-24">
         <OfferLetterUpload onParsed={applyParsed} formAbove />

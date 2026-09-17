@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { OfferAnalysisTool } from '@/components/OfferAnalysisTool'
+import { CAMPAIGN_ROBOTS, isCampaign } from '@/lib/campaign'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
 import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
@@ -24,7 +25,7 @@ import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading
  * than implying otherwise. See "What counts as a good job offer?" below.
  */
 
-export const metadata: Metadata = {
+const BASE_METADATA: Metadata = {
   title: 'What is my job offer really worth? Free calculator',
   description:
     'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
@@ -40,6 +41,23 @@ export const metadata: Metadata = {
       'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
     url: '/what-is-my-job-offer-worth',
   },
+}
+
+/**
+ * Campaign landings are noindex.
+ *
+ * Same content as the page that ranks, minus the parts that make it a page, on
+ * the same route with a query string. Left crawlable it competes with its own
+ * canonical for the query it was built from. The canonical below already points
+ * at the clean URL, so link equity still lands in the right place.
+ */
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}): Metadata {
+  if (!isCampaign(searchParams)) return BASE_METADATA
+  return { ...BASE_METADATA, robots: CAMPAIGN_ROBOTS }
 }
 
 /**
@@ -101,9 +119,15 @@ const RELATED_READING: readonly RelatedArticle[] = [
   },
 ]
 
-export default function OfferAnalysisPage() {
+export default function OfferAnalysisPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}) {
+  const campaign = isCampaign(searchParams)
+
   return (
-    <PageShell className="bg-canvas">
+    <PageShell className="bg-canvas" bare={campaign}>
       {/* WebApplication + FAQPage for this route. BreadcrumbList is emitted by
           ToolBreadcrumb alongside the trail it describes. */}
       <ToolJsonLd href="/what-is-my-job-offer-worth" />
@@ -118,7 +142,10 @@ export default function OfferAnalysisPage() {
         toolVersion="offer_tool_v1"
       />
 
-      {/* Hero */}
+      {/* Hero. Campaign traffic gets none of it: OfferCampaignHero carries its
+          own h1, and the breadcrumb, the pill and the subhead are three blocks
+          of site between an ad's promise and the number that keeps it. */}
+      {!campaign && (
       <Section variant="canvas" isHero className="text-center">
         <Container maxWidth="narrow">
           <ToolBreadcrumb href="/what-is-my-job-offer-worth" />
@@ -137,13 +164,14 @@ export default function OfferAnalysisPage() {
           </p>
         </Container>
       </Section>
+      )}
 
       {/* Tool sits directly under the hero — same reasoning as the rent tool:
           people arrive knowing what they want, so the input comes first and
           the explainer becomes reinforcement below. */}
-      <Section variant="canvas" className="pt-0">
+      <Section variant="canvas" className={campaign ? 'pb-10 pt-8' : 'pt-0'}>
         <Container maxWidth="narrow">
-          <OfferAnalysisTool />
+          <OfferAnalysisTool campaign={campaign} />
         </Container>
       </Section>
 
