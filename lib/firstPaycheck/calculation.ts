@@ -163,6 +163,8 @@ export interface FirstPaycheckPlan {
   hsaCostPerCheck: number
   /** Estimated take-home for one full period once everything is set. */
   takeHomePerCheck: number
+  /** Salary divided by the number of periods, before anything comes out. */
+  grossPerCheck: number
   /** Best guess at the enrollment deadline, ISO. Null without a start date. */
   enrollmentDeadline: string | null
 }
@@ -253,7 +255,7 @@ export function computeFirstPaycheck(inputs: FirstPaycheckInputs): FirstPaycheck
     takeHomePerCheck,
     enrollmentDeadline: enrollmentDeadline(inputs.startDate ?? null),
     grossPerCheck,
-  } as FirstPaycheckPlan & { grossPerCheck: number }
+  }
 }
 
 /**
