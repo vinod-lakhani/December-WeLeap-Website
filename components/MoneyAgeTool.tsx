@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
+import { useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { computeMoneyAge, priceMove } from '@/lib/moneyAge/calculation'
@@ -366,6 +367,14 @@ export function MoneyAgeTool() {
     },
     [markEngaged]
   )
+
+  /**
+   * A result is on screen. Every input here is a band the visitor picks, so a
+   * result cannot exist before they have picked some — this and completion are
+   * close together, and the event is emitted anyway so the tool sits in the
+   * same series as the rest.
+   */
+  useResultShown('money_age', !!result)
 
   const finish = useCallback(() => {
     if (!result || !ageNum || income == null || position == null) return

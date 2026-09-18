@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppCta } from '@/components/AppCta'
 import { track } from '@/lib/analytics'
+import { useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { US_STATES } from '@/lib/states'
 import { hasStateRate } from '@/lib/firstPaycheck/calculation'
@@ -94,7 +95,17 @@ export function FirstLoanPaymentTool() {
   const completed = useRef(false)
   const belowRef = useRef<HTMLDivElement>(null)
 
+  /**
+   * Counts what the visitor has done, so completion can require it.
+   *
+   * State as well as the ref because an effect has to see it change; the ref
+   * alone would not re-render. Same shape as every other tool — see
+   * lib/tool-funnel.ts for why they all have to agree.
+   */
+  const [engagementCount, setEngagementCount] = useState(0)
+
   const markEngaged = useCallback((field: string) => {
+    setEngagementCount((n) => n + 1)
     if (engaged.current) return
     engaged.current = true
     track('tool_engaged', { tool: 'first_loan_payment', first_field: field })
@@ -140,10 +151,18 @@ export function FirstLoanPaymentTool() {
   )
 
   /**
-   * Fires on the first deliberate move past the first frame, not on render.
-   * The page shows a full result immediately, so firing on load would make
-   * completion mean "arrived" and the step between engaged and completed
-   * measure nothing.
+   * Completion: a result on screen and a field the visitor changed.
+   *
+   * This page opens on a worked example — balance, rate and salary all carry
+   * defaults — so a full result exists before anybody has touched it. It used
+   * to complete on SCROLL, which meant a visitor who read the page without
+   * changing a number was counted the same as one who priced their own loan.
+   *
+   * That was the tool's own reasonable answer to "what is completion here",
+   * and it is not the answer the other nine give. One definition across every
+   * tool and every traffic source, or the numbers cannot be read against each
+   * other — see lib/tool-funnel.ts. The scroll signal was worth keeping and
+   * kept, under its own name, below.
    */
   const complete = useCallback(() => {
     if (completed.current || !result) return
@@ -172,34 +191,50 @@ export function FirstLoanPaymentTool() {
    * the buttons on this page are decorative, which is expensive three cards
    * later where the real one is.
    */
+  // A result is on screen. This page computes from defaults, so it fires on
+  // mount — which is the thing completion used to be quietly reporting.
+  useResultShown('first_loan_payment', !!result)
+
+  /** Completion, once there is a result and the visitor has changed something. */
+  useEffect(() => {
+    if (result && engagementCount > 0) complete()
+  }, [result, engagementCount, complete])
+
+  /**
+   * The advice was scrolled to.
+   *
+   * This used to be the completion signal, back when there was no button to
+   * press and reaching the advice was the most meaningful thing this page
+   * could observe. It is a real signal and it is not completion — someone can
+   * read the whole example without ever making it theirs — so it keeps its own
+   * name rather than standing in for one.
+   *
+   * A scroll listener rather than an IntersectionObserver, which is the tidier
+   * API and did not fire reliably here. One passive listener that removes
+   * itself the moment it has something to report.
+   */
+  const adviceSeen = useRef(false)
   useEffect(() => {
     if (!result) return
     const el = belowRef.current
     if (!el) return
 
-    /**
-     * Fires when the advice has actually been scrolled to, which is what
-     * reaching the end of this tool means now that there is no button to press.
-     *
-     * A scroll listener rather than an IntersectionObserver, which is the
-     * tidier API and did not fire reliably here. This is one passive listener
-     * that removes itself the moment it has something to report, and the
-     * condition is a comparison of two numbers that can be read off the page.
-     */
     const seen = () => {
       // Half the viewport past the top of the card: far enough that the card
       // peeking above the fold on load does not count as having read it.
       const top = el.getBoundingClientRect().top + window.scrollY
       if (window.scrollY + window.innerHeight * 0.5 >= top) {
-        complete()
         window.removeEventListener('scroll', seen)
+        if (adviceSeen.current) return
+        adviceSeen.current = true
+        track('tool_advice_reached', { tool: TOOL })
       }
     }
 
     window.addEventListener('scroll', seen, { passive: true })
     seen()
     return () => window.removeEventListener('scroll', seen)
-  }, [complete, result])
+  }, [result])
 
   const stateNamed = hasStateRate(state)
 

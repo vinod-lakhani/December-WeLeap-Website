@@ -26,6 +26,7 @@ import {
   offerClaimHeadline,
 } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
+import { useResultShown } from '@/lib/tool-funnel';
 import { cn } from '@/lib/utils';
 import {
   computeOfferValue,
@@ -893,21 +894,8 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
 
   const hasResults = !!calc;
 
-  /**
-   * A result is on screen. One event, fired once, regardless of who put it there.
-   *
-   * This is the old `hasResults && taxResult` moment, given its own name rather
-   * than left overloaded onto tool_completed. Campaign traffic arrives with a
-   * complete result already rendered, so for those sessions this fires on load
-   * and that is exactly what it is supposed to say.
-   */
-  const resultShownRef = useRef(false);
-  useEffect(() => {
-    if (hasResults && !resultShownRef.current) {
-      resultShownRef.current = true;
-      track('tool_result_shown', { tool: 'offer', ...(campaign ? { campaign: true } : {}) });
-    }
-  }, [hasResults, campaign]);
+  // A result is on screen, whoever put it there. See lib/tool-funnel.ts.
+  useResultShown('offer', hasResults, campaign);
 
   /**
    * Fourth step of the funnel, fired once: the visitor did something, and there

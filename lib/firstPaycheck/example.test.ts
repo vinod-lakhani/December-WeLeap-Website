@@ -98,10 +98,17 @@ describe('campaign mode on the first-paycheck tool', () => {
     expect(offer).not.toMatch(/analysisComplete = hasResults && !!taxResult/)
   })
 
-  it('keeps the on-load moment as its own event rather than overloading completion', () => {
-    expect(tool).toMatch(/track\('tool_result_shown'/)
+  it('marks the on-load result as a campaign one, so the two can be split', () => {
+    /**
+     * lib/tool-instrumentation.test.ts already proves every tool emits
+     * tool_result_shown. What is specific to a campaign landing is that it
+     * fires on ARRIVAL — the salary is pre-filled — so the flag has to be
+     * passed through or the on-load population cannot be separated from the
+     * organic one that reached a result by typing.
+     */
+    expect(tool).toMatch(/useResultShown\('first_paycheck', !!plan, campaign\)/)
     const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
-    expect(offer).toMatch(/track\('tool_result_shown'/)
+    expect(offer).toMatch(/useResultShown\('offer', hasResults, campaign\)/)
   })
 
   it('counts a document that parsed as engagement', () => {

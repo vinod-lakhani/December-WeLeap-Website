@@ -20,6 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AppCta } from '@/components/AppCta'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { track } from '@/lib/analytics'
+import { useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { trackLeapShown } from '@/lib/leap-shown'
 import { cn } from '@/lib/utils'
@@ -132,6 +133,10 @@ export function SmartPurchaseTool() {
    * later than engagement, which is the whole point: the first field typed and
    * the answer appearing are three fields apart.
    */
+  // A result is on screen. `result` needs price, cash and surplus, so this
+  // cannot fire from defaults.
+  useResultShown('smart_purchase', !!result)
+
   useEffect(() => {
     if (result && !seen.current) {
       seen.current = true

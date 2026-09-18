@@ -24,6 +24,7 @@ import { AppCta } from '@/components/AppCta';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { track } from '@/lib/analytics';
+import { useResultShown } from '@/lib/tool-funnel';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { useQuietReveal } from '@/lib/feedback-reveal';
@@ -175,6 +176,14 @@ export function CreditCardPayoffTool() {
    * that is the gate here. The legacy event keeps its own (looser) condition so
    * its history stays comparable.
    */
+  /**
+   * A result is on screen — which here is earlier than completion, and is the
+   * distinction the two events exist to keep apart. A payoff date renders off
+   * the balance alone, computed at 0% interest; that is a result, and it is not
+   * this calculator's answer.
+   */
+  useResultShown('credit_card_payoff', hasBalance);
+
   const payoffResultReady = hasBalance && (Number(card.apr) || 0) > 0;
   const toolCompletedRef = useRef(false);
   useEffect(() => {

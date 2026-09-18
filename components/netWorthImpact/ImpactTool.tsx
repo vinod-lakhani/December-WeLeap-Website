@@ -12,6 +12,7 @@ import { computeImpacts } from '@/lib/networthImpact/math';
 import type { ImpactInputs, UseCase } from '@/lib/networthImpact/types';
 import { formatCurrencySigned, formatPercent } from '@/lib/format';
 import { track } from '@/lib/analytics';
+import { useResultShown } from '@/lib/tool-funnel';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { cn } from '@/lib/utils';
@@ -203,6 +204,13 @@ export function ImpactTool() {
    * Each change cancels the pending timer, so what gets counted is a result
    * that stopped moving.
    */
+  /**
+   * A result is on screen. This tool computes from defaults, so it fires on
+   * mount — which is exactly what the event is for, and exactly why it cannot
+   * be tool_completed.
+   */
+  useResultShown('net_worth_impact', true);
+
   const completedRef = useRef(false);
   useEffect(() => {
     if (completedRef.current) return;

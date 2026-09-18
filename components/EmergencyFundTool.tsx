@@ -23,6 +23,7 @@ import {
 } from '@/lib/emergencyFund/calculation';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
@@ -146,6 +147,10 @@ export function EmergencyFundTool() {
     track('emergency_fund_cta_click', { page: PAGE, tool_version: 'emergency_fund_v1' });
     setStep('form');
   }, []);
+
+  // A result is on screen. Only reachable through handleCalculate, so it
+  // cannot fire before the visitor has done something.
+  useResultShown('emergency_fund', step === 'results' && !!result);
 
   // Track results viewed (once when user first sees results).
   //

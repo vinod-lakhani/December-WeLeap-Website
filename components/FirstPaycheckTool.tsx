@@ -30,6 +30,7 @@ import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { AppCta } from '@/components/AppCta'
 import { computeFirstPaycheck } from '@/lib/firstPaycheck/calculation'
+import { useResultShown } from '@/lib/tool-funnel'
 import { FirstPaycheckCampaignHero } from '@/components/FirstPaycheckCampaignHero'
 import { PAYCHECK_EXAMPLE } from '@/lib/firstPaycheck/example'
 import { TAX_YEAR_FIRST_PAYCHECK, TYPICAL_ENROLLMENT_WINDOW_DAYS } from '@/lib/firstPaycheck/constants'
@@ -218,11 +219,7 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    * those sessions this fires on load — which is what it is supposed to say.
    * It is deliberately NOT tool_completed; see below.
    */
-  const resultShown = useRef(false)
-  if (plan && !resultShown.current) {
-    resultShown.current = true
-    track('tool_result_shown', { tool: TOOL, ...(campaign ? { campaign: true } : {}) })
-  }
+  useResultShown('first_paycheck', !!plan, campaign)
 
   /**
    * Completion: the visitor did something, and there is a plan.
