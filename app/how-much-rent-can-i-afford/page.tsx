@@ -3,6 +3,7 @@ import { RentTool } from '@/components/RentTool'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
 import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
+import { CAMPAIGN_ROBOTS, isCampaign } from '@/lib/campaign'
 import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { ScrollBeacon } from '@/components/ScrollBeacon'
@@ -37,7 +38,7 @@ import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading
  * so it is stated as arithmetic rather than as a slogan.
  */
 
-export const metadata: Metadata = {
+const BASE_METADATA: Metadata = {
   title: 'How much rent can I afford? Free calculator',
   description:
     'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys. Free, no signup.',
@@ -53,6 +54,20 @@ export const metadata: Metadata = {
       'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys.',
     url: '/how-much-rent-can-i-afford',
   },
+}
+
+/**
+ * Campaign landings are noindex. Same route, same content, minus the parts
+ * that make it a page — left crawlable it competes with its own canonical for
+ * the query it was built from. Matches the other two campaign destinations.
+ */
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}): Metadata {
+  if (!isCampaign(searchParams)) return BASE_METADATA
+  return { ...BASE_METADATA, robots: CAMPAIGN_ROBOTS }
 }
 
 /**
@@ -121,9 +136,15 @@ const RELATED_READING: readonly RelatedArticle[] = [
   },
 ]
 
-export default function HowMuchRentCanIAffordPage() {
+export default function HowMuchRentCanIAffordPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>
+}) {
+  const campaign = isCampaign(searchParams)
+
   return (
-    <PageShell className="bg-canvas">
+    <PageShell className="bg-canvas" bare={campaign}>
       {/* WebApplication + FAQPage for this route. BreadcrumbList is emitted by
           ToolBreadcrumb alongside the trail it describes. */}
       <ToolJsonLd href="/how-much-rent-can-i-afford" />
@@ -139,29 +160,44 @@ export default function HowMuchRentCanIAffordPage() {
       {/* Hero + tool. The form used to sit third on the page, behind a
           four-step explainer — visitors arrive from social already knowing
           what they want, so the input comes first now. */}
-      <Section variant="canvas" className="pt-28 md:pt-32 pb-10" isHero>
+      {/* Hero. Campaign traffic gets none of it: RentCampaignHero carries its
+          own h1 and its own free/no-account line, and the breadcrumb, heading
+          and subhead are three blocks of site between an ad's promise and the
+          number that keeps it. */}
+      <Section
+        variant="canvas"
+        className={campaign ? 'pt-8 pb-10' : 'pt-28 md:pt-32 pb-10'}
+        isHero
+      >
         <Container>
-          <div className="mx-auto max-w-3xl text-center">
-            <ToolBreadcrumb href="/how-much-rent-can-i-afford" />
+          {!campaign && (
+            <div className="mx-auto max-w-3xl text-center">
+              <ToolBreadcrumb href="/how-much-rent-can-i-afford" />
 
-            <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
-              How much rent can I afford?
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
-              Don&apos;t let rent break your first paycheck. Turn a salary into a rent range you can actually live
-              with — and see what life looks like before you sign a lease.
-            </p>
-          </div>
+              <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
+                How much rent can I afford?
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
+                Don&apos;t let rent break your first paycheck. Turn a salary into a rent range you can actually live
+                with — and see what life looks like before you sign a lease.
+              </p>
+            </div>
+          )}
 
-          <div id="calculator" className="mx-auto mt-10 max-w-3xl scroll-mt-24">
-            <RentTool />
+          <div
+            id="calculator"
+            className={campaign ? 'mx-auto max-w-3xl scroll-mt-24' : 'mx-auto mt-10 max-w-3xl scroll-mt-24'}
+          >
+            <RentTool campaign={campaign} />
           </div>
 
           {/* YMYL disclosure — kept verbatim, directly under the widget that
               produces the numbers it qualifies. */}
-          <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
-            Free · No account needed · Estimates only
-          </p>
+          {!campaign && (
+            <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
+              Free · No account needed · Estimates only
+            </p>
+          )}
         </Container>
       </Section>
 

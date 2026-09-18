@@ -90,3 +90,69 @@ export function calculateBudgetBreakdown(
     savings,
   };
 }
+
+/**
+ * What a move costs before the first paycheck lands.
+ *
+ * Extracted from RentTool so the campaign hero and the tool cannot quote two
+ * different figures for the same move — the hero is the number in an ad, and
+ * a visitor who scrolls to the full tool must not find it disagreeing with
+ * the thing that brought them.
+ *
+ * The gap is the part nobody budgets for and the reason this exists: starting
+ * a job means two to four weeks of living costs with no salary behind them,
+ * on top of a deposit and a first month paid on the same day.
+ *
+ * Deposit is assumed to be one month. Plenty of landlords ask for more and
+ * some want last month's as well, so this is a floor rather than a forecast,
+ * and anywhere it is shown says so.
+ */
+export const UPFRONT = {
+  /** Days between moving in and the first paycheck. */
+  gapDays: 14,
+  /** Share of take-home that keeps going out during the gap. */
+  gapSpendRate: 0.35,
+  /** Truck, deposits on utilities, the things bought in week one. */
+  movingSetup: 600,
+} as const
+
+export interface UpfrontCash {
+  low: number
+  high: number
+  /** The individual lines, at the low end, so a page can show its working. */
+  depositLow: number
+  firstMonthLow: number
+  gapLiving: number
+  movingSetup: number
+}
+
+export function calculateUpfrontCash(
+  rent: RentRange,
+  takeHomeMonthly: number,
+): UpfrontCash {
+  if (takeHomeMonthly <= 0) {
+    return { low: 0, high: 0, depositLow: 0, firstMonthLow: 0, gapLiving: 0, movingSetup: 0 }
+  }
+  const gapLiving = takeHomeMonthly * UPFRONT.gapSpendRate * (UPFRONT.gapDays / 30)
+  const totalLow = rent.low * 2 + gapLiving + UPFRONT.movingSetup
+  const totalHigh = rent.high * 2 + gapLiving + UPFRONT.movingSetup
+  return {
+    low: Math.round(totalLow / 100) * 100,
+    high: Math.round(totalHigh / 100) * 100,
+    depositLow: rent.low,
+    firstMonthLow: rent.low,
+    gapLiving,
+    movingSetup: UPFRONT.movingSetup,
+  }
+}
+
+/**
+ * What the listing sites and most landlord calculators allow: 30% of GROSS.
+ *
+ * The number this tool exists to argue with. Rent is paid out of what lands in
+ * the account, and quoting the rule on a salary nobody receives is how people
+ * sign leases they cannot carry.
+ */
+export function listingSiteRentMonthly(salaryAnnual: number): number {
+  return (salaryAnnual * 0.3) / 12
+}

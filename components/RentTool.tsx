@@ -18,7 +18,9 @@ import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
-import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
+import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash } from '@/lib/rent';
+import { RENT_EXAMPLE } from '@/lib/rentCampaign/example';
+import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
@@ -59,9 +61,24 @@ interface MetroOption {
   value: string;
 }
 
-export function RentTool() {
-  const [salary, setSalary] = useState('');
-  const [city, setCity] = useState('');
+export interface RentToolProps {
+  /**
+   * Paid-traffic landing. Puts RentCampaignHero above the form and pre-fills
+   * the move from the creative. The form itself is untouched: a visitor who
+   * scrolls gets the same tool either way, already filled in.
+   */
+  campaign?: boolean
+}
+
+export function RentTool({ campaign = false }: RentToolProps = {}) {
+  /**
+   * Campaign traffic starts on the worked example from the creative, so the
+   * first screen is an answer rather than an empty form. Organic traffic
+   * starts empty — the page above it already explains what this does, and
+   * pre-filling a stranger's salary there answers a question nobody asked.
+   */
+  const [salary, setSalary] = useState(campaign ? String(RENT_EXAMPLE.salary) : '');
+  const [city, setCity] = useState(campaign ? RENT_EXAMPLE.city : '');
   const [startDate, setStartDate] = useState('');
   const [otherState, setOtherState] = useState('');
   const [otherMetro, setOtherMetro] = useState('');
@@ -404,26 +421,19 @@ export function RentTool() {
     ? Math.round(computeInvestingImpact(leapMonthly, 0.07, 30))
     : 0;
 
-  // Calculate upfront cash needed (for plan data)
-  const calculateUpfrontCash = () => {
-    if (!startDate || takeHomeMonthly === 0 || !rentRangeData) {
-      return { low: 0, high: 0 };
-    }
-    const gapDays = 14;
-    const depositLow = rentRangeLow;
-    const depositHigh = rentRangeHigh;
-    const firstMonthLow = rentRangeLow;
-    const firstMonthHigh = rentRangeHigh;
-    const gapLivingCosts = (takeHomeMonthly * 0.35) * (gapDays / 30);
-    const movingSetup = 600;
-    const totalLow = depositLow + firstMonthLow + gapLivingCosts + movingSetup;
-    const totalHigh = depositHigh + firstMonthHigh + gapLivingCosts + movingSetup;
-    return {
-      low: Math.round(totalLow / 100) * 100,
-      high: Math.round(totalHigh / 100) * 100,
-    };
-  };
-  const upfrontCash = calculateUpfrontCash();
+  /**
+   * Cash needed before the first paycheck.
+   *
+   * The arithmetic moved to lib/rent.ts when the campaign hero started
+   * quoting this figure in an ad: two implementations of the same sum is how
+   * a landing page ends up promising a number the tool below it contradicts.
+   * The start-date guard stays here — it is about whether this page is ready
+   * to show the line, not about the sum.
+   */
+  const upfrontCash =
+    startDate && takeHomeMonthly > 0 && rentRangeData
+      ? calculateUpfrontCash(rentRangeData, takeHomeMonthly)
+      : { low: 0, high: 0 };
 
   // Prepare plan data for email
   const planData = results ? {
@@ -458,8 +468,21 @@ export function RentTool() {
 
   return (
     <div className="space-y-8">
+      {campaign && (
+        <RentCampaignHero
+          salaryInput={salary}
+          // Digits only. This state is shared with the form below, whose field
+          // is type="number" and whose every consumer reads it with parseFloat
+          // — and parseFloat('70,000') is 70. The hero groups it for display
+          // without ever putting a comma in here.
+          onSalaryChange={(raw) => { setSalary(raw.replace(/[^0-9]/g, '')); handleFormStart('salary'); }}
+          city={city}
+          onCityChange={(next) => { setCity(next); handleFormStart('city'); }}
+        />
+      )}
+
       {/* Input Form */}
-      <Card className="border-[#D1D5DB] bg-white">
+      <Card id="rent-full-tool" className="scroll-mt-24 border-[#D1D5DB] bg-white">
         <CardHeader>
           <CardTitle className="text-xl text-[#111827]">Find your rent range</CardTitle>
         </CardHeader>
