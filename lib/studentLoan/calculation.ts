@@ -131,7 +131,13 @@ export function localTakeHomeMonthly(salary: number, state: string, deferralAnnu
   // the difference between a 401(k) and an HSA and the reason the cost of
   // deferring is not simply the marginal rate.
   const fica = ficaTax(salary)
-  const stateTax = (salary - pretax) * stateRate(state)
+  // On taxable income, the same base the federal figure above uses and the
+  // one the rates in STATE_RATES are calibrated against. This charged it on
+  // gross-less-deferrals, which was a third formula for the same quantity —
+  // the allocator and the paycheck tool both used the taxable base — and it
+  // overstated state tax by the standard deduction times the rate, about $700
+  // a year in a 4.4% state.
+  const stateTax = taxableIncome(salary, pretax) * stateRate(state)
   return (salary - pretax - federal - fica - stateTax) / 12
 }
 

@@ -84,49 +84,53 @@ export function ficaTax(grossWages: number): number {
 }
 
 /**
- * State rate. Deliberately the same table the rest of the site uses, so two
- * WeLeap tools cannot quote different state tax for the same person.
+ * Effective state income tax, charged on the same base the federal figure
+ * uses: gross, less pre-tax deferrals, less the standard deduction.
  *
- * Approximate effective rates for a single filer on a normal graduate salary,
- * not top marginal rates and not including local or county tax. A flat figure
- * is the right shape here: every tool that reads this labels its output an
- * estimate, and the alternative is a bracket table per state.
+ * CALIBRATED AGAINST /api/tax (API Ninjas) ON 18 SEPTEMBER 2026, at $55,000,
+ * $70,000 and $95,000 for a single filer — the range these tools serve. Each
+ * rate is the one that minimises the worst dollar error across those three
+ * incomes, then snapped to the statutory figure wherever that costs under $5
+ * a year, so a flat-tax state reads as its real rate rather than a fitted
+ * approximation of it.
  *
- * The thirteen below the divider are the original entries and are left exactly
- * as they were, because three shipped tools have been quoting them. CA and NY
- * in particular read as marginal rather than effective — see the note in
- * studentLoan/calculation.ts — but correcting them moves numbers people have
- * already seen, so that is a decision to take deliberately rather than as a
- * side effect of adding coverage.
+ * The previous table mixed two incompatible kinds of number. Some entries were
+ * statutory flat rates, which belong on a taxable base and were correct. The
+ * rest were effective rates measured against GROSS — the old comment recorded
+ * California at "1.48% of gross at $50,000" and New York at "3.40%" — and were
+ * then charged on taxable income anyway, understating both badly. Thirty-one
+ * of fifty-one states were out, the worst by $1908 a year, and no test
+ * covered any of it because the table was only ever checked for coverage.
  *
- * Everything else used to fall through to the 4% default, which was wrong for
- * all of them in one direction or another: it overtaxed nine no-income-tax
- * states and undertaxed Oregon by more than half.
+ * WHAT A FLAT RATE CANNOT DO. A graduated schedule is not a line through the
+ * origin, so one number cannot fit a whole salary range: fitted to the middle,
+ * it reads high at the bottom and low at the top. The residual worst cases are
+ * CA $653, NJ $504, HI $353, VT $335, DC $258 a year. Every tool that reads this labels its output an estimate and
+ * swaps in /api/tax when that answers, so this governs the first paint and the
+ * offline fallback rather than the number anybody acts on. Per-state bracket
+ * tables are the real fix and a much larger change.
  */
 const STATE_RATES: Record<string, number> = {
-  // CA and NY were 0.09 and 0.06, which are top-of-band marginal rates rather
-  // than what a graduate salary actually pays. Checked against the tax API at
-  // three incomes each: California charges 1.48% of gross at $50,000, 2.33% at
-  // $65,000 and 3.50% at $85,000; New York 3.40%, 3.88% and 4.26%. Nine percent
-  // was three to six times the real figure, in the largest state on the site.
-  // These are set for the range these tools are used at.
-  CA: 0.025, NY: 0.04,
-  TX: 0, WA: 0, MA: 0.05, IL: 0.0495, FL: 0, NV: 0, TN: 0, WY: 0, SD: 0, AK: 0, NH: 0,
-
   // No tax on wages.
-  // (the nine above cover AK FL NV NH SD TN TX WA WY)
+  AK: 0, FL: 0, NH: 0, NV: 0, SD: 0, TN: 0, TX: 0,
+  WA: 0, WY: 0,
 
-  // Flat-rate states.
-  AZ: 0.025, CO: 0.044, GA: 0.0539, ID: 0.057, IN: 0.0305, IA: 0.038,
-  KY: 0.04, LA: 0.03, MI: 0.0425, MS: 0.047, NC: 0.045, PA: 0.0307, UT: 0.0455,
+  // Flat-rate states. The statutory rate reproduces the API to the cent.
+  AZ: 0.025, CO: 0.044, GA: 0.0519, IA: 0.038, IL: 0.0495, IN: 0.0295, KY: 0.035,
+  LA: 0.03, MA: 0.05, MI: 0.0425, NC: 0.0399, PA: 0.0307, RI: 0.0375, UT: 0.045,
 
-  // Graduated states, at the effective rate a graduate salary actually lands on.
-  AL: 0.045, AR: 0.034, CT: 0.045, DE: 0.048, HI: 0.065, KS: 0.048,
-  ME: 0.055, MD: 0.0475, MN: 0.0535, MO: 0.04, MT: 0.047, NE: 0.045,
-  NJ: 0.035, NM: 0.04, ND: 0.0195, OH: 0.0275, OK: 0.0375, OR: 0.0875,
-  RI: 0.0375, SC: 0.045, VT: 0.0335, VA: 0.049, WV: 0.044, WI: 0.044,
-  DC: 0.065,
+  // Graduated schedules that one rate still tracks to within about $100 a year
+  // across the range.
+  AL: 0.0493, AR: 0.0376, ID: 0.0488, KS: 0.0543, MD: 0.0466, ME: 0.0637, MO: 0.044,
+  MT: 0.0531, NE: 0.0405, NY: 0.0522, OR: 0.0823, VA: 0.0531,
+
+  // Graduated schedules steep enough that one rate cannot follow them.
+  // California is both the worst fit and the largest audience on this site.
+  CA: 0.0409, CT: 0.0432, DC: 0.0615, DE: 0.0506, HI: 0.0575, MN: 0.06, MS: 0.0332,
+  ND: 0.0034, NJ: 0.0304, NM: 0.0403, OH: 0.0153, OK: 0.0365, SC: 0.0505, VT: 0.0421,
+  WI: 0.0439, WV: 0.0337,
 }
+
 export function stateRate(stateCode: string): number {
   return STATE_RATES[stateCode] ?? 0.04
 }
