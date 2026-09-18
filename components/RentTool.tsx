@@ -22,6 +22,7 @@ import { calculateRentRange, calculateBudgetBreakdown } from '@/lib/rent';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { appLink } from '@/lib/app-link';
@@ -111,6 +112,11 @@ export function RentTool() {
     threshold: 1,
     enabled: !!results,
   });
+
+  // A result is on screen. Here it cannot exist without the Calculate button,
+  // so this and tool_completed are the same moment — which is worth stating
+  // rather than leaving a reader to infer it from the absence of an event.
+  useResultShown('rent', !!results);
 
   // Fire tool_completed once when results first render (Phase 0 funnel).
   // Mirrors the same event on /what-is-my-job-offer-worth with tool: 'offer'.

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
+import { useResultShown } from '@/lib/tool-funnel';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
@@ -431,6 +432,10 @@ export function AllocatorTool() {
       prevNextLeapIdRef.current = nextLeapId;
     }
   }, [leaps.length, nextLeapId]);
+
+  // A result is on screen: the summary step with a built stack. Reached only
+  // by working through the tool, so it cannot fire from defaults.
+  useResultShown('allocator', currentStep === STACK_STEPS.length - 1 && leaps.length > 0);
 
   useEffect(() => {
     // Was `currentStep === 4`, but STACK_STEPS has four entries so the index

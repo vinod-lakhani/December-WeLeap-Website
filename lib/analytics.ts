@@ -43,43 +43,45 @@
  *
  * Every free tool emits the sequence.
  *
- * WHAT COUNTS AS COMPLETION, and the rule that is currently being migrated to.
+ * WHAT COUNTS AS COMPLETION. One definition, every tool, every traffic source:
  *
- * Historically this was decided per tool, from that tool's own state machine,
+ *     tool_completed = a result is on screen AND the visitor did something
+ *
+ * This used to be decided per tool, from that tool's own state machine,
  * because firing it at the same moment as tool_engaged makes the step between
- * them measure nothing. That reasoning is sound and the consequence was not: a
- * gate that differs between tools — or, once campaign landings existed, between
- * two traffic sources on the SAME tool — produces numbers that cannot be
- * compared to each other. A channel test on a metric whose definition moves
- * with the channel is not a test.
+ * them measure nothing. That reasoning is sound and the consequence was not.
+ * Ten tools had ten gates — a tax lookup here, a scroll position there, a
+ * wizard step somewhere else — and once campaign landings existed, two gates
+ * on the SAME tool. Numbers produced that way cannot be read against each
+ * other, which is the entire point of having them.
  *
- * So `offer` and `first_paycheck`, the two campaign destinations, now use one
- * definition for every source: A RESULT IS ON SCREEN AND THE VISITOR DID
- * SOMETHING. Engagement means a changed field OR a document that parsed — an
- * upload that fills the form is the highest-intent action either page has, and
- * scoring it as zero engagement reported those people as bounces.
+ * "Did something" means a changed input OR a document that parsed. An upload
+ * that fills the form is the highest-intent action a tool offers, and counting
+ * it as zero engagement reported those visitors as bounces. A parse that
+ * filled nothing does not count; doc_parse_failed already covers that.
  *
- * `tool_result_shown` (tool, campaign?) carries the moment those two tools used
- * to call completion: a result rendered, whoever put it there. Campaign
- * landings arrive pre-filled, so for them it fires on load, which is what it is
- * for. It exists so completion did not have to stay overloaded with two
- * meanings.
+ * tool_result_shown (tool, campaign?) carries the other moment, the one
+ * completion used to be overloaded with: a result rendered, whoever put it
+ * there. For the tools that compute from defaults — the campaign landings, the
+ * loan tool, the saving calculator — that is page load, and saying so plainly
+ * beats a completion event that quietly means "arrived" on three tools and
+ * "typed something" on the rest. lib/tool-funnel.ts owns it; every tool emits
+ * it, and lib/tool-instrumentation.test.ts fails the build if one stops.
  *
- * Every other tool still uses its own gate, and none of them are comparable to
- * the two above or reliably to each other. Moving them is a deliberate decision
- * that resets their baselines, not a cleanup. The ones documented here (this
- * list has never covered first_loan_payment or money_age):
- * - rent             — the tax API returns and the range renders
- * - smart_purchase   — price, cash and surplus all present, so a recommendation exists
- * - credit_card_payoff — balance AND APR both real (APR 0 passes validation but
- *                      is not an answer this calculator is being asked for)
- * - emergency_fund   — the form advances to the results step
- * - allocator        — the summary step renders with a built stack
- * - net_worth_impact — an input has been moved off its default and the
- *                      recomputed result has held still for 800ms. This tool
- *                      computes from defaults, so a result is on screen before
- *                      anyone touches it; "the visitor's own result" is the
- *                      only completion here that is not just tool_viewed again.
+ * Two gates were actually wrong rather than merely different, and both are
+ * fixed: the offer tool waited on a tax lookup that campaign sessions never
+ * trigger, so those sessions could not complete at all; and the loan tool
+ * completed when its advice card was scrolled to, on a page that computes from
+ * defaults, so reading the worked example counted the same as pricing your own
+ * loan. That scroll signal was worth keeping and kept, as tool_advice_reached.
+ *
+ * tool_completed carries `campaign: true` only on campaign sessions, so the
+ * ordinary payload is unchanged for anything already reading it.
+ *
+ * NOTE FOR ANYONE READING A TIME SERIES ACROSS THIS CHANGE: completions moved.
+ * They rise on the offer tool (no longer waiting on the tax lookup) and fall on
+ * the loan tool (a scroll is no longer enough). Mark the deploy date before
+ * comparing anything to history.
  *
  * Event Names:
  * - rent_tool_page_view
