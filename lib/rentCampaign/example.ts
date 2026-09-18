@@ -1,22 +1,22 @@
 /**
  * The move in the creative, worked out.
  *
- * The ad runs: "$70,000 in Austin. The listing site says you can afford
- * $1,750/mo. On take-home it's $1,350 to $1,700. And you need about $4,100
+ * The ad runs: "$70,000 in New York. The listing site says you can afford
+ * $1,750/mo. On take-home it's $1,300 to $1,600. And you need about $4,000
  * before you get keys."
  *
- * Every figure below is produced by the same functions that answer a real
- * one — calculateRentRange and calculateUpfrontCash — so the example cannot
- * drift away from what the calculator would say for the same move. If a test
- * in example.test.ts fails, the AD needs rewriting, not the expectation.
+ * Every figure is produced by the same functions that answer a real move —
+ * calculateRentRange and calculateUpfrontCash — so the example cannot drift
+ * away from what the calculator says. If a test in example.test.ts fails, the
+ * AD needs rewriting, not the expectation.
  *
- * Austin on purpose. It is a mid-range city, and it is also the least
- * flattering of the six presets for this particular argument: Texas charges no
- * income tax, so take-home is 83% of gross and the top of the rent band lands
- * only $50 under the listing site's number. The claim holds against the bottom
- * of the band everywhere, and in Austin it holds by the smallest margin the
- * tool produces. An example that survives its worst case is one the page can
- * defend in the replies.
+ * New York on purpose. The argument this page makes is that the listing sites'
+ * 30%-of-gross rule allows more rent than take-home can carry, and the size of
+ * that gap is mostly state income tax. New York is where it is widest among
+ * the six presets: $150 a month clear at the TOP of the band, against $50 in
+ * Austin, where Texas charges no income tax at all and take-home is 83% of
+ * gross. The claim holds everywhere and it is worth making where it is
+ * strongest — and r/nyc and r/AskNYC are where the question gets asked.
  */
 
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
@@ -29,19 +29,19 @@ import {
 /** The move the creative describes. */
 export const EXAMPLE_MOVE = {
   salary: 70_000,
-  city: 'Austin',
-  stateCode: 'TX',
+  city: 'NYC',
+  stateCode: 'NY',
 } as const
 
 /**
- * Take-home from the local table rather than the tax API.
+ * Take-home from the local table, which is what the page paints first.
  *
- * The API is what the page uses once it answers, and for this example the two
- * agree to the dollar — Texas has no state tax, so the whole figure is federal
- * plus FICA and both sides compute it the same way. Worth knowing that this is
- * a coincidence of the example rather than a general property: in a graduated
- * state the local table is an approximation and the page swaps in the API's
- * answer when it arrives.
+ * The hero renders immediately off this and swaps in /api/tax when it answers,
+ * because a page sold on a number cannot open on a spinner. For Austin the two
+ * agreed to the dollar — Texas has no state tax, so the whole figure is
+ * federal plus FICA and both sides compute it identically. New York does not
+ * have that luxury, and the difference is documented in SETTLED below rather
+ * than papered over.
  */
 const takeHomeAnnual =
   EXAMPLE_MOVE.salary - estimateTaxAnnual(EXAMPLE_MOVE.salary, 0, 0, EXAMPLE_MOVE.stateCode)
@@ -50,6 +50,7 @@ const takeHomeMonthly = takeHomeAnnual / 12
 const rent = calculateRentRange(takeHomeMonthly, 0)
 const upfront = calculateUpfrontCash(rent, takeHomeMonthly)
 
+/** What the first paint shows, before the tax API answers. */
 export const RENT_EXAMPLE = {
   salary: EXAMPLE_MOVE.salary,
   city: EXAMPLE_MOVE.city,
@@ -58,7 +59,40 @@ export const RENT_EXAMPLE = {
   listingSite: listingSiteRentMonthly(EXAMPLE_MOVE.salary),
   rentLow: rent.low,
   rentHigh: rent.high,
-  /** Cash needed before the first paycheck, at the bottom of the band. */
   upfrontLow: upfront.low,
   upfrontHigh: upfront.high,
+} as const
+
+/**
+ * What the page settles on once /api/tax answers, and therefore what the ad
+ * must quote.
+ *
+ * Nobody reads a page in the 500ms before the API responds, so the settled
+ * figures are the ones a visitor will actually compare against the creative.
+ *
+ * Measured against the live route on 18 September 2026, $70,000 in NY:
+ * federal $6,570, state $2,799, FICA $5,355, net $55,276 a year.
+ *
+ * The state figure is the whole delta. lib/firstPaycheck/calculation.ts holds
+ * one effective rate per state, and its comments record those as percentages
+ * OF GROSS — New York at 4.0%, which is exactly what the API charges. The
+ * callers then apply that rate to TAXABLE income, after the federal standard
+ * deduction, so $53,900 x 4% gives $2,156 against the API's $2,799. Every
+ * local estimate in every tool understates state tax by the deduction times
+ * the rate. That is worth fixing on its own terms, across all the tools that
+ * read the table, rather than as a side effect of an ad campaign.
+ *
+ * Here it moves one number: the top of the band, by $25. The bottom of the
+ * band and the upfront total are identical either way.
+ */
+const SETTLED_NET_ANNUAL = 55_276
+const settledMonthly = SETTLED_NET_ANNUAL / 12
+const settledRent = calculateRentRange(settledMonthly, 0)
+const settledUpfront = calculateUpfrontCash(settledRent, settledMonthly)
+
+export const RENT_EXAMPLE_SETTLED = {
+  takeHomeMonthly: settledMonthly,
+  rentLow: settledRent.low,
+  rentHigh: settledRent.high,
+  upfrontLow: settledUpfront.low,
 } as const

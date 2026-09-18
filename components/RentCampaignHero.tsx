@@ -78,8 +78,13 @@ export function RentCampaignHero({
    *
    * This page cannot open on a spinner — the visitor was promised a number,
    * not a loading state — and the local table is close enough to stand in.
-   * For the example itself the two agree to the dollar, because Texas has no
-   * state tax; elsewhere the figure sharpens a moment after arrival.
+   *
+   * "Close enough" is doing real work and is measured rather than assumed: for
+   * the New York example the first paint puts the top of the band at $1,625
+   * and the API settles it at $1,600, because the local state rate is charged
+   * on taxable income while the table's rates were calibrated on gross. The
+   * bottom of the band and the upfront total are identical either way. See
+   * lib/rentCampaign/example.ts, which pins both and names the cause.
    */
   const local = useMemo(() => {
     if (salary <= 0) return null
