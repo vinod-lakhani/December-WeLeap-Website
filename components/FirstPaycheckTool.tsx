@@ -118,7 +118,18 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
     scrollTo('fp-upload')
   }, [scrollTo])
 
+  /**
+   * Counts what the visitor has done, so tool_completed can require it.
+   *
+   * State rather than a ref because the completion check depends on
+   * re-rendering. Matches components/OfferAnalysisTool.tsx exactly — the two
+   * campaign destinations have to be measured the same way or the channel test
+   * compares two metrics that happen to share a name.
+   */
+  const [engagementCount, setEngagementCount] = useState(0)
+
   const markEngaged = useCallback((field: string) => {
+    setEngagementCount((n) => n + 1)
     if (engaged.current) return
     engaged.current = true
     track('tool_engaged', { tool: TOOL, first_field: field })
@@ -139,8 +150,9 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    * accepts two files rather than one.
    */
   const applyParsed = useCallback((parsed: ParsedOffer) => {
+    const before = fromDoc.current.size
     const filled = new Set(fromDoc.current)
-    if (parsed.baseSalaryAnnual) { setSalary(String(Math.round(parsed.baseSalaryAnnual.value))); filled.add('salary') }
+    if (parsed.baseSalaryAnnual) { setSalary(Math.round(parsed.baseSalaryAnnual.value).toLocaleString('en-US')); filled.add('salary') }
     if (parsed.workStateCode) { setState(parsed.workStateCode.value); filled.add('state') }
     if (parsed.matchRatePct) { setMatchRatePct(String(parsed.matchRatePct.value)); filled.add('match_rate') }
     if (parsed.matchUpToPct) { setMatchCapPct(String(parsed.matchUpToPct.value)); filled.add('match_cap') }
@@ -149,7 +161,12 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
     if (parsed.employerHsaAnnual && parsed.employerHsaAnnual.value > 0) { setHsaEligible(true); filled.add('hsa') }
     fromDoc.current = filled
     stampFirstDocClass('offer_letter')
-  }, [])
+    // A parse that filled nothing is not engagement — doc_parse_failed covers
+    // that, and counting it would credit the tool for a document it could not
+    // read. A parse that filled something is the highest-intent action on this
+    // page and must not read as a bounce.
+    if (filled.size > before) markEngaged('upload_document')
+  }, [markEngaged])
 
   const salaryNum = useMemo(() => {
     const n = parseFloat(salary.replace(/[$,\s]/g, ''))
@@ -195,22 +212,30 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
   }, [salaryNum, state, payFrequency, matchRatePct, matchCapPct, hsaEligible, startDate, taxEstimate])
 
   /**
-   * Still showing the creative's example rather than anything the visitor said.
+   * A result is on screen. One event, fired once, whoever put it there.
    *
-   * Campaign mode pre-fills the salary so the first screen is a working result,
-   * which means `plan` is non-null on arrival — and firing tool_completed off
-   * that would mark every bounce as a completion and make the funnel step
-   * report the opposite of what it measures. Completion here means the numbers
-   * on screen are the visitor's own.
-   *
-   * A visitor whose salary genuinely is the example figure is not counted until
-   * they touch something else. That undercounts by a hair and is the right
-   * direction to be wrong in, given this number decides whether a channel gets
-   * funded.
+   * Campaign traffic arrives with a complete plan already rendered, so for
+   * those sessions this fires on load — which is what it is supposed to say.
+   * It is deliberately NOT tool_completed; see below.
    */
-  const showingExample = campaign && salaryNum === PAYCHECK_EXAMPLE.salary
+  const resultShown = useRef(false)
+  if (plan && !resultShown.current) {
+    resultShown.current = true
+    track('tool_result_shown', { tool: TOOL, ...(campaign ? { campaign: true } : {}) })
+  }
 
-  if (plan && !showingExample && !completed.current) {
+  /**
+   * Completion: the visitor did something, and there is a plan.
+   *
+   * ONE DEFINITION FOR EVERY SOURCE, matching components/OfferAnalysisTool.tsx.
+   * A gate that differs between campaign and organic traffic makes the two
+   * numbers uncomparable, which defeats the point of running a channel test —
+   * and the campaign hero renders a full plan before anybody has touched it, so
+   * the plan existing cannot be the gate.
+   *
+   * Engagement includes a document that parsed, not only a typed field.
+   */
+  if (plan && engagementCount > 0 && !completed.current) {
     completed.current = true
     track('tool_completed', {
       tool: 'first_paycheck',
@@ -218,6 +243,7 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
       has_match: plan.contributionPct > 0,
       hsa_eligible: hsaEligible,
       pay_frequency: payFrequency,
+      ...(campaign ? { campaign: true } : {}),
     })
   }
 

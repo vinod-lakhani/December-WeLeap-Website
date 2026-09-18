@@ -41,10 +41,34 @@
  * first or their fourth, which is what makes re-runners comparable only to
  * each other.
  *
- * Every free tool emits the sequence. What counts as "a real result" is
- * decided per tool, from that tool's own state machine, because firing it at
- * the same moment as tool_engaged makes the step between them measure nothing:
- * - offer            — the tax lookup resolves (take-home stops being a 72% stub)
+ * Every free tool emits the sequence.
+ *
+ * WHAT COUNTS AS COMPLETION, and the rule that is currently being migrated to.
+ *
+ * Historically this was decided per tool, from that tool's own state machine,
+ * because firing it at the same moment as tool_engaged makes the step between
+ * them measure nothing. That reasoning is sound and the consequence was not: a
+ * gate that differs between tools — or, once campaign landings existed, between
+ * two traffic sources on the SAME tool — produces numbers that cannot be
+ * compared to each other. A channel test on a metric whose definition moves
+ * with the channel is not a test.
+ *
+ * So `offer` and `first_paycheck`, the two campaign destinations, now use one
+ * definition for every source: A RESULT IS ON SCREEN AND THE VISITOR DID
+ * SOMETHING. Engagement means a changed field OR a document that parsed — an
+ * upload that fills the form is the highest-intent action either page has, and
+ * scoring it as zero engagement reported those people as bounces.
+ *
+ * `tool_result_shown` (tool, campaign?) carries the moment those two tools used
+ * to call completion: a result rendered, whoever put it there. Campaign
+ * landings arrive pre-filled, so for them it fires on load, which is what it is
+ * for. It exists so completion did not have to stay overloaded with two
+ * meanings.
+ *
+ * Every other tool still uses its own gate, and none of them are comparable to
+ * the two above or reliably to each other. Moving them is a deliberate decision
+ * that resets their baselines, not a cleanup. The ones documented here (this
+ * list has never covered first_loan_payment or money_age):
  * - rent             — the tax API returns and the range renders
  * - smart_purchase   — price, cash and surplus all present, so a recommendation exists
  * - credit_card_payoff — balance AND APR both real (APR 0 passes validation but

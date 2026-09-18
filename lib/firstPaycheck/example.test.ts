@@ -83,8 +83,37 @@ describe('campaign mode on the first-paycheck tool', () => {
      * Firing tool_completed off that would mark every bounce as a completion
      * and invert the one metric the campaign is judged on.
      */
-    expect(tool).toMatch(/if \(plan && !showingExample && !completed\.current\)/)
-    expect(tool).toMatch(/const showingExample = campaign && salaryNum === PAYCHECK_EXAMPLE\.salary/)
+    expect(tool).toMatch(/if \(plan && engagementCount > 0 && !completed\.current\)/)
+  })
+
+  it('uses the same completion gate as the offer tool, for every source', () => {
+    /**
+     * A gate that differs between campaign and organic traffic, or between the
+     * two campaign destinations, makes the numbers uncomparable — which is the
+     * entire point of running a channel test. Neither tool may wait on a tax
+     * lookup, and neither may fire on a result alone.
+     */
+    const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
+    expect(offer).toMatch(/const analysisComplete = hasResults && fieldChangeCount > 0;/)
+    expect(offer).not.toMatch(/analysisComplete = hasResults && !!taxResult/)
+  })
+
+  it('keeps the on-load moment as its own event rather than overloading completion', () => {
+    expect(tool).toMatch(/track\('tool_result_shown'/)
+    const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
+    expect(offer).toMatch(/track\('tool_result_shown'/)
+  })
+
+  it('counts a document that parsed as engagement', () => {
+    /**
+     * Uploading the offer letter and letting the parser fill the form is the
+     * highest-intent action on either page. Scoring it as zero engagement
+     * reported the people using the feature the tool was built around as
+     * bounces.
+     */
+    expect(tool).toMatch(/if \(filled\.size > before\) markEngaged\('upload_document'\)/)
+    const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
+    expect(offer).toMatch(/markEngaged\(kind === 'benefits' \? 'upload_benefits_guide' : 'upload_offer_letter'\)/)
   })
 
   it('only pre-fills the example for campaign traffic', () => {

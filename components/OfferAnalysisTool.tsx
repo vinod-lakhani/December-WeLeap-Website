@@ -368,6 +368,33 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
     touched[key] || fromLetter[key] ? '' : 'text-gray-400';
   const missingAsks = ASK_FOR.filter((a) => !fromLetter[a.mark]);
 
+  const engagedRef = useRef(false);
+  /**
+   * Counts engagement so the feedback prompt can wait for a few of them, and so
+   * tool_completed knows whether anything on screen came from the visitor.
+   *
+   * State rather than a ref because both of those depend on re-rendering. It
+   * only ever increments, so the extra renders are bounded by how much someone
+   * does.
+   */
+  const [fieldChangeCount, setFieldChangeCount] = useState(0);
+
+  /**
+   * One place that says "the visitor did something".
+   *
+   * Declared above applyParsed because an upload has to reach it too. A parse
+   * that populates six fields is the highest-intent action on this page, and
+   * counting it as zero engagement would have reported the people who used the
+   * feature it was built around as bounces.
+   */
+  const markEngaged = useCallback((source: string) => {
+    if (!engagedRef.current) {
+      engagedRef.current = true;
+      track('tool_engaged', { tool: 'offer', first_field: source });
+    }
+    setFieldChangeCount((n) => n + 1);
+  }, []);
+
   const applyParsed = useCallback((parsed: ParsedOffer, kind: DocKind) => {
     // Provenance is per field, not per session. A visitor who uploads both
     // documents has some values from each, and a badge that says "letter" over
@@ -463,7 +490,14 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
     setFromLetter((prev) => ({ ...prev, ...marks }));
     if (kind === 'benefits') setBenefitsUploaded(true);
     else setOfferUploaded(true);
-  }, []);
+
+    // A parse that filled nothing is not engagement — doc_parse_failed already
+    // covers that case, and counting it would credit the tool for a document
+    // it could not read.
+    if (Object.keys(marks).length > 0) {
+      markEngaged(kind === 'benefits' ? 'upload_benefits_guide' : 'upload_offer_letter');
+    }
+  }, [markEngaged]);
 
 
   // Metro/city options
@@ -710,15 +744,6 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
    * but cannot be a funnel step — a funnel needs one event per person per step.
    * This fires once, on the first field anyone touches.
    */
-  const engagedRef = useRef(false);
-  /**
-   * Counts edits so the feedback prompt can wait for a few of them.
-   *
-   * State rather than a ref because the prompt's visibility depends on it, and
-   * a ref would not re-render to reveal it. It only ever increments, so the
-   * extra renders are bounded by how much someone edits.
-   */
-  const [fieldChangeCount, setFieldChangeCount] = useState(0);
   /**
    * Every edit already flows through trackFieldChange, so the correction signal
    * hangs off it rather than being wired into a dozen onChange handlers where
@@ -744,17 +769,13 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
         tool: 'offer',
       });
     }
-    if (!engagedRef.current) {
-      engagedRef.current = true;
-      track('tool_engaged', { tool: 'offer', first_field: field });
-    }
-    setFieldChangeCount((n) => n + 1);
+    markEngaged(field);
     track('offer_tool_field_changed', {
       field,
       value_type: typeof value === 'number' ? 'number' : 'string',
       has_value: !!value,
     });
-  }, []);
+  }, [markEngaged]);
 
   /**
    * This tool recomputes live with no submit button, so there is no single
@@ -873,20 +894,54 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
   const hasResults = !!calc;
 
   /**
-   * Fourth step of the funnel, fired once.
+   * A result is on screen. One event, fired once, regardless of who put it there.
    *
-   * `hasResults` alone is true the instant the first digit of a salary is
-   * typed, which made tool_completed and tool_engaged the same moment and the
-   * funnel step between them meaningless. It now waits for the tax lookup to
-   * resolve, which is the point the package total and the take-home figure stop
-   * being the 72% placeholder and become an actual answer worth reading.
+   * This is the old `hasResults && taxResult` moment, given its own name rather
+   * than left overloaded onto tool_completed. Campaign traffic arrives with a
+   * complete result already rendered, so for those sessions this fires on load
+   * and that is exactly what it is supposed to say.
    */
-  const analysisComplete = hasResults && !!taxResult;
+  const resultShownRef = useRef(false);
+  useEffect(() => {
+    if (hasResults && !resultShownRef.current) {
+      resultShownRef.current = true;
+      track('tool_result_shown', { tool: 'offer', ...(campaign ? { campaign: true } : {}) });
+    }
+  }, [hasResults, campaign]);
+
+  /**
+   * Fourth step of the funnel, fired once: the visitor did something, and there
+   * is a result.
+   *
+   * ONE DEFINITION FOR EVERY SOURCE. This used to wait on the tax lookup, which
+   * meant organic and campaign sessions were counting different things — a
+   * network round-trip in one, a keystroke in the other — and a channel test
+   * comparing them would have been comparing two metrics that happen to share a
+   * name. Nothing downstream of this event can be read across sources unless
+   * the gate is identical, and that is the whole point of running the test.
+   *
+   * Field change rather than result-rendered, because the campaign hero renders
+   * a complete result before anybody has touched it. `tool_result_shown` above
+   * keeps that moment for the funnel spec.
+   *
+   * "Field change" includes a document that parsed. Someone who uploads their
+   * offer letter and lets the parser fill six fields has done the highest-intent
+   * thing available on this page, and the old gate scored them as zero
+   * engagement until they happened to edit something afterwards.
+   */
+  const analysisComplete = hasResults && fieldChangeCount > 0;
   const toolCompletedRef = useRef(false);
   useEffect(() => {
     if (analysisComplete && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'offer', run_index: nextRunIndex('offer') });
+      // `campaign` only on campaign sessions, so the organic event stays
+      // byte-identical to what every saved dashboard already reads — and the
+      // two gates above can still be told apart when they need to be.
+      track('tool_completed', {
+        tool: 'offer',
+        run_index: nextRunIndex('offer'),
+        ...(campaign ? { campaign: true } : {}),
+      });
       // The CTA leads with the employer match where there is one, and falls
       // back to total-package uplift otherwise, so the Leap reported here is
       // whichever of those the visitor is actually being shown.
@@ -896,7 +951,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
           : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
       );
     }
-  }, [analysisComplete, calc, salary]);
+  }, [analysisComplete, calc, salary, campaign]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">
