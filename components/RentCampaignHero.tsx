@@ -27,6 +27,7 @@ import { useMemo } from 'react'
 
 import { track } from '@/lib/analytics'
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities'
+import { US_STATES } from '@/lib/states'
 import { getHUDRentRange } from '@/lib/hudRents'
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
 import {
@@ -50,20 +51,32 @@ export interface RentCampaignHeroProps {
   /** Raw salary string, shared with the tool below. */
   salaryInput: string
   onSalaryChange: (raw: string) => void
-  /** Preset city name, shared with the tool below. */
+  /** Preset city name, or 'Other'. Shared with the tool below. */
   city: string
   onCityChange: (city: string) => void
+  /**
+   * State code when the city is 'Other', shared with the tool below.
+   *
+   * The six presets cover the metros the market-rent data knows about, which
+   * is not where most of the country lives. Without this an ad running
+   * nationally sent everyone outside those six to a national tax blend that is
+   * wrong for all of them — and state tax moves this answer more than anything
+   * else on the page.
+   */
+  otherState: string
+  onOtherStateChange: (state: string) => void
 }
 
 export function RentCampaignHero({
-  salaryInput, onSalaryChange, city, onCityChange,
+  salaryInput, onSalaryChange, city, onCityChange, otherState, onOtherStateChange,
 }: RentCampaignHeroProps) {
   const salary = useMemo(() => {
     const n = parseFloat(salaryInput.replace(/[$,\s]/g, ''))
     return Number.isFinite(n) && n > 0 ? n : 0
   }, [salaryInput])
 
-  const stateCode = getStateCodeForCity(city) ?? ''
+  const isOther = city === 'Other'
+  const stateCode = (isOther ? otherState : getStateCodeForCity(city)) ?? ''
 
   /**
    * Grouped for display only.
@@ -140,7 +153,13 @@ export function RentCampaignHero({
    * answering them rather than the ad.
    */
   const isExample = salary === RENT_EXAMPLE.salary && city === RENT_EXAMPLE.city
-  const ready = salary > 0 && takeHomeMonthly > 0
+  /**
+   * 'Other' with no state yet is the one case where this card cannot answer.
+   * Showing a national blend and calling it their number would be worse than
+   * asking for one more tap, because the blend is wrong for every state.
+   */
+  const awaitingState = isOther && !otherState
+  const ready = salary > 0 && takeHomeMonthly > 0 && !awaitingState
 
   return (
     <div className="mx-auto w-full max-w-[600px]">
@@ -184,7 +203,9 @@ export function RentCampaignHero({
               />
             </div>
           </div>
-          <div className="w-[38%] shrink-0">
+          {/* 42%, not 38%: "SF Bay Area" measured 86px against 88px of inner
+              width, which is not margin, it is luck. */}
+          <div className="w-[42%] shrink-0">
             <label
               htmlFor="rent-campaign-city"
               className="block text-[12px] font-bold uppercase tracking-[0.07em] text-[#6B7C6E]"
@@ -204,9 +225,46 @@ export function RentCampaignHero({
               {getAvailableCities().map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
+              {/* "Somewhere else" truncated to "Somewh" in a select this
+                  narrow, and this is the same word the form below uses. */}
+              <option value="Other">Other</option>
             </select>
           </div>
         </div>
+
+        {/* Anywhere that is not one of the six metros the rent data covers.
+            State alone, because state tax is what this card computes and it is
+            answerable with one tap; the metro that local rents need is a list
+            fetched per state, and a loading state on the first screen would
+            cost more than it returns. The tool below asks for it. */}
+        {isOther && (
+          <div className="mt-3">
+            <label
+              htmlFor="rent-campaign-state"
+              className="block text-[12px] font-bold uppercase tracking-[0.07em] text-[#6B7C6E]"
+            >
+              State
+            </label>
+            <select
+              id="rent-campaign-state"
+              aria-label="State"
+              value={otherState}
+              onChange={(e) => onOtherStateChange(e.target.value)}
+              className="mt-1.5 h-12 w-full rounded-xl border-2 border-[#386641] bg-white px-2.5 text-[15px] font-bold text-[#386641] outline-none focus-visible:ring-2 focus-visible:ring-[#A7C957]"
+            >
+              <option value="">Pick your state</option>
+              {US_STATES.map((st) => (
+                <option key={st} value={st}>{st}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {awaitingState && salary > 0 && (
+          <p className="mt-4 rounded-xl bg-canvas px-4 py-3 text-center text-[14px] leading-relaxed text-subtle">
+            Pick your state and this answers. It changes the number more than anything else here.
+          </p>
+        )}
 
         {ready && (
           <>
@@ -258,11 +316,33 @@ export function RentCampaignHero({
             {/* The correction, demoted. It used to be a struck-through row
                 directly beneath the inputs, where it read as part of the form
                 and repeated the $1,750 already sitting in the headline. */}
+            {/* Outside the six metros the rent data covers, the budget still
+                works — it is tax, and the state answers that. The price does
+                not, and saying so is better than leaving a reader to notice a
+                section is missing. */}
+            {!market && (
+              <div className="mt-4 border-t border-hairline pt-3.5">
+                <p className="text-[14px] leading-snug text-subtle">
+                  We hold one-bed rents for six metros. Pick yours in the tool below and this gets the local
+                  price too.
+                </p>
+              </div>
+            )}
+
+            {/* Where both numbers come from.
+                This used to end "...comes out of the $4,606 that lands",
+                which named neither the unit nor the quantity — sitting
+                between a $70,000 salary and a $1,750 monthly figure, there
+                was nothing to tell a reader which kind of number it was. It
+                also has to carry the band's derivation now, since the
+                "28-35% of..." line that used to sit under the result was
+                removed to stop three figures stacking up there. */}
             <p className="mt-3.5 text-[13.5px] leading-relaxed text-subtle">
               Listing sites would have said{' '}
               <span className="font-semibold text-gray-500 line-through">{fc(listing)}</span> &mdash; 30% of your
-              salary before tax. Rent comes out of the{' '}
-              <span className="font-semibold text-ink">{fc(takeHomeMonthly)}</span> that lands.
+              salary before tax. But rent is paid out of take-home, which is{' '}
+              <span className="font-semibold text-ink">{fc(takeHomeMonthly)} a month</span>, and the range above
+              is 28&ndash;35% of that.
             </p>
 
             {/* The second thing anybody needs, kept visibly second: the total
@@ -296,8 +376,8 @@ export function RentCampaignHero({
                 assumption and the example label used to be stacked grey
                 blocks totalling six lines directly under the numbers. */}
             <p className="mt-3 text-[12px] leading-relaxed text-faint">
-              Assumes a one-month deposit at the bottom of your range, so treat it as the floor.
-              {isExample && ' These are the ad\u2019s numbers \u2014 change the salary above to make them yours.'}
+              Assumes a one-month deposit at the bottom of your range, so it is a floor.
+              {isExample && ' Change the salary above to make these yours.'}
             </p>
           </>
         )}

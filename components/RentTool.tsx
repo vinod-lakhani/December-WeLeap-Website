@@ -478,6 +478,14 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
           onSalaryChange={(raw) => { setSalary(raw.replace(/[^0-9]/g, '')); handleFormStart('salary'); }}
           city={city}
           onCityChange={(next) => { setCity(next); handleFormStart('city'); }}
+          otherState={otherState}
+          onOtherStateChange={(next) => {
+            setOtherState(next);
+            // Same reset the form below does: a metro from the previous state
+            // is not a metro in this one.
+            setOtherMetro('');
+            handleFormStart('state');
+          }}
         />
       )}
 
