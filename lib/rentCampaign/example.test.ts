@@ -65,36 +65,32 @@ describe('the rent campaign example', () => {
     expect(fresh.high).toBe(RENT_EXAMPLE.rentHigh)
   })
 
-  describe('what moves between the first paint and the settled answer', () => {
-    it('moves only the top of the band, and only by one rounding step', () => {
+  describe('the first paint and the settled answer', () => {
+    it('now agree, so the ad quotes one set of numbers', () => {
       /**
-       * The local table and the API disagree about New York state tax, so the
-       * hero paints $1,625 and settles at $1,600. Pinned rather than hidden:
-       * if this delta ever grows, the ad is quoting a number the page visibly
-       * contradicts and somebody needs to know.
+       * They did not. The hero paints from the local state table and swaps in
+       * /api/tax when it answers, and for New York the first paint put the top
+       * of the band at $1,625 against the API's $1,600 — a visible step on the
+       * one number the creative quotes.
+       *
+       * The cause was not what it first looked like. The base was right: gross
+       * less deferrals less the standard deduction reproduces the API to the
+       * cent in every flat-tax state. It was the RATE. New York was carrying
+       * 4%, a figure measured as a share of gross, charged on taxable income
+       * — and thirty-one of fifty-one states had the same problem, the worst
+       * by $1,908 a year. See the calibration note on STATE_RATES.
        */
       expect(RENT_EXAMPLE.rentLow).toBe(RENT_EXAMPLE_SETTLED.rentLow)
-      expect(RENT_EXAMPLE.rentHigh).toBe(1_625)
-      expect(RENT_EXAMPLE.rentHigh - RENT_EXAMPLE_SETTLED.rentHigh).toBe(25)
+      expect(RENT_EXAMPLE.rentHigh).toBe(RENT_EXAMPLE_SETTLED.rentHigh)
+      expect(RENT_EXAMPLE.upfrontLow).toBe(RENT_EXAMPLE_SETTLED.upfrontLow)
     })
 
-    it('is caused by a state rate applied to taxable income, not gross', () => {
-      /**
-       * lib/firstPaycheck/calculation.ts records its rates as percentages OF
-       * GROSS — its own comment measures New York at 3.40%, 3.88% and 4.26%
-       * across $50k to $85k, and sets 4%. The callers then charge that rate on
-       * TAXABLE income, after the federal standard deduction, which understates
-       * state tax in every tool that reads the table.
-       *
-       * Not fixed here: it moves numbers across the whole site and deserves its
-       * own change. This test exists so the cause is written down next to the
-       * symptom.
-       */
-      expect(stateRate('NY')).toBe(0.04)
-      const apiStateTax = 2_799
-      const onGross = EXAMPLE_MOVE.salary * stateRate('NY')
-      expect(Math.round(onGross)).toBe(2_800) // within a dollar of what the API charges
-      expect(onGross - apiStateTax).toBeLessThan(2)
+    it('keeps New York close enough to the API that nothing visibly moves', () => {
+      // $25 is one rounding step in calculateRentRange, so anything under it
+      // cannot change what the page prints.
+      const delta = Math.abs(RENT_EXAMPLE.takeHomeMonthly - RENT_EXAMPLE_SETTLED.takeHomeMonthly)
+      expect(delta).toBeLessThan(25)
+      expect(stateRate('NY')).toBe(0.0522)
     })
   })
 })
