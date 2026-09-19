@@ -184,9 +184,9 @@ export function RentCampaignHero({
           the result, where it reads as a correction rather than a rival. */}
       <h1 className="text-[27px] font-extrabold leading-[1.12] tracking-[-0.03em] text-[#1A3320] sm:text-[32px]">
         {isExample ? (
-          <>What {fc(RENT_EXAMPLE.salary)} in {RENT_EXAMPLE.city} actually rents.</>
+          <>What {fc(RENT_EXAMPLE.salary)} in {RENT_EXAMPLE.city} actually gets you.</>
         ) : (
-          <>What your salary actually rents.</>
+          <>What your salary actually gets you.</>
         )}
       </h1>
 
@@ -371,6 +371,18 @@ export function RentCampaignHero({
                   {fc(upfront.low)}
                 </p>
               </div>
+              {/* What the deposit is actually on.
+                  Without this the box argued with the line above it: it built
+                  a total out of a {fc(rent.low)} deposit directly under a
+                  sentence saying a one-bed here starts at {fc(market?.low ?? 0)},
+                  and a careful reader asks why we are pricing an apartment we
+                  just said they cannot have. Naming it as a share makes the
+                  box agree with the advice instead of contradicting it. */}
+              <p className="mt-0.5 text-[12.5px] text-subtle">
+                {market?.verdict === 'out_of_reach'
+                  ? `on a ${fc(rent.low)} share`
+                  : `on a place at ${fc(rent.low)} a month`}
+              </p>
               <dl className="mt-3 space-y-1 border-t border-[#DCE5D2] pt-2.5 text-[13.5px]">
                 {[
                   ['Deposit', upfront.depositLow],
@@ -390,7 +402,7 @@ export function RentCampaignHero({
                 assumption and the example label used to be stacked grey
                 blocks totalling six lines directly under the numbers. */}
             <p className="mt-3 text-[12px] leading-relaxed text-faint">
-              Assumes a one-month deposit at the bottom of your range, so it is a floor.
+              One month&rsquo;s deposit assumed, so treat it as a floor.
               {isExample && ' Change the salary above to make these yours.'}
             </p>
           </>

@@ -128,6 +128,23 @@ describe('campaign mode on the rent tool', () => {
     expect(tool).toMatch(/useState\(campaign \? RENT_EXAMPLE\.city : ''\)/)
   })
 
+  it('says what the deposit is on, and agrees with the advice above it', () => {
+    /**
+     * The box built a total from a $1,225 deposit directly under a sentence
+     * saying a one-bed in New York starts at $2,800 — pricing an apartment the
+     * page had just said was out of reach. A careful reader asks what the
+     * deposit is for.
+     *
+     * The basis is now named, and it is named from the same verdict that
+     * drives the advice: a share where a place of their own does not work, a
+     * place where it does. Tied together here so one cannot be reworded
+     * without the other.
+     */
+    expect(hero).toMatch(/market\?\.verdict === 'out_of_reach'/)
+    expect(hero).toMatch(/on a \$\{fc\(rent\.low\)\} share/)
+    expect(hero).toMatch(/on a place at \$\{fc\(rent\.low\)\} a month/)
+  })
+
   it('shares one upfront-cash implementation with the tool', () => {
     // Two implementations of the same sum is how a landing page ends up
     // promising a figure the tool below it contradicts.
