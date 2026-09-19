@@ -156,3 +156,24 @@ export function calculateUpfrontCash(
 export function listingSiteRentMonthly(salaryAnnual: number): number {
   return (salaryAnnual * 0.3) / 12
 }
+
+/**
+ * Where the local market sits against what somebody can carry.
+ *
+ * Three cases, not the two that `compareRentRanges` distinguishes. Its
+ * "overlap" put Chicago, where the entire market range sits under the
+ * ceiling, in the same bucket as Austin, where only the bottom of the market
+ * is reachable — and those are different pieces of news for somebody deciding
+ * whether they need a flatmate.
+ */
+export type MarketRentVerdict = 'out_of_reach' | 'low_end_only' | 'in_reach'
+
+export function marketRentVerdict(
+  rentHigh: number,
+  marketLow: number,
+  marketHigh: number,
+): MarketRentVerdict {
+  if (marketLow > rentHigh) return 'out_of_reach'
+  if (marketHigh <= rentHigh) return 'in_reach'
+  return 'low_end_only'
+}

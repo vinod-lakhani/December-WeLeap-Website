@@ -27,12 +27,14 @@ import { useMemo } from 'react'
 
 import { track } from '@/lib/analytics'
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities'
+import { getHUDRentRange } from '@/lib/hudRents'
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
 import {
   UPFRONT,
   calculateRentRange,
   calculateUpfrontCash,
   listingSiteRentMonthly,
+  marketRentVerdict,
 } from '@/lib/rent'
 import { RENT_EXAMPLE } from '@/lib/rentCampaign/example'
 import { useTaxEstimate } from '@/lib/tax/useTaxEstimate'
@@ -109,6 +111,27 @@ export function RentCampaignHero({
   const listing = listingSiteRentMonthly(salary)
 
   /**
+   * What a one-bed in this city actually goes for.
+   *
+   * The other half of the answer, and on a graduate salary in an expensive
+   * city the more useful half. "You can carry $1,300 to $1,600" is a budget;
+   * "and a one-bed here is $2,800" is the decision — it is the difference
+   * between planning a move and planning a move with roommates. A page that
+   * gives the budget and not the price leaves the reader to discover the gap
+   * on a listings site, which is exactly where the bad number came from.
+   */
+  const market = useMemo(() => {
+    const m = getHUDRentRange(city)
+    if (!m || !(rent.high > 0)) return null
+    return {
+      ...m,
+      verdict: marketRentVerdict(rent.high, m.low, m.high),
+      /** How far the cheapest one-bed sits above the top of what they can carry. */
+      shortfall: Math.max(0, m.low - rent.high),
+    }
+  }, [city, rent.high])
+
+  /**
    * Whether the figures are the visitor's or the creative's.
    *
    * Both the salary and the city have to still be the example's: someone who
@@ -121,25 +144,31 @@ export function RentCampaignHero({
 
   return (
     <div className="mx-auto w-full max-w-[600px]">
+      {/* The headline names the ANSWER, not the claim being argued with.
+          It used to read "$70,000 in NYC. The listing site says $1,750." —
+          which puts the opposition's number in the largest type on the page
+          and leaves a visitor working out which of the two figures is
+          supposed to be theirs. The contrast still happens, one line under
+          the result, where it reads as a correction rather than a rival. */}
       <h1 className="text-[27px] font-extrabold leading-[1.12] tracking-[-0.03em] text-[#1A3320] sm:text-[32px]">
         {isExample ? (
-          <>
-            {fc(RENT_EXAMPLE.salary)} in {RENT_EXAMPLE.city}. The listing site says{' '}
-            {fc(RENT_EXAMPLE.listingSite)}.
-          </>
+          <>What {fc(RENT_EXAMPLE.salary)} in {RENT_EXAMPLE.city} actually rents.</>
         ) : (
-          <>Your rent range, on take-home.</>
+          <>What your salary actually rents.</>
         )}
       </h1>
 
       <div className="mt-5 rounded-2xl border-2 border-[#386641] bg-white px-5 py-5 shadow-card sm:px-6">
+        {/* Two controls, two labels with the same grammar. "NOW TYPE YOURS"
+            sat over a field that was already filled in, next to a plain
+            "CITY", so the pair read as an instruction and a noun. */}
         <div className="flex gap-3">
           <div className="min-w-0 flex-1">
             <label
               htmlFor="rent-campaign-salary"
-              className="block text-[13px] font-bold uppercase tracking-[0.06em] text-[#386641]"
+              className="block text-[12px] font-bold uppercase tracking-[0.07em] text-[#6B7C6E]"
             >
-              {isExample ? 'Now type yours' : 'Salary'}
+              Salary
             </label>
             <div className="relative mt-1.5">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xl text-gray-400">$</span>
@@ -158,15 +187,13 @@ export function RentCampaignHero({
           <div className="w-[38%] shrink-0">
             <label
               htmlFor="rent-campaign-city"
-              className="block text-[13px] font-bold uppercase tracking-[0.06em] text-[#386641]"
+              className="block text-[12px] font-bold uppercase tracking-[0.07em] text-[#6B7C6E]"
             >
               City
             </label>
-            {/* A second control on a first screen is a cost, and this one earns
-                it: state tax moves take-home by more than anything else on the
-                page, and without a city the answer is a national blend that is
-                wrong for everybody. The ad names a city, so a visitor arriving
-                from it already has the answer in mind. */}
+            {/* State tax moves take-home by more than anything else here, so
+                without a city the answer is a national blend that is wrong for
+                everybody. The ad names a city, so this arrives already right. */}
             <select
               id="rent-campaign-city"
               aria-label="City"
@@ -183,70 +210,96 @@ export function RentCampaignHero({
 
         {ready && (
           <>
-            {/* Frame 2 and 3: the number they have been told, and ours. */}
-            <div className="mt-4 flex items-baseline justify-between border-b border-hairline pb-2.5 text-[14px]">
-              <span className="text-gray-600">Listing sites, 30% of gross</span>
-              <span className="font-bold tabular-nums text-gray-400 line-through">{fc(listing)}</span>
-            </div>
-
-            <div className="mt-3.5 text-center">
+            {/* THE ANSWER. One number, the largest thing on the page, with
+                nothing competing for the same weight. */}
+            <div className="mt-6 text-center">
               <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641]">
-                On take-home, you can carry
+                Rent you can carry
               </p>
-              <p className="mt-1 text-[clamp(1.9rem,8.5vw,2.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-                {fc(rent.low)} &ndash; {fc(rent.high)}
+              <p className="mt-1.5 text-[clamp(2rem,9vw,2.75rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                {fc(rent.low)}&ndash;{fc(rent.high)}
               </p>
-              <p className="mt-1.5 text-[13px] leading-snug text-subtle">
-                28&ndash;35% of the {fc(takeHomeMonthly)} that actually lands
-                {tax?.source === 'local' && <span className="text-faint"> · sharpening</span>}
+              <p className="mt-1 text-[13px] font-semibold uppercase tracking-[0.08em] text-faint">
+                a month
               </p>
             </div>
 
-            {/* Frame 4, and the strongest number on the page: the one nobody
-                budgets for. Shown as its own block with the working visible,
-                because an unexplained four-figure sum invites an argument the
-                itemisation settles. */}
+            {/* What it actually costs, against what they can carry.
+                Placed directly under the answer because for most of these
+                cities it is the answer's consequence, and reading one without
+                the other is how somebody ends up surprised on a listings
+                site. */}
+            {market && (
+              <div className="mt-4 border-t border-hairline pt-3.5">
+                {/* Label short enough to hold one line at 375px. "A one-bed
+                    in NYC goes for" wrapped and left "for" orphaned beside
+                    the price. */}
+                <div className="flex items-baseline justify-between gap-3 text-[14.5px]">
+                  <span className="text-gray-600">One-bed in {city}</span>
+                  <span className="shrink-0 font-extrabold tabular-nums text-ink">
+                    {fc(market.low)}&ndash;{fc(market.high)}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-[14.5px] font-semibold leading-snug text-[#1A3320]">
+                  {market.verdict === 'out_of_reach' ? (
+                    <>
+                      {fc(market.shortfall)} a month more than you can carry. Roommates, or a cheaper
+                      neighbourhood.
+                    </>
+                  ) : market.verdict === 'in_reach' ? (
+                    <>That whole range is inside what you can carry.</>
+                  ) : (
+                    <>The low end is inside your range. Possible, with looking.</>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* The correction, demoted. It used to be a struck-through row
+                directly beneath the inputs, where it read as part of the form
+                and repeated the $1,750 already sitting in the headline. */}
+            <p className="mt-3.5 text-[13.5px] leading-relaxed text-subtle">
+              Listing sites would have said{' '}
+              <span className="font-semibold text-gray-500 line-through">{fc(listing)}</span> &mdash; 30% of your
+              salary before tax. Rent comes out of the{' '}
+              <span className="font-semibold text-ink">{fc(takeHomeMonthly)}</span> that lands.
+            </p>
+
+            {/* The second thing anybody needs, kept visibly second: the total
+                sits on the header line at body weight instead of being a
+                rival to the number above. */}
             <div className="mt-4 rounded-xl bg-[#F1F5EC] px-4 py-3.5">
-              <p className="text-center text-[13px] font-bold uppercase tracking-[0.08em] text-[#386641]">
-                Before you get keys
-              </p>
-              <p className="mt-0.5 text-center text-[28px] font-extrabold leading-none tracking-[-0.02em] text-ink tabular-nums">
-                {fc(upfront.low)}
-              </p>
-              <dl className="mt-3 space-y-1 text-[13.5px]">
-                <div className="flex justify-between">
-                  <dt className="text-gray-600">Deposit</dt>
-                  <dd className="font-semibold tabular-nums text-gray-900">{fc(upfront.depositLow)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-600">First month</dt>
-                  <dd className="font-semibold tabular-nums text-gray-900">{fc(upfront.firstMonthLow)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-600">{UPFRONT.gapDays} days before your first paycheck</dt>
-                  <dd className="font-semibold tabular-nums text-gray-900">{fc(upfront.gapLiving)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-600">Moving and setup</dt>
-                  <dd className="font-semibold tabular-nums text-gray-900">{fc(upfront.movingSetup)}</dd>
-                </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-[12.5px] font-bold uppercase tracking-[0.08em] text-[#386641]">
+                  Before you get keys
+                </p>
+                <p className="text-[22px] font-extrabold leading-none tracking-[-0.02em] text-ink tabular-nums">
+                  {fc(upfront.low)}
+                </p>
+              </div>
+              <dl className="mt-3 space-y-1 border-t border-[#DCE5D2] pt-2.5 text-[13.5px]">
+                {[
+                  ['Deposit', upfront.depositLow],
+                  ['First month', upfront.firstMonthLow],
+                  [`${UPFRONT.gapDays} days with no paycheck`, upfront.gapLiving],
+                  ['Moving and setup', upfront.movingSetup],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="flex justify-between gap-3">
+                    <dt className="text-gray-600">{label}</dt>
+                    <dd className="shrink-0 font-semibold tabular-nums text-gray-900">{fc(Number(value))}</dd>
+                  </div>
+                ))}
               </dl>
-              {/* Said out loud rather than left for somebody to discover: a
-                  one-month deposit is the friendly end of the market. */}
-              <p className="mt-2.5 border-t border-[#DCE5D2] pt-2 text-[12px] leading-relaxed text-subtle">
-                Assumes a one-month deposit at the bottom of your range. Plenty of landlords ask for more,
-                and some want last month&rsquo;s too &mdash; so treat this as the floor.
-              </p>
             </div>
-          </>
-        )}
 
-        {isExample && (
-          <p className="mt-3.5 rounded-lg bg-canvas px-3.5 py-2.5 text-[12.5px] leading-relaxed text-subtle">
-            The ad&rsquo;s numbers, for a single filer with no other debt. Type your salary above and pick your
-            city &mdash; then the tool below adds your start date, any debt payments and what rent actually
-            costs there.
-          </p>
+            {/* One line of small print, not two boxes of it. The deposit
+                assumption and the example label used to be stacked grey
+                blocks totalling six lines directly under the numbers. */}
+            <p className="mt-3 text-[12px] leading-relaxed text-faint">
+              Assumes a one-month deposit at the bottom of your range, so treat it as the floor.
+              {isExample && ' These are the ad\u2019s numbers \u2014 change the salary above to make them yours.'}
+            </p>
+          </>
         )}
       </div>
 

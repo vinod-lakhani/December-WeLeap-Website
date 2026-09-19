@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { calculateRentRange, calculateUpfrontCash, listingSiteRentMonthly } from '@/lib/rent'
+import {
+  calculateRentRange,
+  calculateUpfrontCash,
+  listingSiteRentMonthly,
+  marketRentVerdict,
+} from '@/lib/rent'
+import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
+import { getStateCodeForCity } from '@/lib/cities'
+import { getHUDRentRange } from '@/lib/hudRents'
 import { stateRate } from '@/lib/firstPaycheck/calculation'
 import { EXAMPLE_MOVE, RENT_EXAMPLE, RENT_EXAMPLE_SETTLED } from './example'
 
@@ -123,5 +131,49 @@ describe('campaign mode on the rent tool', () => {
     // promising a figure the tool below it contradicts.
     expect(tool).toMatch(/calculateUpfrontCash\(rentRangeData, takeHomeMonthly\)/)
     expect(hero).toMatch(/calculateUpfrontCash\(rent, takeHomeMonthly\)/)
+  })
+})
+
+describe('what a one-bed actually costs, against what you can carry', () => {
+  /**
+   * The other half of the answer, and on a graduate salary in an expensive
+   * city the more useful half. "You can carry $1,300 to $1,600" is a budget;
+   * "and a one-bed here is $2,800" is the decision.
+   *
+   * These are the six preset cities at the campaign's $70,000, so a change to
+   * the tax table, the rent band or the market data that flips one of these
+   * verdicts shows up here rather than in front of a visitor.
+   */
+  const CASES = [
+    { city: 'NYC', verdict: 'out_of_reach', shortfall: 1_200 },
+    // Computed from the local table, which is what these tests exercise. The
+    // page shows $1,550 once /api/tax answers: California's graduated schedule
+    // is the worst fit for a single rate, so the two differ by one $25 step.
+    // The verdict — the thing a reader acts on — is the same either way.
+    { city: 'SF Bay Area', verdict: 'out_of_reach', shortfall: 1_575 },
+    { city: 'Boston', verdict: 'out_of_reach', shortfall: 1_075 },
+    { city: 'Seattle', verdict: 'out_of_reach', shortfall: 500 },
+    { city: 'Austin', verdict: 'low_end_only', shortfall: 0 },
+    { city: 'Chicago', verdict: 'in_reach', shortfall: 0 },
+  ] as const
+
+  it.each(CASES)('$city reads as $verdict', ({ city, verdict, shortfall }) => {
+    const stateCode = getStateCodeForCity(city)!
+    const net = 70_000 - estimateTaxAnnual(70_000, 0, 0, stateCode)
+    const band = calculateRentRange(net / 12, 0)
+    const m = getHUDRentRange(city)!
+    expect(marketRentVerdict(band.high, m.low, m.high)).toBe(verdict)
+    expect(Math.max(0, m.low - band.high)).toBe(shortfall)
+  })
+
+  it('separates a market that fits entirely from one where only the floor does', () => {
+    /**
+     * The distinction compareRentRanges could not make, and the reason this
+     * has its own function: Chicago's whole range sits under the ceiling,
+     * Austin's does not.
+     */
+    expect(marketRentVerdict(1_625, 1_200, 1_500)).toBe('in_reach')
+    expect(marketRentVerdict(1_700, 1_600, 1_900)).toBe('low_end_only')
+    expect(marketRentVerdict(1_600, 2_800, 3_400)).toBe('out_of_reach')
   })
 })
