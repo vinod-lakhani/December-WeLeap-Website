@@ -28,6 +28,8 @@ import { useMemo } from 'react'
 import { track } from '@/lib/analytics'
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities'
 import { US_STATES } from '@/lib/states'
+import { hasLocalTax, localTaxAnnual } from '@/lib/localTax'
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { getHUDRentRange } from '@/lib/hudRents'
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
 import {
@@ -115,7 +117,18 @@ export function RentCampaignHero({
 
   const tax = useTaxEstimate({ salary, state: stateCode, pretaxAnnual: 0, local })
 
-  const takeHomeMonthly = tax ? tax.netAnnual / 12 : 0
+  /**
+   * Take-home, less the city income tax nothing upstream knows about.
+   *
+   * /api/tax prices federal, state and FICA; it has no concept of a city. In
+   * New York that leaves $190 a month on the table, on a page whose entire
+   * argument is that the other calculators are using money you never receive.
+   */
+  const localAnnual = useMemo(
+    () => localTaxAnnual(city, Math.max(0, salary - STANDARD_DEDUCTION_2026_SINGLE)),
+    [city, salary],
+  )
+  const takeHomeMonthly = tax ? Math.max(0, tax.netAnnual - localAnnual) / 12 : 0
   const rent = useMemo(() => calculateRentRange(takeHomeMonthly, 0), [takeHomeMonthly])
   const upfront = useMemo(
     () => calculateUpfrontCash(rent, takeHomeMonthly),
@@ -341,8 +354,9 @@ export function RentCampaignHero({
               Listing sites would have said{' '}
               <span className="font-semibold text-gray-500 line-through">{fc(listing)}</span> &mdash; 30% of your
               salary before tax. But rent is paid out of take-home, which is{' '}
-              <span className="font-semibold text-ink">{fc(takeHomeMonthly)} a month</span>, and the range above
-              is 28&ndash;35% of that.
+              <span className="font-semibold text-ink">{fc(takeHomeMonthly)} a month</span>
+              {hasLocalTax(city) ? <> after {city}&rsquo;s city income tax as well</> : null}, and the range
+              above is 28&ndash;35% of that.
             </p>
 
             {/* The second thing anybody needs, kept visibly second: the total

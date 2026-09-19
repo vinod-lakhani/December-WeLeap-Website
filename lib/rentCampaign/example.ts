@@ -20,6 +20,8 @@
  */
 
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
+import { localTaxAnnual } from '@/lib/localTax'
 import {
   calculateRentRange,
   calculateUpfrontCash,
@@ -44,7 +46,12 @@ export const EXAMPLE_MOVE = {
  * than papered over.
  */
 const takeHomeAnnual =
-  EXAMPLE_MOVE.salary - estimateTaxAnnual(EXAMPLE_MOVE.salary, 0, 0, EXAMPLE_MOVE.stateCode)
+  EXAMPLE_MOVE.salary -
+  estimateTaxAnnual(EXAMPLE_MOVE.salary, 0, 0, EXAMPLE_MOVE.stateCode) -
+  // New York City's own income tax. Nothing upstream prices it — /api/tax
+  // takes a state — and on this salary it is $190 a month, which moves the
+  // band the ad quotes by a whole rounding step in both directions.
+  localTaxAnnual(EXAMPLE_MOVE.city, EXAMPLE_MOVE.salary - STANDARD_DEDUCTION_2026_SINGLE)
 const takeHomeMonthly = takeHomeAnnual / 12
 
 const rent = calculateRentRange(takeHomeMonthly, 0)
@@ -86,7 +93,10 @@ export const RENT_EXAMPLE = {
  * band and the upfront total are identical either way.
  */
 const SETTLED_NET_ANNUAL = 55_276
-const settledMonthly = SETTLED_NET_ANNUAL / 12
+const settledMonthly =
+  (SETTLED_NET_ANNUAL -
+    localTaxAnnual(EXAMPLE_MOVE.city, EXAMPLE_MOVE.salary - STANDARD_DEDUCTION_2026_SINGLE)) /
+  12
 const settledRent = calculateRentRange(settledMonthly, 0)
 const settledUpfront = calculateUpfrontCash(settledRent, settledMonthly)
 

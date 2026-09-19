@@ -20,6 +20,8 @@ import { useCountReveal } from '@/lib/feedback-reveal';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
 import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash } from '@/lib/rent';
 import { RENT_EXAMPLE } from '@/lib/rentCampaign/example';
+import { localTaxAnnual } from '@/lib/localTax';
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
 import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
@@ -384,8 +386,21 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
   };
 
   // Calculate derived values
-  const takeHomeMonthly = results ? results.netIncomeAnnual / 12 : 0;
-  const takeHomeAnnual = results?.netIncomeAnnual || 0;
+  /**
+   * City income tax, which /api/tax cannot price.
+   *
+   * It takes a state and returns a state figure; API Ninjas has no concept of
+   * a city. New York charges its residents about $190 a month on a $70,000
+   * salary and nothing upstream was subtracting it. Applied here rather than
+   * in the route because only this tool knows which city, and only when one
+   * has actually been named — the "Other" path has a state and no city, so it
+   * gets nothing rather than a guess.
+   */
+  const localTax = results
+    ? localTaxAnnual(city, Math.max(0, (parseFloat(salary) || 0) - STANDARD_DEDUCTION_2026_SINGLE))
+    : 0;
+  const takeHomeAnnual = results ? Math.max(0, results.netIncomeAnnual - localTax) : 0;
+  const takeHomeMonthly = takeHomeAnnual / 12;
   const debtAmount = debtEnabled ? parseFloat(debtMonthly) || 0 : 0;
   const rentRangeData = results
     ? calculateRentRange(takeHomeMonthly, debtAmount)

@@ -11,6 +11,8 @@ import {
 import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
 import { getStateCodeForCity } from '@/lib/cities'
 import { getHUDRentRange } from '@/lib/hudRents'
+import { localTaxAnnual } from '@/lib/localTax'
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { stateRate } from '@/lib/firstPaycheck/calculation'
 import { EXAMPLE_MOVE, RENT_EXAMPLE, RENT_EXAMPLE_SETTLED } from './example'
 
@@ -33,13 +35,13 @@ describe('the rent campaign example', () => {
     // Frame 3. The SETTLED figures, because those are what anybody reading the
     // page will see — the API answers long before a visitor has finished the
     // headline.
-    expect(RENT_EXAMPLE_SETTLED.rentLow).toBe(1_300)
-    expect(RENT_EXAMPLE_SETTLED.rentHigh).toBe(1_600)
+    expect(RENT_EXAMPLE_SETTLED.rentLow).toBe(1_225)
+    expect(RENT_EXAMPLE_SETTLED.rentHigh).toBe(1_550)
   })
 
   it('lands the upfront figure the ad quotes', () => {
     // Frame 4, and the same either way, which is why the ad can state it flatly.
-    expect(RENT_EXAMPLE_SETTLED.upfrontLow).toBe(4_000)
+    expect(RENT_EXAMPLE_SETTLED.upfrontLow).toBe(3_800)
     expect(RENT_EXAMPLE.upfrontLow).toBe(RENT_EXAMPLE_SETTLED.upfrontLow)
   })
 
@@ -52,8 +54,8 @@ describe('the rent campaign example', () => {
      */
     const rent = calculateRentRange(RENT_EXAMPLE_SETTLED.takeHomeMonthly, 0)
     const u = calculateUpfrontCash(rent, RENT_EXAMPLE_SETTLED.takeHomeMonthly)
-    expect(Math.round(u.gapLiving)).toBe(752)
-    expect(u.depositLow + u.firstMonthLow + u.gapLiving + u.movingSetup).toBeGreaterThan(3_900)
+    expect(Math.round(u.gapLiving)).toBe(722)
+    expect(u.depositLow + u.firstMonthLow + u.gapLiving + u.movingSetup).toBeGreaterThan(3_700)
   })
 
   it('beats the listing site at the TOP of the band, not just the bottom', () => {
@@ -63,7 +65,7 @@ describe('the rent campaign example', () => {
      * replaced, cleared it by $50 because Texas charges no income tax.
      */
     expect(RENT_EXAMPLE_SETTLED.rentHigh).toBeLessThan(RENT_EXAMPLE.listingSite)
-    expect(RENT_EXAMPLE.listingSite - RENT_EXAMPLE_SETTLED.rentHigh).toBeGreaterThanOrEqual(150)
+    expect(RENT_EXAMPLE.listingSite - RENT_EXAMPLE_SETTLED.rentHigh).toBeGreaterThanOrEqual(200)
   })
 
   it('is computed, not typed out', () => {
@@ -145,7 +147,7 @@ describe('what a one-bed actually costs, against what you can carry', () => {
    * verdicts shows up here rather than in front of a visitor.
    */
   const CASES = [
-    { city: 'NYC', verdict: 'out_of_reach', shortfall: 1_200 },
+    { city: 'NYC', verdict: 'out_of_reach', shortfall: 1_250 },
     // Computed from the local table, which is what these tests exercise. The
     // page shows $1,550 once /api/tax answers: California's graduated schedule
     // is the worst fit for a single rate, so the two differ by one $25 step.
@@ -159,7 +161,13 @@ describe('what a one-bed actually costs, against what you can carry', () => {
 
   it.each(CASES)('$city reads as $verdict', ({ city, verdict, shortfall }) => {
     const stateCode = getStateCodeForCity(city)!
-    const net = 70_000 - estimateTaxAnnual(70_000, 0, 0, stateCode)
+    // Local tax included, because the page includes it. Without this the
+    // fixture priced New York $75 a month richer than the card does and the
+    // shortfall it asserted was not the one on screen.
+    const net =
+      70_000 -
+      estimateTaxAnnual(70_000, 0, 0, stateCode) -
+      localTaxAnnual(city, 70_000 - STANDARD_DEDUCTION_2026_SINGLE)
     const band = calculateRentRange(net / 12, 0)
     const m = getHUDRentRange(city)!
     expect(marketRentVerdict(band.high, m.low, m.high)).toBe(verdict)
