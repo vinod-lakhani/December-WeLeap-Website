@@ -140,6 +140,7 @@ export default function OfferAnalysisPage({
         legacyEvent="offer_analysis_page_view"
         legacyPage="/offer"
         toolVersion="offer_tool_v1"
+        campaign={campaign}
       />
 
       {/* Hero. Campaign traffic gets none of it: OfferCampaignHero carries its
