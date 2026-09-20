@@ -195,11 +195,28 @@ describe('computeOfferValue', () => {
   })
 
   describe('before /api/tax answers', () => {
-    it('still produces a package, on the fallback rates', () => {
+    it('still produces a package, on the national blend', () => {
+      /**
+       * The fallback was a flat 72% take-home and a flat 28% rate, which at
+       * $100,000 is $6,000 a month against a real figure near $6,300. It was
+       * harmless while the only people seeing it were mid-keystroke — and then
+       * the tool stopped silently defaulting absent states to California, so
+       * everybody without a state lands here, including every campaign
+       * visitor. It is the same blend estimateTaxAnnual gives every other tool.
+       */
       const v = computeOfferValue(offer(), null)!
 
-      expect(v.takeHomeMonthly).toBe(Math.round((100_000 * 0.72) / 12))
-      expect(v.effectiveTaxRate).toBe(0.28)
+      // Bracketed rather than pinned: this tracks the shared estimator, and a
+      // tax-year change should move it without failing here.
+      expect(v.takeHomeMonthly).toBeGreaterThan(6_100)
+      expect(v.takeHomeMonthly).toBeLessThan(6_600)
+      expect(v.effectiveTaxRate).toBeGreaterThan(0.2)
+      expect(v.effectiveTaxRate).toBeLessThan(0.3)
+
+      // Strictly better than the flat rate it replaced, at the salary that
+      // rate was worst for.
+      expect(v.takeHomeMonthly).toBeGreaterThan(Math.round((100_000 * 0.72) / 12))
+
       // Employer money does not depend on the tax answer, so it is already right.
       expect(v.annual401kMatch).toBe(6_000)
     })

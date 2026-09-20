@@ -27,6 +27,8 @@ import {
 } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { useResultShown } from '@/lib/tool-funnel';
+import { localTaxAnnual } from '@/lib/localTax';
+import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
 import { cn } from '@/lib/utils';
 import {
   computeOfferValue,
@@ -549,12 +551,27 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
   // ── Tax API call ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (salary <= 0) { setTaxResult(null); return; }
+    /**
+     * No state, no call.
+     *
+     * This used to send `jobState || 'CA'`, so anybody who had not picked a
+     * state was quietly given California's schedule and shown the result as
+     * their take-home. In campaign mode there IS no state selector on the
+     * first screen, which made California the default for every visitor
+     * arriving from an ad. At $70,000 that is $1,811 of state tax charged to
+     * someone in Texas who owes none.
+     *
+     * Leaving taxResult null falls through to the local estimate, which is the
+     * honest answer to "I have not said where I work" and is labelled
+     * approximate on screen. The same rule useTaxEstimate already follows.
+     */
+    if (!jobState) { setTaxResult(null); return; }
     let cancelled = false;
     setTaxLoading(true);
     fetch('/api/tax', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ salaryAnnual: salary, state: jobState || 'CA' }),
+      body: JSON.stringify({ salaryAnnual: salary, state: jobState }),
     })
       .then(r => r.json())
       .then((data: TaxResult) => { if (!cancelled) { setTaxResult(data); setTaxLoading(false); } })
@@ -580,8 +597,28 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
     rsuAnnual, signingBonus, showEspp, esppContrib, esppDiscount, ptoDays, rentMonthly, savingsPct,
   ]);
 
-  const calc = useMemo(() => computeOfferValue(offerInputs, taxResult), [offerInputs, taxResult]);
-  const levers = useMemo(() => computeLevers(offerInputs, taxResult), [offerInputs, taxResult]);
+  /**
+   * The tax figure, plus the city income tax /api/tax cannot price.
+   *
+   * This tool asks for a city and works a rent line off take-home, which is
+   * the rent tool's calculation — so without this the two pages told the same
+   * person in New York two different take-home numbers, $190 a month apart.
+   * Folded into stateTaxAnnual as well as the net so that effectiveTaxRate,
+   * which prices bonus and equity, sees it too.
+   */
+  const taxWithLocal = useMemo(() => {
+    if (!taxResult) return null;
+    const local = localTaxAnnual(city, Math.max(0, salary - STANDARD_DEDUCTION_2026_SINGLE));
+    if (local <= 0) return taxResult;
+    return {
+      ...taxResult,
+      stateTaxAnnual: taxResult.stateTaxAnnual + local,
+      netIncomeAnnual: Math.max(0, taxResult.netIncomeAnnual - local),
+    };
+  }, [taxResult, city, salary]);
+
+  const calc = useMemo(() => computeOfferValue(offerInputs, taxWithLocal), [offerInputs, taxWithLocal]);
+  const levers = useMemo(() => computeLevers(offerInputs, taxWithLocal), [offerInputs, taxWithLocal]);
 
   // ── The second offer ─────────────────────────────────────────────────────────
   /**

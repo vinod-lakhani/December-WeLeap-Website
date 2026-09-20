@@ -43,12 +43,31 @@
  * stops somebody "filling in the gaps" later with numbers that do not exist.
  */
 const LOCAL_TAX_RATES: Record<string, number> = {
+  // The rent tool's preset city names.
   NYC: 0.042,
   Austin: 0,
   'SF Bay Area': 0,
   Seattle: 0,
   Boston: 0,
   Chicago: 0,
+
+  /**
+   * The same places under their ZORI region names, which is what the offer
+   * tool holds — its city select is populated from /api/zori, so its value for
+   * New York is "New York, NY" rather than "NYC".
+   *
+   * Two key spaces for one concept is not lovely, and the alternative was
+   * worse: a lookup that silently misses is indistinguishable from a city with
+   * no local tax, and it would have missed on exactly the city that has one.
+   * The entries are here rather than mapped at the call site so that adding a
+   * city means editing one table.
+   */
+  'New York, NY': 0.042,
+  'Austin, TX': 0,
+  'San Francisco, CA': 0,
+  'Seattle, WA': 0,
+  'Boston, MA': 0,
+  'Chicago, IL': 0,
 }
 
 /** The rate for a named city. Zero for anywhere this does not know about. */
