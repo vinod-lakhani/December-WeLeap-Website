@@ -132,19 +132,43 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
     enabled: !!results,
   });
 
-  // A result is on screen. Here it cannot exist without the Calculate button,
-  // so this and tool_completed are the same moment — which is worth stating
-  // rather than leaving a reader to infer it from the absence of an event.
-  useResultShown('rent', !!results);
+  /**
+   * A result is on screen — from the form below, OR from the campaign hero.
+   *
+   * This used to be `!!results`, which only exists once somebody presses
+   * Calculate. The campaign hero never presses it: it computes its own answer
+   * so the first screen can BE an answer. So a visitor who landed on a full
+   * result and left reported nothing past the page view, and the funnel said
+   * the page had no engagement when what it had was no instrumentation.
+   *
+   * Exactly the defect fixed on the offer tool in #95 — a gate the campaign
+   * path structurally cannot reach — reintroduced here by building the hero to
+   * bypass the tool's own state.
+   */
+  const [heroResultShown, setHeroResultShown] = useState(false);
+  const [engagementCount, setEngagementCount] = useState(0);
+  const hasResult = !!results || heroResultShown;
 
-  // Fire tool_completed once when results first render (Phase 0 funnel).
-  // Mirrors the same event on /what-is-my-job-offer-worth with tool: 'offer'.
+  useResultShown('rent', hasResult, campaign);
+
+  /**
+   * Completion: a result, and the visitor did something. The same definition
+   * every other tool uses — see lib/tool-funnel.ts.
+   *
+   * Unchanged for organic traffic, where reaching a result means having filled
+   * the form and pressed Calculate, so engagement always precedes it. It is
+   * the campaign path this matters on, where the result arrives pre-filled.
+   */
   useEffect(() => {
-    if (results && !toolCompletedRef.current) {
+    if (hasResult && engagementCount > 0 && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'rent', run_index: nextRunIndex('rent') });
+      track('tool_completed', {
+        tool: 'rent',
+        run_index: nextRunIndex('rent'),
+        ...(campaign ? { campaign: true } : {}),
+      });
     }
-  }, [results]);
+  }, [hasResult, engagementCount, campaign]);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
@@ -273,6 +297,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
   // a funnel keyed on the shared events. Both fire now, from the same guard, so
   // the count is identical and the old event keeps its history.
   const handleFormStart = (field: string) => {
+    setEngagementCount((n) => n + 1);
     if (!formStartedRef.current) {
       formStartedRef.current = true;
       track('tool_engaged', { tool: 'rent', first_field: field });
@@ -494,6 +519,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
           city={city}
           onCityChange={(next) => { setCity(next); handleFormStart('city'); }}
           otherState={otherState}
+          onResultShown={() => setHeroResultShown(true)}
           onOtherStateChange={(next) => {
             setOtherState(next);
             // Same reset the form below does: a metro from the previous state

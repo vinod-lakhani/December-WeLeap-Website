@@ -35,6 +35,7 @@ export function ToolPageView({
   legacyEvent,
   legacyPage,
   toolVersion,
+  campaign = false,
 }: {
   /** Analytics slug — must match the tool's `slug` in FREE_TOOLS. */
   tool: string
@@ -45,12 +46,22 @@ export function ToolPageView({
   /** `page` value the legacy event has always sent. Defaults to `page`. */
   legacyPage?: string
   toolVersion?: string
+  /**
+   * Paid-traffic landing.
+   *
+   * Without this nothing in the funnel's first step says where somebody came
+   * from, so campaign and organic visits are one undifferentiated count and a
+   * channel test cannot be read at all — which is the whole reason the
+   * campaign pages exist. Sent only when true, so the organic payload is
+   * byte-identical to what saved dashboards already read.
+   */
+  campaign?: boolean
 }) {
   useEffect(() => {
     // Waits for gtag (up to 3s) — page views are the one event worth waiting
     // on, since they are the denominator for everything below them.
     const timer = setTimeout(() => {
-      track('tool_viewed', { tool, page }, true)
+      track('tool_viewed', { tool, page, ...(campaign ? { campaign: true } : {}) }, true)
       if (legacyEvent) {
         track(
           legacyEvent,
@@ -61,7 +72,7 @@ export function ToolPageView({
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [tool, page, legacyEvent, legacyPage, toolVersion])
+  }, [tool, page, legacyEvent, legacyPage, toolVersion, campaign])
 
   return null
 }
