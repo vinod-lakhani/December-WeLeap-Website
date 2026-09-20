@@ -14,6 +14,7 @@
  */
 
 import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants'
+import { estimateTaxAnnual } from '@/lib/allocator/takeHome'
 
 /** US market average, and the baseline PTO is measured against. */
 export const MARKET_PTO_DAYS = 15
@@ -24,11 +25,26 @@ const ANNUAL_RETURN = 0.07
 /** Working days in a year, for valuing a day of PTO against salary. */
 const WORKING_DAYS = 260
 
-/** Effective rate assumed while /api/tax has not answered yet. */
-const FALLBACK_EFFECTIVE_TAX_RATE = 0.28
-
-/** Take-home assumed while /api/tax has not answered yet. */
-const FALLBACK_TAKE_HOME_RATE = 0.72
+/**
+ * Tax while /api/tax has not answered, or cannot be asked because no state
+ * has been chosen.
+ *
+ * This was a flat 72% take-home and a flat 28% effective rate. At $70,000 that
+ * is $50,400 against a real figure near $55,900 — eleven percent out, and out
+ * in the direction that makes an offer look worse than it is.
+ *
+ * It mattered little while the only visitors seeing it were mid-keystroke.
+ * Then the silent `state: jobState || 'CA'` default was removed, which is
+ * correct and means everybody without a state now lands here — including
+ * every campaign visitor, since the campaign hero has no state selector.
+ *
+ * estimateTaxAnnual with no state code is the same national blend every other
+ * tool falls back to, so a visitor who has not said where they work gets one
+ * answer across the site rather than a different approximation per page.
+ */
+function fallbackTaxAnnual(salary: number): number {
+  return estimateTaxAnnual(salary, 0, 0, '')
+}
 
 /** What /api/tax returns for one salary in one state. */
 export interface TaxResult {
@@ -139,7 +155,7 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
 
   const takeHomeMonthly = tax
     ? Math.round(tax.netIncomeAnnual / 12)
-    : Math.round((salary * FALLBACK_TAKE_HOME_RATE) / 12)
+    : Math.round((salary - fallbackTaxAnnual(salary)) / 12)
 
   // Effective tax rate on the base salary — used to approximate tax on
   // bonus/equity. RSUs, bonuses, and ESPP are taxed as ordinary income
@@ -147,7 +163,7 @@ export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): O
   // reasonable estimate.
   const effectiveTaxRate = tax
     ? (tax.federalTaxAnnual + tax.stateTaxAnnual + tax.ficaTaxAnnual) / salary
-    : FALLBACK_EFFECTIVE_TAX_RATE
+    : fallbackTaxAnnual(salary) / salary
 
   const annualBonus = (salary * bonusPct) / 100
 

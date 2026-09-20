@@ -132,10 +132,17 @@ describe('computeLevers', () => {
     expect(ids).toEqual(['base', 'match', 'signing'])
   })
 
-  it('prices everything before /api/tax answers, on the fallback rate', () => {
+  it('prices everything before /api/tax answers, on the national blend', () => {
+    /**
+     * The fallback is the shared estimator now rather than a flat 72%, so
+     * these assert the shape that matters — a raise is worth its monthly
+     * after-tax slice, a signing bonus its annual one — instead of a constant
+     * that moves whenever the brackets do.
+     */
     const { base, signing } = byId(offer(), null as unknown as TaxResult)
 
-    expect(base.amount).toBeCloseTo((5_000 * 0.72) / 12, 6)
-    expect(signing.amount).toBeCloseTo(5_000 * 0.72, 6)
+    expect(signing.amount).toBeCloseTo(base.amount * 12, 6)
+    expect(signing.amount).toBeGreaterThan(5_000 * 0.72)
+    expect(signing.amount).toBeLessThan(5_000)
   })
 })
