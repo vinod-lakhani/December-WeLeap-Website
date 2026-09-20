@@ -133,7 +133,9 @@ export default function FirstPaycheckSetupPage({
   return (
     <PageShell className="bg-canvas" bare={campaign}>
       <ToolJsonLd href="/first-paycheck-setup" />
-      <ToolPageView tool="first_paycheck" page="/first-paycheck-setup" toolVersion="first_paycheck_v1" />
+      <ToolPageView tool="first_paycheck" page="/first-paycheck-setup" toolVersion="first_paycheck_v1"
+        campaign={campaign}
+      />
 
       {/* Hero. Campaign traffic gets none of it: FirstPaycheckCampaignHero
           carries its own h1 and its own free/no-account line, and the

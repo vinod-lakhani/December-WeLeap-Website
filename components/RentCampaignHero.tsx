@@ -23,7 +23,7 @@
  * filled in down there.
  */
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import { track } from '@/lib/analytics'
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities'
@@ -67,10 +67,20 @@ export interface RentCampaignHeroProps {
    */
   otherState: string
   onOtherStateChange: (state: string) => void
+  /**
+   * Called once this card is showing a real result.
+   *
+   * The tool below only has a `results` object after somebody presses
+   * Calculate, and this card never presses it — it computes its own answer so
+   * the first screen can be an answer. Without telling the tool, a campaign
+   * visitor who read a complete result and left was invisible to every funnel
+   * event past the page view.
+   */
+  onResultShown?: () => void
 }
 
 export function RentCampaignHero({
-  salaryInput, onSalaryChange, city, onCityChange, otherState, onOtherStateChange,
+  salaryInput, onSalaryChange, city, onCityChange, otherState, onOtherStateChange, onResultShown,
 }: RentCampaignHeroProps) {
   const salary = useMemo(() => {
     const n = parseFloat(salaryInput.replace(/[$,\s]/g, ''))
@@ -173,6 +183,15 @@ export function RentCampaignHero({
    */
   const awaitingState = isOther && !otherState
   const ready = salary > 0 && takeHomeMonthly > 0 && !awaitingState
+
+  // Report the result upward once, so the tool's funnel counts the people who
+  // never scroll as far as its own Calculate button.
+  const reported = useRef(false)
+  useEffect(() => {
+    if (!ready || reported.current) return
+    reported.current = true
+    onResultShown?.()
+  }, [ready, onResultShown])
 
   return (
     <div className="mx-auto w-full max-w-[600px]">
