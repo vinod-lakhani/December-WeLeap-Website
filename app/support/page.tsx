@@ -5,12 +5,22 @@ import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { JsonLd } from '@/components/JsonLd'
 import { faqSchema } from '@/lib/structured-data'
 import { SUPPORT_FAQS, SUPPORT_EMAIL, SUPPORT_RESPONSE_TIME } from '@/lib/support-faqs'
+import { DATA_RETENTION } from '@/lib/data-retention'
 import { TYPOGRAPHY } from '@/lib/layout-constants'
 import { cn } from '@/lib/utils'
 
 /**
- * /support — the App Store support URL, and the page people find by searching
- * "weleap support".
+ * /support — the App Store support URL, the Google Play Data deletion URL,
+ * and the page people find by searching "weleap support".
+ *
+ * The two stores ask for different things and this page has to satisfy both.
+ * Apple wants a reachable human and evidence that account deletion is
+ * self-serve (5.1.1(v)). Google wants a page anybody can open WITHOUT
+ * installing the app that says how to request deletion and what happens to
+ * the data afterwards. The retention table is the half that was missing for
+ * Google: this page used to link to the privacy policy for "how long anything
+ * is kept", which is a weaker answer to a field called Data deletion than
+ * giving it here.
  *
  * THE CONTACT METHOD IS ABOVE EVERYTHING ELSE, and that is a requirement
  * rather than a preference. App Review rejects support URLs with the message
@@ -128,8 +138,57 @@ export default function SupportPage() {
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary-600 hover:underline">
                   {SUPPORT_EMAIL}
                 </a>{' '}
-                from the address on your account and we will do it for you. How long anything is
-                kept afterwards is set out in our{' '}
+                from the address on your account and we will do it for you. You do not need to
+                reinstall anything, and there is no further step to confirm the request.
+              </p>
+            </section>
+
+            {/* ── What happens to the data afterwards ──────────────────────
+                This page is the Data deletion URL in the Play Console as well
+                as the App Store support URL, and Google asks that page to say
+                what is kept and for how long rather than point somewhere else.
+                It used to link to the privacy policy for exactly that, which
+                is a weaker answer to a field called Data deletion than giving
+                it here. See lib/data-retention.ts. */}
+            <section className="space-y-3 md:space-y-4">
+              <h2 className={cn(TYPOGRAPHY.h3, 'mb-3 text-gray-900 md:mb-4')}>
+                What we keep after you delete, and for how long
+              </h2>
+              <p className={cn(TYPOGRAPHY.subtext, 'text-gray-700')}>
+                Closing your account is permanent and cannot be undone. It removes your profile,
+                financial information, goals and plan history from our active systems, and revokes
+                any bank connections. This is everything that outlives the request.
+              </p>
+              <div className="overflow-hidden rounded-xl border border-hairline">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-canvas">
+                      <th className="px-4 py-3 text-[13px] font-bold uppercase tracking-[0.06em] text-gray-600">
+                        What
+                      </th>
+                      <th className="px-4 py-3 text-[13px] font-bold uppercase tracking-[0.06em] text-gray-600">
+                        How long
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DATA_RETENTION.map((row) => (
+                      <tr key={row.what} className="border-t border-hairline align-top">
+                        <td className="px-4 py-3">
+                          <p className="text-[15px] font-semibold text-gray-900">{row.what}</p>
+                          <p className="mt-1 text-[14px] leading-relaxed text-gray-600">{row.why}</p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-[15px] font-semibold text-gray-900">
+                          {row.period}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className={cn(TYPOGRAPHY.subtext, 'text-gray-700')}>
+                Everything else &mdash; what we collect, how bank connections work through Plaid,
+                and your rights under state privacy law &mdash; is in our{' '}
                 <Link href="/privacy-policy" className="text-primary-600 hover:underline">
                   privacy policy
                 </Link>
