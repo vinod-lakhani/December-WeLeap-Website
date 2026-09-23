@@ -6,11 +6,10 @@
  * Mirrors AppCta's analytics: each tap fires `store_badge_clicked` with the
  * store and a `placement`, so we can see which surface drives installs.
  *
- * ⚠️ ASSETS: public/badges/app-store.svg and public/badges/google-play.png are
- * PLACEHOLDERS. Replace them with the OFFICIAL Apple ("Download on the App
- * Store") and Google ("Get it on Google Play") badge files before launch —
- * both have brand-guideline requirements for the artwork, min size and clear
- * space. The component/layout does not change when you swap the files.
+ * Assets are the OFFICIAL badges: public/badges/app-store.svg (Apple "Download
+ * on the App Store", US/UK black) and public/badges/google-play.svg (Google
+ * "Get it on Google Play", English color). Keep to Apple/Google brand
+ * guidelines (min size, clear space) if resizing.
  *
  * Pass `comingSoon` for a store to render its badge disabled (for deploying the
  * badges before a store is live); omit it once the store publishes.
@@ -77,7 +76,7 @@ export function StoreBadges({ placement = 'hero', comingSoon, className = '' }: 
   return (
     <div className={`flex flex-wrap items-center gap-3 ${className}`}>
       {badge('app_store', APP_STORE_URL, '/badges/app-store.svg', 'Download WeLeap on the App Store', comingSoon?.appStore)}
-      {badge('google_play', PLAY_STORE_URL, '/badges/google-play.png', 'Get WeLeap on Google Play', comingSoon?.googlePlay)}
+      {badge('google_play', PLAY_STORE_URL, '/badges/google-play.svg', 'Get WeLeap on Google Play', comingSoon?.googlePlay)}
     </div>
   );
 }
