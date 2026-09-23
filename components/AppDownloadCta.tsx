@@ -36,9 +36,12 @@ export function AppDownloadCta({
   return (
     <div className={className}>
       <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-subtle">{eyebrow}</p>
+      {/* Purposeful per device: on desktop a store badge is a dead-end click, so
+          show only the QR (scan → /get → the right store). On mobile the badges
+          ARE the install, so show only those. SSR renders badges (isDesktop
+          starts false); desktop swaps to the QR on mount. */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-        <StoreBadges placement={placement} />
-        {isDesktop && (
+        {isDesktop ? (
           <div className="flex items-center gap-3">
             <Image
               src="/badges/qr-get-app.png"
@@ -52,6 +55,8 @@ export function AppDownloadCta({
               Scan to download on your phone
             </span>
           </div>
+        ) : (
+          <StoreBadges placement={placement} />
         )}
       </div>
     </div>
