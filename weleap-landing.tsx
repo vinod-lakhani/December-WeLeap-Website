@@ -13,7 +13,7 @@ import { CategoryComparison } from "@/components/CategoryComparison"
 import { HOME_FAQS } from "@/lib/home-faqs"
 import { track } from "@/lib/analytics"
 import { appLink } from "@/lib/app-link"
-import { StoreBadges } from "@/components/StoreBadges"
+import { AppDownloadCta } from "@/components/AppDownloadCta"
 import { bucketSalary } from "@/lib/buckets"
 import { formatCurrency } from "@/lib/rounding"
 import { computeMatchLeap, MATCH_ASSUMPTION } from "@/lib/hero/matchLeap"
@@ -368,11 +368,6 @@ function Hero() {
                 </Link>
               </div>
 
-              <div className="mt-5">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-faint">Get the app</p>
-                <StoreBadges placement="home_hero" />
-              </div>
-
               <p className="mt-4 text-[12.5px] leading-relaxed text-faint">{MATCH_ASSUMPTION}</p>
             </div>
           )}
@@ -382,6 +377,11 @@ function Hero() {
               Free · No account · Nothing to connect
             </p>
           )}
+
+          {/* Downloading the app is the primary goal. Device-aware: tappable
+              badges on mobile, badges + QR on desktop (where a store link is a
+              dead end). Always visible, not gated on the salary calculation. */}
+          <AppDownloadCta className="mt-9 flex flex-col items-center" />
         </div>
       </Container>
     </Section>
