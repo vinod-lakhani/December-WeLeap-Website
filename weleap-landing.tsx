@@ -13,6 +13,7 @@ import { CategoryComparison } from "@/components/CategoryComparison"
 import { HOME_FAQS } from "@/lib/home-faqs"
 import { track } from "@/lib/analytics"
 import { appLink } from "@/lib/app-link"
+import { StoreBadges } from "@/components/StoreBadges"
 import { bucketSalary } from "@/lib/buckets"
 import { formatCurrency } from "@/lib/rounding"
 import { computeMatchLeap, MATCH_ASSUMPTION } from "@/lib/hero/matchLeap"
@@ -365,6 +366,11 @@ function Hero() {
                 >
                   Or try the other {TOOL_COUNT_WORD} calculators
                 </Link>
+              </div>
+
+              <div className="mt-5">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-faint">Get the app</p>
+                <StoreBadges placement="home_hero" />
               </div>
 
               <p className="mt-4 text-[12.5px] leading-relaxed text-faint">{MATCH_ASSUMPTION}</p>
