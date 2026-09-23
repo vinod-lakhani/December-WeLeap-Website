@@ -37,10 +37,12 @@ const { join, relative } = require('node:path')
 const APP_DIR = join(process.cwd(), '.next', 'server', 'app')
 
 /**
- * Next's own 404. It has no og:title (inheriting the root's) and no h1, both
- * correctly — it is not a page anyone shares or ranks.
+ * Pages nobody shares or ranks, so the title/og/h1 invariants don't apply:
+ *  - Next's own 404 (no og:title — inherits root — and no h1, both correctly).
+ *  - /get: a noindex client redirect interstitial (routes to the App Store /
+ *    Play by device). It has no h1/og by design and is marked robots:noindex.
  */
-const EXEMPT = new Set(['_not-found.html'])
+const EXEMPT = new Set(['_not-found.html', 'get.html'])
 
 /**
  * FAQ entries every calculator carries. Not an arbitrary target — it is the
