@@ -18,7 +18,7 @@ import { StoreBadges } from './StoreBadges';
 
 export function AppDownloadCta({
   placement = 'home_hero',
-  eyebrow = 'Get the app',
+  eyebrow = 'Get the mobile app',
   className = '',
 }: {
   placement?: string;

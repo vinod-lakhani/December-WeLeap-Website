@@ -144,7 +144,7 @@ export function AppCta({
           desktop (where a store link is a dead end). */}
       <AppDownloadCta
         placement={`tool_${tool}`}
-        eyebrow="Or get the app"
+        eyebrow="Or get the mobile app"
         className="mt-6 flex flex-col items-center border-t border-gray-100 pt-5 text-center"
       />
 
