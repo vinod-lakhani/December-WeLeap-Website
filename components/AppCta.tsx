@@ -26,6 +26,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { track } from '@/lib/analytics';
 import { appLink } from '@/lib/app-link';
+import { AppDownloadCta } from '@/components/AppDownloadCta';
 
 /** Where the click came from — lets us see which target does the work. */
 export type CtaPlacement = 'button' | 'preview_tile';
@@ -135,6 +136,17 @@ export function AppCta({
         {buttonLabel}
       </Button>
       {footnote && <p className="mt-2 text-center text-xs text-gray-500">{footnote}</p>}
+
+      {/* Download-first: surface the native app on every tool CTA. The primary
+          button above still goes to the web app so the tool's prefill +
+          attribution (src/UTMs/distinct_id) aren't lost — a store redirect
+          can't carry them. Device-aware: badges on mobile, badges + QR on
+          desktop (where a store link is a dead end). */}
+      <AppDownloadCta
+        placement={`tool_${tool}`}
+        eyebrow="Or get the app"
+        className="mt-6 flex flex-col items-center border-t border-gray-100 pt-5 text-center"
+      />
 
         {/* Derived from the visible label rather than hardcoded. This read
             "Create your free account and get your first Leap" on every tool
