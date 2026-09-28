@@ -17,7 +17,7 @@ import {
 import { redact } from '@/lib/offer-parse/redact'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
 import { assessPaystubText } from '@/lib/offer-parse/text-quality'
-import { checkRateLimit, clientKey } from '@/lib/offer-parse/rate-limit'
+import { checkRateLimit, clientKey, clientKeySource } from '@/lib/offer-parse/rate-limit'
 import {
   validateExtraction,
   validatePaystub,
@@ -328,7 +328,17 @@ export async function POST(request: NextRequest) {
    */
   const limit = checkRateLimit(clientKey(request.headers), Date.now())
   if (!limit.allowed) {
-    console.warn('[parse-offer] rate limited', { window: limit.window })
+    /**
+     * `keySource` is here because the production failure was invisible without
+     * it: uploads returned 429 to callers who had never uploaded, and nothing
+     * in the logs said whether the limiter was seeing one caller or a thousand.
+     * The address is deliberately not logged — it is personal data, and which
+     * header resolved it is the part that diagnoses a shared bucket.
+     */
+    console.warn('[parse-offer] rate limited', {
+      window: limit.window,
+      keySource: clientKeySource(request.headers),
+    })
     return NextResponse.json(
       { error: 'rate_limited' },
       {
