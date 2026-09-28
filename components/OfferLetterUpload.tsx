@@ -53,8 +53,11 @@ export const MESSAGES: Record<string, string> = {
   busy: 'We are busy right now. Try again in a moment, or use {the form}.',
   // Distinct from `busy`, which blames us. This one tells the reader the limit
   // is theirs and that the form still works, because it does.
+  // {wait} is filled from the Retry-After header the route already sends.
+  // Saying "an hour" when the real wait is twelve minutes talks somebody out
+  // of a feature that would have worked for them shortly.
   rate_limited:
-    'You have uploaded a few documents in a short time. Give it an hour, or use {the form} — it works the same.',
+    'You have uploaded a few documents in a short time. Try again in {wait}, or use {the form} — it works the same.',
   timeout:
     'That one took too long to read — it may be a large or complex file. {The form} still works.',
   default: 'Something went wrong reading that. {The form} still works.',
@@ -67,10 +70,40 @@ export const MESSAGES: Record<string, string> = {
  * long; the first-paycheck tool and the compare panel still have their fields
  * underneath.
  */
+/**
+ * Retry-After, in words.
+ *
+ * The route has always sent the header and the client has always ignored it,
+ * so every rate-limited visitor was told to wait an hour regardless of whether
+ * they had fifty minutes left or two.
+ */
+export function waitPhrase(retryAfterSeconds: number | null): string {
+  if (retryAfterSeconds === null || !Number.isFinite(retryAfterSeconds) || retryAfterSeconds <= 0) {
+    return 'a little while'
+  }
+  const minutes = Math.ceil(retryAfterSeconds / 60)
+  if (minutes <= 1) return 'a minute'
+  if (minutes < 60) return `about ${minutes} minutes`
+  const hours = Math.round(minutes / 60)
+  return hours <= 1 ? 'about an hour' : `about ${hours} hours`
+}
+
 export function withFormDirection(message: string, formAbove: boolean): string {
-  return message
-    .replace('{the form}', formAbove ? 'the form above' : 'the form below')
-    .replace('{The form}', formAbove ? 'The form above' : 'The form below')
+  return (
+    message
+      .replace('{the form}', formAbove ? 'the form above' : 'the form below')
+      .replace('{The form}', formAbove ? 'The form above' : 'The form below')
+      /**
+       * Last resort for {wait}, which the caller fills from Retry-After.
+       *
+       * Filling it at the call site means the substitution depends on call
+       * order, and the existing placeholder test caught exactly that: a
+       * message rendered without the wait first would put a literal "{wait}"
+       * in front of somebody. Doing it here as well makes the order
+       * irrelevant — whatever reaches this function comes out readable.
+       */
+      .replace('{wait}', 'a little while')
+  )
 }
 
 export type DocKind = 'offer' | 'benefits'
@@ -201,7 +234,12 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        setError(withFormDirection(MESSAGES[data?.error as string] ?? MESSAGES.default!, formAbove))
+        const header = response.headers.get('Retry-After')
+        const message = (MESSAGES[data?.error as string] ?? MESSAGES.default!).replace(
+          '{wait}',
+          waitPhrase(header === null ? null : Number(header)),
+        )
+        setError(withFormDirection(message, formAbove))
         track('doc_parse_failed', {
           doc_class: DOC[kind].analytics,
           failure_reason: String(data?.error ?? response.status),
@@ -340,8 +378,17 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
         </p>
       )}
 
+      {/* A failure has to look different from the instructions around it.
+          This was 13px gray-600 with role="status" — the same weight as the
+          file-type note directly below, so a rate-limited visitor read it as
+          more guidance rather than as the reason nothing happened. role=alert
+          because it is the outcome of something they just did, not ambient
+          status. */}
       {error && (
-        <p className="mt-3 text-[13px] text-gray-600" role="status">
+        <p
+          className="mt-3 rounded-lg border border-[#E4C9A8] bg-[#FDF6EC] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[#7A4F1C]"
+          role="alert"
+        >
           {error}
         </p>
       )}
