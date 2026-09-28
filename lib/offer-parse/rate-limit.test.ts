@@ -65,9 +65,77 @@ describe('clientKey', () => {
     expect(clientKey(new Headers({ 'x-forwarded-for': '203.0.113.7, 70.41.3.18' }))).toBe('203.0.113.7')
   })
 
-  it('groups requests with no forwarded address rather than exempting them', () => {
-    // An exemption for "no IP" is an exemption anyone can claim.
-    expect(clientKey(new Headers())).toBe('unknown')
-    expect(clientKey(new Headers({ 'x-forwarded-for': '   ' }))).toBe('unknown')
+  it('prefers x-real-ip, which is the address the platform sets', () => {
+    // Reading it avoids the question of what x-forwarded-for contains, and in
+    // what order, once a request has crossed more than one proxy.
+    expect(clientKey(new Headers({ 'x-real-ip': '198.51.100.9' }))).toBe('198.51.100.9')
+    expect(
+      clientKey(new Headers({ 'x-real-ip': '198.51.100.9', 'x-forwarded-for': '203.0.113.7' })),
+    ).toBe('198.51.100.9')
+  })
+
+  it('returns null for a caller it cannot identify, rather than one shared key', () => {
+    /**
+     * This used to return 'unknown', so every unidentifiable caller shared one
+     * bucket — and a shared bucket is a site-wide outage waiting for its
+     * twelfth request. The old reasoning, that an exemption for "no IP" is an
+     * exemption anyone can claim, is true and is the smaller risk: this
+     * limiter's own comment says it is not the defence against a distributed
+     * attack, the WAF is. Everyone losing uploads because one bucket filled is
+     * the larger failure, and it is the one that happened in production.
+     */
+    expect(clientKey(new Headers())).toBeNull()
+    expect(clientKey(new Headers({ 'x-forwarded-for': '   ' }))).toBeNull()
+  })
+
+  it('lets an unidentifiable caller through instead of bucketing them together', () => {
+    __resetRateLimits()
+    for (let i = 0; i < HOURLY_LIMIT + 5; i++) {
+      expect(checkRateLimit(null, i * 1_000).allowed, `request ${i}`).toBe(true)
+    }
+  })
+})
+
+describe('recovering from the limit', () => {
+  const MIN = 60_000
+
+  it('lets a blocked visitor back in after the hour, even if they kept trying', () => {
+    /**
+     * The production bug, and the reason uploads stopped working rather than
+     * merely being capped.
+     *
+     * Denied requests used to be recorded, so every retry pushed the window
+     * forward. Measured: a visitor retrying every five minutes from a full
+     * bucket was still blocked three hours later, while one who waited in
+     * silence got back in after sixty-one minutes. The page tells them to give
+     * it an hour. Clicking upload during that hour restarted the hour.
+     */
+    __resetRateLimits()
+    let t = 0
+    for (let i = 0; i < HOURLY_LIMIT; i++) {
+      expect(checkRateLimit('ip', t).allowed).toBe(true)
+      t += MIN
+    }
+
+    // Retry every five minutes, as somebody looking at a failed upload does.
+    let recoveredAt: number | null = null
+    for (let i = 0; i < 36 && recoveredAt === null; i++) {
+      t += 5 * MIN
+      if (checkRateLimit('ip', t).allowed) recoveredAt = t
+    }
+
+    expect(recoveredAt, 'never recovered while retrying').not.toBeNull()
+    // The first hit was at t=0, so the hour clears about then — not three
+    // hours later, and not never.
+    expect(recoveredAt! / MIN).toBeLessThan(70)
+  })
+
+  it('still refuses every request while the window is genuinely full', () => {
+    // Not counting denials must not soften the limit itself.
+    __resetRateLimits()
+    for (let i = 0; i < HOURLY_LIMIT; i++) checkRateLimit('ip2', 0)
+    for (let i = 0; i < 20; i++) {
+      expect(checkRateLimit('ip2', 1_000).allowed, `retry ${i}`).toBe(false)
+    }
   })
 })
