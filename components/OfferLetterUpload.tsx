@@ -344,6 +344,27 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
           not one stated a 401(k) match, an employer HSA contribution or a
           medical premium. Those live in the benefits guide, which is a separate
           document nobody thinks to reach for unless asked. */}
+      {/* Directly under the buttons, because it reports what just happened
+          when one was pressed.
+
+          It used to render near the bottom of the box, below the "uploading
+          just saves the typing" paragraph and above the file-type note — the
+          middle of three grey paragraphs, at 13px in gray-600 against their
+          12.5px in gray-500. It was on screen and it was unreadable as an
+          outcome: the visitor who hit the rate limit in production had the
+          explanation in front of them and did not see it.
+
+          role=alert rather than status: this is the result of an action they
+          took, not ambient information. */}
+      {error && (
+        <p
+          className="mt-3 rounded-lg border border-[#E4C9A8] bg-[#FDF6EC] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[#7A4F1C]"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+
       {pickerStalled && (
         /* Deliberately not phrased as a diagnosis. We know the picker did not
            open; we do not know why, and telling somebody their browser is
@@ -375,21 +396,6 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
         <p className="mt-3 text-[13px] font-semibold text-[#386641]" role="status">
           Filled in {filled.count} {filled.count === 1 ? 'field' : 'fields'} {DOC[filled.kind].found}
           . Every one is still editable.
-        </p>
-      )}
-
-      {/* A failure has to look different from the instructions around it.
-          This was 13px gray-600 with role="status" — the same weight as the
-          file-type note directly below, so a rate-limited visitor read it as
-          more guidance rather than as the reason nothing happened. role=alert
-          because it is the outcome of something they just did, not ambient
-          status. */}
-      {error && (
-        <p
-          className="mt-3 rounded-lg border border-[#E4C9A8] bg-[#FDF6EC] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-[#7A4F1C]"
-          role="alert"
-        >
-          {error}
         </p>
       )}
 
