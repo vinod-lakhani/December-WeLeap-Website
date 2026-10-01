@@ -17,19 +17,22 @@
 import Image from 'next/image';
 
 import { track } from '@/lib/analytics';
-
-const APP_STORE_URL = 'https://apps.apple.com/app/id6801673529';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=ai.weleap.app';
+import { APP_STORE_URL, PLAY_STORE_URL, STORE_AVAILABLE } from '@/lib/stores';
 
 export interface StoreBadgesProps {
   /** Where the badges are shown, e.g. 'hero' | 'footer'. Sent with the event. */
   placement?: string;
-  /** Render a store's badge disabled ("Coming soon") until it publishes. */
+  /** Render a store's badge disabled ("Coming soon"). Defaults to whatever is
+      not live in lib/stores.ts, so callers never need to pass this. */
   comingSoon?: { appStore?: boolean; googlePlay?: boolean };
   className?: string;
 }
 
-export function StoreBadges({ placement = 'hero', comingSoon, className = '' }: StoreBadgesProps) {
+export function StoreBadges({
+  placement = 'hero',
+  comingSoon = { appStore: !STORE_AVAILABLE.appStore, googlePlay: !STORE_AVAILABLE.googlePlay },
+  className = '',
+}: StoreBadgesProps) {
   const go = (store: 'app_store' | 'google_play', href: string) => {
     track('store_badge_clicked', { store, placement });
     window.location.href = href;
