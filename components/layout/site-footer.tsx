@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Container } from "./container"
+import { StoreBadges } from "@/components/StoreBadges"
 import { FREE_TOOLS } from "@/lib/tools"
 
 /**
@@ -80,7 +81,11 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-hairline pt-6 md:flex-row">
+        <div className="mt-12 flex justify-center border-t border-hairline pt-8">
+          <StoreBadges placement="footer" />
+        </div>
+
+        <div className="mt-8 flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
           <span className="text-[13.5px] text-faint">© 2026 WeLeap. All rights reserved.</span>
           <span className="max-w-[620px] text-[12.5px] leading-relaxed text-faint md:text-right">
             WeLeap is not a registered investment adviser and does not provide personalized investment advice.
