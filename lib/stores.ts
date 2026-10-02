@@ -14,3 +14,80 @@ export const STORE_AVAILABLE = {
   // Android v5 approved 2026-10-02 and published to Google Play.
   googlePlay: true,
 } as const;
+
+/* ------------------------------------------------------------------ *
+ * Attributed store links. Pure functions so they are testable without a DOM.
+ *
+ * Apple only credits `ct` in App Store Connect > Analytics > Acquisition >
+ * Campaigns when `pt` (the provider token) is also present. Without pt the
+ * campaign token is ignored — that is NEXT_PUBLIC_APPLE_PT.
+ *
+ * Google Play reads the utm_* tags straight off the listing URL for its
+ * acquisition reports, and also hands them to the installed app as the Install
+ * Referrer. Nothing in the app reads the referrer today; the Play Console
+ * report is what we rely on.
+ * ------------------------------------------------------------------ */
+
+export type StoreUtm = {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+};
+
+// Provider token from App Store Connect > Analytics > Acquisition > Campaigns
+// (the campaign link Apple issued on 2026-10-02). Public by nature — it is in
+// every campaign URL — so it ships as the default; the env var only overrides.
+export const APPLE_PROVIDER_TOKEN = process.env.NEXT_PUBLIC_APPLE_PT || '129313076';
+
+/** Apple's campaign-link form of the listing URL (the path Apple issues with pt/ct). */
+export const APP_STORE_CAMPAIGN_URL = 'https://apps.apple.com/app/apple-store/id6801673529';
+
+/** App Store `ct` / Play tag values must be tidy: alphanumerics, _ and -, ≤40 chars. */
+export function sanitizeToken(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 40);
+}
+
+/** Sanitized copy with empty values dropped — no "direct"/"none" placeholders. */
+export function cleanUtm(utm: StoreUtm): StoreUtm {
+  const out: StoreUtm = {};
+  (Object.keys(utm) as (keyof StoreUtm)[]).forEach((k) => {
+    const v = sanitizeToken(utm[k] ?? '');
+    if (v) out[k] = v;
+  });
+  return out;
+}
+
+/** `ct` = campaign_content, else campaign_source, else source, else 'launch'. */
+export function appStoreCampaignToken(utm: StoreUtm): string {
+  const u = cleanUtm(utm);
+  const parts = u.utm_campaign
+    ? [u.utm_campaign, u.utm_content ?? u.utm_source]
+    : [u.utm_source];
+  return sanitizeToken(parts.filter(Boolean).join('_')) || 'launch';
+}
+
+export function appStoreUrl(utm: StoreUtm, pt: string = APPLE_PROVIDER_TOKEN): string {
+  const q = new URLSearchParams();
+  if (pt) q.set('pt', pt);
+  q.set('ct', appStoreCampaignToken(utm));
+  q.set('mt', '8');
+  return `${APP_STORE_CAMPAIGN_URL}?${q.toString()}`;
+}
+
+export function playStoreUrl(utm: StoreUtm): string {
+  const u = cleanUtm(utm);
+  const tags = new URLSearchParams();
+  (['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const).forEach((k) => {
+    if (u[k]) tags.set(k, u[k]!);
+  });
+  if (!tags.has('utm_medium')) tags.set('utm_medium', 'smartlink');
+  const tagStr = tags.toString();
+  // Tags on the URL feed Play Console; the same string as `referrer` reaches
+  // the app's Install Referrer API for whenever something reads it.
+  return `${PLAY_STORE_URL}&${tagStr}&referrer=${encodeURIComponent(tagStr)}`;
+}
