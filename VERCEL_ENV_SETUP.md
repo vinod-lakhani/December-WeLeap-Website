@@ -10,6 +10,12 @@ This guide explains how to add environment variables in Vercel for the rent tool
 - **Where to get it**: Google Analytics → Admin → Data Streams → Your Web Stream → Measurement ID
 - **Why needed**: Enables GA4 tracking on your site
 
+### `NEXT_PUBLIC_APPLE_PT` (for /get install attribution)
+Apple provider token from App Store Connect > Analytics > Acquisition > Campaigns. Without it the App Store ignores the `ct` campaign label on /get links, so campaign installs never show in App Analytics. Safe to expose.
+
+### `NEXT_PUBLIC_META_PIXEL_ID` (for paid ads)
+Meta Pixel ID from Events Manager. When set, the pixel loads site-wide and /get fires the custom `GetPageReached` event. Unset = no pixel, no network call. Safe to expose.
+
 ### Optional: `NEXT_PUBLIC_DEBUG_ANALYTICS`
 - **What it is**: Debug flag for GA4 tracking
 - **Values**: `true` or `false` (or leave unset)

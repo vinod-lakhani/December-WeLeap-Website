@@ -34,23 +34,42 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 import { track } from '@/lib/analytics';
-import { APP_STORE_URL, PLAY_STORE_URL, STORE_AVAILABLE, WEB_APP_URL } from '@/lib/stores';
+import { STORE_AVAILABLE, WEB_APP_URL, appStoreUrl, cleanUtm, playStoreUrl } from '@/lib/stores';
+import { getUtmParams, parseUtm } from '@/lib/utm-storage';
 
 import { StoreBadges } from './StoreBadges';
 
-/** App Store `ct` / Play referrer values must be tidy: alphanumerics, _ and -, ≤40 chars. */
-function sanitizeToken(s: string): string {
-  return s.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
+function newEventId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function GetRedirect() {
   // null until the client detects the device (also the SSR value).
   const [device, setDevice] = useState<'ios' | 'android' | 'desktop' | null>(null);
+  const [hrefs, setHrefs] = useState<{ appStore: string; googlePlay: string }>({
+    appStore: appStoreUrl({}),
+    googlePlay: playStoreUrl({}),
+  });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const source = params.get('utm_source') || '';
-    const campaign = params.get('utm_campaign') || '';
+    // Live URL merged over the per-tab store (lib/utm-storage), so a same-tab
+    // reload without a query string still carries the arrival's UTMs. Nothing
+    // stored and nothing on the URL → no tags at all; we never invent
+    // "direct"/"none" placeholders, they would pollute the store reports.
+    const utm = cleanUtm(parseUtm(getUtmParams()));
+    const source = utm.utm_source ?? '';
+    const campaign = utm.utm_campaign ?? '';
     const ua = navigator.userAgent || '';
     const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && 'ontouchend' in document);
     const isAndroid = /Android/i.test(ua);
@@ -59,25 +78,50 @@ export function GetRedirect() {
 
     const playLive = STORE_AVAILABLE.googlePlay;
     const store = isIOS ? 'app_store' : isAndroid ? (playLive ? 'google_play' : 'google_play_coming_soon') : 'none';
-    // Fire the click event on every device (desktop included, so desktop /get
-    // hits still count). Awaits gtag; failures are swallowed.
-    track('store_link_clicked', { store, source, campaign, device: dev }, true).catch(() => {});
+    const target = isIOS ? appStoreUrl(utm) : isAndroid && playLive ? playStoreUrl(utm) : '';
+    setHrefs({ appStore: appStoreUrl(utm), googlePlay: playStoreUrl(utm) });
+
+    // One id shared by the PostHog event and the Meta pixel event, so a
+    // server-side (Conversions API) copy can be deduped later.
+    const eventId = newEventId();
+
+    // Fire on every device (desktop included, so desktop /get hits still
+    // count). Awaits gtag; failures are swallowed. Event name and the original
+    // properties are unchanged on purpose — saved insights read them.
+    track(
+      'store_link_clicked',
+      {
+        store,
+        source,
+        campaign,
+        device: dev,
+        medium: utm.utm_medium ?? '',
+        content: utm.utm_content ?? '',
+        store_url: target,
+        event_id: eventId,
+      },
+      true,
+    ).catch(() => {});
+
+    // Meta: on phones this fires on load, before the redirect, so it means
+    // "ad click reached the page", not a tap. Named accordingly. No-op until
+    // the pixel is loaded (components/meta-pixel.tsx).
+    try {
+      window.fbq?.(
+        'trackCustom',
+        'GetPageReached',
+        { platform: dev, utm_campaign: campaign, utm_content: utm.utm_content ?? '' },
+        { eventID: eventId },
+      );
+    } catch {
+      /* ignore */
+    }
 
     // Desktop stays on the page and shows the card — nothing to redirect to.
     // Android does the same while the Play listing isn't live yet.
-    if (!isIOS && !(isAndroid && playLive)) return;
-
-    let target: string;
-    if (isIOS) {
-      const ct = sanitizeToken([campaign, source].filter(Boolean).join('_')) || 'launch';
-      target = `${APP_STORE_URL}?ct=${encodeURIComponent(ct)}&mt=8`;
-    } else {
-      const ref = new URLSearchParams();
-      if (source) ref.set('utm_source', source);
-      if (campaign) ref.set('utm_campaign', campaign);
-      ref.set('utm_medium', 'smartlink');
-      target = `${PLAY_STORE_URL}&referrer=${encodeURIComponent(ref.toString())}`;
-    }
+    if (!target) return;
+    // Redirect immediately. The pixel request is already dispatched; holding
+    // the visitor to be sure it landed would be paying for our own friction.
     window.location.replace(target);
   }, []);
 
@@ -116,7 +160,7 @@ export function GetRedirect() {
         </div>
       )}
 
-      {showBadges && <StoreBadges placement="get_page" className="justify-center" />}
+      {showBadges && <StoreBadges placement="get_page" className="justify-center" hrefs={hrefs} />}
 
       <a
         href={WEB_APP_URL}

@@ -26,12 +26,16 @@ export interface StoreBadgesProps {
       not live in lib/stores.ts, so callers never need to pass this. */
   comingSoon?: { appStore?: boolean; googlePlay?: boolean };
   className?: string;
+  /** Attributed links (from lib/stores appStoreUrl/playStoreUrl). Defaults to
+      the bare listing URLs, so only /get needs to pass them. */
+  hrefs?: { appStore?: string; googlePlay?: string };
 }
 
 export function StoreBadges({
   placement = 'hero',
   comingSoon = { appStore: !STORE_AVAILABLE.appStore, googlePlay: !STORE_AVAILABLE.googlePlay },
   className = '',
+  hrefs,
 }: StoreBadgesProps) {
   const go = (store: 'app_store' | 'google_play', href: string) => {
     track('store_badge_clicked', { store, placement });
@@ -78,8 +82,8 @@ export function StoreBadges({
 
   return (
     <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-      {badge('app_store', APP_STORE_URL, '/badges/app-store.svg', 'Download WeLeap on the App Store', comingSoon?.appStore)}
-      {badge('google_play', PLAY_STORE_URL, '/badges/google-play.svg', 'Get WeLeap on Google Play', comingSoon?.googlePlay)}
+      {badge('app_store', hrefs?.appStore ?? APP_STORE_URL, '/badges/app-store.svg', 'Download WeLeap on the App Store', comingSoon?.appStore)}
+      {badge('google_play', hrefs?.googlePlay ?? PLAY_STORE_URL, '/badges/google-play.svg', 'Get WeLeap on Google Play', comingSoon?.googlePlay)}
     </div>
   );
 }

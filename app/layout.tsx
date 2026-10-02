@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
+import { MetaPixel } from '@/components/meta-pixel'
 import { UtmCapture } from '@/components/utm-capture'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { PostHogPageView } from '@/components/posthog-pageview'
@@ -93,6 +94,7 @@ export default function RootLayout({
           {children}
           <Analytics />
           <CookieConsent />
+          <MetaPixel />
           <ConditionalGoogleAnalytics />
         </PostHogProvider>
       </body>
