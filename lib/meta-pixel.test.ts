@@ -41,11 +41,12 @@ describe('meta-pixel', () => {
   it('first caller creates the stub, queues init before the event, loads the script once', async () => {
     vi.stubEnv('NEXT_PUBLIC_META_PIXEL_ID', '4524887364421399')
     const { fbq } = await fresh()
-    fbq('trackCustom', 'GetPageReached', { platform: 'desktop' }, { eventID: 'e1' })
+    fbq('track', 'Lead', {}, { eventID: 'e1' })
     fbq('track', 'PageView')
     const q = (win.fbq as { queue: unknown[][] }).queue
     expect(q[0]).toEqual(['init', '4524887364421399'])
-    expect(q[1].slice(0, 2)).toEqual(['trackCustom', 'GetPageReached'])
+    expect(q[1].slice(0, 2)).toEqual(['track', 'Lead'])
+    expect(q[1][3]).toEqual({ eventID: 'e1' })
     expect(q[2]).toEqual(['track', 'PageView'])
     expect(scripts).toHaveLength(1)
     expect(scripts[0].src).toContain('fbevents.js')
