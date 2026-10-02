@@ -11,7 +11,7 @@ This guide explains how to add environment variables in Vercel for the rent tool
 - **Why needed**: Enables GA4 tracking on your site
 
 ### `NEXT_PUBLIC_APPLE_PT` (for /get install attribution)
-Apple provider token from App Store Connect > Analytics > Acquisition > Campaigns. Without it the App Store ignores the `ct` campaign label on /get links, so campaign installs never show in App Analytics. Safe to expose.
+Optional override. The provider token (129313076, from App Store Connect > Analytics > Acquisition > Campaigns) is the default in lib/stores.ts; set this only if Apple ever issues a new one. Safe to expose.
 
 ### `NEXT_PUBLIC_META_PIXEL_ID` (for paid ads)
 Meta Pixel ID from Events Manager. When set, the pixel loads site-wide and /get fires the custom `GetPageReached` event. Unset = no pixel, no network call. Safe to expose.

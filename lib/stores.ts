@@ -36,7 +36,13 @@ export type StoreUtm = {
   utm_term?: string;
 };
 
-export const APPLE_PROVIDER_TOKEN = process.env.NEXT_PUBLIC_APPLE_PT ?? '';
+// Provider token from App Store Connect > Analytics > Acquisition > Campaigns
+// (the campaign link Apple issued on 2026-10-02). Public by nature — it is in
+// every campaign URL — so it ships as the default; the env var only overrides.
+export const APPLE_PROVIDER_TOKEN = process.env.NEXT_PUBLIC_APPLE_PT || '129313076';
+
+/** Apple's campaign-link form of the listing URL (the path Apple issues with pt/ct). */
+export const APP_STORE_CAMPAIGN_URL = 'https://apps.apple.com/app/apple-store/id6801673529';
 
 /** App Store `ct` / Play tag values must be tidy: alphanumerics, _ and -, ≤40 chars. */
 export function sanitizeToken(s: string): string {
@@ -70,7 +76,7 @@ export function appStoreUrl(utm: StoreUtm, pt: string = APPLE_PROVIDER_TOKEN): s
   if (pt) q.set('pt', pt);
   q.set('ct', appStoreCampaignToken(utm));
   q.set('mt', '8');
-  return `${APP_STORE_URL}?${q.toString()}`;
+  return `${APP_STORE_CAMPAIGN_URL}?${q.toString()}`;
 }
 
 export function playStoreUrl(utm: StoreUtm): string {

@@ -32,8 +32,10 @@ describe('appStoreUrl', () => {
     expect(u.searchParams.get('ct')).toBe('lal1_l1')
     expect(u.searchParams.get('mt')).toBe('8')
   })
-  it('omits pt when no provider token is configured', () => {
-    expect(new URL(appStoreUrl(ad, '')).searchParams.has('pt')).toBe(false)
+  it('defaults to the App Store Connect provider token and campaign path', () => {
+    const u = new URL(appStoreUrl(ad))
+    expect(u.searchParams.get('pt')).toBe('129313076')
+    expect(u.pathname).toBe('/app/apple-store/id6801673529')
   })
 })
 
