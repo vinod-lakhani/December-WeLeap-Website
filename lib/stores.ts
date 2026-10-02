@@ -11,8 +11,6 @@ export const WEB_APP_URL = 'https://weleap.app';
 
 export const STORE_AVAILABLE = {
   appStore: true,
-  // Android v5 is still in Google Play review (since 2026-09-23). Until it
-  // publishes, the Play badge renders "Coming soon" and /get on Android shows
-  // a coming-soon card instead of a dead store link.
-  googlePlay: false,
+  // Android v5 approved 2026-10-02 and published to Google Play.
+  googlePlay: true,
 } as const;
