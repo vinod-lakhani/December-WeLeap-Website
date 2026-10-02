@@ -35,15 +35,10 @@ import { useEffect, useState } from 'react';
 
 import { track } from '@/lib/analytics';
 import { STORE_AVAILABLE, WEB_APP_URL, appStoreUrl, cleanUtm, playStoreUrl } from '@/lib/stores';
+import { fbq } from '@/lib/meta-pixel';
 import { getUtmParams, parseUtm } from '@/lib/utm-storage';
 
 import { StoreBadges } from './StoreBadges';
-
-declare global {
-  interface Window {
-    fbq?: (...args: unknown[]) => void;
-  }
-}
 
 function newEventId(): string {
   try {
@@ -104,18 +99,16 @@ export function GetRedirect() {
     ).catch(() => {});
 
     // Meta: on phones this fires on load, before the redirect, so it means
-    // "ad click reached the page", not a tap. Named accordingly. No-op until
-    // the pixel is loaded (components/meta-pixel.tsx).
-    try {
-      window.fbq?.(
-        'trackCustom',
-        'GetPageReached',
-        { platform: dev, utm_campaign: campaign, utm_content: utm.utm_content ?? '' },
-        { eventID: eventId },
-      );
-    } catch {
-      /* ignore */
-    }
+    // "ad click reached the page", not a tap. Named accordingly. fbq() from
+    // lib/meta-pixel creates the pixel if this effect runs before <MetaPixel>
+    // (it does: page effects run before layout siblings), and is a no-op
+    // when no pixel id is configured.
+    fbq(
+      'trackCustom',
+      'GetPageReached',
+      { platform: dev, utm_campaign: campaign, utm_content: utm.utm_content ?? '' },
+      { eventID: eventId },
+    );
 
     // Desktop stays on the page and shows the card — nothing to redirect to.
     // Android does the same while the Play listing isn't live yet.
