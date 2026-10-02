@@ -14,7 +14,7 @@ This guide explains how to add environment variables in Vercel for the rent tool
 Optional override. The provider token (129313076, from App Store Connect > Analytics > Acquisition > Campaigns) is the default in lib/stores.ts; set this only if Apple ever issues a new one. Safe to expose.
 
 ### `NEXT_PUBLIC_META_PIXEL_ID` (for paid ads)
-Meta Pixel ID from Events Manager. When set, the pixel loads site-wide and /get fires the custom `GetPageReached` event. Unset = no pixel, no network call. Safe to expose.
+Meta Pixel ID from Events Manager. When set, the pixel loads site-wide and /get fires the standard `Lead` event (custom events are suppressed for Financial-service datasets). Unset = no pixel, no network call. Safe to expose.
 
 ### Optional: `NEXT_PUBLIC_DEBUG_ANALYTICS`
 - **What it is**: Debug flag for GA4 tracking

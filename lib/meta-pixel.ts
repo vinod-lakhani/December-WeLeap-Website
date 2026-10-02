@@ -3,7 +3,7 @@
  *
  * Why a module and not just the <MetaPixel> component: in app/layout.tsx the
  * page content renders before <MetaPixel />, and React runs effects in that
- * order, so /get's GetPageReached effect ran before the pixel existed and
+ * order, so /get's Lead-event effect ran before the pixel existed and
  * `window.fbq?.()` silently did nothing. Here the first caller — component or
  * page — creates the stub, queues `init`, and appends the script; later
  * calls are queued by the stub and flushed by fbevents.js in order.

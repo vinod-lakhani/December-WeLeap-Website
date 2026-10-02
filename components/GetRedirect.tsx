@@ -99,16 +99,14 @@ export function GetRedirect() {
     ).catch(() => {});
 
     // Meta: on phones this fires on load, before the redirect, so it means
-    // "ad click reached the page", not a tap. Named accordingly. fbq() from
-    // lib/meta-pixel creates the pixel if this effect runs before <MetaPixel>
-    // (it does: page effects run before layout siblings), and is a no-op
-    // when no pixel id is configured.
-    fbq(
-      'trackCustom',
-      'GetPageReached',
-      { platform: dev, utm_campaign: campaign, utm_content: utm.utm_content ?? '' },
-      { eventID: eventId },
-    );
+    // "ad click reached the page", not a tap. The dataset is in Meta's
+    // "Financial service" category, which runs in restricted (core) setup:
+    // custom events are suppressed client-side ("unverified event") and
+    // custom parameters plus the URL path are stripped. So this is the
+    // standard `Lead` event with no parameters — the event id still goes
+    // through, which is what a Conversions API copy would dedupe on. The
+    // per-platform / per-UTM detail lives on PostHog's store_link_clicked.
+    fbq('track', 'Lead', {}, { eventID: eventId });
 
     // Desktop stays on the page and shows the card — nothing to redirect to.
     // Android does the same while the Play listing isn't live yet.
