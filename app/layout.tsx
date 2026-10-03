@@ -42,6 +42,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.weleap.ai'
  */
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  // Meta (Facebook) domain verification for the WeLeap business portfolio —
+  // renders <meta name="facebook-domain-verification"> in every page's head.
+  // Needed for ads: lets Meta attribute conversions to weleap.ai and rank
+  // events for iOS. Public value, not a secret. Added 2026-10-02.
+  verification: {
+    other: { 'facebook-domain-verification': ['mxdrtahcnbl68qg12x3pveh5jvp237'] },
+  },
   title: {
     default: 'WeLeap — Your AI Financial Sidekick',
     template: '%s | WeLeap',
