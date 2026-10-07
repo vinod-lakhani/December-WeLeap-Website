@@ -18,7 +18,18 @@ import { FREE_TOOLS } from './tools'
  * who finds out is someone who typed a URL off a screen.
  */
 /** The one-word aliases we print. Not the longer legacy ones. */
-const SHORT_ALIASES = ['/offer', '/rent', '/paycheck', '/loan', '/plan', '/age', '/card'] as const
+const SHORT_ALIASES = [
+  '/offer',
+  '/rent',
+  '/paycheck',
+  '/loan',
+  '/plan',
+  '/age',
+  '/card',
+  '/fund',
+  '/bnpl',
+  '/save',
+] as const
 
 interface Redirect {
   source: string
@@ -65,18 +76,22 @@ describe('short tool aliases', () => {
     expect(new Set(dests).size).toBe(SHORT_ALIASES.length)
   })
 
-  it('names which tools still have no short alias', () => {
+  it('covers every tool, so no end card can print an unaliased one', () => {
     /**
-     * Not a failure — an alias nothing links to is a route to keep working
-     * forever for no reader. This is here so the gap is visible the day
-     * somebody puts one of these on an end card.
+     * The set is complete, and completeness is the point rather than a tally.
+     * A set with gaps means whoever writes an end card has to check which
+     * tools are printable first, and the one time they skip the check is the
+     * time a card ships with a 404 on it.
+     *
+     * This also catches a tool ADDED to FREE_TOOLS without an alias, which is
+     * the likelier direction now that the existing ten are covered.
      */
     const covered = new Set(SHORT_ALIASES.map((s) => bySource.get(s)?.destination))
     const without = FREE_TOOLS.filter((t) => !covered.has(t.href)).map((t) => t.href)
-    expect(without).toEqual([
-      '/how-much-emergency-fund-do-i-need',
-      '/should-i-use-buy-now-pay-later',
-      '/what-is-saving-monthly-worth',
-    ])
+    expect(without, `tools with no short alias: ${without.join(', ')}`).toEqual([])
+  })
+
+  it('has exactly one alias per tool', () => {
+    expect(SHORT_ALIASES).toHaveLength(FREE_TOOLS.length)
   })
 })

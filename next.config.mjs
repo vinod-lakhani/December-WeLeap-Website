@@ -118,11 +118,10 @@ const nextConfig = {
        *
        * Permanent, because they are published in video that stays up.
        *
-       * Three tools still have no short alias — the emergency fund, the
-       * purchase check and the saving calculator. They have longer legacy
-       * aliases further down and nobody has asked to print them. Worth adding
-       * the day one appears on an end card, not before: an alias nothing links
-       * to is a route to keep working forever for no reader.
+       * All ten tools have one now. That is a deliberate completion rather
+       * than a collection: a set with gaps means somebody writing an end card
+       * has to check which tools are printable, and the one time they do not
+       * check is the time the card ships with a 404 on it.
        */
       {
         source: '/paycheck',
@@ -150,6 +149,24 @@ const nextConfig = {
       {
         source: '/card',
         destination: '/credit-card-payoff',
+        permanent: true,
+      },
+      {
+        source: '/fund',
+        destination: '/how-much-emergency-fund-do-i-need',
+        permanent: true,
+      },
+      {
+        // /bnpl rather than /buy-now-pay-later: the abbreviation is what the
+        // audience says and what fits on an end card. /pay-now-or-later
+        // further down stays for the links already published.
+        source: '/bnpl',
+        destination: '/should-i-use-buy-now-pay-later',
+        permanent: true,
+      },
+      {
+        source: '/save',
+        destination: '/what-is-saving-monthly-worth',
         permanent: true,
       },
       {
