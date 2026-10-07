@@ -35,6 +35,7 @@ import { useEffect, useState } from 'react';
 
 import { track } from '@/lib/analytics';
 import { STORE_AVAILABLE, WEB_APP_URL, appStoreUrl, cleanUtm, playStoreUrl } from '@/lib/stores';
+import { appLink } from '@/lib/app-link';
 import { fbq } from '@/lib/meta-pixel';
 import { getUtmParams, parseUtm } from '@/lib/utm-storage';
 
@@ -56,6 +57,30 @@ export function GetRedirect() {
     appStore: appStoreUrl({}),
     googlePlay: playStoreUrl({}),
   });
+
+  /**
+   * The web-app link, with attribution.
+   *
+   * It used to be a bare WEB_APP_URL — the one route to the app on this whole
+   * site that carried nothing. No UTMs and no ph_did, so anybody who took it
+   * arrived as a new anonymous person and the campaign that produced them was
+   * lost at the final hop. Every other path to weleap.app goes through
+   * appLink; this link was simply missed.
+   *
+   * It matters more now the bio page exists: utm_term says whose audience
+   * produced the visit, and dropping it here loses exactly the people furthest
+   * down the funnel — the ones who used a tool, reached /get, and chose the
+   * web app over the store.
+   *
+   * Resolved in an effect for the same reason the store hrefs are: appLink
+   * reads sessionStorage and the PostHog id, neither of which exists on the
+   * server. It starts as the bare URL so the markup is valid before hydration
+   * and the link works whether or not JavaScript ever arrives.
+   */
+  const [webHref, setWebHref] = useState(WEB_APP_URL);
+  useEffect(() => {
+    setWebHref(appLink(''));
+  }, []);
 
   useEffect(() => {
     // Live URL merged over the per-tab store (lib/utm-storage), so a same-tab
@@ -157,7 +182,7 @@ export function GetRedirect() {
       {showBadges && <StoreBadges placement="get_page" className="justify-center" hrefs={hrefs} />}
 
       <a
-        href={WEB_APP_URL}
+        href={webHref}
         className={
           androidWaiting
             ? 'inline-flex items-center justify-center rounded-xl bg-brand-700 px-6 py-3.5 text-[15px] font-bold text-white hover:bg-brand-800'
