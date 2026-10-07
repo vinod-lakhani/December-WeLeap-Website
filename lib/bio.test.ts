@@ -17,7 +17,12 @@ const DEFAULTS = resolveBioUtm(undefined)
 
 describe('who the visitor is attributed to', () => {
   it('assumes Instagram when they bring nothing', () => {
-    expect(DEFAULTS).toEqual({ source: 'instagram', medium: 'bio', campaign: BIO_CAMPAIGN })
+    expect(DEFAULTS).toEqual({
+      source: 'instagram',
+      medium: 'bio',
+      campaign: BIO_CAMPAIGN,
+      term: 'weleap',
+    })
   })
 
   it('keeps their own source and medium when they bring one', () => {
@@ -27,6 +32,7 @@ describe('who the visitor is attributed to', () => {
       source: 'tiktok',
       medium: 'bio',
       campaign: BIO_CAMPAIGN,
+      term: 'weleap',
     })
     expect(resolveBioUtm({ utm_source: 'youtube', utm_medium: 'description' }).medium).toBe(
       'description',
@@ -178,6 +184,7 @@ describe('the links a tap actually follows', () => {
       utm_medium: 'bio',
       utm_content: 'first-paycheck-setup',
       utm_campaign: 'organic_bio',
+      utm_term: 'weleap',
     })
   })
 
@@ -190,6 +197,7 @@ describe('the links a tap actually follows', () => {
       utm_medium: 'bio',
       utm_content: 'app',
       utm_campaign: 'organic_bio',
+      utm_term: 'weleap',
     })
   })
 
@@ -241,5 +249,53 @@ describe('the one card that has to be impossible to miss', () => {
      */
     expect(links).not.toMatch(/card\.slot === 'featured'\s*\?\s*'block rounded-2xl bg-\[#386641\]/)
     expect(links).not.toMatch(/featured'[^)]*bg-\[#386641\]\s/)
+  })
+})
+
+
+describe('the person the tap came from', () => {
+  /**
+   * utm_term is WHO, not a keyword. Each creator gets their own bio link —
+   * ?utm_term=joshua — so a completion or an install traces back to whose
+   * audience produced it.
+   */
+  it('carries a named person through to every link', () => {
+    const utm = resolveBioUtm({ utm_source: 'tiktok', utm_term: 'joshua' })
+    expect(utm.term).toBe('joshua')
+    for (const card of bioCards(utm)) {
+      const url = new URL(card.href, 'https://www.weleap.ai')
+      expect(url.searchParams.get('utm_term'), card.href).toBe('joshua')
+    }
+  })
+
+  it('reads the person independently of the channel', () => {
+    /**
+     * source and medium move together — a TikTok link carries both. The person
+     * is orthogonal: the same creator posts to more than one network, and a
+     * link carrying only utm_term is an ordinary thing to build by hand.
+     * Gating it on utm_source would file that person under the house account.
+     */
+    const utm = resolveBioUtm({ utm_term: 'joshua' })
+    expect(utm.term).toBe('joshua')
+    expect(utm.source).toBe('instagram')
+    expect(utm.medium).toBe('bio')
+  })
+
+  it('names the house account rather than leaving the field empty', () => {
+    // Absent and "ours" look identical in a funnel otherwise, and telling them
+    // apart is the question being asked.
+    expect(resolveBioUtm({}).term).toBe('weleap')
+    expect(resolveBioUtm({ utm_term: '' }).term).toBe('weleap')
+    expect(resolveBioUtm({ utm_term: '   ' }).term).toBe('weleap')
+  })
+
+  it('takes the first value when the person repeats', () => {
+    expect(resolveBioUtm({ utm_term: ['joshua', 'sam'] }).term).toBe('joshua')
+  })
+
+  it('reports the person on every tap, under a name that says what it is', () => {
+    const links = readFileSync(join(process.cwd(), 'components/BioLinks.tsx'), 'utf8')
+    expect(links).toMatch(/referrer_person: card\.utmTerm/)
+    expect(links).toMatch(/utm_term: card\.utmTerm/)
   })
 })

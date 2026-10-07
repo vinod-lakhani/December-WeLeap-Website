@@ -92,6 +92,9 @@ export function GetRedirect() {
         device: dev,
         medium: utm.utm_medium ?? '',
         content: utm.utm_content ?? '',
+        // Named `term` to sit alongside source/medium/campaign/content, which
+        // already drop the utm_ prefix on this event.
+        term: utm.utm_term ?? '',
         store_url: target,
         event_id: eventId,
       },

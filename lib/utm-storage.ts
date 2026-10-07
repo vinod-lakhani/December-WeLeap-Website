@@ -144,6 +144,19 @@ export function getUtmParams(): string {
   return serializeUtm(mergeUtm(readStored(UTM_STORAGE_KEY), parseUtm(window.location.search)))
 }
 
+/**
+ * The stored UTMs as event properties, for attaching to a funnel event.
+ *
+ * Same resolution as getUtmParams — live URL merged over the per-tab store —
+ * but shaped as an object rather than a query string, because an event takes
+ * properties and a link takes a query. Absent keys stay absent so an untagged
+ * visit does not fill a funnel with five empty strings.
+ */
+export function getUtmEventProps(): UtmSet {
+  if (typeof window === "undefined") return {}
+  return mergeUtm(readStored(UTM_STORAGE_KEY), parseUtm(window.location.search))
+}
+
 /** First touch, for the cohort question last touch cannot answer. */
 export function getFirstTouchUtmParams(): string {
   if (typeof window === "undefined") return ""

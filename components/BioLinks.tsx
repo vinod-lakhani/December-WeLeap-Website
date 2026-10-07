@@ -32,6 +32,11 @@ export function BioLinks({ cards }: { cards: BioCard[] }) {
                 utm_source: card.utmSource,
                 utm_medium: card.utmMedium,
                 utm_content: card.content,
+                utm_term: card.utmTerm,
+                // Named for what it means rather than for the parameter it
+                // rides in. utm_term means "keyword" everywhere else, and a
+                // funnel grouped by "term" reads as a search report.
+                referrer_person: card.utmTerm,
               })
             }
             /**
