@@ -107,6 +107,68 @@ const nextConfig = {
         destination: '/how-much-rent-can-i-afford',
         permanent: true,
       },
+      /**
+       * SHORT ALIASES, ONE PER TOOL, FOR PRINTED URLS.
+       *
+       * The same job /rent and /offer already do: an end card in a Reel or a
+       * TikTok prints a URL that somebody retypes from memory, and
+       * /first-student-loan-payment does not survive that. These let a card
+       * name the tool directly instead of sending everyone to /tools to find
+       * it, which costs a tap and loses the ones who do not bother.
+       *
+       * Permanent, because they are published in video that stays up.
+       *
+       * All ten tools have one now. That is a deliberate completion rather
+       * than a collection: a set with gaps means somebody writing an end card
+       * has to check which tools are printable, and the one time they do not
+       * check is the time the card ships with a 404 on it.
+       */
+      {
+        source: '/paycheck',
+        destination: '/first-paycheck-setup',
+        permanent: true,
+      },
+      {
+        source: '/loan',
+        destination: '/first-student-loan-payment',
+        permanent: true,
+      },
+      {
+        // /allocator already points here. Two aliases to one destination is
+        // fine and this is the one a person would guess; the other is the
+        // internal engine name and exists only to keep old links alive.
+        source: '/plan',
+        destination: '/how-should-i-split-my-paycheck',
+        permanent: true,
+      },
+      {
+        source: '/age',
+        destination: '/whats-my-money-age',
+        permanent: true,
+      },
+      {
+        source: '/card',
+        destination: '/credit-card-payoff',
+        permanent: true,
+      },
+      {
+        source: '/fund',
+        destination: '/how-much-emergency-fund-do-i-need',
+        permanent: true,
+      },
+      {
+        // /bnpl rather than /buy-now-pay-later: the abbreviation is what the
+        // audience says and what fits on an end card. /pay-now-or-later
+        // further down stays for the links already published.
+        source: '/bnpl',
+        destination: '/should-i-use-buy-now-pay-later',
+        permanent: true,
+      },
+      {
+        source: '/save',
+        destination: '/what-is-saving-monthly-worth',
+        permanent: true,
+      },
       {
         // Aimed at social, where the URL gets read off a screenshot.
         //
