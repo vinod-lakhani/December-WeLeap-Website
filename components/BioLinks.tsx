@@ -34,9 +34,22 @@ export function BioLinks({ cards }: { cards: BioCard[] }) {
                 utm_content: card.content,
               })
             }
+            /**
+             * One filled card, and it is the app.
+             *
+             * Everything else is outlined white, so the single green block is
+             * the only thing on the page the eye cannot skip. That is the
+             * right card to spend it on: the ten tools are chosen by somebody
+             * who already knows which one they came for, and the app is the
+             * one row that is relevant whatever brought them.
+             *
+             * The featured card, when it is switched back on, keeps the
+             * outlined treatment and earns its prominence from its eyebrow and
+             * its position instead. Two emphasised cards is none.
+             */
             className={
-              card.slot === 'featured'
-                ? 'block rounded-2xl border-2 border-[#386641] bg-[#386641]/[0.06] px-4 py-3.5 active:bg-[#386641]/[0.12]'
+              card.slot === 'app'
+                ? 'block rounded-2xl bg-[#386641] px-4 py-4 shadow-card active:bg-[#2d5235]'
                 : 'block rounded-2xl border border-hairline bg-white px-4 py-3.5 active:bg-canvas'
             }
           >
@@ -45,8 +58,24 @@ export function BioLinks({ cards }: { cards: BioCard[] }) {
                 From this week&rsquo;s post
               </p>
             )}
-            <p className="text-[15.5px] font-bold leading-tight text-ink">{card.title}</p>
-            <p className="mt-1 text-[13.5px] leading-snug text-subtle">{card.subtitle}</p>
+            <p
+              className={
+                card.slot === 'app'
+                  ? 'text-[16px] font-bold leading-tight text-white'
+                  : 'text-[15.5px] font-bold leading-tight text-ink'
+              }
+            >
+              {card.title}
+            </p>
+            <p
+              className={
+                card.slot === 'app'
+                  ? 'mt-1 text-[13.5px] leading-snug text-white/85'
+                  : 'mt-1 text-[13.5px] leading-snug text-subtle'
+              }
+            >
+              {card.subtitle}
+            </p>
             {card.slot !== 'app' && (
               <p className="mt-1.5 text-[12px] font-semibold text-faint">Free, no login</p>
             )}
