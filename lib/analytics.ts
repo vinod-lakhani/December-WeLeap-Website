@@ -186,6 +186,7 @@
  */
 
 import { track as vercelTrack } from '@vercel/analytics';
+import { getUtmEventProps } from '@/lib/utm-storage'
 // Not a static `posthog-js` import: this module is pulled in by every tool
 // page, so importing the SDK here would keep it in the initial bundle no
 // matter how the provider loads it. See lib/posthog-lazy.ts.
@@ -244,7 +245,36 @@ function waitForGtag(maxWaitMs: number = 3000): Promise<void> {
  * @param params - Event parameters (must not contain PII)
  * @param waitForGtagLoading - If true, waits for gtag to load before sending (default: false for most events, true for critical page view events)
  */
+/**
+ * Funnel events that carry the campaign on themselves.
+ *
+ * PostHog already holds UTMs as PERSON properties, which answers "where did
+ * this person come from" and not "where did this completion come from". Those
+ * differ the moment somebody arrives from one creator's link and returns from
+ * another's — person properties are last-write-wins, so the earlier
+ * completion is retroactively re-attributed to whoever they came back from.
+ *
+ * Attaching them as EVENT properties freezes the answer at the moment it
+ * happened, which is what a per-creator report needs. utm_term is the person
+ * whose audience produced the tap; see lib/bio.ts.
+ *
+ * Done here rather than in each tool for one reason: there are ten tools and
+ * none of them attached UTMs before this. Ten edits is ten chances to miss
+ * one, and a funnel missing a single tool is worse than one missing all of
+ * them, because the gap is invisible rather than obvious.
+ */
+const CAMPAIGN_TAGGED_EVENTS = new Set(['tool_viewed', 'tool_completed'])
+
 export async function track(eventName: string, params?: Record<string, any>, waitForGtagLoading: boolean = false) {
+  /**
+   * Merged UNDER the caller's params, never over them. A tool that already
+   * sends a key of its own keeps its value; this only fills what is absent,
+   * so no existing property can change meaning because of this.
+   */
+  if (CAMPAIGN_TAGGED_EVENTS.has(eventName) && typeof window !== 'undefined') {
+    params = { ...getUtmEventProps(), ...(params ?? {}) };
+  }
+
   // Debug logging when enabled
   if (DEBUG_ANALYTICS || (typeof window !== 'undefined' && (window as any).DEBUG_ANALYTICS)) {
     console.log('[Analytics]', eventName, params || '');

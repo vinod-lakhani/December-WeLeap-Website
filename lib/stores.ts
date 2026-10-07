@@ -65,9 +65,20 @@ export function cleanUtm(utm: StoreUtm): StoreUtm {
 /** `ct` = campaign_content, else campaign_source, else source, else 'launch'. */
 export function appStoreCampaignToken(utm: StoreUtm): string {
   const u = cleanUtm(utm);
+  /**
+   * campaign_content_term, because Apple gives us ONE string.
+   *
+   * App Store Connect reports installs by `ct` and nothing else — there is no
+   * second field to put the person in. So the person is appended to the token
+   * rather than carried separately: organic_bio_app_joshua says which campaign,
+   * which card, and whose audience, in the one place Apple will show it.
+   *
+   * Each part is optional and empty ones drop out, so a visit with no person
+   * still reads organic_bio_app exactly as it did before this.
+   */
   const parts = u.utm_campaign
-    ? [u.utm_campaign, u.utm_content ?? u.utm_source]
-    : [u.utm_source];
+    ? [u.utm_campaign, u.utm_content ?? u.utm_source, u.utm_term]
+    : [u.utm_source, u.utm_term];
   return sanitizeToken(parts.filter(Boolean).join('_')) || 'launch';
 }
 

@@ -84,6 +84,21 @@ export const BIO_CAMPAIGN = 'organic_bio'
 export const BIO_DEFAULT_SOURCE = 'instagram'
 export const BIO_DEFAULT_MEDIUM = 'bio'
 
+/**
+ * utm_term is the PERSON whose account the tap came from.
+ *
+ * Creators each get their own bio link — ?utm_term=joshua — so a tool
+ * completion or an install can be traced to whose audience produced it. That
+ * is the whole point of the parameter here; it is not a keyword, which is what
+ * utm_term means everywhere else, and anyone reading the reports needs to know
+ * that.
+ *
+ * "weleap" rather than empty when nobody is named, so the field is never
+ * missing. An absent value and a house-account value look identical in a
+ * funnel otherwise, and the difference is exactly the question being asked.
+ */
+export const BIO_DEFAULT_TERM = 'weleap'
+
 /** A tool's route slug: the href without its leading slash. */
 export function routeSlug(tool: Pick<FreeTool, 'href'>): string {
   return tool.href.replace(/^\//, '')
@@ -104,6 +119,8 @@ export interface BioUtm {
   source: string
   medium: string
   campaign: string
+  /** Who sent them. See BIO_DEFAULT_TERM. */
+  term: string
 }
 
 type ParamValue = string | string[] | undefined
@@ -122,15 +139,33 @@ const first = (v: ParamValue): string => (Array.isArray(v) ? (v[0] ?? '') : (v ?
  * whoever sent it.
  */
 export function resolveBioUtm(searchParams?: Record<string, ParamValue>): BioUtm {
+  /**
+   * The person is read independently of the channel.
+   *
+   * source and medium move together — a link built for TikTok carries both, so
+   * taking one without the other produces a mismatched pair. The person is
+   * orthogonal: the same creator posts to more than one network, and a link
+   * carrying only utm_term is a perfectly ordinary thing for somebody to build
+   * by hand. Gating it on utm_source would silently file that person's traffic
+   * under the house account.
+   */
+  const term = first(searchParams?.utm_term) || BIO_DEFAULT_TERM
+
   const source = first(searchParams?.utm_source)
   if (source) {
     return {
       source,
       medium: first(searchParams?.utm_medium) || BIO_DEFAULT_MEDIUM,
       campaign: BIO_CAMPAIGN,
+      term,
     }
   }
-  return { source: BIO_DEFAULT_SOURCE, medium: BIO_DEFAULT_MEDIUM, campaign: BIO_CAMPAIGN }
+  return {
+    source: BIO_DEFAULT_SOURCE,
+    medium: BIO_DEFAULT_MEDIUM,
+    campaign: BIO_CAMPAIGN,
+    term,
+  }
 }
 
 /**
@@ -146,6 +181,7 @@ export function bioHref(path: string, content: string, utm: BioUtm): string {
     utm_medium: utm.medium,
     utm_content: content,
     utm_campaign: utm.campaign,
+    utm_term: utm.term,
   })
   return `${path}?${qs.toString()}`
 }
@@ -169,6 +205,8 @@ export interface BioCard {
    */
   utmSource: string
   utmMedium: string
+  /** The person, reported to PostHog as referrer_person. */
+  utmTerm: string
 }
 
 /**
@@ -188,6 +226,7 @@ export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL):
     content: 'app',
     utmSource: utm.source,
     utmMedium: utm.medium,
+    utmTerm: utm.term,
   }
 
   const toolCard = (tool: FreeTool): BioCard => {
@@ -201,6 +240,7 @@ export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL):
       content,
       utmSource: utm.source,
       utmMedium: utm.medium,
+      utmTerm: utm.term,
     }
   }
 
@@ -231,6 +271,7 @@ export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL):
           content: `featured_${routeSlug(featured)}`,
           utmSource: utm.source,
           utmMedium: utm.medium,
+          utmTerm: utm.term,
         },
         ...tools.map(toolCard),
       ]
