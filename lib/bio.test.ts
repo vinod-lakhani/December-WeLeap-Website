@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { FREE_TOOLS } from '@/lib/tools'
 import {
@@ -212,5 +214,32 @@ describe('the links a tap actually follows', () => {
     expect(routeSlug({ href: '/how-should-i-split-my-paycheck' })).toBe(
       'how-should-i-split-my-paycheck',
     )
+  })
+})
+
+describe('the one card that has to be impossible to miss', () => {
+  const links = readFileSync(join(process.cwd(), 'components/BioLinks.tsx'), 'utf8')
+
+  it('fills the app card, and only the app card', () => {
+    /**
+     * Everything else is outlined white, so the single green block is the only
+     * thing on the page the eye cannot skip. That is the right card to spend
+     * it on: the ten tools are chosen by somebody who already knows which one
+     * they came for, and the app is the one row relevant whatever brought them.
+     *
+     * Measured on the rendered card at 390px: white on #386641 is 6.68:1 and
+     * the subtitle at 85% is 5.36:1, both clear of WCAG AA.
+     */
+    expect(links).toMatch(/card\.slot === 'app'\s*\?\s*'block rounded-2xl bg-\[#386641\]/)
+  })
+
+  it('does not give the featured card a second filled treatment', () => {
+    /**
+     * Two emphasised cards is none. When the featured card comes back it earns
+     * its prominence from its eyebrow and its position, not from competing
+     * with the only filled block on the page.
+     */
+    expect(links).not.toMatch(/card\.slot === 'featured'\s*\?\s*'block rounded-2xl bg-\[#386641\]/)
+    expect(links).not.toMatch(/featured'[^)]*bg-\[#386641\]\s/)
   })
 })
