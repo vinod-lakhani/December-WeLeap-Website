@@ -107,6 +107,51 @@ const nextConfig = {
         destination: '/how-much-rent-can-i-afford',
         permanent: true,
       },
+      /**
+       * SHORT ALIASES, ONE PER TOOL, FOR PRINTED URLS.
+       *
+       * The same job /rent and /offer already do: an end card in a Reel or a
+       * TikTok prints a URL that somebody retypes from memory, and
+       * /first-student-loan-payment does not survive that. These let a card
+       * name the tool directly instead of sending everyone to /tools to find
+       * it, which costs a tap and loses the ones who do not bother.
+       *
+       * Permanent, because they are published in video that stays up.
+       *
+       * Three tools still have no short alias — the emergency fund, the
+       * purchase check and the saving calculator. They have longer legacy
+       * aliases further down and nobody has asked to print them. Worth adding
+       * the day one appears on an end card, not before: an alias nothing links
+       * to is a route to keep working forever for no reader.
+       */
+      {
+        source: '/paycheck',
+        destination: '/first-paycheck-setup',
+        permanent: true,
+      },
+      {
+        source: '/loan',
+        destination: '/first-student-loan-payment',
+        permanent: true,
+      },
+      {
+        // /allocator already points here. Two aliases to one destination is
+        // fine and this is the one a person would guess; the other is the
+        // internal engine name and exists only to keep old links alive.
+        source: '/plan',
+        destination: '/how-should-i-split-my-paycheck',
+        permanent: true,
+      },
+      {
+        source: '/age',
+        destination: '/whats-my-money-age',
+        permanent: true,
+      },
+      {
+        source: '/card',
+        destination: '/credit-card-payoff',
+        permanent: true,
+      },
       {
         // Aimed at social, where the URL gets read off a screenshot.
         //
