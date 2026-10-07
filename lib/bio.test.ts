@@ -4,9 +4,9 @@ import { FREE_TOOLS } from '@/lib/tools'
 import {
   BIO_CAMPAIGN,
   BIO_FEATURED_TOOL,
+  BIO_TOOL_ORDER,
   bioCards,
   bioHref,
-  featuredTool,
   resolveBioUtm,
   routeSlug,
 } from './bio'
@@ -55,9 +55,23 @@ describe('who the visitor is attributed to', () => {
 })
 
 describe('the featured card', () => {
-  it('is whatever the one weekly constant names', () => {
-    const tool = featuredTool(BIO_FEATURED_TOOL)
-    expect(tool, `BIO_FEATURED_TOOL "${BIO_FEATURED_TOOL}" matches no tool`).not.toBeNull()
+  it('is off, because keeping it honest was a weekly chore', () => {
+    /**
+     * It decayed silently: nobody notices a stale "from this week's post" for
+     * a fortnight. The captions already name the tool, and finding that name
+     * in a list of ten is a one-second scan. Switching it back on is setting
+     * this constant to a route slug — the machinery below is still tested.
+     */
+    expect(BIO_FEATURED_TOOL).toBe('')
+    expect(bioCards(DEFAULTS).some((c) => c.slot === 'featured')).toBe(false)
+  })
+
+  it('still works when switched back on', () => {
+    const cards = bioCards(DEFAULTS, 'how-much-rent-can-i-afford')
+    expect(cards[0]!.slot).toBe('featured')
+    expect(cards[0]!.title).toBe('Rent Affordability')
+    // And the app card holds its place rather than being pushed down.
+    expect(cards[1]!.slot).toBe('app')
   })
 
   it('swaps with no other edit', () => {
@@ -73,11 +87,10 @@ describe('the featured card', () => {
   })
 
   it('disappears for an unknown or empty slug rather than breaking the page', () => {
-    // A typo on a Tuesday morning should cost the card, not the page.
+    // A typo should cost the card, not the page.
     for (const slug of ['', 'not-a-tool', 'first_paycheck' /* the analytics slug, not the route */]) {
       const cards = bioCards(DEFAULTS, slug)
       expect(cards.some((c) => c.slot === 'featured'), `slug "${slug}"`).toBe(false)
-      expect(cards[0]!.slot).toBe('app')
       expect(cards).toHaveLength(FREE_TOOLS.length + 1)
     }
   })
@@ -94,10 +107,36 @@ describe('the featured card', () => {
 describe('the column', () => {
   const cards = bioCards(DEFAULTS)
 
-  it('is featured, then the app, then every tool in catalogue order', () => {
-    expect(cards[0]!.slot).toBe('featured')
+  it('leads with the tool most people came for, then the app', () => {
+    /**
+     * The app card is second whatever is above it — the featured card when
+     * that is on, the first tool when it is not. Not first, because the top
+     * slot belongs to whatever somebody most likely came for. Not lower,
+     * because it is the one card relevant to every visitor.
+     */
+    expect(cards[0]!.slot).toBe('tool')
+    expect(cards[0]!.content).toBe(BIO_TOOL_ORDER[0])
     expect(cards[1]!.slot).toBe('app')
-    expect(cards.slice(2).map((c) => c.tool)).toEqual(FREE_TOOLS.map((t) => t.slug))
+  })
+
+  it('orders the tools by traffic, not by the catalogue', () => {
+    /**
+     * /tools is a life sequence — offer letter, first paycheck, then the rest
+     * — which is right for browsing and wrong for a caption tap, where the
+     * reader already knows what they want.
+     */
+    const order = cards.filter((c) => c.slot === 'tool').map((c) => c.content)
+    expect(order).toEqual([...BIO_TOOL_ORDER])
+    expect(order).not.toEqual(FREE_TOOLS.map((t) => routeSlug(t)))
+  })
+
+  it('names every tool in the order list, so none is left to the fallback', () => {
+    // The fallback appends an unlisted tool rather than dropping it, but
+    // landing there means somebody shipped a tool and forgot this file.
+    const missing = FREE_TOOLS.map((t) => routeSlug(t)).filter((s) => !BIO_TOOL_ORDER.includes(s))
+    expect(missing, `not in BIO_TOOL_ORDER: ${missing.join(', ')}`).toEqual([])
+    const unknown = BIO_TOOL_ORDER.filter((s) => !FREE_TOOLS.some((t) => routeSlug(t) === s))
+    expect(unknown, `in BIO_TOOL_ORDER but not a tool: ${unknown.join(', ')}`).toEqual([])
   })
 
   it('lists all ten tools, from the catalogue rather than a second copy', () => {
