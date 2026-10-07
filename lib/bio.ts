@@ -11,19 +11,67 @@
 import { FREE_TOOLS, type FreeTool } from '@/lib/tools'
 
 /**
- * THE ONE LINE THAT CHANGES WEEKLY.
+ * The featured card, OFF.
  *
- * Set it to match Tuesday's carousel. The value is the tool's ROUTE without
- * the leading slash — "first-paycheck-setup", not the analytics slug
- * "first_paycheck" — because that is what also travels as utm_content, and one
- * identifier in one place is easier to get right on a Tuesday morning than two.
+ * It was a good idea that cost more than it returned. Keeping it honest meant
+ * editing this line every Tuesday to match the carousel, and a weekly chore
+ * that silently decays — nobody notices a stale "from this week's post" for a
+ * fortnight — is worse than not having the card. The captions already do the
+ * routing ("First Paycheck Setup tool, link in bio") and someone who tapped
+ * because of a payslip post finds that name in a list of ten in about a
+ * second. That is a scan, not a conversion problem.
  *
- * An empty string hides the featured card. So does a slug that matches no
- * tool: a typo should cost the card, not the page.
+ * The card still works. Set this to a tool's route slug — "first-paycheck-setup",
+ * not the analytics slug "first_paycheck" — and it comes back with the list
+ * unchanged beneath it. Empty, or a slug matching nothing, hides it.
  */
-export const BIO_FEATURED_TOOL = 'first-paycheck-setup'
+export const BIO_FEATURED_TOOL = ''
 
-/** Campaign every link on this page reports under. */
+/**
+ * THE LIST, ORDERED BY TRAFFIC RATHER THAN BY CATALOGUE.
+ *
+ * /tools is ordered as a life sequence — offer letter, first paycheck, then
+ * everything after — which is right for somebody browsing and wrong here.
+ * This page is tapped from a caption by somebody who already knows what they
+ * came for, so the order that matters is how likely each tool is to be it.
+ *
+ * REVIEW ONCE A QUARTER, when the moment changes rather than when the post
+ * does: loan payments climb in November as grace periods end, bonus and
+ * contribution questions in January. One list edit, not a weekly one — which
+ * is the whole reason the featured card went.
+ *
+ * Current order is October traffic. A tool missing from this list still
+ * renders, appended after the ones named here, because a tool that vanishes
+ * from the bio page because somebody forgot to add it is the one failure this
+ * must not have. bio.test.ts fails if that happens, so it is loud rather than
+ * silent.
+ */
+export const BIO_TOOL_ORDER: readonly string[] = [
+  'first-paycheck-setup',
+  'what-is-my-job-offer-worth',
+  'how-should-i-split-my-paycheck',
+  'whats-my-money-age',
+  'first-student-loan-payment',
+  'how-much-rent-can-i-afford',
+  'how-much-emergency-fund-do-i-need',
+  'credit-card-payoff',
+  'should-i-use-buy-now-pay-later',
+  'what-is-saving-monthly-worth',
+]
+
+/**
+ * The app card sits second, always.
+ *
+ * Not first: the top slot belongs to whatever somebody most likely came for,
+ * and on a page reached from a caption that is a tool. Not lower: it is the
+ * one card that is relevant to every visitor whatever brought them, so it
+ * should not be below nine things that are not.
+ *
+ * Stated as a rule rather than an array position because the thing above it
+ * changes — the featured card when that is on, the first tool when it is not.
+ */
+const APP_CARD_INDEX = 1
+
 export const BIO_CAMPAIGN = 'organic_bio'
 
 /**
@@ -131,24 +179,7 @@ export interface BioCard {
  * kind of thing that holds for a month and then quietly does not.
  */
 export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL): BioCard[] {
-  const cards: BioCard[] = []
-
-  const featured = featuredTool(featuredSlug)
-  if (featured) {
-    const content = `featured_${routeSlug(featured)}`
-    cards.push({
-      href: bioHref(featured.href, content, utm),
-      title: featured.name,
-      subtitle: featured.blurb,
-      slot: 'featured',
-      tool: featured.slug,
-      content,
-      utmSource: utm.source,
-      utmMedium: utm.medium,
-    })
-  }
-
-  cards.push({
+  const appCard: BioCard = {
     href: bioHref('/get', 'app', utm),
     title: 'Get WeLeap',
     subtitle: 'Free to start. iOS and Android.',
@@ -157,11 +188,11 @@ export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL):
     content: 'app',
     utmSource: utm.source,
     utmMedium: utm.medium,
-  })
+  }
 
-  for (const tool of FREE_TOOLS) {
+  const toolCard = (tool: FreeTool): BioCard => {
     const content = routeSlug(tool)
-    cards.push({
+    return {
       href: bioHref(tool.href, content, utm),
       title: tool.name,
       subtitle: tool.blurb,
@@ -170,8 +201,41 @@ export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL):
       content,
       utmSource: utm.source,
       utmMedium: utm.medium,
-    })
+    }
   }
 
+  /**
+   * Ordered by BIO_TOOL_ORDER, with anything it does not name appended.
+   *
+   * Appending rather than dropping is deliberate: a tool added to FREE_TOOLS
+   * and forgotten here still appears, just at the bottom. The alternative is a
+   * tool silently missing from the page the Instagram bio points at, which
+   * nobody would notice for weeks.
+   */
+  const named = BIO_TOOL_ORDER.map((slug) => toolByRouteSlug(slug)).filter(
+    (t): t is FreeTool => t !== null,
+  )
+  const namedHrefs = new Set(named.map((t) => t.href))
+  const rest = FREE_TOOLS.filter((t) => !namedHrefs.has(t.href))
+  const tools = [...named, ...rest]
+
+  const featured = featuredTool(featuredSlug)
+  const cards: BioCard[] = featured
+    ? [
+        {
+          href: bioHref(featured.href, `featured_${routeSlug(featured)}`, utm),
+          title: featured.name,
+          subtitle: featured.blurb,
+          slot: 'featured',
+          tool: featured.slug,
+          content: `featured_${routeSlug(featured)}`,
+          utmSource: utm.source,
+          utmMedium: utm.medium,
+        },
+        ...tools.map(toolCard),
+      ]
+    : tools.map(toolCard)
+
+  cards.splice(APP_CARD_INDEX, 0, appCard)
   return cards
 }
