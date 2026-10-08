@@ -88,7 +88,31 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
   }, []);
 
   const playLive = STORE_AVAILABLE.googlePlay;
-  const hrefs = { appStore: appStoreUrl(utm), googlePlay: playStoreUrl(utm) };
+
+  /**
+   * An untagged visit — somebody typing weleap.ai/get — is labelled `direct`
+   * for Apple and left alone for Play. The asymmetry is deliberate.
+   *
+   * APPLE NEEDS A TOKEN. App Store Connect has no row at all without a `ct`,
+   * so the choice is which word, not whether. Today every untagged store link
+   * on the site falls back to `launch`, which means a typed /get and a badge
+   * tap on the homepage land in the same row and cannot be told apart. Giving
+   * this page its own `direct` separates the traffic that deliberately came
+   * here from the traffic that drifted into a badge.
+   *
+   * PLAY MUST NOT BE GIVEN ONE. The old /get carried a note worth keeping:
+   * "we never invent 'direct'/'none' placeholders, they would pollute the
+   * store reports." That is right for Play, which already has an organic
+   * bucket — inventing utm_campaign=direct would move genuinely organic
+   * installs into a campaign that does not exist and overstate paid
+   * acquisition. Apple has no equivalent bucket, which is the whole reason the
+   * two are treated differently.
+   *
+   * The PostHog event is left honest either way: campaign stays empty, because
+   * there was no campaign and our own analytics can represent that.
+   */
+  const appleUtm: StoreUtm = hasAnyUtm(utm) ? utm : { utm_campaign: 'direct' };
+  const hrefs = { appStore: appStoreUrl(appleUtm), googlePlay: playStoreUrl(utm) };
   const androidWaiting = device === 'android' && !playLive;
   const isPhone = device === 'ios' || device === 'android';
 
@@ -120,7 +144,7 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
      * survives regardless, which is what a Conversions API copy dedupes on,
      * and the per-UTM detail is on PostHog's event below either way.
      */
-    fbq('track', 'Lead', { content_name: appStoreCampaignToken(utm) }, { eventID: eventId });
+    fbq('track', 'Lead', { content_name: appStoreCampaignToken(appleUtm) }, { eventID: eventId });
 
     // Property names unchanged from the load-time version on purpose — saved
     // insights read them. `trigger` and `platform` are added, not swapped in.

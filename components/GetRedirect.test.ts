@@ -83,7 +83,7 @@ describe('the tap', () => {
     // So a Conversions API copy can dedupe against the pixel later.
     const handler = src.slice(src.indexOf('const onStoreTap'), src.indexOf('/* ── Phones'))
     expect(handler).toMatch(/const eventId = newEventId\(\)/)
-    expect(handler).toMatch(/fbq\('track', 'Lead', \{ content_name: appStoreCampaignToken\(utm\) \}, \{ eventID: eventId \}\)/)
+    expect(handler).toMatch(/fbq\('track', 'Lead', \{ content_name: appStoreCampaignToken\(appleUtm\) \}, \{ eventID: eventId \}\)/)
     expect(handler).toMatch(/event_id: eventId/)
     expect(handler).toMatch(/trigger: 'tap'/)
     expect(handler).toMatch(/platform: device/)
@@ -118,5 +118,41 @@ describe('desktop', () => {
     // events, and a desktop install goes missing from the phone's funnel.
     expect(src).toMatch(/qr-get-app\.png/)
     expect(src).toMatch(/onStoreClick=\{onStoreTap\}/)
+  })
+})
+
+
+describe('an untagged visit — somebody typing weleap.ai/get', () => {
+  /**
+   * The asymmetry is the point, so it is pinned rather than left to a comment.
+   */
+  it('labels it `direct` for Apple, which has no row without a token', () => {
+    /**
+     * Every untagged store link on the site falls back to `launch`, so a typed
+     * /get and a homepage badge tap land in the same App Store Connect row and
+     * cannot be told apart. This page gets its own word.
+     */
+    expect(src).toMatch(/const appleUtm: StoreUtm = hasAnyUtm\(utm\) \? utm : \{ utm_campaign: 'direct' \}/)
+    expect(src).toMatch(/appStoreUrl\(appleUtm\)/)
+  })
+
+  it('leaves Play alone, which already has an organic bucket', () => {
+    /**
+     * The old /get carried a note worth keeping: "we never invent
+     * 'direct'/'none' placeholders, they would pollute the store reports."
+     * Inventing utm_campaign=direct here would move genuinely organic installs
+     * into a campaign that does not exist and overstate paid acquisition.
+     */
+    expect(src).toMatch(/playStoreUrl\(utm\)/)
+    expect(src).not.toMatch(/playStoreUrl\(appleUtm\)/)
+  })
+
+  it('keeps the PostHog event honest', () => {
+    // There was no campaign, and our own analytics can represent that.
+    expect(src).toMatch(/campaign: utm\.utm_campaign \?\? ''/)
+  })
+
+  it('sends Meta the same token the href carries', () => {
+    expect(src).toMatch(/content_name: appStoreCampaignToken\(appleUtm\)/)
   })
 })
