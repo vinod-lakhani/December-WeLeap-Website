@@ -21,18 +21,19 @@ describe('the App Store campaign token', () => {
     utm_term: 'joshua',
   }
 
-  it('is campaign_content_term, because Apple gives us one string', () => {
+  it('is campaign_source_content_term, because Apple gives us one string', () => {
     /**
      * App Store Connect reports installs by `ct` and nothing else — there is
      * no second field for the person. So it rides in the token: which
      * campaign, which card, whose audience, in the one place Apple will show.
      */
-    expect(appStoreCampaignToken(utm)).toBe('organic_bio_app_joshua')
+    expect(appStoreCampaignToken(utm)).toBe('organic_bio_instagram_app_joshua')
   })
 
-  it('still reads as it did before when nobody is named', () => {
-    const withoutPerson = { ...utm, utm_term: undefined }
-    expect(appStoreCampaignToken(withoutPerson)).toBe('organic_bio_app')
+  it('omits the person when nobody is named', () => {
+    expect(appStoreCampaignToken({ ...utm, utm_term: undefined })).toBe('organic_bio_instagram_app')
+    // The house default reads the same as absent — see the note on HOUSE_TERM.
+    expect(appStoreCampaignToken({ ...utm, utm_term: 'weleap' })).toBe('organic_bio_instagram_app')
   })
 
   it('falls back to source_term when there is no campaign', () => {
