@@ -29,6 +29,15 @@ export interface StoreBadgesProps {
   /** Attributed links (from lib/stores appStoreUrl/playStoreUrl). Defaults to
       the bare listing URLs, so only /get needs to pass them. */
   hrefs?: { appStore?: string; googlePlay?: string };
+  /**
+   * Extra work on a badge tap, on top of the badge's own event.
+   *
+   * /get passes its store-tap handler so a desktop badge fires the same Lead
+   * and store_link_clicked a phone's button does. Without it the two surfaces
+   * would report the same action under different events, and a desktop install
+   * would be missing from the funnel the phone one appears in.
+   */
+  onStoreClick?: (store: 'app_store' | 'google_play', href: string) => void;
 }
 
 export function StoreBadges({
@@ -36,9 +45,12 @@ export function StoreBadges({
   comingSoon = { appStore: !STORE_AVAILABLE.appStore, googlePlay: !STORE_AVAILABLE.googlePlay },
   className = '',
   hrefs,
+  onStoreClick,
 }: StoreBadgesProps) {
   const go = (store: 'app_store' | 'google_play', href: string) => {
     track('store_badge_clicked', { store, placement });
+    // Neither call blocks the navigation below; both are fire-and-forget.
+    onStoreClick?.(store, href);
     window.location.href = href;
   };
 
