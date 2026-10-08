@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { appStoreCampaignToken, appStoreUrl, cleanUtm, playStoreUrl, sanitizeToken } from './stores'
+import {
+  HOUSE_TERM,
+  appStoreCampaignToken,
+  appStoreUrl,
+  cleanUtm,
+  playStoreUrl,
+  sanitizeToken,
+} from './stores'
 
 const ad = { utm_source: 'meta', utm_medium: 'paid', utm_campaign: 'lal1', utm_content: 'L1' }
 
@@ -19,17 +26,53 @@ describe('cleanUtm', () => {
 })
 
 describe('appStoreCampaignToken', () => {
-  it('is campaign_content for ads', () => expect(appStoreCampaignToken(ad)).toBe('lal1_l1'))
-  it('is campaign_source without content', () =>
-    expect(appStoreCampaignToken({ utm_source: 'vinod', utm_campaign: 'network_oct26' })).toBe('network_oct26_vinod'))
+  /**
+   * campaign_source_content_term. Apple gives us one string and no other
+   * field, so the channel, the placement and the person all fold into it.
+   */
+  it('is campaign_source_content for ads', () =>
+    expect(appStoreCampaignToken(ad)).toBe('lal1_meta_l1'))
+
+  it('drops the parts that are absent rather than leaving gaps', () =>
+    expect(appStoreCampaignToken({ utm_source: 'vinod', utm_campaign: 'network_oct26' })).toBe(
+      'network_oct26_vinod',
+    ))
+
+  it('appends a named creator, and omits the house account', () => {
+    /**
+     * utm_term defaults to "weleap" on the bio page so the field is never
+     * missing from an event. Repeating it in every token would add a word to
+     * every row saying only "nobody in particular", and it is what would
+     * otherwise make a plain bio tap read organic_bio_instagram_app_weleap.
+     */
+    const bio = { utm_campaign: 'organic_bio', utm_source: 'tiktok', utm_content: 'app' }
+    expect(appStoreCampaignToken({ ...bio, utm_term: 'joshua' })).toBe(
+      'organic_bio_tiktok_app_joshua',
+    )
+    expect(appStoreCampaignToken({ ...bio, utm_term: HOUSE_TERM })).toBe('organic_bio_tiktok_app')
+  })
+
   it('falls back to launch', () => expect(appStoreCampaignToken({})).toBe('launch'))
+
+  it('keeps the person inside the 40-character cap at realistic lengths', () => {
+    // sanitizeToken truncates, and the tail is the person. Worth knowing the
+    // margin rather than discovering it when a campaign name grows.
+    const longest = appStoreCampaignToken({
+      utm_campaign: 'organic_bio',
+      utm_source: 'instagram',
+      utm_content: 'app',
+      utm_term: 'joshua',
+    })
+    expect(longest).toBe('organic_bio_instagram_app_joshua')
+    expect(longest.length).toBeLessThanOrEqual(40)
+  })
 })
 
 describe('appStoreUrl', () => {
   it('carries pt, ct and mt', () => {
     const u = new URL(appStoreUrl(ad, 'PT123'))
     expect(u.searchParams.get('pt')).toBe('PT123')
-    expect(u.searchParams.get('ct')).toBe('lal1_l1')
+    expect(u.searchParams.get('ct')).toBe('lal1_meta_l1')
     expect(u.searchParams.get('mt')).toBe('8')
   })
   it('defaults to the App Store Connect provider token and campaign path', () => {

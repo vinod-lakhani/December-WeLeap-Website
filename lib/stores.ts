@@ -63,22 +63,45 @@ export function cleanUtm(utm: StoreUtm): StoreUtm {
 }
 
 /** `ct` = campaign_content, else campaign_source, else source, else 'launch'. */
+/**
+ * The house account, when no creator is named.
+ *
+ * Lives here rather than in lib/bio.ts because both the bio page's default and
+ * the campaign token's rule below need the same word, and two copies of it
+ * would drift the first time somebody renamed one.
+ */
+export const HOUSE_TERM = 'weleap';
+
+/**
+ * campaign_source_content_term, in that order, empty parts dropped.
+ *
+ * App Store Connect reports installs by `ct` and gives us nothing else — no
+ * second field for the channel, the placement or the person. So everything
+ * that matters is folded into the one string Apple will show:
+ *
+ *   lal1_meta_l3                      a Meta ad set, third creative
+ *   organic_bio_instagram_app         the bio link, from Instagram
+ *   organic_bio_tiktok_app_joshua     the same, from TikTok, via Joshua
+ *
+ * SOURCE SITS IN THE MIDDLE because campaign and content are the pair that
+ * read as a unit — "which campaign, which thing in it" — and splitting them
+ * with the channel keeps the eye on the part that changes most between rows.
+ *
+ * THE HOUSE TERM IS OMITTED. utm_term defaults to "weleap" on the bio page so
+ * the field is never missing from an event, but repeating it in every token
+ * would add a word to every row that says only "nobody in particular". A named
+ * creator still appears. This is also what makes a plain bio tap read as
+ * organic_bio_instagram_app rather than organic_bio_instagram_app_weleap.
+ *
+ * Mind the 40-character cap in sanitizeToken: the tail is what gets cut, and
+ * the tail is the person. Current longest real token is 29.
+ */
 export function appStoreCampaignToken(utm: StoreUtm): string {
   const u = cleanUtm(utm);
-  /**
-   * campaign_content_term, because Apple gives us ONE string.
-   *
-   * App Store Connect reports installs by `ct` and nothing else — there is no
-   * second field to put the person in. So the person is appended to the token
-   * rather than carried separately: organic_bio_app_joshua says which campaign,
-   * which card, and whose audience, in the one place Apple will show it.
-   *
-   * Each part is optional and empty ones drop out, so a visit with no person
-   * still reads organic_bio_app exactly as it did before this.
-   */
+  const person = u.utm_term && u.utm_term !== HOUSE_TERM ? u.utm_term : '';
   const parts = u.utm_campaign
-    ? [u.utm_campaign, u.utm_content ?? u.utm_source, u.utm_term]
-    : [u.utm_source, u.utm_term];
+    ? [u.utm_campaign, u.utm_source, u.utm_content, person]
+    : [u.utm_source, person];
   return sanitizeToken(parts.filter(Boolean).join('_')) || 'launch';
 }
 

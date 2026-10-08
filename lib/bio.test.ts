@@ -299,3 +299,61 @@ describe('the person the tap came from', () => {
     expect(links).toMatch(/utm_term: card\.utmTerm/)
   })
 })
+
+describe('the src shorthand', () => {
+  /**
+   * /bio?src=tiktok exists because a bio link gets retyped, dictated and
+   * pasted into four different apps' profile fields, and "utm_source=tiktok"
+   * does not survive that as reliably as "src=tiktok".
+   */
+  it('sets the source for every link on the page', () => {
+    const utm = resolveBioUtm({ src: 'tiktok' })
+    expect(utm.source).toBe('tiktok')
+    for (const card of bioCards(utm)) {
+      expect(new URL(card.href, 'https://www.weleap.ai').searchParams.get('utm_source')).toBe(
+        'tiktok',
+      )
+    }
+  })
+
+  it('accepts exactly the four networks this link lives on', () => {
+    for (const s of ['instagram', 'tiktok', 'linkedin', 'youtube']) {
+      expect(resolveBioUtm({ src: s }).source, s).toBe(s)
+    }
+  })
+
+  it('falls back to Instagram for anything it does not recognise', () => {
+    /**
+     * An allow-list rather than a pass-through, because this value reaches the
+     * App Store campaign token and every report built on utm_source. One typo
+     * in a profile field would otherwise create a channel that exists only in
+     * the data — "tikok" beside "tiktok" forever, with no way to tell later
+     * which rows belonged where.
+     */
+    for (const s of ['tikok', 'facebook', 'TIKTOK; drop', '', '  ']) {
+      expect(resolveBioUtm({ src: s }).source, JSON.stringify(s)).toBe('instagram')
+    }
+    expect(resolveBioUtm({}).source).toBe('instagram')
+  })
+
+  it('is case-insensitive, because a profile field is not', () => {
+    expect(resolveBioUtm({ src: 'TikTok' }).source).toBe('tiktok')
+  })
+
+  it('yields to utm_source when a link carries both', () => {
+    /**
+     * src is a shorthand for hand-built links; utm_source is the canonical
+     * parameter every ad platform emits. A URL carrying both is almost
+     * certainly a bio link that picked up a campaign tag downstream, and the
+     * campaign's own answer is the right one.
+     */
+    expect(resolveBioUtm({ src: 'tiktok', utm_source: 'meta' }).source).toBe('meta')
+  })
+
+  it('leaves medium and term alone', () => {
+    const utm = resolveBioUtm({ src: 'linkedin' })
+    expect(utm.medium).toBe('bio')
+    expect(utm.term).toBe('weleap')
+    expect(utm.campaign).toBe('organic_bio')
+  })
+})

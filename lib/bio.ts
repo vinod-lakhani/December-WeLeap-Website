@@ -9,6 +9,7 @@
  */
 
 import { FREE_TOOLS, type FreeTool } from '@/lib/tools'
+import { HOUSE_TERM } from '@/lib/stores'
 
 /**
  * The featured card, OFF.
@@ -97,7 +98,24 @@ export const BIO_DEFAULT_MEDIUM = 'bio'
  * missing. An absent value and a house-account value look identical in a
  * funnel otherwise, and the difference is exactly the question being asked.
  */
-export const BIO_DEFAULT_TERM = 'weleap'
+export const BIO_DEFAULT_TERM = HOUSE_TERM
+
+/**
+ * The sources a `src` shorthand may name.
+ *
+ * /bio?src=tiktok exists because a bio link gets retyped, dictated and pasted
+ * into four different apps' profile fields, and "utm_source=tiktok" does not
+ * survive that as reliably as "src=tiktok" does.
+ *
+ * An allow-list rather than a pass-through, because this value ends up in the
+ * App Store campaign token and in every report built on utm_source. One typo
+ * in a profile field would otherwise create a channel that exists only in the
+ * data — "tikok" sitting beside "tiktok" forever, with no way to tell later
+ * which rows belonged where. Anything unrecognised falls back to Instagram,
+ * which is where this link mostly lives and what the page did before `src`
+ * existed.
+ */
+export const BIO_SOURCES = ['instagram', 'tiktok', 'linkedin', 'youtube'] as const
 
 /** A tool's route slug: the href without its leading slash. */
 export function routeSlug(tool: Pick<FreeTool, 'href'>): string {
@@ -151,7 +169,19 @@ export function resolveBioUtm(searchParams?: Record<string, ParamValue>): BioUtm
    */
   const term = first(searchParams?.utm_term) || BIO_DEFAULT_TERM
 
-  const source = first(searchParams?.utm_source)
+  /**
+   * utm_source wins over src when both are present.
+   *
+   * src is a shorthand for building bio links by hand; utm_source is the
+   * canonical parameter and is what every other link on the site and every ad
+   * platform emits. A URL carrying both is almost certainly a bio link that
+   * has picked up a campaign tag downstream, and in that case the campaign's
+   * own answer is the right one.
+   */
+  const src = first(searchParams?.src).toLowerCase()
+  const fromSrc = (BIO_SOURCES as readonly string[]).includes(src) ? src : ''
+
+  const source = first(searchParams?.utm_source) || fromSrc
   if (source) {
     return {
       source,
