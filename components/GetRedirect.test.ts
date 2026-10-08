@@ -60,6 +60,22 @@ describe('the button', () => {
     expect(src).toMatch(/device === 'ios' \? 'Get the app' : 'Get it on Google Play'/)
     expect(src).toMatch(/Free to start\./)
   })
+
+  it('does not ask for bank access before anything is installed', () => {
+    /**
+     * "Connect your accounts" was in the spec and is cut. Naming the biggest
+     * commitment the product asks for, to somebody who has not installed it
+     * yet, answers a question they have not reached and is the answer most
+     * likely to end the visit. On a page paid traffic lands on, that is the
+     * expensive kind of honesty.
+     */
+    // Comments stripped first: the component explains WHY the line is gone,
+    // and that explanation necessarily contains the words. An earlier version
+    // of this test matched its own rationale and failed on a correct file.
+    const codeOnly = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    const body = codeOnly.slice(codeOnly.indexOf('<main'))
+    expect(body).not.toMatch(/Connect your accounts/)
+  })
 })
 
 describe('the tap', () => {

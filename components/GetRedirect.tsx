@@ -157,8 +157,13 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
           The one money move to make next.
         </h1>
 
-        <p className="mt-4 text-[16.5px] leading-relaxed text-subtle">Connect your accounts.</p>
-        <p className="mt-1.5 text-[16.5px] leading-relaxed text-subtle">
+        {/* "Connect your accounts" was the spec's first line and it is cut.
+            Naming the biggest commitment the product asks for, before somebody
+            has installed anything, is the wrong first sentence on a page paid
+            traffic lands on — it answers a question nobody has reached yet and
+            it is the one answer most likely to end the visit. What the app
+            does for them survives on its own. */}
+        <p className="mt-4 text-[16.5px] leading-relaxed text-subtle">
           WeLeap ranks what matters and hands you the next move, ready to approve.
         </p>
 
