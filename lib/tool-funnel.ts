@@ -46,3 +46,74 @@ export function useResultShown(tool: string, hasResult: boolean, campaign = fals
     track('tool_result_shown', { tool, ...(campaign ? { campaign: true } : {}) })
   }, [tool, hasResult, campaign])
 }
+
+
+/* ------------------------------------------------------------------ *
+ * Once per session, not once per mount.
+ * ------------------------------------------------------------------ */
+
+const COMPLETED_KEY = 'wle_tool_completed'
+
+/**
+ * Whether this tool has already reported a completion in this tab.
+ *
+ * The guard used to be a ref, which is per MOUNT. A reload re-armed it, so
+ * somebody who worked out their rent, refreshed, and changed a field again
+ * produced two completions — and a cost-per-completion figure divides by that
+ * number. `run_index` records that a second run happened; it was never meant
+ * to suppress the event.
+ *
+ * sessionStorage rather than localStorage, deliberately. A person coming back
+ * tomorrow with a different salary HAS completed the tool again and should
+ * count again; what must not count twice is one sitting. Per tab is the
+ * closest available stand-in for one sitting.
+ *
+ * Fails open. If storage throws — Safari private mode, blocked site data — the
+ * event fires. Missing a duplicate is better than missing every completion on
+ * a browser that will not let us remember.
+ */
+function completedSet(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(COMPLETED_KEY)
+    return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+/**
+ * Claims the one completion this tool gets this session.
+ *
+ * Returns true the first time and false afterwards, so a caller can use it
+ * directly as the gate. Writing happens inside the claim rather than being
+ * left to the caller: a check-then-set split across two call sites is how a
+ * guard ends up not guarding.
+ */
+export function claimToolCompletion(tool: string): boolean {
+  /**
+   * Keyed on sessionStorage rather than window, because storage is the actual
+   * dependency. The two differ in the case that matters: on the server there
+   * is no storage and no event should fire, while in a browser that refuses
+   * storage there IS a visitor and the event should. Checking `window` cannot
+   * tell those apart.
+   */
+  if (typeof sessionStorage === 'undefined') return false
+  const seen = completedSet()
+  if (seen.has(tool)) return false
+  seen.add(tool)
+  try {
+    sessionStorage.setItem(COMPLETED_KEY, JSON.stringify([...seen]))
+  } catch {
+    /* fails open: the event still fires, it just may fire again after a reload */
+  }
+  return true
+}
+
+/** Test seam. Never called by a component. */
+export function __resetToolCompletions(): void {
+  try {
+    sessionStorage.removeItem(COMPLETED_KEY)
+  } catch {
+    /* nothing to reset */
+  }
+}

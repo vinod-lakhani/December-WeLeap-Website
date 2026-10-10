@@ -26,7 +26,7 @@ import {
   offerClaimHeadline,
 } from '@/lib/share/offerClaim';
 import { useCountReveal } from '@/lib/feedback-reveal';
-import { useResultShown } from '@/lib/tool-funnel';
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel';
 import { localTaxAnnual } from '@/lib/localTax';
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
 import { cn } from '@/lib/utils';
@@ -390,9 +390,19 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
    * counting it as zero engagement would have reported the people who used the
    * feature it was built around as bounces.
    */
+  /**
+   * What produced the completion: a typed field, or a parsed document.
+   *
+   * Recorded from the FIRST engagement rather than the last, because the
+   * question it answers is which route into the tool works — somebody who
+   * uploads and then tweaks a number was brought here by the upload.
+   */
+  const [firstTrigger, setFirstTrigger] = useState<'field_change' | 'upload' | null>(null);
+
   const markEngaged = useCallback((source: string) => {
     if (!engagedRef.current) {
       engagedRef.current = true;
+      setFirstTrigger(source.startsWith('upload') ? 'upload' : 'field_change');
       track('tool_engaged', { tool: 'offer', first_field: source });
     }
     setFieldChangeCount((n) => n + 1);
@@ -955,9 +965,14 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
    * engagement until they happened to edit something afterwards.
    */
   const analysisComplete = hasResults && fieldChangeCount > 0;
+  /**
+   * Per SESSION, not per mount. The ref alone re-armed on every reload, so one
+   * sitting with a refresh in it reported two completions — and cost per
+   * completion divides by that number. See lib/tool-funnel.ts.
+   */
   const toolCompletedRef = useRef(false);
   useEffect(() => {
-    if (analysisComplete && !toolCompletedRef.current) {
+    if (analysisComplete && !toolCompletedRef.current && claimToolCompletion('offer')) {
       toolCompletedRef.current = true;
       // `campaign` only on campaign sessions, so the organic event stays
       // byte-identical to what every saved dashboard already reads — and the
@@ -965,6 +980,8 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
       track('tool_completed', {
         tool: 'offer',
         run_index: nextRunIndex('offer'),
+        trigger: firstTrigger ?? 'field_change',
+        fields_changed: fieldChangeCount,
         ...(campaign ? { campaign: true } : {}),
       });
       // The CTA leads with the employer match where there is one, and falls
@@ -976,7 +993,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
           : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
       );
     }
-  }, [analysisComplete, calc, salary, campaign]);
+  }, [analysisComplete, calc, salary, campaign, firstTrigger, fieldChangeCount]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">

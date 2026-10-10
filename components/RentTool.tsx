@@ -26,7 +26,7 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { appLink } from '@/lib/app-link';
@@ -160,11 +160,20 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
    * the campaign path this matters on, where the result arrives pre-filled.
    */
   useEffect(() => {
-    if (hasResult && engagementCount > 0 && !toolCompletedRef.current) {
+    // claimToolCompletion is per SESSION; the ref alone re-armed on reload, so
+    // one sitting with a refresh in it reported two completions.
+    if (hasResult && engagementCount > 0 && !toolCompletedRef.current && claimToolCompletion('rent')) {
       toolCompletedRef.current = true;
       track('tool_completed', {
         tool: 'rent',
         run_index: nextRunIndex('rent'),
+        /**
+         * Always field_change here: this tool takes no documents. Sent
+         * explicitly rather than omitted, so a query grouping completions by
+         * trigger does not have to special-case the tools without an upload.
+         */
+        trigger: 'field_change',
+        fields_changed: engagementCount,
         ...(campaign ? { campaign: true } : {}),
       });
     }

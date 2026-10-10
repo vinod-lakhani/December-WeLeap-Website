@@ -85,7 +85,7 @@ describe('the hops that have to keep the field', () => {
      * is retroactively re-attributed.
      */
     const analytics = read('lib/analytics.ts')
-    expect(analytics).toMatch(/CAMPAIGN_TAGGED_EVENTS = new Set\(\['tool_viewed', 'tool_completed'\]\)/)
+    expect(analytics).toMatch(/CAMPAIGN_TAGGED_EVENTS = new Set\(\['tool_viewed', 'tool_completed', 'tool_cta_clicked'\]\)/)
     // Merged under the caller's params, so nothing existing can be overwritten.
     expect(analytics).toMatch(/\{ \.\.\.getUtmEventProps\(\), \.\.\.\(params \?\? \{\}\) \}/)
   })

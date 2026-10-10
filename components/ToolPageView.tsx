@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { track } from '@/lib/analytics'
+import { fbq } from '@/lib/meta-pixel'
 
 /**
  * Fires the first step of the tool funnel, and nothing else.
@@ -62,6 +63,21 @@ export function ToolPageView({
     // on, since they are the denominator for everything below them.
     const timer = setTimeout(() => {
       track('tool_viewed', { tool, page, ...(campaign ? { campaign: true } : {}) }, true)
+
+      /**
+       * Meta's ViewContent, named by the tool.
+       *
+       * A standard event, so Meta can build an audience of "people who opened
+       * the offer tool" without anything else being configured. content_name
+       * is the FREE_TOOLS slug — the same id tool_viewed and tool_completed
+       * use — so the pixel and PostHog describe the same thing by the same
+       * name when somebody compares them.
+       *
+       * Fires alongside tool_viewed rather than in its own effect, so the two
+       * cannot drift apart on a route where one was wired and the other was
+       * forgotten.
+       */
+      fbq('track', 'ViewContent', { content_name: tool })
       if (legacyEvent) {
         track(
           legacyEvent,
