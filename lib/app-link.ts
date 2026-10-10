@@ -81,5 +81,18 @@ export function appLink(path = "", extraParams?: Record<string, string>): string
   }
 
   const qs = params.toString()
-  return qs ? `${APP_BASE_URL}${path}?${qs}` : `${APP_BASE_URL}${path}`
+  if (!qs) return `${APP_BASE_URL}${path}`
+
+  /**
+   * The query string must go BEFORE any fragment, not after it.
+   *
+   * The offer tool deep-links to `/react/#analyze`. Appending `?...` to that
+   * gave `/react/#analyze?utm_source=...`, which is one fragment containing a
+   * question mark: `location.search` on the app is empty, so posthog-js never
+   * saw the UTMs and `user_signed_up` carried no campaign. The params arrived
+   * at the domain and were invisible to the only consumer that matters.
+   */
+  const hashAt = path.indexOf("#")
+  if (hashAt === -1) return `${APP_BASE_URL}${path}?${qs}`
+  return `${APP_BASE_URL}${path.slice(0, hashAt)}?${qs}${path.slice(hashAt)}`
 }

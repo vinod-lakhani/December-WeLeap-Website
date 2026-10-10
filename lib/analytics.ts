@@ -187,6 +187,7 @@
 
 import { track as vercelTrack } from '@vercel/analytics';
 import { getUtmEventProps } from '@/lib/utm-storage'
+import { fbq } from '@/lib/meta-pixel'
 // Not a static `posthog-js` import: this module is pulled in by every tool
 // page, so importing the SDK here would keep it in the initial bundle no
 // matter how the provider loads it. See lib/posthog-lazy.ts.
@@ -263,7 +264,35 @@ function waitForGtag(maxWaitMs: number = 3000): Promise<void> {
  * one, and a funnel missing a single tool is worse than one missing all of
  * them, because the gap is invisible rather than obvious.
  */
-const CAMPAIGN_TAGGED_EVENTS = new Set(['tool_viewed', 'tool_completed'])
+const CAMPAIGN_TAGGED_EVENTS = new Set(['tool_viewed', 'tool_completed', 'tool_cta_clicked'])
+
+/**
+ * Funnel events that get an `event_id`, and what Meta is told about them.
+ *
+ * One id per occurrence, shared by the PostHog event and the pixel, so a
+ * Conversions API copy can be deduped against the browser one later. The id is
+ * generated here rather than at each call site for the same reason the UTMs
+ * are: there are ten tools and a funnel missing one is worse than a funnel
+ * missing all ten, because the gap is invisible.
+ *
+ * A caller that supplies its own event_id keeps it — /get builds one before it
+ * fires the pixel and must not be given a second.
+ */
+const EVENT_ID_EVENTS = new Set(['tool_completed', 'tool_cta_clicked'])
+
+/** Meta custom events, keyed by the PostHog event that triggers them. */
+const META_CUSTOM_EVENTS: Record<string, string> = {
+  tool_completed: 'ToolCompleted',
+}
+
+function newEventId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  } catch {
+    /* fall through */
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 export async function track(eventName: string, params?: Record<string, any>, waitForGtagLoading: boolean = false) {
   /**
@@ -273,6 +302,28 @@ export async function track(eventName: string, params?: Record<string, any>, wai
    */
   if (CAMPAIGN_TAGGED_EVENTS.has(eventName) && typeof window !== 'undefined') {
     params = { ...getUtmEventProps(), ...(params ?? {}) };
+  }
+
+  if (EVENT_ID_EVENTS.has(eventName) && typeof window !== 'undefined' && !params?.event_id) {
+    params = { ...(params ?? {}), event_id: newEventId() };
+  }
+
+  /**
+   * The Meta twin, with the same id.
+   *
+   * trackCustom rather than track: ToolCompleted is not one of Meta's standard
+   * events. Nothing optimises against it yet — it exists so a later campaign
+   * can, and a custom event with no history is worth nothing on the day you
+   * decide you need it.
+   *
+   * `Lead` deliberately does NOT appear here. It stays on the /get store
+   * button alone, because that is the action worth paying for; firing it on a
+   * tool completion would teach Meta to buy people who use a calculator and
+   * leave.
+   */
+  const metaEvent = typeof window !== 'undefined' ? META_CUSTOM_EVENTS[eventName] : undefined;
+  if (metaEvent && params?.tool) {
+    fbq('trackCustom', metaEvent, { tool: params.tool }, { eventID: params.event_id });
   }
 
   // Debug logging when enabled
