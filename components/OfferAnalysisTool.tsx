@@ -885,7 +885,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
   }, []);
 
   // ── CTA ──────────────────────────────────────────────────────────────────────
-  const handleSignUp = useCallback((placement: 'button' | 'preview_tile' = 'button') => {
+  const handleSignUp = useCallback((placement: 'button' | 'preview_tile' | 'hero' = 'button') => {
     if (!salary) return;
     // Phase 0 funnel event (mirrors the rent tool with tool: 'offer').
     // `placement` distinguishes the primary button from the clickable preview
@@ -1034,6 +1034,17 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
             if (newSalary > 0) trackFieldChange('salary', newSalary);
           }}
           onUploadClick={jumpToUpload}
+          ctaSlot={
+            <div>
+              <Button
+                onClick={() => handleSignUp('hero')}
+                className="w-full bg-[#386641] py-3.5 text-[15px] font-bold text-white hover:bg-[#2d5235]"
+              >
+                Build my plan on this salary →
+              </Button>
+              <p className="mt-2 text-center text-[12.5px] text-faint">Free · 2 minutes · No credit card.</p>
+            </div>
+          }
           shareSlot={
             calc && calc.totalPackage > salary ? (
               <OfferShareCard

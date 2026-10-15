@@ -40,6 +40,8 @@ import {
   marketRentVerdict,
 } from '@/lib/rent'
 import { RENT_EXAMPLE } from '@/lib/rentCampaign/example'
+import { RentFirstMove } from '@/components/RentFirstMove'
+import { appLink } from '@/lib/app-link'
 import { useTaxEstimate } from '@/lib/tax/useTaxEstimate'
 
 const fc = (n: number) =>
@@ -427,6 +429,31 @@ export function RentCampaignHero({
           </>
         )}
       </div>
+
+      {/* The ask, on the screen the ad paid for.
+          This card used to live only in the results block below, which renders
+          after the form is submitted — and submitting needs a start date that
+          is empty by default and was never in the ad. So paid traffic reached
+          a page with no link to the app at all: 166 visits, 0 submissions, 0
+          CTA clicks over 13-15 Oct. The hero already has the range, so the
+          strongest thing on the page can simply be shown. */}
+      {ready && rent.high > rent.low && (
+        <div className="mt-6">
+          <RentFirstMove
+            rentRangeLow={rent.low}
+            rentRangeHigh={rent.high}
+            formatCurrency={fc}
+            onCtaClick={() => {
+              // `hero` rather than `button`, so the campaign landing's CTA is
+              // separable from the one in the results block. They answer
+              // different questions: did the ad's own screen convert, or did
+              // the tool underneath it.
+              track('tool_cta_clicked', { tool: 'rent', placement: 'hero' })
+              window.location.href = appLink('', { src: 'rent' })
+            }}
+          />
+        </div>
+      )}
 
       <p className="mt-3.5 text-center text-[14.5px] text-subtle">
         <button

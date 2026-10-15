@@ -23,7 +23,7 @@ import { RENT_EXAMPLE } from '@/lib/rentCampaign/example';
 import { localTaxAnnual } from '@/lib/localTax';
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
 import { RentCampaignHero } from '@/components/RentCampaignHero';
-import { computeInvestingImpact } from '@/lib/networthImpact/math';
+import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
@@ -466,9 +466,6 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
     leapShownRef.current = true;
     trackLeapShown({ tool: 'rent', leapType: 'rent_reduction', leapValueUsd: leapMonthly });
   }, [results, leapMonthly]);
-  const leapThirtyYear = leapMonthly > 0
-    ? Math.round(computeInvestingImpact(leapMonthly, 0.07, 30))
-    : 0;
 
   /**
    * Cash needed before the first paycheck.
@@ -733,89 +730,25 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
         <div className="space-y-8">
           <ResultsCards
             afterHero={
-              <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">
-                <CardContent className="py-6 space-y-4">
-                  {/* Lead with the actual decision in front of them — the spread
-                      between the low and high end of their own range — not a
-                      generic "we'll build you a plan". The number is already
-                      computed; showing it is what makes signing up concrete. */}
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">
-                    Your first move
-                  </p>
-                  <h3 className="text-xl font-bold text-[#111827]">
-                    Rent at {formatCurrency(rentRangeLow)} instead of {formatCurrency(rentRangeHigh)} and you free up{' '}
-                    <span className="text-[#3F6B42]">{formatCurrency(leapMonthly)}/mo</span>.
-                  </h3>
-
-                  {leapThirtyYear > 0 && (
-                    <div className="rounded-2xl border border-[#3F6B42]/25 bg-white px-5 py-4">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
-                        What that&apos;s worth if you invest it
-                      </p>
-                      <p className="mt-1 text-[30px] font-extrabold leading-none text-[#111827] tabular-nums">
-                        {formatCurrency(leapThirtyYear)}
-                      </p>
-                      <p className="mt-1.5 text-xs text-gray-500">
-                        Over 30 years at 7% a year. Same salary, same city — just the cheaper apartment.
-                      </p>
-                    </div>
-                  )}
-
-                  <p className="text-sm text-gray-700">
-                    That&apos;s the whole decision. Left alone it disappears into everyday spending — WeLeap
-                    makes sure it goes somewhere first.
-                  </p>
-                  <div>
-                    <Button
-                      onClick={() => {
-                        // `placement` matches the CtaPlacement union every
-                        // AppCta-based tool sends. Without it this CTA was the
-                        // one tool_cta_clicked that could not be split by
-                        // target, which breaks the funnel comparison across
-                        // tools rather than just losing a dimension here.
-                        track('tool_cta_clicked', { tool: 'rent', placement: 'button' });
-                        /**
-                         * `src` only. Salary, city and state used to ride along
-                         * here, and the app discarded all three: its hydration
-                         * returns early unless `src === 'offer_tool'`, and the
-                         * session it builds is an offer session whose unsent
-                         * fields fall back to an invented bonus and employer
-                         * match. Sending them was worse than not sending them.
-                         *
-                         * They would be near-worthless even if consumed —
-                         * onboarding asks for income directly, so a passed
-                         * salary is a default that is overwritten minutes
-                         * later. `src` does not go stale, because it records
-                         * where the person came from rather than what they own.
-                         */
-                        window.location.href = appLink('', { src: 'rent' });
-                      }}
-                      className="w-full sm:w-auto bg-[#3F6B42] text-white hover:bg-[#3F6B42]/90"
-                    >
-                      {/* Not "Track my $350/mo". Two problems with that: the
-                          $350 does not exist yet — it is conditional on signing
-                          the cheaper lease — and "track" is the budgeting-app
-                          verb this product spends a comparison table on /tools
-                          distancing itself from. This completes the sentence
-                          directly above it ("WeLeap makes sure it goes
-                          somewhere first") and leaves the loop open: the tool
-                          found the money, the app decides where it goes. */}
-                      {leapMonthly > 0
-                        ? `Show me where my ${formatCurrency(leapMonthly)}/mo should go →`
-                        : 'Create my free account →'}
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Free · 2 minutes · No credit card.
-                    </p>
-                  </div>
-                  {/* "Email me my plan instead" used to sit here, directly
-                      under the CTA and styled as a peer choice — a
-                      lower-commitment escape hatch offered at the exact moment
-                      of decision. The email plan itself still exists further
-                      down the page; it is no longer presented as an equal
-                      alternative to the thing this page is for. */}
-                </CardContent>
-              </Card>
+              <RentFirstMove
+                rentRangeLow={rentRangeLow}
+                rentRangeHigh={rentRangeHigh}
+                formatCurrency={formatCurrency}
+                onCtaClick={() => {
+                  // `placement` matches the CtaPlacement union every AppCta-based
+                  // tool sends. Without it this CTA was the one tool_cta_clicked
+                  // that could not be split by target.
+                  track('tool_cta_clicked', { tool: 'rent', placement: 'button' });
+                  /**
+                   * `src` only. Salary, city and state used to ride along here
+                   * and the app discarded all three: its hydration returns early
+                   * unless `src === 'offer_tool'`. `src` does not go stale,
+                   * because it records where the person came from rather than
+                   * what they own.
+                   */
+                  window.location.href = appLink('', { src: 'rent' });
+                }}
+              />
             }
             takeHomeMonthly={takeHomeMonthly}
             takeHomeAnnual={takeHomeAnnual}
