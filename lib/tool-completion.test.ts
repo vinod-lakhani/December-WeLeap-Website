@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -7,12 +7,55 @@ import { __resetToolCompletions, claimToolCompletion } from './tool-funnel'
 const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8')
 
 /**
+ * An in-memory Storage, installed per test.
+ *
+ * These tests used to rely on the runtime happening to provide a global
+ * `sessionStorage`. Node 26 does; Node 22 does not. So they passed on the
+ * machine they were written on and, on CI, silently exercised the opposite
+ * branch — `claimToolCompletion` returning false because storage was absent —
+ * while asserting it returned true. Three of them failed the first time this
+ * repo ran its own tests on a different Node version, which is the whole
+ * argument for running them somewhere other than a laptop.
+ *
+ * Stubbing makes the dependency explicit and the result the same everywhere.
+ */
+function memoryStorage(): Storage {
+  const data = new Map<string, string>()
+  return {
+    getItem: (k) => (data.has(k) ? data.get(k)! : null),
+    setItem: (k, v) => void data.set(k, String(v)),
+    removeItem: (k) => void data.delete(k),
+    clear: () => data.clear(),
+    key: (i) => [...data.keys()][i] ?? null,
+    get length() {
+      return data.size
+    },
+  } as Storage
+}
+
+const ORIGINAL_STORAGE = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+
+function setSessionStorage(value: unknown): void {
+  Object.defineProperty(globalThis, 'sessionStorage', { value, configurable: true, writable: true })
+}
+
+function restoreSessionStorage(): void {
+  if (ORIGINAL_STORAGE) Object.defineProperty(globalThis, 'sessionStorage', ORIGINAL_STORAGE)
+  else delete (globalThis as Record<string, unknown>).sessionStorage
+}
+
+/**
  * Campaign C3 divides spend by completions, so a completion counted twice
  * halves the reported cost per account. That is the whole reason this is
  * session-scoped rather than per mount.
  */
 describe('one completion per tool per session', () => {
-  beforeEach(() => __resetToolCompletions())
+  beforeEach(() => {
+    setSessionStorage(memoryStorage())
+    __resetToolCompletions()
+  })
+
+  afterEach(restoreSessionStorage)
 
   it('is claimed once and refused after', () => {
     expect(claimToolCompletion('offer')).toBe(true)
@@ -45,18 +88,24 @@ describe('one completion per tool per session', () => {
      * remember — the failure mode of the alternative is a tool that silently
      * reports nothing.
      */
-    const real = globalThis.sessionStorage
-    Object.defineProperty(globalThis, 'sessionStorage', {
-      value: {
-        getItem() { throw new Error('denied') },
-        setItem() { throw new Error('denied') },
-        removeItem() { throw new Error('denied') },
-      },
-      configurable: true,
+    setSessionStorage({
+      getItem() { throw new Error('denied') },
+      setItem() { throw new Error('denied') },
+      removeItem() { throw new Error('denied') },
     })
     expect(claimToolCompletion('offer')).toBe(true)
     expect(claimToolCompletion('offer')).toBe(true)
-    Object.defineProperty(globalThis, 'sessionStorage', { value: real, configurable: true })
+  })
+
+  it('does not fire on the server, where there is no storage at all', () => {
+    /**
+     * The other half of the distinction the implementation draws: no storage
+     * and no visitor means no event, as against a visitor whose browser
+     * refuses storage. Untested until CI ran on a Node without a global
+     * sessionStorage and the suite started exercising this branch by accident.
+     */
+    setSessionStorage(undefined)
+    expect(claimToolCompletion('offer')).toBe(false)
   })
 })
 
