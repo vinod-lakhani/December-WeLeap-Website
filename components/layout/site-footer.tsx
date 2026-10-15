@@ -1,8 +1,8 @@
 import Image from "next/image"
-import Link from "next/link"
 import { Container } from "./container"
 import { StoreBadges } from "@/components/StoreBadges"
 import { FREE_TOOLS } from "@/lib/tools"
+import { FooterLinkList } from "./footer-link-list"
 
 /**
  * Shared site footer.
@@ -68,15 +68,7 @@ export function SiteFooter() {
           {columns.map((col) => (
             <div key={col.h}>
               <div className="mb-3.5 text-xs font-extrabold uppercase tracking-[0.1em] text-faint">{col.h}</div>
-              <ul className="grid gap-2.5">
-                {col.links.map((l) => (
-                  <li key={l.t}>
-                    <Link href={l.u} className="text-[14.5px] text-ink-soft hover:text-brand-700">
-                      {l.t}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <FooterLinkList links={col.links} />
             </div>
           ))}
         </div>

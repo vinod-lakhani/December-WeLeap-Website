@@ -176,6 +176,18 @@ export default function OfferAnalysisPage({
         </Container>
       </Section>
 
+      {/* Everything below the result is optional refinement, and on a campaign
+          landing it is a corridor of exits. Measured 15 Oct on C3 traffic:
+          every single click went to a cross-sell card, the footer or the
+          privacy policy — 29 of them — and none to the CTA or any input. The
+          page offered ten other things to click and one thing to install.
+
+          The explanation, the FAQ and the cross-sell earn their place on the
+          canonical page, which ranks and is linked. The campaign variant is
+          noindex, so removing them here costs no search value and takes the
+          exits away. */}
+      {!campaign && (
+      <>
       {/* How it works */}
       <Section variant="white">
         <Container maxWidth="narrow">
@@ -364,6 +376,9 @@ export default function OfferAnalysisPage({
       {/* YMYL disclosure. Sits after the content it qualifies and names the
           specific simplifications, because "estimates only" on a page that
           prints a tax figure to the dollar is not a disclosure. */}
+      </>
+      )}
+
       <Section variant="canvas" className="pt-0">
         <Container>
           <div className="mx-auto max-w-3xl border-t border-hairline pt-8">

@@ -52,10 +52,12 @@ export interface OfferCampaignHeroProps {
    * the number on screen is the visitor's own — see below.
    */
   shareSlot?: React.ReactNode
+  /** The app CTA. Rendered directly under the result, on the first screen. */
+  ctaSlot?: React.ReactNode
 }
 
 export function OfferCampaignHero({
-  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick, shareSlot,
+  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick, shareSlot, ctaSlot,
 }: OfferCampaignHeroProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -159,6 +161,18 @@ export function OfferCampaignHero({
             stops anybody sharing a claim about somebody else's offer, and it
             gives typing a payoff beyond curiosity — the thing worth posting
             only exists once you have made it yours. */}
+        {/* The ask, directly under the number that earns it.
+            It used to be the only CTA on the page and it sat 5.6 phone screens
+            down — 29% of a 19.5-screen page, behind eight accordion sections
+            of optional refinement. 86 paid visitors reached the result and not
+            one pressed it. Everything between the answer and the ask is
+            refinement; it belongs below the ask, not in front of it.
+
+            Deliberately NOT gated on !isExample. Somebody still looking at the
+            ad's numbers is exactly who the ad was for, and making them type
+            before they may leave is the gate this page is trying to remove. */}
+        {ctaSlot && <div className="mt-4">{ctaSlot}</div>}
+
         {!isExample && shareSlot && (
           <div className="mt-4 border-t border-hairline pt-4">{shareSlot}</div>
         )}

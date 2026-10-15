@@ -218,6 +218,13 @@ export default function HowMuchRentCanIAffordPage({
         steps={STEPS}
       />
 
+      {/* Stripped for campaign traffic — see the same guard on the offer
+          page. Every C3 click on 15 Oct went to a cross-sell card, the footer
+          or the privacy policy, and none to the CTA. This variant is noindex,
+          so the explanation and cross-sell keep their search value on the
+          canonical page and stop being exits here. */}
+      {!campaign && (
+      <>
       {/* Reading the output. The calculator returns a range rather than a
           number, and a range with no guidance on which end to aim at is a
           number people round up. */}
@@ -296,6 +303,9 @@ export default function HowMuchRentCanIAffordPage({
       {/* The specific simplifications behind the numbers above. "Estimates
           only" on a page that prints a tax figure to the dollar is a label,
           not a disclosure. */}
+      </>
+      )}
+
       <Section variant="canvas" className="pt-0">
         <Container>
           <div className="mx-auto max-w-3xl border-t border-hairline pt-8">
