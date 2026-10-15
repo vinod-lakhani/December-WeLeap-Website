@@ -38,6 +38,7 @@ import {
   type StoreUtm,
 } from '@/lib/stores';
 import { appLink } from '@/lib/app-link';
+import { pitchFor } from '@/lib/get-pitch';
 import { fbq } from '@/lib/meta-pixel';
 import { getUtmParams, parseUtm } from '@/lib/utm-storage';
 
@@ -116,6 +117,7 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
   const androidWaiting = device === 'android' && !playLive;
   const isPhone = device === 'ios' || device === 'android';
 
+  const pitch = pitchFor(utm);
   const storeHref = device === 'ios' ? hrefs.appStore : playLive ? hrefs.googlePlay : '';
   const storeName: 'app_store' | 'google_play' | 'google_play_coming_soon' | 'none' =
     device === 'ios'
@@ -177,31 +179,47 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
           className="h-[30px] w-auto self-start"
         />
 
+        {/* Headline and sub-head come from the ad's own slugs. "Connect your
+            accounts" was the spec's first line and stays cut: naming the
+            biggest commitment the product asks for, before somebody has
+            installed anything, answers a question nobody has reached yet. */}
         <h1 className="mt-7 text-[30px] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink">
-          The one money move to make next.
+          {pitch.headline}
         </h1>
 
-        {/* "Connect your accounts" was the spec's first line and it is cut.
-            Naming the biggest commitment the product asks for, before somebody
-            has installed anything, is the wrong first sentence on a page paid
-            traffic lands on — it answers a question nobody has reached yet and
-            it is the one answer most likely to end the visit. What the app
-            does for them survives on its own. */}
-        <p className="mt-4 text-[16.5px] leading-relaxed text-subtle">
-          WeLeap ranks what matters and hands you the next move, ready to approve.
-        </p>
+        <p className="mt-4 text-[16.5px] leading-relaxed text-subtle">{pitch.sub}</p>
 
         {/* A real anchor with a real href. This is the whole point: an in-app
             browser hands off to the store app on a genuine link activation and
-            does not when script navigates. */}
+            does not when script navigates.
+
+            The label names the store rather than saying "Get the app". A green
+            rectangle does not tell anyone where it goes, and this is the only
+            tappable thing on the page — the one question it has to answer is
+            what happens next. */}
         <a
           href={storeHref}
           onClick={() => onStoreTap(storeName, storeHref)}
           className="mt-8 block w-full rounded-xl bg-[#386641] px-6 py-4 text-center text-[17px] font-bold text-white shadow-card active:bg-[#2d5235]"
         >
-          {device === 'ios' ? 'Get the app' : 'Get it on Google Play'}
+          {device === 'ios' ? 'Download on the App Store' : 'Get it on Google Play'}
         </a>
         <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start.</p>
+
+        {/* The evidence for the sentence above the button.
+            Below the CTA, not above it: at 390x560 — an in-app browser with its
+            chrome — the button has to stay above the fold, and this still
+            lands inside it. Intrinsic size is passed so the box is reserved
+            and the button never moves while the image loads. */}
+        <Image
+          src={pitch.proof.src}
+          alt={pitch.proof.alt}
+          width={pitch.proof.width}
+          height={pitch.proof.height}
+          sizes="(max-width: 460px) 100vw, 420px"
+          priority
+          className="mt-7 h-auto w-full rounded-xl"
+        />
       </main>
     );
   }

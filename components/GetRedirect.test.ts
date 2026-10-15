@@ -56,8 +56,10 @@ describe('the button', () => {
     expect(src).toMatch(/const device = initialDevice/)
   })
 
-  it('says the right thing per store', () => {
-    expect(src).toMatch(/device === 'ios' \? 'Get the app' : 'Get it on Google Play'/)
+  it('says the right thing per store, naming the destination', () => {
+    // "Get the app" did not say where the button went, on a page whose only
+    // job is that one tap. The label now names the store on both platforms.
+    expect(src).toMatch(/device === 'ios' \? 'Download on the App Store' : 'Get it on Google Play'/)
     expect(src).toMatch(/Free to start\./)
   })
 
