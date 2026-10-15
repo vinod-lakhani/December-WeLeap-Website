@@ -1,0 +1,68 @@
+# Typecheck, tests and lint on every pull request.
+#
+# WHY THIS EXISTS. Until now the only check on a PR was Vercel's deployment.
+# `next build` does run tsc and ESLint (see next.config.mjs — neither is
+# suppressed), so type errors and lint errors were already caught. The tests
+# were not: 691 of them across 48 files, run only when somebody remembered.
+#
+# So tests are the point of this file and the other two are fast, legible
+# feedback — a failing step that says "typecheck" beats reading it out of a
+# deploy log.
+#
+# The build is deliberately NOT repeated here. Vercel builds every PR already,
+# and a second production build would add minutes to tell us what the first one
+# already said.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push supersedes the run in flight. Without this, pushing three times to
+# a PR leaves three runs competing for the same answer.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck · test · lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile: fail rather than silently resolve something the
+      # lockfile does not describe, so CI tests what a fresh clone gets.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Each step runs even when an earlier one failed, so one push reports all
+      # three problems instead of revealing them one per round trip.
+      - name: Typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+
+      - name: Test
+        if: ${{ !cancelled() }}
+        run: pnpm test
+
+      # Fails on errors only. There is a standing backlog of warnings (35 at the
+      # time of writing) and holding PRs hostage to it is how a new CI setup
+      # gets switched off in its first week. To ratchet it later, add
+      # `--max-warnings=<n>` and lower n as the backlog clears.
+      - name: Lint
+        if: ${{ !cancelled() }}
+        run: pnpm lint
