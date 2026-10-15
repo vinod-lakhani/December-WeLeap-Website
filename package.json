@@ -5,6 +5,8 @@
   "scripts": {
     "build": "next build",
     "postbuild": "node scripts/copyPdfkitFonts.js && node scripts/checkMetadata.js",
+    "check:metadata": "node scripts/checkMetadata.js",
+    "check:metadata:prod": "CHECK_METADATA_URL=https://www.weleap.ai node scripts/checkMetadata.js",
     "dev": "next dev",
     "dev:3000": "next dev -p 3000",
     "dev:3002": "next dev -p 3002",
