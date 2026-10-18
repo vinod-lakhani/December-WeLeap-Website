@@ -3,18 +3,16 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * The banner covered the primary action on every paid landing: 335px tall on a
- * 560px in-app-browser viewport, sitting on top of /get's store button and on
- * top of the result a campaign tool page renders.
+ * The banner is a notice, not a consent prompt: nothing downstream ever read
+ * its answer, so offering Accept/Decline presented a choice the site did not
+ * honour. These tests pin that it stays a notice, that it stays small enough
+ * to clear the CTA it used to cover, and — the one that matters most — that
+ * the privacy policy keeps naming the ad platforms that actually run.
  *
- * Height is a rendered property and these tests are not, so they cannot assert
- * it — that was measured in the browser and is recorded in the PR. What they
- * can do is pin the two things that would quietly bring the height back: the
- * prose growing again, and the buttons returning to a stacked full-width pair,
- * which cost ~90px on their own.
- *
- * They also pin the consent behaviour, because the fix had to change the
- * footprint without changing what is stored or what the choices mean.
+ * That last one is here because the policy asserted "we do not use advertising
+ * or retargeting pixels" while the Meta Pixel was live on every marketing
+ * page. A claim about what the site does not do is exactly the kind that goes
+ * stale silently.
  */
 
 const src = () => readFileSync(join(process.cwd(), 'components/cookie-consent.tsx'), 'utf8')
@@ -28,26 +26,33 @@ const copy = () => {
   return (paragraph?.[1] ?? '').replace(/<[^>]+>/g, ' ').replace(/\{"\s*"\}/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-describe('consent behaviour is unchanged', () => {
-  it('keeps the same storage key and both choices', () => {
-    const code = src()
-    expect(code).toContain('localStorage.getItem("cookie-consent")')
-    expect(code).toContain('localStorage.setItem("cookie-consent", "accepted")')
-    expect(code).toContain('localStorage.setItem("cookie-consent", "declined")')
+describe('it is a notice, not a consent prompt', () => {
+  it('offers one acknowledgement and no decline', () => {
+    // Comments stripped first: the docblock explains what was removed and
+    // names both old buttons, so a raw search would match the explanation.
+    const code = src().replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(code).toContain('Got it')
+    expect(code).not.toMatch(/Decline/)
+    expect(code).not.toMatch(/Accept All/)
   })
 
-  it('still notifies the analytics listener on accept', () => {
-    // GoogleAnalytics listens for this; dropping it would silently leave
-    // analytics off for everyone who accepts.
-    expect(src()).toContain('new Event("cookie-consent-updated")')
-  })
-
-  it('still links the privacy policy', () => {
+  it('states what runs and links the policy that lists it', () => {
+    expect(copy().toLowerCase()).toContain('analytics')
+    expect(copy().toLowerCase()).toMatch(/ads|advertis/)
     expect(src()).toMatch(/href="\/privacy-policy"/)
   })
 
-  it('renders nothing once a choice exists', () => {
-    expect(src()).toContain('if (!showBanner) return null')
+  it('remembers the acknowledgement so it shows once', () => {
+    const code = src()
+    expect(code).toContain('localStorage.setItem("cookie-consent", "accepted")')
+    expect(code).toContain('localStorage.getItem("cookie-consent")')
+    expect(code).toContain('if (!showBanner) return null')
+  })
+
+  it('does not reload the page on acknowledge', () => {
+    // The reload existed to re-init GA after consent. GA is no longer gated,
+    // so a reload would be a jarring side effect of dismissing a notice.
+    expect(src()).not.toMatch(/window\.location\.reload/)
   })
 })
 
@@ -61,17 +66,34 @@ describe('it stays small enough to clear the CTA', () => {
 
   it('states the purpose and does not just name the product', () => {
     expect(copy().toLowerCase()).toMatch(/cookies/)
-    expect(copy().toLowerCase()).toMatch(/traffic|content|analyse|analyze/)
+    expect(copy().toLowerCase()).toMatch(/analytics|analyse|analyze|ads|advertis/)
   })
 
-  it('keeps the two buttons on one row instead of stacking them', () => {
+  it('keeps the action to a single row beside the text', () => {
     const code = src()
-    // The buttons' own container must not go vertical on small screens.
-    expect(code).toMatch(/<div className="flex shrink-0 gap-2">/)
+    // One button now, and its container must not go vertical on small screens:
+    // a stacked full-width pair is what cost ~90px of the old banner's height.
+    expect(code).toMatch(/<div className="flex shrink-0">/)
     expect(code).not.toMatch(/flex flex-col[^"]*gap-3 w-full sm:w-auto/)
   })
 
   it('does not reintroduce full-width stacked buttons', () => {
     expect(src()).not.toMatch(/className="w-full sm:w-auto/)
+  })
+})
+
+describe('the privacy policy names what actually runs', () => {
+  const policy = () => readFileSync(join(process.cwd(), 'app/privacy-policy/page.tsx'), 'utf8')
+
+  it('does not deny using advertising pixels while one is live', () => {
+    // components/meta-pixel.ts ships a real pixel on every marketing page.
+    expect(policy()).not.toMatch(/do not use advertising or retargeting pixels/)
+  })
+
+  it('lists every third party that receives marketing-page events', () => {
+    const p = policy()
+    for (const vendor of ['PostHog', 'Google Analytics', 'Meta Pixel', 'Google Ads']) {
+      expect(p, `privacy policy does not mention ${vendor}`).toContain(vendor)
+    }
   })
 })

@@ -14,7 +14,7 @@
 // Lazy accessor rather than a static SDK import — this module is imported by
 // every CTA on the site. See lib/posthog-lazy.ts.
 import { getPostHog } from "@/lib/posthog-lazy"
-import { getUtmParams, getFirstTouchUtmParams } from "@/lib/utm-storage"
+import { getUtmParams, getFirstTouchUtmParams, getClickIdParams } from "@/lib/utm-storage"
 
 /** Base URL of the WeLeap app. Env-driven so dev/prod can differ. */
 export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://weleap.app"
@@ -61,6 +61,18 @@ export function appLink(path = "", extraParams?: Record<string, string>): string
   const firstUtm = typeof window !== "undefined" ? getFirstTouchUtmParams() : ""
   if (firstUtm && firstUtm !== utm) {
     new URLSearchParams(firstUtm).forEach((value, key) => params.set(`${key.replace(/^utm_/, "utm_first_")}`, value))
+  }
+
+  /**
+   * 1c) Ad click IDs (gclid / gbraid / wbraid).
+   *
+   * `user_signed_up` fires on weleap.app, so without these a Google Ads
+   * conversion there cannot be matched to the click that paid for it. They are
+   * not UTMs and come from their own store — see lib/utm-storage.ts.
+   */
+  const clickIds = typeof window !== "undefined" ? getClickIdParams() : ""
+  if (clickIds) {
+    new URLSearchParams(clickIds).forEach((value, key) => params.set(key, value))
   }
 
   // 2) PostHog distinct_id -> lets the app stitch identity across domains.

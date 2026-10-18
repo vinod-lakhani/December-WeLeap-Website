@@ -283,12 +283,24 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  /**
+   * B4: the empty-salary path is what most first taps are.
+   *
+   * Focusing the field says "something happened here" and nothing about what
+   * to put in it — on a page whose own copy is about seven numbers, "which
+   * one?" is a fair question. The hint names the one that needs nothing
+   * looked up, and clears itself the moment a figure arrives.
+   */
+  const [showSalaryHint, setShowSalaryHint] = useState(false);
+
   const revealAnswer = useCallback(() => {
     if (salary <= 0) {
       salaryRef.current?.focus();
+      setShowSalaryHint(true);
       track('offer_quickstart_cta', { tool: 'offer', outcome: 'no_salary' });
       return;
     }
+    setShowSalaryHint(false);
     track('offer_quickstart_cta', { tool: 'offer', outcome: 'scrolled_to_answer' });
     scrollToAnswer();
   }, [salary, scrollToAnswer]);
@@ -399,7 +411,18 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
    */
   const [firstTrigger, setFirstTrigger] = useState<'field_change' | 'upload' | null>(null);
 
+  /**
+   * Which fields the visitor touched, and when the page was first seen.
+   *
+   * `fieldChangeCount` alone cannot answer "has this person given us enough to
+   * produce a real answer" — five edits to the same slider is five. The set
+   * can, and it is also what `fields_filled` reports.
+   */
+  const touchedFieldsRef = useRef<Set<string>>(new Set());
+  const viewedAtRef = useRef<number>(Date.now());
+
   const markEngaged = useCallback((source: string) => {
+    touchedFieldsRef.current.add(source);
     if (!engagedRef.current) {
       engagedRef.current = true;
       setFirstTrigger(source.startsWith('upload') ? 'upload' : 'field_change');
@@ -918,14 +941,14 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
       });
     }
 
-    track('tool_cta_clicked', { tool: 'offer', placement });
-    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
-    // appLink() owns the cross-domain attribution: stored first-touch UTMs plus
-    // the PostHog distinct_id as ph_did, so weleap.app can identify() the same
-    // person rather than counting them twice. This used to rebuild that logic
-    // inline, which meant a change to attribution would have silently missed
-    // the tool with the deepest link.
-    window.location.href = appLink('/react/#analyze', {
+    /**
+     * Params built once, so the event's `destination` and the navigation
+     * cannot drift apart. appLink() owns the cross-domain attribution: last-
+     * touch UTMs, first touch where it differs, the ad click IDs, and the
+     * PostHog distinct_id as ph_did so weleap.app can identify() the same
+     * person rather than counting them twice.
+     */
+    const destination = appLink('/react/#analyze', {
       src: 'offer_tool',
       salary: String(salary),
       state: jobState,
@@ -937,6 +960,25 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
       city,
       rent: rentMonthly ? String(rentMonthly) : '',
     });
+
+    /**
+     * `cta` and `destination` added Oct 18 so a handoff can be told apart by
+     * which button produced it and where it went. `placement` stays — saved
+     * insights read it.
+     *
+     * Delivery is deliberately unchanged. The spec that asked for these also
+     * asked for a 150ms deferred navigation "so the event is not lost to the
+     * page unload": posthog-js already uses sendBeacon, both events were
+     * confirmed arriving after navigation on production, and delaying a tap
+     * before navigating is what breaks the in-app-browser handoff — the whole
+     * reason /get stopped being a redirect. See components/GetRedirect.tsx.
+     */
+    const cta =
+      placement === 'hero' ? 'build_plan_hero' : placement === 'preview_tile' ? 'app_card' : 'build_plan';
+    track('tool_cta_clicked', { tool: 'offer', placement, cta, destination });
+    track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
+
+    window.location.href = destination;
   }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly]);
 
   const hasResults = !!calc;
@@ -964,7 +1006,34 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
    * thing available on this page, and the old gate scored them as zero
    * engagement until they happened to edit something afterwards.
    */
-  const analysisComplete = hasResults && fieldChangeCount > 0;
+  /**
+   * THRESHOLD, raised Oct 18 2026. Previously `hasResults && fieldChangeCount > 0`
+   * — one keystroke. That made "completed" mean "typed one number", which is
+   * not something to optimise an ad account against: it teaches the platform
+   * to buy people who tap a calculator and leave.
+   *
+   * Now: a result on screen, the visitor has touched something, a base salary,
+   * and at least one of match / bonus / equity / state — the point at which the
+   * total package stops being the salary with defaults bolted on.
+   *
+   * Read as "the visitor touched it", NOT "it has a value". The first version
+   * of this checked values and did nothing at all: matchRatePct defaults to
+   * 100 and matchUpToPct to 6, so the match test was true from mount and a
+   * salary alone still completed. Browser-tested, which is the only reason it
+   * was caught — the unit tests read the source, not the behaviour.
+   *
+   * An upload counts: applyParsed calls markEngaged, and someone who hands
+   * over the letter has supplied more than someone typing one field.
+   *
+   * This is the third definition of tool_completed in three weeks (fired on
+   * load, then on first field change, now this). Nothing before each change
+   * date is comparable; the dashboard descriptions carry the dates.
+   */
+  const QUALIFYING_EXTRAS = ['match_rate_pct', 'match_up_to_pct', 'bonus_pct', 'rsu_annual', 'state'];
+  const extrasFilled = QUALIFYING_EXTRAS.filter((f) => touchedFieldsRef.current.has(f)).length;
+  const viaUpload = firstTrigger === 'upload';
+  const analysisComplete =
+    hasResults && fieldChangeCount > 0 && salary > 0 && (extrasFilled > 0 || viaUpload);
   /**
    * Per SESSION, not per mount. The ref alone re-armed on every reload, so one
    * sitting with a refresh in it reported two completions — and cost per
@@ -980,8 +1049,13 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
       track('tool_completed', {
         tool: 'offer',
         run_index: nextRunIndex('offer'),
+        // `trigger` and `fields_changed` stay: saved insights read them.
         trigger: firstTrigger ?? 'field_change',
         fields_changed: fieldChangeCount,
+        // Distinct fields with a value, not edits — see touchedFieldsRef.
+        fields_filled: 1 + extrasFilled,
+        seconds_since_view: Math.round((Date.now() - viewedAtRef.current) / 1000),
+        via: firstTrigger === 'upload' ? 'upload' : 'typed',
         ...(campaign ? { campaign: true } : {}),
       });
       // The CTA leads with the employer match where there is one, and falls
@@ -993,7 +1067,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
           : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
       );
     }
-  }, [analysisComplete, calc, salary, campaign, firstTrigger, fieldChangeCount]);
+  }, [analysisComplete, calc, salary, campaign, firstTrigger, fieldChangeCount, extrasFilled]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">
@@ -1111,6 +1185,12 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
             per year
           </span>
         </div>
+
+        {showSalaryHint && salary <= 0 && (
+          <p className="mt-1.5 text-[13px] font-medium text-[#386641]">
+            Start with the base salary from the letter.
+          </p>
+        )}
 
         <button
           type="button"
@@ -1563,6 +1643,31 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
             <p className="mt-1.5 text-[13px] text-faint">
               You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
             </p>
+
+            {/* THE ASK, directly under the number that earns it.
+                Measured 18 Oct on the canonical page at 414x896: the only app
+                handoff sat 5.6 screens down — 29% of a 19.5-screen page, below
+                the share button and the compare prompt. 86 people reached the
+                result and none pressed it. Paid search lands here, so this is
+                the layout that matters now; the campaign variant already got
+                the same treatment in its hero.
+
+                No sub-line time claim. The spec asked for "About five minutes"
+                unless PostHog's onboarding median exceeded it — measured 434s
+                (7.2 min) from signup_started to onboarding_completed over the
+                last 60 days, so the claim is dropped rather than shipped
+                knowingly wrong. */}
+            <div className="mt-5">
+              <Button
+                onClick={() => handleSignUp('button')}
+                className="w-full bg-[#386641] py-3.5 text-[15px] font-bold text-white hover:bg-[#2d5235]"
+              >
+                Save my numbers and see what to do first →
+              </Button>
+              <p className="mt-2 text-center text-[13.5px] text-faint">
+                Free. Your match, buffer and the first move, in dollars.
+              </p>
+            </div>
 
             {/* Share belongs with the number it's about — this is peak
                 "wait, really?". Five blocks later, past the CTA, it wasn't. */}

@@ -15,10 +15,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const did = { value: 'did-1' as string | null }
 vi.mock('./posthog-lazy', () => ({ getPostHog: () => ({ get_distinct_id: () => did.value }) }))
 
-const utm = { current: '', first: '' }
+const utm = { current: '', first: '', clickIds: '' }
 vi.mock('./utm-storage', () => ({
   getUtmParams: () => utm.current,
   getFirstTouchUtmParams: () => utm.first,
+  getClickIdParams: () => utm.clickIds,
 }))
 
 const C3 = 'utm_source=meta&utm_medium=paid_social&utm_campaign=offer_f26&utm_content=O1'
@@ -32,6 +33,7 @@ beforeEach(() => {
   vi.stubGlobal('window', {})
   utm.current = C3
   utm.first = ''
+  utm.clickIds = ''
   did.value = 'did-1'
 })
 
@@ -73,5 +75,31 @@ describe('appLink puts attribution where the app can read it', () => {
     const { appLink, APP_BASE_URL } = await freshModule()
 
     expect(appLink('/react/#analyze')).toBe(`${APP_BASE_URL}/react/#analyze`)
+  })
+})
+
+describe('ad click IDs reach the app', () => {
+  it('forwards gclid, gbraid and wbraid into the query', async () => {
+    /**
+     * `user_signed_up` fires on weleap.app, so a Google Ads conversion there
+     * can only be matched to the click that paid for it if the click ID gets
+     * across the domain boundary. It did not: UTM_KEYS is exactly the five
+     * utm_* params, and a spec assumed these already travelled.
+     */
+    utm.clickIds = 'gclid=abc123&gbraid=g-1&wbraid=w-1'
+    const { appLink } = await freshModule()
+    const url = new URL(appLink('/react/#analyze'))
+
+    expect(url.searchParams.get('gclid')).toBe('abc123')
+    expect(url.searchParams.get('gbraid')).toBe('g-1')
+    expect(url.searchParams.get('wbraid')).toBe('w-1')
+    // Still ahead of the fragment, where the app can read them.
+    expect(url.hash).toBe('#analyze')
+  })
+
+  it('adds nothing when there was no ad click', async () => {
+    const { appLink } = await freshModule()
+    const url = new URL(appLink(''))
+    expect(url.searchParams.get('gclid')).toBeNull()
   })
 })

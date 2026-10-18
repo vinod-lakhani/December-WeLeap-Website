@@ -42,6 +42,30 @@ const UTM_STORAGE_KEY = "wle_utm"
 /** First touch — kept for cohort questions, never overwritten. */
 const UTM_FIRST_STORAGE_KEY = "wle_utm_first"
 
+/**
+ * Ad-platform click IDs, stored and forwarded separately from the UTMs.
+ *
+ * They are not UTMs and deliberately do not join UTM_KEYS: a UTM says which
+ * campaign a visit belongs to, while a click ID identifies one specific click
+ * and is what Google Ads matches a conversion against. The two have different
+ * lifetimes and different consumers, and merging them would mean a click ID
+ * surviving into a later visit that a different ad produced.
+ *
+ * Forwarded to weleap.app because that is where `user_signed_up` fires. The
+ * spec that asked for Ads conversions assumed these already travelled; they
+ * did not — UTM_KEYS is exactly the five utm_* params, so a signup on the app
+ * could not be matched to the click that paid for it.
+ *
+ * gbraid and wbraid are the iOS/web variants Google sends when gclid is
+ * unavailable under ATT, so all three are carried or the iOS half of a
+ * campaign goes unattributed.
+ */
+const CLICK_ID_STORAGE_KEY = "wle_click_ids"
+
+const CLICK_ID_KEYS = ["gclid", "gbraid", "wbraid"] as const
+
+export type ClickIdSet = Partial<Record<(typeof CLICK_ID_KEYS)[number], string>>
+
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const
 
 export type UtmSet = Partial<Record<(typeof UTM_KEYS)[number], string>>
@@ -69,6 +93,32 @@ export function serializeUtm(utm: UtmSet): string {
     if (val) params.set(key, val)
   })
   return params.toString()
+}
+
+/** Click IDs present in a query string. Absent keys stay absent. */
+export function parseClickIds(search: string): ClickIdSet {
+  const params = new URLSearchParams(search)
+  const out: ClickIdSet = {}
+  CLICK_ID_KEYS.forEach((key) => {
+    const val = params.get(key)
+    if (val) out[key] = val
+  })
+  return out
+}
+
+/** Back to a query string, stable key order. */
+export function serializeClickIds(ids: ClickIdSet): string {
+  const params = new URLSearchParams()
+  CLICK_ID_KEYS.forEach((key) => {
+    const val = ids[key]
+    if (val) params.set(key, val)
+  })
+  return params.toString()
+}
+
+/** True when any click ID is set. */
+export function hasClickIds(ids: ClickIdSet): boolean {
+  return CLICK_ID_KEYS.some((key) => !!ids[key])
 }
 
 /** True when any UTM key is set. */
@@ -106,6 +156,32 @@ function readStored(key: string): UtmSet {
   }
 }
 
+/**
+ * Click IDs round-trip through their own (de)serialisation.
+ *
+ * readStored/writeStored go through parseUtm/serializeUtm, which handle
+ * UTM_KEYS and nothing else — so writing a ClickIdSet through them stored an
+ * empty string. Caught by loading a page with ?gclid= and finding
+ * sessionStorage.wle_click_ids empty, not by a unit test, because the test
+ * mocked the storage layer this bug lived in.
+ */
+function readStoredClickIds(): ClickIdSet {
+  try {
+    const raw = sessionStorage.getItem(CLICK_ID_STORAGE_KEY)
+    return raw ? parseClickIds(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeStoredClickIds(ids: ClickIdSet): void {
+  try {
+    sessionStorage.setItem(CLICK_ID_STORAGE_KEY, serializeClickIds(ids))
+  } catch {
+    // As above.
+  }
+}
+
 function writeStored(key: string, utm: UtmSet): void {
   try {
     sessionStorage.setItem(key, serializeUtm(utm))
@@ -129,6 +205,33 @@ export function captureUtmIfPresent(): void {
 
   const first = readStored(UTM_FIRST_STORAGE_KEY)
   if (!hasUtm(first)) writeStored(UTM_FIRST_STORAGE_KEY, fromUrl)
+}
+
+/**
+ * Record the current URL's ad click IDs.
+ *
+ * Separate from captureUtmIfPresent because a Google click can arrive with a
+ * gclid and no utm_* at all — autotagging adds the click ID, the UTMs are the
+ * advertiser's own convention and are often absent. Gating this on hasUtm
+ * would drop exactly the clicks Ads needs to match.
+ */
+export function captureClickIdsIfPresent(): void {
+  if (typeof window === "undefined") return
+  const fromUrl = parseClickIds(window.location.search)
+  if (!hasClickIds(fromUrl)) return
+
+  writeStoredClickIds({ ...readStoredClickIds(), ...fromUrl })
+}
+
+/**
+ * The click IDs to forward, as a query string with no leading "?".
+ *
+ * Live URL merged over storage, for the same reason getUtmParams does it: the
+ * capture effect may not have run when an immediate tap happens.
+ */
+export function getClickIdParams(): string {
+  if (typeof window === "undefined") return ""
+  return serializeClickIds({ ...readStoredClickIds(), ...parseClickIds(window.location.search) })
 }
 
 /**
