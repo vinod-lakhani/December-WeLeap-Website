@@ -104,7 +104,18 @@ export function FirstLoanPaymentTool() {
    */
   const [engagementCount, setEngagementCount] = useState(0)
 
+  /**
+   * Which fields the visitor touched.
+   *
+   * The count alone is not enough here: balance, rate and salary all start at
+   * DEFAULTS, so `result` exists from mount and one keystroke produced a
+   * completion whose other two numbers were invented. Found by driving the
+   * page — reading the source, this gate looked like it required real input.
+   */
+  const [touchedFields, setTouchedFields] = useState<ReadonlySet<string>>(() => new Set())
+
   const markEngaged = useCallback((field: string) => {
+    setTouchedFields((prev) => (prev.has(field) ? prev : new Set(prev).add(field)))
     setEngagementCount((n) => n + 1)
     if (engaged.current) return
     engaged.current = true
@@ -203,10 +214,24 @@ export function FirstLoanPaymentTool() {
   // mount — which is the thing completion used to be quietly reporting.
   useResultShown('first_loan_payment', !!result)
 
-  /** Completion, once there is a result and the visitor has changed something. */
+  /**
+   * Completion: a result, and enough of it is the visitor's.
+   *
+   * THRESHOLD raised Oct 18 2026, matching the offer and first-paycheck tools.
+   * Was `result && engagementCount > 0` — one keystroke — which on a tool
+   * whose three inputs are all prefilled meant a completion reporting two
+   * numbers nobody chose.
+   *
+   * Balance is the primary: it is the loan this page is about. One more of
+   * rate, salary or state makes the paycheck half theirs too.
+   */
+  const QUALIFYING_EXTRAS = ['rate', 'salary', 'state']
+  const extrasTouched = QUALIFYING_EXTRAS.filter((f) => touchedFields.has(f)).length
+  const enoughInput = touchedFields.has('balance') && extrasTouched > 0
+
   useEffect(() => {
-    if (result && engagementCount > 0) complete()
-  }, [result, engagementCount, complete])
+    if (result && engagementCount > 0 && enoughInput) complete()
+  }, [result, engagementCount, enoughInput, complete])
 
   /**
    * The advice was scrolled to.

@@ -129,7 +129,20 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    */
   const [engagementCount, setEngagementCount] = useState(0)
 
+  /**
+   * Which fields the visitor actually touched.
+   *
+   * The count alone cannot answer "has this person given us enough for a real
+   * answer": `plan` needs only a salary, and matchRatePct defaults to '100'
+   * with matchCapPct at '4'. So a single keystroke produced a completion that
+   * reported has_match: true and pay_frequency: 'semimonthly' — neither of
+   * which the visitor had chosen. State rather than a ref, because the
+   * completion check depends on re-rendering.
+   */
+  const [touchedFields, setTouchedFields] = useState<ReadonlySet<string>>(() => new Set())
+
   const markEngaged = useCallback((field: string) => {
+    setTouchedFields((prev) => (prev.has(field) ? prev : new Set(prev).add(field)))
     setEngagementCount((n) => n + 1)
     if (engaged.current) return
     engaged.current = true
@@ -232,7 +245,25 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    *
    * Engagement includes a document that parsed, not only a typed field.
    */
-  if (plan && engagementCount > 0 && !completed.current) {
+  /**
+   * THRESHOLD, raised Oct 18 2026, matching components/OfferAnalysisTool.tsx.
+   *
+   * Was `plan && engagementCount > 0` — one keystroke, because `plan` needs
+   * only a salary. Now: a plan, and the visitor has supplied the salary plus
+   * at least one of the things that make the paycheck theirs rather than the
+   * defaults'. An upload counts: handing over the document supplies more than
+   * typing one field.
+   *
+   * Read as "touched", not "has a value". The value reading is what made the
+   * offer version of this a no-op on its first attempt — a default of 100 is
+   * still a value.
+   */
+  const QUALIFYING_EXTRAS = ['state', 'pay_frequency', 'match_rate', 'match_cap', 'hsa', 'start_date']
+  const extrasTouched = QUALIFYING_EXTRAS.filter((f) => touchedFields.has(f)).length
+  const viaUpload = touchedFields.has('upload_document')
+  const enoughInput = touchedFields.has('salary') && (extrasTouched > 0 || viaUpload)
+
+  if (plan && engagementCount > 0 && enoughInput && !completed.current) {
     completed.current = true
     /**
      * Session-scoped, not per mount. The ref guarding this block re-arms on
@@ -247,6 +278,11 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
         has_match: plan.contributionPct > 0,
         hsa_eligible: hsaEligible,
         pay_frequency: payFrequency,
+        // Same shape as the offer tool's, so the two campaign destinations stay
+        // comparable. `fields_filled` counts the salary plus the extras the
+        // visitor supplied, not the ones left at their defaults.
+        fields_filled: 1 + extrasTouched,
+        via: viaUpload ? 'upload' : 'typed',
         ...(campaign ? { campaign: true } : {}),
       })
     }
