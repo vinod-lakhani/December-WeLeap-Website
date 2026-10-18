@@ -261,6 +261,8 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
   const QUALIFYING_EXTRAS = ['state', 'pay_frequency', 'match_rate', 'match_cap', 'hsa', 'start_date']
   const extrasTouched = QUALIFYING_EXTRAS.filter((f) => touchedFields.has(f)).length
   const viaUpload = touchedFields.has('upload_document')
+  /** The visitor opened the match question at all — either field counts. */
+  const matchSupplied = touchedFields.has('match_rate') || touchedFields.has('match_cap')
   const enoughInput = touchedFields.has('salary') && (extrasTouched > 0 || viaUpload)
 
   if (plan && engagementCount > 0 && enoughInput && !completed.current) {
@@ -275,9 +277,28 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
       track('tool_completed', {
         tool: 'first_paycheck',
         run_index: nextRunIndex('first_paycheck'),
-        has_match: plan.contributionPct > 0,
-        hsa_eligible: hsaEligible,
-        pay_frequency: payFrequency,
+        /**
+         * Only what the visitor actually told us.
+         *
+         * Every one of these had a default — matchRatePct '100', matchCapPct
+         * '4', payFrequency 'semimonthly', hsaEligible false — and each was
+         * reported unconditionally. So a completion asserted an employer match
+         * and a semi-monthly pay cycle for someone who had seen neither
+         * control. `has_match: true` was a statement about the form's defaults
+         * dressed as a fact about the person.
+         *
+         * Absent now means "not told", which is different from false. The
+         * alternative — reporting false for an untouched control — trades one
+         * wrong claim for another, because a visitor who skipped the match
+         * fields may well have a match.
+         *
+         * `inputs_supplied` exists so an absence is legible rather than
+         * mysterious: it lists exactly what the person provided.
+         */
+        ...(matchSupplied ? { has_match: plan.contributionPct > 0 } : {}),
+        ...(touchedFields.has('hsa') ? { hsa_eligible: hsaEligible } : {}),
+        ...(touchedFields.has('pay_frequency') ? { pay_frequency: payFrequency } : {}),
+        inputs_supplied: [...touchedFields].sort(),
         // Same shape as the offer tool's, so the two campaign destinations stay
         // comparable. `fields_filled` counts the salary plus the extras the
         // visitor supplied, not the ones left at their defaults.
