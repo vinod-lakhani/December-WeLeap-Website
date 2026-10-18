@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { captureUtmIfPresent, captureEntrySourceIfPresent } from "@/lib/utm-storage"
+import { captureUtmIfPresent, captureClickIdsIfPresent, captureEntrySourceIfPresent } from "@/lib/utm-storage"
 
 /**
  * Records campaign attribution whenever the query string changes.
@@ -34,6 +34,7 @@ export function UtmCapture() {
 
   useEffect(() => {
     captureUtmIfPresent()
+    captureClickIdsIfPresent()
     captureEntrySourceIfPresent()
   }, [searchParams])
 

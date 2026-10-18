@@ -97,7 +97,11 @@ describe('cross-tool funnel instrumentation', () => {
     expect(loan).toMatch(/track\('tool_advice_reached'/)
 
     const offer = readFileSync(join(COMPONENTS, 'OfferAnalysisTool.tsx'), 'utf8')
-    expect(offer).toMatch(/const analysisComplete = hasResults && fieldChangeCount > 0;/)
+    // The gate gained a threshold on 18 Oct (salary plus one of match /
+    // bonus / equity / state) so "completed" stops meaning "typed one
+    // character". The invariant this test protects is unchanged and is what
+    // is asserted: a result on screen never completes on its own.
+    expect(offer).toMatch(/const analysisComplete =\s*\n?\s*hasResults && fieldChangeCount > 0/)
   })
 
   it('every tool_completed slug is a registered tool', () => {

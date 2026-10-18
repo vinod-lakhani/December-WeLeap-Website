@@ -94,7 +94,10 @@ describe('campaign mode on the first-paycheck tool', () => {
      * lookup, and neither may fire on a result alone.
      */
     const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
-    expect(offer).toMatch(/const analysisComplete = hasResults && fieldChangeCount > 0;/)
+    // Offer's gate gained a threshold on 18 Oct; the shared part — a result
+    // plus a real field change — is what both tools must keep. The remaining
+    // nine tools adopt the threshold next, per the Oct 18 spec.
+    expect(offer).toMatch(/const analysisComplete =\s*\n?\s*hasResults && fieldChangeCount > 0/)
     expect(offer).not.toMatch(/analysisComplete = hasResults && !!taxResult/)
   })
 
