@@ -137,3 +137,44 @@ describe('campaign mode on the first-paycheck tool', () => {
     expect(tool).toMatch(/campaign \? PAYCHECK_EXAMPLE\.salary\.toLocaleString\('en-US'\) : ''/)
   })
 })
+
+/**
+ * tool_completed must not report the form's defaults as the visitor's answers.
+ *
+ * Every optional control on this page is prefilled — matchRatePct '100',
+ * matchCapPct '4', payFrequency 'semimonthly', hsaEligible false — and all
+ * three were reported unconditionally. A completion therefore asserted an
+ * employer match and a semi-monthly pay cycle for someone who had typed a
+ * salary and nothing else. `has_match: true` was a statement about the
+ * defaults wearing the clothes of a fact about the person.
+ *
+ * Nothing consumed these (0 of 136 live insights referenced any of them), so
+ * the semantics could be corrected rather than worked around.
+ */
+describe('first-paycheck completion reports only what the visitor supplied', () => {
+  const tool = () =>
+    readFileSync(join(process.cwd(), 'components/FirstPaycheckTool.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+
+  it('gates each prefilled field on having been touched', () => {
+    const src = tool()
+    expect(src).toMatch(/\.\.\.\(matchSupplied \? \{ has_match:/)
+    expect(src).toMatch(/\.\.\.\(touchedFields\.has\('hsa'\) \? \{ hsa_eligible:/)
+    expect(src).toMatch(/\.\.\.\(touchedFields\.has\('pay_frequency'\) \? \{ pay_frequency:/)
+  })
+
+  it('never reports them unconditionally', () => {
+    const src = tool()
+    // The exact shape that was wrong: a bare key with no supplied-check.
+    expect(src).not.toMatch(/^\s*has_match: plan\.contributionPct > 0,\s*$/m)
+    expect(src).not.toMatch(/^\s*hsa_eligible: hsaEligible,\s*$/m)
+    expect(src).not.toMatch(/^\s*pay_frequency: payFrequency,\s*$/m)
+  })
+
+  it('makes an absence legible rather than mysterious', () => {
+    // Omitting a property without saying why leaves a reader unable to tell
+    // "no match" from "never asked".
+    expect(tool()).toMatch(/inputs_supplied: \[\.\.\.touchedFields\]/)
+  })
+})
