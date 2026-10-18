@@ -29,7 +29,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { track } from '@/lib/analytics'
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { computeMoneyAge, priceMove } from '@/lib/moneyAge/calculation'
@@ -381,24 +381,32 @@ export function MoneyAgeTool() {
     setFinished(true)
     if (completed.current) return
     completed.current = true
-    track('tool_completed', {
-      // Literal, not TOOL: lib/tool-instrumentation.test.ts reads this file as
-      // text to prove every registered tool wires the funnel, and it cannot
-      // resolve a const.
-      tool: 'money_age',
-      run_index: nextRunIndex(TOOL),
-      age: ageNum,
-      money_age: result.moneyAge,
-      delta_years: result.deltaYears,
-      income_band: incomeExactNum != null ? 'exact' : bandLabel(INCOME_BANDS, incomeBand),
-      income_exact_used: incomeExactNum != null,
-      position_band: exactNum != null ? 'exact' : bandLabel(POSITION_BANDS, positionBand),
-      position_exact_used: exactNum != null,
-      debt_band: bandLabel(DEBT_BANDS, debt),
-      savings_rate: ratePct,
-      slider_moves: sliderMoves.current,
-      rate_touched: rateTouched,
-    })
+    /**
+     * Session-scoped, not per mount. The ref guarding this block re-arms on
+     * every reload, so one sitting with a refresh in it reported two
+     * completions — and cost per account divides by that number. Only the
+     * event is gated; the siblings in this block are unchanged.
+     */
+    if (claimToolCompletion('money_age')) {
+      track('tool_completed', {
+        // Literal, not TOOL: lib/tool-instrumentation.test.ts reads this file as
+        // text to prove every registered tool wires the funnel, and it cannot
+        // resolve a const.
+        tool: 'money_age',
+        run_index: nextRunIndex(TOOL),
+        age: ageNum,
+        money_age: result.moneyAge,
+        delta_years: result.deltaYears,
+        income_band: incomeExactNum != null ? 'exact' : bandLabel(INCOME_BANDS, incomeBand),
+        income_exact_used: incomeExactNum != null,
+        position_band: exactNum != null ? 'exact' : bandLabel(POSITION_BANDS, positionBand),
+        position_exact_used: exactNum != null,
+        debt_band: bandLabel(DEBT_BANDS, debt),
+        savings_rate: ratePct,
+        slider_moves: sliderMoves.current,
+        rate_touched: rateTouched,
+      })
+    }
   }, [
     result,
     ageNum,

@@ -30,7 +30,7 @@ import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { AppCta } from '@/components/AppCta'
 import { computeFirstPaycheck } from '@/lib/firstPaycheck/calculation'
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { FirstPaycheckCampaignHero } from '@/components/FirstPaycheckCampaignHero'
 import { PAYCHECK_EXAMPLE } from '@/lib/firstPaycheck/example'
 import { TAX_YEAR_FIRST_PAYCHECK, TYPICAL_ENROLLMENT_WINDOW_DAYS } from '@/lib/firstPaycheck/constants'
@@ -234,14 +234,22 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    */
   if (plan && engagementCount > 0 && !completed.current) {
     completed.current = true
-    track('tool_completed', {
-      tool: 'first_paycheck',
-      run_index: nextRunIndex('first_paycheck'),
-      has_match: plan.contributionPct > 0,
-      hsa_eligible: hsaEligible,
-      pay_frequency: payFrequency,
-      ...(campaign ? { campaign: true } : {}),
-    })
+    /**
+     * Session-scoped, not per mount. The ref guarding this block re-arms on
+     * every reload, so one sitting with a refresh in it reported two
+     * completions — and cost per account divides by that number. Only the
+     * event is gated; the siblings in this block are unchanged.
+     */
+    if (claimToolCompletion('first_paycheck')) {
+      track('tool_completed', {
+        tool: 'first_paycheck',
+        run_index: nextRunIndex('first_paycheck'),
+        has_match: plan.contributionPct > 0,
+        hsa_eligible: hsaEligible,
+        pay_frequency: payFrequency,
+        ...(campaign ? { campaign: true } : {}),
+      })
+    }
   }
 
   const rows = plan

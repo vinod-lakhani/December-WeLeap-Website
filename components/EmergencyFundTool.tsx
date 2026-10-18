@@ -23,7 +23,7 @@ import {
 } from '@/lib/emergencyFund/calculation';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
@@ -163,7 +163,15 @@ export function EmergencyFundTool() {
   useEffect(() => {
     if (step === 'results' && result && !resultsViewedRef.current) {
       resultsViewedRef.current = true;
-      track('tool_completed', { tool: 'emergency_fund', run_index: nextRunIndex('emergency_fund') });
+      /**
+       * Session-scoped, not per mount. The ref guarding this block re-arms on
+       * every reload, so one sitting with a refresh in it reported two
+       * completions — and cost per account divides by that number. Only the
+       * event is gated; the siblings in this block are unchanged.
+       */
+      if (claimToolCompletion('emergency_fund')) {
+        track('tool_completed', { tool: 'emergency_fund', run_index: nextRunIndex('emergency_fund') });
+      }
       track('emergency_fund_results_viewed', {
         page: PAGE,
         tool_version: 'emergency_fund_v1',

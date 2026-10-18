@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { track } from '@/lib/analytics';
-import { useResultShown } from '@/lib/tool-funnel';
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import type { AllocatorIntent } from '@/lib/leapImpact/allocatorLink';
@@ -452,7 +452,15 @@ export function AllocatorTool() {
        * plan. Both entry paths (URL prefill and the wedge) converge here, so
        * one condition covers both.
        */
-      track('tool_completed', { tool: 'allocator', run_index: nextRunIndex('allocator') });
+      /**
+       * Session-scoped, not per mount. The ref guarding this block re-arms on
+       * every reload, so one sitting with a refresh in it reported two
+       * completions — and cost per account divides by that number. Only the
+       * event is gated; the siblings in this block are unchanged.
+       */
+      if (claimToolCompletion('allocator')) {
+        track('tool_completed', { tool: 'allocator', run_index: nextRunIndex('allocator') });
+      }
       // The ordering's first step. No dollar value: the match Leap's target
       // is a contribution percentage, not an amount.
       trackLeapShown({ tool: 'allocator', leapType: nextLeapId ?? 'unknown' });
