@@ -93,7 +93,12 @@ describe('cross-tool funnel instrumentation', () => {
      *   sessions never trigger, so they could not complete at all.
      */
     const loan = readFileSync(join(COMPONENTS, 'FirstLoanPaymentTool.tsx'), 'utf8')
-    expect(loan).toMatch(/if \(result && engagementCount > 0\) complete\(\)/)
+    // The loan gate gained a threshold on 18 Oct. It needed one: balance, rate
+    // and salary all start at DEFAULTS, so `result` existed from mount and one
+    // keystroke completed with two numbers nobody chose. Reading this file was
+    // what made it look safe; driving the page is what found it.
+    expect(loan).toMatch(/if \(result && engagementCount > 0 && enoughInput\) complete\(\)/)
+    expect(loan).toMatch(/touchedFields\.has\('balance'\)/)
     expect(loan).toMatch(/track\('tool_advice_reached'/)
 
     const offer = readFileSync(join(COMPONENTS, 'OfferAnalysisTool.tsx'), 'utf8')
