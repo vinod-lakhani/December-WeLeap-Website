@@ -83,7 +83,14 @@ describe('campaign mode on the first-paycheck tool', () => {
      * Firing tool_completed off that would mark every bounce as a completion
      * and invert the one metric the campaign is judged on.
      */
-    expect(tool).toMatch(/if \(plan && engagementCount > 0 && !completed\.current\)/)
+    // The gate gained a threshold on 18 Oct, matching the offer tool: a plan
+    // alone, or one keystroke, is no longer a completion — `plan` needs only a
+    // salary, and matchRatePct defaults to '100', so the old gate reported a
+    // completion claiming has_match: true for someone who typed one number.
+    // The invariant this test protects is unchanged and is what is asserted:
+    // the plan existing can never be the gate on its own.
+    expect(tool).toMatch(/if \(plan && engagementCount > 0 && enoughInput && !completed\.current\)/)
+    expect(tool).toMatch(/const enoughInput = touchedFields\.has\('salary'\)/)
   })
 
   it('uses the same completion gate as the offer tool, for every source', () => {
