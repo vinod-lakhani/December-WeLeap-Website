@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppCta } from '@/components/AppCta'
 import { track } from '@/lib/analytics'
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { US_STATES } from '@/lib/states'
 import { hasStateRate } from '@/lib/firstPaycheck/calculation'
@@ -167,17 +167,25 @@ export function FirstLoanPaymentTool() {
   const complete = useCallback(() => {
     if (completed.current || !result) return
     completed.current = true
-    track('tool_completed', {
-      tool: 'first_loan_payment',
-      run_index: nextRunIndex(TOOL),
-      balance: toNumber(balance),
-      apr_pct: toNumber(rate),
-      salary: toNumber(salary),
-      state_set: !!state,
-      payment: Math.round(result.payment),
-      take_home_after: Math.round(result.takeHomeAfter),
-      high_apr: result.highApr,
-    })
+    /**
+     * Session-scoped, not per mount. The ref guarding this block re-arms on
+     * every reload, so one sitting with a refresh in it reported two
+     * completions — and cost per account divides by that number. Only the
+     * event is gated; the siblings in this block are unchanged.
+     */
+    if (claimToolCompletion('first_loan_payment')) {
+      track('tool_completed', {
+        tool: 'first_loan_payment',
+        run_index: nextRunIndex(TOOL),
+        balance: toNumber(balance),
+        apr_pct: toNumber(rate),
+        salary: toNumber(salary),
+        state_set: !!state,
+        payment: Math.round(result.payment),
+        take_home_after: Math.round(result.takeHomeAfter),
+        high_apr: result.highApr,
+      })
+    }
   }, [result, balance, rate, salary, state])
 
   /**

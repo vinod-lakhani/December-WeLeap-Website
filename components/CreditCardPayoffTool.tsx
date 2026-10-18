@@ -24,7 +24,7 @@ import { AppCta } from '@/components/AppCta';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { track } from '@/lib/analytics';
-import { useResultShown } from '@/lib/tool-funnel';
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel';
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
 import { useQuietReveal } from '@/lib/feedback-reveal';
@@ -189,7 +189,15 @@ export function CreditCardPayoffTool() {
   useEffect(() => {
     if (payoffResultReady && !toolCompletedRef.current) {
       toolCompletedRef.current = true;
-      track('tool_completed', { tool: 'credit_card_payoff', run_index: nextRunIndex('credit_card_payoff') });
+      /**
+       * Session-scoped, not per mount. The ref guarding this block re-arms on
+       * every reload, so one sitting with a refresh in it reported two
+       * completions — and cost per account divides by that number. Only the
+       * event is gated; the siblings in this block are unchanged.
+       */
+      if (claimToolCompletion('credit_card_payoff')) {
+        track('tool_completed', { tool: 'credit_card_payoff', run_index: nextRunIndex('credit_card_payoff') });
+      }
       trackLeapShown({ tool: 'credit_card_payoff', leapType: 'debt_paydown', leapValueUsd: freedMonthly });
     }
     // freedMonthly is a dependency because leap_shown reports it. The ref

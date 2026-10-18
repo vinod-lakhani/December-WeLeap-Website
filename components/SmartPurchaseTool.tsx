@@ -20,7 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { AppCta } from '@/components/AppCta'
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire'
 import { track } from '@/lib/analytics'
-import { useResultShown } from '@/lib/tool-funnel'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index'
 import { trackLeapShown } from '@/lib/leap-shown'
 import { cn } from '@/lib/utils'
@@ -140,7 +140,15 @@ export function SmartPurchaseTool() {
   useEffect(() => {
     if (result && !seen.current) {
       seen.current = true
-      track('tool_completed', { tool: 'smart_purchase', run_index: nextRunIndex('smart_purchase') })
+      /**
+       * Session-scoped, not per mount. The ref guarding this block re-arms on
+       * every reload, so one sitting with a refresh in it reported two
+       * completions — and cost per account divides by that number. Only the
+       * event is gated; the siblings in this block are unchanged.
+       */
+      if (claimToolCompletion('smart_purchase')) {
+        track('tool_completed', { tool: 'smart_purchase', run_index: nextRunIndex('smart_purchase') })
+      }
       // A verdict, not an amount — see the note on leapValueUsd.
       trackLeapShown({ tool: 'smart_purchase', leapType: `purchase_${result.choice}` })
       track('purchase_result_viewed', { page: PAGE, choice: result.choice })
