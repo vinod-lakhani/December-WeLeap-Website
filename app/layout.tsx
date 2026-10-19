@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
+import { GoogleAdsTag } from '@/components/google-ads'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
 import { MetaPixel } from '@/components/meta-pixel'
 import { UtmCapture } from '@/components/utm-capture'
@@ -103,6 +104,7 @@ export default function RootLayout({
           <CookieConsent />
           <MetaPixel />
           <ConditionalGoogleAnalytics />
+          <GoogleAdsTag />
         </PostHogProvider>
       </body>
     </html>
