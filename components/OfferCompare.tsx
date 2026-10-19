@@ -16,9 +16,23 @@
  * where the second offer was supposed to go, including the person who asked for
  * the feature. A table of dashes is not an invitation to fill anything in — it
  * looks like a result that failed to load.
+ *
+ * ON A WIDE SCREEN THE TWO STATES BECOME TWO COLUMNS. The intake on the left,
+ * both offers priced on the right, live as you type, no confirm step. The tool
+ * is a 600px column by design — most traffic is phones — which on a laptop
+ * left the first offer's result two screens above the second offer's inputs and
+ * the comparison below both. Feedback from a career-center tester on 19 Oct:
+ * "they are vertical, I have to scroll down to compare." The dash-table lesson
+ * still holds, so the right column shows a one-line placeholder rather than an
+ * empty table until the second salary exists; the difference from the first
+ * cut is that the inputs are beside it, not under it.
+ *
+ * One DOM, two layouts. The alternative — a phone tree and a desktop tree with
+ * `hidden`/`lg:hidden` — would mount every `cmp-*` input twice, and a page with
+ * two `#cmp-salary` has one label that points nowhere.
  */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { Input } from '@/components/ui/input'
@@ -112,7 +126,7 @@ function OfferBFields({
     <div className="space-y-5">
       <div>
         <GroupLabel>The offer</GroupLabel>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
           <Field id="cmp-salary" label="Base salary" value={b.salary} placeholder="e.g. 120,000"
             onChange={(n) => onChangeB({ salary: n })} />
           <Field id="cmp-bonus" label="Bonus at target" value={b.bonusPct} suffix="%"
@@ -126,7 +140,7 @@ function OfferBFields({
 
       <div>
         <GroupLabel>Where it is</GroupLabel>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
           <div>
             <Label htmlFor="cmp-state" className="text-[13px] text-gray-700">Work state</Label>
             <select id="cmp-state" value={bState} className={SELECT}
@@ -152,7 +166,7 @@ function OfferBFields({
 
       <div>
         <GroupLabel>Benefits and time off</GroupLabel>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
           <Field id="cmp-match-rate" label="Match rate" value={b.matchRatePct} suffix="%"
             onChange={(n) => onChangeB({ matchRatePct: n })} />
           <Field id="cmp-match-upto" label="Up to (% of salary)" value={b.matchUpToPct} suffix="%"
@@ -176,7 +190,7 @@ function OfferBFields({
           <span className="text-[13.5px] font-semibold text-gray-700">This offer has an ESPP</span>
         </label>
         {b.showEspp && (
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
             <Field id="cmp-espp-contrib" label="Contribution" value={b.esppContrib} suffix="%"
               onChange={(n) => onChangeB({ esppContrib: n })} />
             <Field id="cmp-espp-discount" label="Discount" value={b.esppDiscount} suffix="%"
@@ -212,15 +226,33 @@ export function OfferCompare(props: OfferCompareProps) {
 
   const [showEdit, setShowEdit] = useState(false)
   /**
-   * The intake panel gives way on a click, not on a keystroke.
+   * On a phone the intake panel gives way on a click, not on a keystroke.
    *
    * Switching on `b.salary > 0` alone read as a bug: salary is the first field
    * anyone fills, so the panel vanished out from under them with the HSA, the
    * premium and the time off still blank, and no obvious way back to fields
    * they had been looking at a moment earlier.
+   *
+   * On a wide screen nothing vanishes — the inputs stay in the left column —
+   * so there is no confirm button and this never becomes true there.
    */
   const [confirmed, setConfirmed] = useState(false)
-  const hasSecondOffer = b.salary > 0 && confirmed
+  const priced = b.salary > 0
+  const hasSecondOffer = priced && confirmed
+
+  /**
+   * `offer_compare_confirmed` means "saw both offers priced". On a phone that
+   * is the confirm click; on a wide screen it is the moment the live table
+   * fills in. Same event, `layout` says which, so the started → confirmed
+   * funnel reads the same across both.
+   */
+  const reportedSideBySide = useRef(false)
+  useEffect(() => {
+    if (!priced || reportedSideBySide.current) return
+    if (!window.matchMedia('(min-width: 1024px)').matches) return
+    reportedSideBySide.current = true
+    track('offer_compare_confirmed', { tool: 'offer', layout: 'side_by_side' })
+  }, [priced])
 
   const upload = (
     <OfferLetterUpload
@@ -229,19 +261,36 @@ export function OfferCompare(props: OfferCompareProps) {
     />
   )
 
-  // ── Nothing to compare yet ──────────────────────────────────────────────────
-  if (!hasSecondOffer) {
-    return (
-      <div className="rounded-2xl border-2 border-[#386641] bg-white p-5 md:p-6">
+  const cancelLink = (label: string, extra?: string) => (
+    <button
+      type="button"
+      onClick={() => { track('offer_compare_cleared', { tool: 'offer' }); onClear() }}
+      className={cn(
+        '-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800',
+        extra,
+      )}
+    >
+      {label}
+    </button>
+  )
+
+  const cell = 'px-3 py-2.5 text-right text-[14.5px]'
+  const head = 'px-3 py-2 text-right text-[12.5px] font-bold uppercase tracking-wide text-gray-500'
+
+  return (
+    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+      {/* ── The intake ──────────────────────────────────────────────────────
+          Phone: the whole thing until confirmed, then only behind the edit
+          toggle, where it sorts below the table it edits. Wide: always, left. */}
+      <div
+        className={cn(
+          'order-2 rounded-2xl border-2 border-[#386641] bg-white p-5 md:p-6 lg:order-none',
+          hasSecondOffer && !showEdit && 'hidden lg:block',
+        )}
+      >
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">The second offer</h3>
-          <button
-            type="button"
-            onClick={() => { track('offer_compare_cleared', { tool: 'offer' }); onClear() }}
-            className="-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
-          >
-            Cancel
-          </button>
+          {cancelLink('Cancel')}
         </div>
         <p className="mb-5 text-[14px] leading-relaxed text-gray-600">
           Everything above is the first offer. Put the second one in here and both get priced side by side
@@ -266,169 +315,172 @@ export function OfferCompare(props: OfferCompareProps) {
           offer does differently.
         </p>
 
-        <button
-          type="button"
-          disabled={!b.salary}
-          onClick={() => { track('offer_compare_confirmed', { tool: 'offer' }); setConfirmed(true) }}
-          className="mt-5 w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition hover:bg-[#2d5a26] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
-        >
-          {b.salary ? 'Compare the two offers →' : 'Add a base salary to compare'}
-        </button>
-      </div>
-    )
-  }
-
-  // ── Both offers, priced ─────────────────────────────────────────────────────
-  const cell = 'px-3 py-2.5 text-right text-[14.5px]'
-  const head = 'px-3 py-2 text-right text-[12.5px] font-bold uppercase tracking-wide text-gray-500'
-
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Both offers, side by side</h3>
-        <button
-          type="button"
-          onClick={() => { track('offer_compare_cleared', { tool: 'offer' }); onClear() }}
-          className="-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800"
-        >
-          Remove the second offer
-        </button>
-      </div>
-
-      {/* Wide content scrolls inside its own box rather than the page. */}
-      <div className="-mx-5 overflow-x-auto px-5 md:mx-0 md:px-0">
-        <table className="w-full min-w-[420px] border-collapse">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="px-3 py-2 text-left text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
-                The package, per year
-              </th>
-              <th className={head}>
-                {a.label}
-                <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">
-                  {a.location || 'no city set'}
-                </span>
-              </th>
-              <th className={head}>
-                Offer B
-                <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">
-                  {bLocation || 'no city set'}
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {packageRows.map((row) => (
-              <tr key={row.label} className="border-b border-gray-100">
-                <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">{row.label}</td>
-                <td className={cell}><Money value={row.a} muted /></td>
-                <td className={cell}><Money value={row.b} /></td>
-              </tr>
-            ))}
-            <tr className="border-b-2 border-gray-300 bg-gray-50">
-              <td className="px-3 py-3 text-left text-[14.5px] font-extrabold text-gray-900">Total package</td>
-              <td className={cn(cell, 'py-3')}>
-                <span className={cn('text-[17px] font-black tabular-nums', totals.winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>
-                  {fc(totals.a)}
-                </span>
-              </td>
-              <td className={cn(cell, 'py-3')}>
-                <span className={cn('text-[17px] font-black tabular-nums', totals.winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>
-                  {fc(totals.b)}
-                </span>
-              </td>
-            </tr>
-
-            {/* Below the per-year total, never inside it: a signing bonus is
-                not what the job pays, it is what it pays to start. */}
-            {comparison.firstYear.applies && (
-              <tr className="border-b border-gray-100">
-                <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">
-                  With the signing bonus, first year only
-                </td>
-                <td className={cell}><Money value={comparison.firstYear.a} muted /></td>
-                <td className={cell}><Money value={comparison.firstYear.b} /></td>
-              </tr>
-            )}
-
-            <tr>
-              <td colSpan={3} className="px-3 pb-2 pt-5 text-left text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
-                Living on it, per month
-              </td>
-            </tr>
-            {monthlyRows.map((row) => (
-              <tr key={row.label} className="border-b border-gray-100">
-                <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">{row.label}</td>
-                <td className={cell}><Money value={row.negative ? -row.a : row.a} muted /></td>
-                <td className={cell}><Money value={row.negative ? -row.b : row.b} /></td>
-              </tr>
-            ))}
-            <tr className="bg-gray-50">
-              <td className="px-3 py-3 text-left text-[14.5px] font-extrabold text-gray-900">Left after rent</td>
-              <td className={cn(cell, 'py-3')}>
-                <span className={cn('text-[17px] font-black tabular-nums', leftAfterRent.winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>
-                  {fc(leftAfterRent.a)}
-                </span>
-              </td>
-              <td className={cn(cell, 'py-3')}>
-                <span className={cn('text-[17px] font-black tabular-nums', leftAfterRent.winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>
-                  {fc(leftAfterRent.b)}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {verdict ? (
-        <div
-          className={cn(
-            'mt-5 rounded-xl px-4 py-4',
-            verdict.split ? 'border border-[#A7C957] bg-green-50' : 'border border-gray-200 bg-gray-50',
-          )}
-        >
-          <p className="text-[15px] font-bold leading-snug text-gray-900">{verdict.paper}</p>
-          <p className="mt-1 text-[15px] font-bold leading-snug text-gray-900">{verdict.monthly}</p>
-          {verdict.split && (
-            <p className="mt-2.5 text-[13.5px] leading-relaxed text-gray-600">
-              Neither is the right answer. This is the comparison a base salary never shows &mdash; the bigger
-              package is not the one that leaves you more to live on.
-            </p>
-          )}
-        </div>
-      ) : (
-        // Without rent for both this is a salary comparison, which is the one
-        // thing the feature exists not to be. Ask for what is missing rather
-        // than printing a verdict built on half the evidence.
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-[13.5px] leading-relaxed text-amber-900">
-            <strong className="font-bold">Set a city for both offers</strong> to see what each one leaves after
-            rent. That is the number that decides how they feel to live on, and it is the reason the bigger
-            package is often not the better offer.
-          </p>
-        </div>
-      )}
-
-      <div className="mt-5 border-t border-gray-200 pt-5">
-        <button
-          type="button"
-          onClick={() => setShowEdit((v) => !v)}
-          className="-my-2 inline-flex min-h-11 items-center text-[13.5px] font-bold text-[#386641] underline underline-offset-2"
-        >
-          {showEdit ? 'Hide the second offer’s numbers' : 'Edit the second offer’s numbers'}
-        </button>
-
-        {showEdit && (
-          <div className="mt-4 space-y-4">
-            {upload}
-            <OfferBFields {...props} />
-          </div>
+        {/* Phone only: on a wide screen the table is already beside this. */}
+        {!hasSecondOffer && (
+          <button
+            type="button"
+            disabled={!priced}
+            onClick={() => { track('offer_compare_confirmed', { tool: 'offer', layout: 'stacked' }); setConfirmed(true) }}
+            className="mt-5 w-full rounded-xl bg-[#386641] py-4 text-base font-bold text-white transition hover:bg-[#2d5a26] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 lg:hidden"
+          >
+            {priced ? 'Compare the two offers →' : 'Add a base salary to compare'}
+          </button>
         )}
       </div>
 
-      {loadingTax && (
-        <p className="mt-3 text-[12.5px] text-gray-400">Working out tax for the second offer…</p>
-      )}
+      {/* ── Both offers, priced ─────────────────────────────────────────────
+          Phone: after confirm. Wide: always, right, live. */}
+      <div
+        className={cn(
+          'order-1 rounded-2xl border border-gray-200 bg-white p-5 md:p-6 lg:order-none',
+          !hasSecondOffer && 'hidden lg:block',
+        )}
+      >
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Both offers, side by side</h3>
+          {cancelLink('Remove the second offer', 'lg:hidden')}
+        </div>
+
+        {!priced ? (
+          // Not a table of dashes: see the note at the top of the file.
+          <p className="rounded-lg bg-gray-50 px-4 py-4 text-[14px] leading-relaxed text-gray-600">
+            Add the second offer&apos;s base salary and both get priced here as you type.
+          </p>
+        ) : (
+          <>
+            {/* Wide content scrolls inside its own box rather than the page. */}
+            <div className="-mx-5 overflow-x-auto px-5 md:mx-0 md:px-0">
+              <table className="w-full min-w-[340px] border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-3 py-2 text-left text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
+                      The package, per year
+                    </th>
+                    <th className={head}>
+                      {a.label}
+                      <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">
+                        {a.location || 'no city set'}
+                      </span>
+                    </th>
+                    <th className={head}>
+                      Offer B
+                      <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">
+                        {bLocation || 'no city set'}
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {packageRows.map((row) => (
+                    <tr key={row.label} className="border-b border-gray-100">
+                      <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">{row.label}</td>
+                      <td className={cell}><Money value={row.a} muted /></td>
+                      <td className={cell}><Money value={row.b} /></td>
+                    </tr>
+                  ))}
+                  <tr className="border-b-2 border-gray-300 bg-gray-50">
+                    <td className="px-3 py-3 text-left text-[14.5px] font-extrabold text-gray-900">Total package</td>
+                    <td className={cn(cell, 'py-3')}>
+                      <span className={cn('text-[17px] font-black tabular-nums', totals.winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>
+                        {fc(totals.a)}
+                      </span>
+                    </td>
+                    <td className={cn(cell, 'py-3')}>
+                      <span className={cn('text-[17px] font-black tabular-nums', totals.winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>
+                        {fc(totals.b)}
+                      </span>
+                    </td>
+                  </tr>
+
+                  {/* Below the per-year total, never inside it: a signing bonus is
+                      not what the job pays, it is what it pays to start. */}
+                  {comparison.firstYear.applies && (
+                    <tr className="border-b border-gray-100">
+                      <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">
+                        With the signing bonus, first year only
+                      </td>
+                      <td className={cell}><Money value={comparison.firstYear.a} muted /></td>
+                      <td className={cell}><Money value={comparison.firstYear.b} /></td>
+                    </tr>
+                  )}
+
+                  <tr>
+                    <td colSpan={3} className="px-3 pb-2 pt-5 text-left text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
+                      Living on it, per month
+                    </td>
+                  </tr>
+                  {monthlyRows.map((row) => (
+                    <tr key={row.label} className="border-b border-gray-100">
+                      <td className="px-3 py-2.5 text-left text-[14px] text-gray-600">{row.label}</td>
+                      <td className={cell}><Money value={row.negative ? -row.a : row.a} muted /></td>
+                      <td className={cell}><Money value={row.negative ? -row.b : row.b} /></td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50">
+                    <td className="px-3 py-3 text-left text-[14.5px] font-extrabold text-gray-900">Left after rent</td>
+                    <td className={cn(cell, 'py-3')}>
+                      <span className={cn('text-[17px] font-black tabular-nums', leftAfterRent.winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>
+                        {fc(leftAfterRent.a)}
+                      </span>
+                    </td>
+                    <td className={cn(cell, 'py-3')}>
+                      <span className={cn('text-[17px] font-black tabular-nums', leftAfterRent.winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>
+                        {fc(leftAfterRent.b)}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {verdict ? (
+              <div
+                className={cn(
+                  'mt-5 rounded-xl px-4 py-4',
+                  verdict.split ? 'border border-[#A7C957] bg-green-50' : 'border border-gray-200 bg-gray-50',
+                )}
+              >
+                <p className="text-[15px] font-bold leading-snug text-gray-900">{verdict.paper}</p>
+                <p className="mt-1 text-[15px] font-bold leading-snug text-gray-900">{verdict.monthly}</p>
+                {verdict.split && (
+                  <p className="mt-2.5 text-[13.5px] leading-relaxed text-gray-600">
+                    Neither is the right answer. This is the comparison a base salary never shows &mdash; the bigger
+                    package is not the one that leaves you more to live on.
+                  </p>
+                )}
+              </div>
+            ) : (
+              // Without rent for both this is a salary comparison, which is the one
+              // thing the feature exists not to be. Ask for what is missing rather
+              // than printing a verdict built on half the evidence.
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-[13.5px] leading-relaxed text-amber-900">
+                  <strong className="font-bold">Set a city for both offers</strong> to see what each one leaves after
+                  rent. That is the number that decides how they feel to live on, and it is the reason the bigger
+                  package is often not the better offer.
+                </p>
+              </div>
+            )}
+
+            {loadingTax && (
+              <p className="mt-3 text-[12.5px] text-gray-400">Working out tax for the second offer…</p>
+            )}
+
+            {/* Phone only: the inputs are always on screen beside this on a wide one. */}
+            {hasSecondOffer && (
+              <div className="mt-5 border-t border-gray-200 pt-5 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit((v) => !v)}
+                  className="-my-2 inline-flex min-h-11 items-center text-[13.5px] font-bold text-[#386641] underline underline-offset-2"
+                >
+                  {showEdit ? 'Hide the second offer’s numbers' : 'Edit the second offer’s numbers'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
