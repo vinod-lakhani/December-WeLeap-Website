@@ -50,6 +50,7 @@ export const BIO_FEATURED_TOOL = ''
 export const BIO_TOOL_ORDER: readonly string[] = [
   'first-paycheck-setup',
   'what-is-my-job-offer-worth',
+  'what-is-my-internship-offer-worth',
   'how-should-i-split-my-paycheck',
   'whats-my-money-age',
   'first-student-loan-payment',
@@ -58,8 +59,6 @@ export const BIO_TOOL_ORDER: readonly string[] = [
   'credit-card-payoff',
   'should-i-use-buy-now-pay-later',
   'what-is-saving-monthly-worth',
-  // New on 19 Oct 2026; no traffic to rank by yet.
-  'what-is-my-internship-offer-worth',
 ]
 
 /**
