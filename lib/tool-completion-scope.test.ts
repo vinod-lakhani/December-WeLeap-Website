@@ -24,9 +24,18 @@ import { FREE_TOOLS } from './tools'
 
 const COMPONENTS = join(process.cwd(), 'components')
 
-/** Files that emit tool_completed, found by reading rather than by a list. */
+/**
+ * Files that emit tool_completed, found by reading rather than by a list.
+ *
+ * Components only. A test ABOUT a completion gate quotes the event name to
+ * assert on it, and this used to count that as an emitter and then fail it for
+ * not claiming a session.
+ */
 function filesEmittingCompletion(): string[] {
-  return execSync(`grep -rl "track('tool_completed'" ${COMPONENTS}`, { encoding: 'utf8' })
+  return execSync(
+    `grep -rl --include=*.tsx --exclude=*.test.tsx "track('tool_completed'" ${COMPONENTS}`,
+    { encoding: 'utf8' }
+  )
     .split('\n')
     .filter(Boolean)
 }
