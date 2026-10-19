@@ -1809,6 +1809,16 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
               calculator twice and write four numbers down — this is that, done
               for them. Costs a visitor with one offer a single line of copy. */}
           {offerB && comparison ? (
+            /**
+             * Wider than the tool on a wide screen. The tool is a 600px
+             * column inside the page's max-w-4xl container (896px, 24px
+             * padding each side = 848px of content). The comparison lays out
+             * as two columns at `lg`, and two columns in 600px is two cramped
+             * ones — so it takes the container's full width, centred by the
+             * same arithmetic: (848 − 600) / 2 = 124px into each margin. If
+             * the page container changes, this changes with it.
+             */
+            <div className="lg:-mx-[124px] lg:w-[848px]">
             <OfferCompare
               a={{ label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc }}
               b={offerB}
@@ -1837,6 +1847,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
               loadingCities={bLoadingMetros}
               loadingTax={bTaxLoading}
             />
+            </div>
           ) : (
             <button
               type="button"
