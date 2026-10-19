@@ -93,6 +93,10 @@ const STEPS: readonly MethodStep[] = [
  */
 const RELATED: readonly RelatedTool[] = [
   {
+    href: '/what-is-my-internship-offer-worth',
+    why: 'Weighing an internship rather than a full-time role? The package has none of the parts above — no match, no equity — and the question is different: what you clear for the term, and what housing leaves.',
+  },
+  {
     href: '/how-much-rent-can-i-afford',
     why: 'You entered a city and a rent figure above. This works the other way round: it takes the salary and returns the rent range that fits it, plus the cash you need upfront before you get keys.',
   },

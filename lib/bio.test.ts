@@ -147,9 +147,9 @@ describe('the column', () => {
     expect(unknown, `in BIO_TOOL_ORDER but not a tool: ${unknown.join(', ')}`).toEqual([])
   })
 
-  it('lists all ten tools, from the catalogue rather than a second copy', () => {
-    expect(FREE_TOOLS).toHaveLength(10)
-    expect(cards.filter((c) => c.slot === 'tool')).toHaveLength(10)
+  it('lists all eleven tools, from the catalogue rather than a second copy', () => {
+    expect(FREE_TOOLS).toHaveLength(11)
+    expect(cards.filter((c) => c.slot === 'tool')).toHaveLength(11)
     // Names and blurbs are the catalogue's, so a rename there lands here.
     for (const tool of FREE_TOOLS) {
       const card = cards.find((c) => c.slot === 'tool' && c.tool === tool.slug)!

@@ -23,6 +23,7 @@ const SHORT_ALIASES = [
   '/rent',
   '/paycheck',
   '/loan',
+  '/intern',
   '/plan',
   '/age',
   '/card',
