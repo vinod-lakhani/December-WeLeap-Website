@@ -539,7 +539,12 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
         <Row label="Withheld by payroll" value={`−${fc(r.withheld.total)}`} muted
           note={`Federal ${fc(r.withheld.federal)} · state ${fc(r.withheld.state)} · Social Security and Medicare ${fc(r.withheld.fica)}`} />
         <Row label="Lands in your account" value={fc(r.takeHome)} note={`${fc(r.takeHomeMonthly)} a month`} />
-        {r.housingCost > 0 && <Row label="Rent for the term" value={`−${fc(r.housingCost)}`} muted />}
+        <Row
+          label="Rent for the term"
+          value={r.housingCost > 0 ? `−${fc(r.housingCost)}` : inputs.housing === 'provided' ? 'covered' : '—'}
+          muted
+          note={r.housingCost > 0 || inputs.housing === 'provided' ? undefined : 'Pick a city or put in a monthly rent.'}
+        />
         <Row label="Left after housing" value={fc(r.leftAfterHousing)} />
       </div>
 
@@ -595,14 +600,28 @@ function Comparison({
 }) {
   const cell = 'px-2 py-2.5 text-right text-[14px] tabular-nums'
   const head = 'px-2 py-2 text-right text-[12px] font-bold uppercase tracking-wide text-gray-500'
-  const rows: Array<{ label: string; a: number; b: number; negative?: boolean }> = b
+  /**
+   * The same rows, in the same order, as "Where it goes" above — so a reader
+   * can run a finger down one and find the matching line in the other. The
+   * two lines that sit below the total there (the refund, the up-front cash)
+   * sit below it here too, muted, rather than being folded into the sum.
+   */
+  type Line = { label: string; a: number; b: number; negative?: boolean; total?: boolean; muted?: boolean }
+  const rows: Line[] = b
     ? [
         { label: 'Pay for the term', a: a.wages, b: b.wages },
+        ...(a.housingStipend > 0 || b.housingStipend > 0
+          ? [{ label: 'Housing stipend, for the term', a: a.housingStipend, b: b.housingStipend }]
+          : []),
+        ...(a.relocation > 0 || b.relocation > 0
+          ? [{ label: 'Relocation allowance', a: a.relocation, b: b.relocation }]
+          : []),
         { label: 'Withheld by payroll', a: a.withheld.total, b: b.withheld.total, negative: true },
         { label: 'Lands in your account', a: a.takeHome, b: b.takeHome },
         { label: 'Rent for the term', a: a.housingCost, b: b.housingCost, negative: true },
-        { label: 'Comes back at filing', a: a.refund, b: b.refund },
-        { label: 'Needed up front', a: a.upfrontCash, b: b.upfrontCash, negative: true },
+        { label: 'Left after housing', a: a.leftAfterHousing, b: b.leftAfterHousing, total: true },
+        { label: 'Comes back at filing', a: a.refund, b: b.refund, muted: true },
+        { label: 'Needed up front', a: a.upfrontCash, b: b.upfrontCash, negative: true, muted: true },
       ]
     : []
   const winner = b ? (a.leftAfterHousing === b.leftAfterHousing ? null : a.leftAfterHousing > b.leftAfterHousing ? 'a' : 'b') : null
@@ -631,18 +650,25 @@ function Comparison({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.label} className="border-b border-gray-100">
-                  <td className="px-2 py-2.5 text-left text-[13.5px] text-gray-600">{row.label}</td>
-                  <td className={cn(cell, 'text-gray-500')}>{row.a === 0 ? '—' : `${row.negative ? '−' : ''}${fc(row.a)}`}</td>
-                  <td className={cn(cell, 'text-gray-900')}>{row.b === 0 ? '—' : `${row.negative ? '−' : ''}${fc(row.b)}`}</td>
-                </tr>
-              ))}
-              <tr className="bg-gray-50">
-                <td className="px-2 py-3 text-left text-[14px] font-extrabold text-gray-900">Left after housing</td>
-                <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>{fc(a.leftAfterHousing)}</td>
-                <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>{fc(b.leftAfterHousing)}</td>
-              </tr>
+              {rows.map((row) => {
+                const show = (n: number) => (n === 0 ? '—' : `${row.negative ? '−' : ''}${fc(n)}`)
+                if (row.total) {
+                  return (
+                    <tr key={row.label} className="border-b-2 border-gray-300 bg-gray-50">
+                      <td className="px-2 py-3 text-left text-[14px] font-extrabold text-gray-900">{row.label}</td>
+                      <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>{fc(row.a)}</td>
+                      <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>{fc(row.b)}</td>
+                    </tr>
+                  )
+                }
+                return (
+                  <tr key={row.label} className="border-b border-gray-100">
+                    <td className={cn('px-2 py-2.5 text-left text-[13.5px]', row.muted ? 'text-gray-400' : 'text-gray-600')}>{row.label}</td>
+                    <td className={cn(cell, row.muted ? 'text-gray-400' : 'text-gray-500')}>{show(row.a)}</td>
+                    <td className={cn(cell, row.muted ? 'text-gray-400' : 'text-gray-900')}>{show(row.b)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           {(rentMissingA || rentMissingB) && (
