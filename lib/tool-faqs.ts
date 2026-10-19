@@ -167,6 +167,44 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
     },
   ],
 
+  /**
+   * Figures below were produced by lib/internship/calculation.ts with 2026
+   * federal brackets and the standard deduction: $25/hr, 40 hours, 12 weeks.
+   */
+  '/what-is-my-internship-offer-worth': [
+    {
+      q: 'How do I compare two internship offers?',
+      a: 'Start from what each one leaves after housing for the term, not from the hourly rate. An hourly rate, a monthly stipend and a lump sum are three shapes of the same thing — pay for the weeks you work — so first put them on the same footing: rate times hours times weeks, stipend times months, or the lump as given. Then take off what payroll withholds, then take off rent for the term in that city, unless the employer houses you. The number that is left is the one that decides how the summer feels, and it is common for the offer with the higher rate to come out behind once a more expensive city is in the picture.',
+    },
+    {
+      q: 'What is $25 an hour for a 12-week internship worth?',
+      a: 'At 40 hours a week, $25 an hour is $12,000 for a 12-week term. Payroll will withhold roughly $1,850 of that — about $920 in Social Security and Medicare, which is final, and about $940 in federal tax, most of which comes back at filing because $12,000 on its own is below the standard deduction. So about $10,150 lands in your account across the term, and a further $900 or so arrives after you file. In a state with income tax both figures move a little.',
+    },
+    {
+      q: 'Why does an internship paycheck have so much tax taken out?',
+      a: 'Because withholding tables assume each paycheck\'s rate continues for the whole year. $25 an hour for 40 hours is treated as though you earn $52,000 a year, and taxed accordingly, even though you will earn it for twelve weeks. The money is not lost — it is a prepayment, and the difference between what was withheld and what you actually owe comes back as a refund when you file. Social Security and Medicare are the exception: those are charged on every dollar and are not refunded.',
+    },
+    {
+      q: 'Is an internship housing stipend taxable?',
+      a: 'A housing stipend paid to you in cash is wages, and it is taxed and reported like the rest of your pay. The same applies to a relocation or travel allowance, which stopped being tax-free in 2018. Housing the employer provides directly is different in form, though it is often a taxable benefit as well. The practical point is that a $1,500-a-month stipend adds about $4,150 to taxable income over twelve weeks, not $4,150 of free rent.',
+    },
+    {
+      q: 'How much rent can I afford on an internship salary?',
+      a: 'The honest answer is that internship housing is a cash-flow question rather than an affordability ratio. You need the deposit and first month\'s rent before the first paycheck arrives, which is usually two to three weeks in, so the number to check first is whether you have roughly two months\' rent available up front. After that, take the term\'s take-home, subtract rent for the term, and the remainder is what the summer actually leaves you. Market rents quoted for a city are for year-long leases; summer sublets and furnished short-term places can be cheaper or dearer.',
+    },
+    {
+      q: 'Should I annualise my internship pay to compare it with a full-time offer?',
+      a: 'Only as a rough comparison, and knowing what it hides. Multiplying an hourly rate by 2,080 hours — $45 an hour becomes $93,600 — is how recruiters make an internship sound like a salary, but an intern is paid for the weeks worked, with no paid holiday, no benefits, no match and no job at the end unless one is offered. The annualised figure is useful for one thing: holding an hourly offer up against a salaried one on the same scale. It is not what you will earn.',
+    },
+    {
+      q: 'Do interns pay Social Security and Medicare tax?',
+      a: 'Almost always, yes. FICA is charged at 7.65% on every dollar of wages from the first one, with no deduction and no refund, and it applies to interns at ordinary employers. The one exception is a student working for the school they are enrolled at, which has its own rule. On $12,000 for a term that is about $920 you will not see again, which is why take-home for an internship is lower than people expect even when the income tax on it is close to zero.',
+    },
+    {
+      q: 'How many weeks is a typical internship or co-op?',
+      a: 'A summer internship is usually ten to twelve weeks; a co-op is commonly a full academic term, around sixteen weeks, sometimes longer. The length matters more than it looks because rent is charged by the month while pay is earned by the week, so a sixteen-week term carries roughly 3.7 months of rent against twelve weeks\' worth of 2.8. Put the actual number of weeks in your offer letter rather than a guess.',
+    },
+  ],
   '/first-student-loan-payment': [
     {
       q: 'When does my student loan grace period end?',

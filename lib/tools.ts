@@ -73,6 +73,30 @@ export const FREE_TOOLS: FreeTool[] = [
   },
   {
     /**
+     * The same question, one to two years earlier.
+     *
+     * A sophomore with an internship offer does not recognise themself in
+     * "job offer" — the career-center feedback that produced this page — and
+     * the package they are weighing has none of the parts the offer tool
+     * prices. No match, no equity, no bonus. What they are asking is what
+     * they clear for the term and whether they can afford to live there, so
+     * the headline is what is left after housing, not total pay.
+     *
+     * Beside the offer tool because it is the same moment at a different
+     * age, and because the full-time tool is where someone comparing an
+     * hourly figure to a salary will go next.
+     */
+    name: "Internship Offer Analyzer",
+    question: "What's my internship offer actually worth?",
+    blurb: "Hourly, stipend or lump sum — see what you clear for the term, what housing takes, and what you keep.",
+    cta: "Price my internship →",
+    href: "/what-is-my-internship-offer-worth",
+    icon: "/images/tool-icons/luggage.png",
+    slug: "internship",
+    presentDay: true,
+  },
+  {
+    /**
      * The narrowest tool here, and deliberately so.
      *
      * Every other one answers a question about money. This answers a question
@@ -297,6 +321,6 @@ export const PRESENT_DAY_TOOLS = FREE_TOOLS.filter((t) => t.presentDay)
  */
 export const TOOL_COUNT = FREE_TOOLS.length
 export const TOOL_COUNT_WORD =
-  ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][
+  ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'][
     TOOL_COUNT
   ] ?? String(TOOL_COUNT)

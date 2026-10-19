@@ -1,0 +1,668 @@
+'use client'
+
+/**
+ * What an internship offer is worth, for the term it covers.
+ *
+ * Nothing is prefilled with an example. Every campaign hero and worked-example
+ * tool on this site has needed its completion gate repaired because a result
+ * that exists before anybody types makes "a result and a touch" vacuous. Here
+ * the hours and the weeks carry their conventional defaults and the rate does
+ * not, so no result exists until the visitor supplies the one number that is
+ * theirs — and completion then needs one more of term, state or city.
+ *
+ * The headline is what is left after housing, not pay. The question an intern
+ * is actually asking is "can I afford to live there for the summer", and the
+ * answer with the higher hourly rate is often the wrong one once the city is
+ * in the picture. The primary CTA sits directly under that figure with nothing
+ * between — the ordering every other tool was moved to.
+ *
+ * Two internships compare side by side from launch, live, with no confirm
+ * step: the second offer's inputs on the left and both priced on the right on
+ * a wide screen, stacked on a phone. One DOM for both layouts, so every input
+ * mounts once. See components/OfferCompare.tsx for why that rule exists.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import { AppCta } from '@/components/AppCta'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { track } from '@/lib/analytics'
+import {
+  computeInternship,
+  emptyInternship,
+  UPFRONT_RENT_MONTHS,
+  type HousingMode,
+  type InternshipInputs,
+  type InternshipResult,
+  type PayShape,
+} from '@/lib/internship/calculation'
+import { nextRunIndex } from '@/lib/run-index'
+import { US_STATES_NAMED } from '@/lib/states'
+import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
+import { cn } from '@/lib/utils'
+
+const TOOL = 'internship'
+const PAGE = '/what-is-my-internship-offer-worth'
+
+const fc = (n: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
+    Math.round(n),
+  )
+const num = (raw: string) => Number(raw.replace(/[^0-9.]/g, '')) || 0
+
+type MetroOption = { label: string; value: string }
+
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
+
+const SELECT =
+  'mt-1 h-11 w-full rounded-md border border-[#D1D5DB] bg-white px-3 text-base disabled:bg-gray-50 md:text-sm'
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[11.5px] font-bold uppercase tracking-[0.08em] text-gray-400">{children}</p>
+}
+
+function NumField({
+  id, label, value, onChange, placeholder, prefix, suffix, decimals,
+}: {
+  id: string
+  label: string
+  value: number
+  onChange: (n: number) => void
+  placeholder?: string
+  prefix?: string
+  suffix?: string
+  /** Allow a decimal point — an hourly rate is often $27.50. */
+  decimals?: boolean
+}) {
+  // Decimal fields keep the raw string so "27." survives the keystroke.
+  const [raw, setRaw] = useState(value ? String(value) : '')
+  useEffect(() => {
+    if (num(raw) !== value) setRaw(value ? String(value) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+  return (
+    <div>
+      <Label htmlFor={id} className="text-[13px] text-gray-700">{label}</Label>
+      <div className="relative">
+        {prefix && (
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-gray-500">
+            {prefix}
+          </span>
+        )}
+        <Input
+          id={id}
+          inputMode={decimals ? 'decimal' : 'numeric'}
+          className={cn('mt-1 border-[#D1D5DB]', prefix && 'pl-7', suffix && 'pr-10')}
+          value={decimals ? raw : value ? value.toLocaleString('en-US') : ''}
+          placeholder={placeholder}
+          onChange={(e) => {
+            const next = decimals
+              ? e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+              : e.target.value
+            if (decimals) setRaw(next)
+            onChange(num(next))
+          }}
+        />
+        {suffix && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Choice<T extends string>({
+  name, value, options, onChange,
+}: {
+  name: string
+  value: T
+  options: ReadonlyArray<{ value: T; label: string }>
+  onChange: (v: T) => void
+}) {
+  return (
+    <div role="radiogroup" aria-label={name} className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            'min-h-11 rounded-full border px-4 text-[13.5px] font-semibold transition',
+            value === o.value
+              ? 'border-[#386641] bg-[#386641] text-white'
+              : 'border-[#D1D5DB] bg-white text-gray-700 hover:border-[#386641]',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const PAY_SHAPES: ReadonlyArray<{ value: PayShape; label: string }> = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'monthly', label: 'Monthly stipend' },
+  { value: 'lump', label: 'One payment for the term' },
+]
+
+const HOUSING: ReadonlyArray<{ value: HousingMode; label: string }> = [
+  { value: 'self', label: 'I pay rent' },
+  { value: 'stipend', label: 'They pay a housing stipend' },
+  { value: 'provided', label: 'They provide housing' },
+]
+
+interface FieldsProps {
+  idPrefix: string
+  value: InternshipInputs
+  city: string
+  metros: MetroOption[]
+  loadingMetros: boolean
+  onChange: (patch: Partial<InternshipInputs>, field: string) => void
+  onCity: (city: string) => void
+}
+
+/**
+ * Every field that changes the answer, for one internship. Used twice — the
+ * offer and the one it is compared against — with different ids.
+ */
+function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, onChange, onCity }: FieldsProps) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <GroupLabel>How it pays</GroupLabel>
+        <Choice name="Pay shape" value={v.payShape} options={PAY_SHAPES} onChange={(s) => onChange({ payShape: s }, 'pay_shape')} />
+        <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
+          {v.payShape === 'hourly' && (
+            <>
+              <NumField id={`${p}-rate`} label="Hourly rate" value={v.hourlyRate} prefix="$" placeholder="e.g. 25" decimals
+                onChange={(n) => onChange({ hourlyRate: n }, 'pay')} />
+              <NumField id={`${p}-hours`} label="Hours a week" value={v.hoursPerWeek} suffix="hrs"
+                onChange={(n) => onChange({ hoursPerWeek: n }, 'hours')} />
+              <NumField id={`${p}-overtime`} label="Overtime hours a week" value={v.overtimeHoursPerWeek} suffix="at 1.5×" placeholder="0"
+                onChange={(n) => onChange({ overtimeHoursPerWeek: n }, 'overtime')} />
+            </>
+          )}
+          {v.payShape === 'monthly' && (
+            <NumField id={`${p}-stipend`} label="Stipend a month" value={v.monthlyStipend} prefix="$" placeholder="e.g. 4,000"
+              onChange={(n) => onChange({ monthlyStipend: n }, 'pay')} />
+          )}
+          {v.payShape === 'lump' && (
+            <NumField id={`${p}-lump`} label="Total for the term" value={v.lumpSum} prefix="$" placeholder="e.g. 15,000"
+              onChange={(n) => onChange({ lumpSum: n }, 'pay')} />
+          )}
+          <NumField id={`${p}-weeks`} label="Weeks (co-ops are often 16)" value={v.weeks} suffix="wks"
+            onChange={(n) => onChange({ weeks: n }, 'weeks')} />
+        </div>
+      </div>
+
+      <div>
+        <GroupLabel>Where it is</GroupLabel>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor={`${p}-state`} className="text-[13px] text-gray-700">Work state</Label>
+            <select id={`${p}-state`} value={v.state} className={SELECT}
+              onChange={(e) => { onChange({ state: e.target.value }, 'state'); onCity('') }}>
+              <option value="">— select state —</option>
+              {US_STATES_NAMED.map((st) => <option key={st.code} value={st.code}>{st.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor={`${p}-city`} className="text-[13px] text-gray-700">City</Label>
+            <select id={`${p}-city`} value={city} disabled={!v.state} className={SELECT}
+              onChange={(e) => onCity(e.target.value)}>
+              <option value="">
+                {loadingMetros ? 'Loading…' : v.state ? '— select city —' : '— select state first —'}
+              </option>
+              {metros.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <GroupLabel>Housing</GroupLabel>
+        <Choice name="Housing" value={v.housing} options={HOUSING} onChange={(h) => onChange({ housing: h }, 'housing')} />
+        {v.housing !== 'provided' && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {v.housing === 'stipend' && (
+              <NumField id={`${p}-housing-stipend`} label="Housing stipend a month" value={v.housingStipendMonthly} prefix="$" placeholder="e.g. 1,500"
+                onChange={(n) => onChange({ housingStipendMonthly: n }, 'housing_stipend')} />
+            )}
+            <NumField id={`${p}-rent`} label="Rent a month" value={v.rentMonthly} prefix="$" placeholder={city ? 'market rate' : 'e.g. 1,500'}
+              onChange={(n) => onChange({ rentMonthly: n }, 'rent')} />
+          </div>
+        )}
+        {v.housing !== 'provided' && city && (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+            Prefilled with the market rate for a year lease in {city}. Summer sublets and furnished short-term
+            places vary either way — put in what you actually know.
+          </p>
+        )}
+        {v.housing === 'stipend' && (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+            A cash stipend is wages. It is taxed here like the rest of your pay.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <GroupLabel>Anything else</GroupLabel>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumField id={`${p}-relocation`} label="Relocation or travel allowance" value={v.relocation} prefix="$" placeholder="0"
+            onChange={(n) => onChange({ relocation: n }, 'relocation')} />
+        </div>
+        {v.relocation > 0 && (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+            Taxable since 2018. Withheld at the flat 22% federal rate for a one-off payment.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Metro options and market rent, per side ───────────────────────────── */
+
+function useMetros(state: string) {
+  const [metros, setMetros] = useState<MetroOption[]>([])
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    if (!state) { setMetros([]); return }
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/zori?state=${state}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data) => { if (!cancelled) setMetros(Array.isArray(data.options) ? data.options : []) })
+      .catch(() => { if (!cancelled) setMetros([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [state])
+  return { metros, loading }
+}
+
+/**
+ * Market rent for the city, into the rent field only while it is still empty.
+ * A typed figure is the real one and is never overwritten.
+ */
+function useMarketRent(state: string, city: string, onRent: (rent: number) => void) {
+  useEffect(() => {
+    if (!state || !city || city === '__OTHER__') return
+    let cancelled = false
+    fetch(`/api/zori?state=${state}&region=${encodeURIComponent(city)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data) => { if (!cancelled && data.medianRent) onRent(Math.round(data.medianRent)) })
+      .catch(() => { /* the field stays empty and asks for itself */ })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, city])
+}
+
+/* ── The tool ───────────────────────────────────────────────────────────── */
+
+export function InternshipOfferTool() {
+  const [a, setA] = useState<InternshipInputs>(emptyInternship)
+  const [cityA, setCityA] = useState('')
+  const [b, setB] = useState<InternshipInputs | null>(null)
+  const [cityB, setCityB] = useState('')
+
+  const metrosA = useMetros(a.state)
+  const metrosB = useMetros(b?.state ?? '')
+
+  useMarketRent(a.state, cityA, (rent) =>
+    setA((prev) => (prev.rentMonthly === 0 ? { ...prev, rentMonthly: rent } : prev)),
+  )
+  useMarketRent(b?.state ?? '', cityB, (rent) =>
+    setB((prev) => (prev && prev.rentMonthly === 0 ? { ...prev, rentMonthly: rent } : prev)),
+  )
+
+  /**
+   * Which fields the visitor CHANGED on the first offer. Not focus — the rent
+   * tool's gate counted focus and completed on a tab through the form.
+   */
+  const [changed, setChanged] = useState<ReadonlySet<string>>(() => new Set())
+  const [engagementCount, setEngagementCount] = useState(0)
+  const engaged = useRef(false)
+
+  const patchA = useCallback((patch: Partial<InternshipInputs>, field: string) => {
+    setA((prev) => ({ ...prev, ...patch }))
+    setChanged((prev) => (prev.has(field) ? prev : new Set(prev).add(field)))
+    setEngagementCount((n) => n + 1)
+    if (engaged.current) return
+    engaged.current = true
+    track('tool_engaged', { tool: TOOL, first_field: field })
+    track('tool_form_start', { tool: TOOL, page: PAGE })
+  }, [])
+
+  const onCityA = useCallback((city: string) => {
+    setCityA(city)
+    if (city) setChanged((prev) => (prev.has('city') ? prev : new Set(prev).add('city')))
+  }, [])
+
+  const result = useMemo(() => computeInternship(a), [a])
+  const resultB = useMemo(() => (b ? computeInternship(b) : null), [b])
+
+  useResultShown('internship', !!result)
+
+  /**
+   * Completion: a result, and enough of it is the visitor's.
+   *
+   * Pay is the primary — it is the offer. One more of term (changed from the
+   * default), state or city makes the answer about their summer rather than a
+   * rate in a vacuum. Same rule, same session scope, as every other tool.
+   */
+  const enoughInput =
+    changed.has('pay') && (changed.has('weeks') || changed.has('state') || changed.has('city'))
+  const completed = useRef(false)
+  useEffect(() => {
+    if (!result || engagementCount === 0 || !enoughInput || completed.current) return
+    if (!claimToolCompletion('internship')) { completed.current = true; return }
+    completed.current = true
+    track('tool_completed', {
+      tool: 'internship',
+      run_index: nextRunIndex(TOOL),
+      trigger: 'field_change',
+      fields_changed: engagementCount,
+      inputs_supplied: [...changed].sort(),
+      pay_shape: a.payShape,
+      housing: a.housing,
+      weeks: a.weeks,
+      state_set: !!a.state,
+      city_set: !!cityA,
+      left_after_housing: Math.round(result.leftAfterHousing),
+    })
+  }, [result, engagementCount, enoughInput, changed, a.payShape, a.housing, a.weeks, a.state, cityA])
+
+  const startCompare = () => {
+    // Seeded with the same term and the same housing answer, because those are
+    // the parts most likely to be equal. Pay and place start empty — they are
+    // the reason there are two.
+    setB({ ...emptyInternship(), weeks: a.weeks, hoursPerWeek: a.hoursPerWeek, housing: a.housing })
+    setCityB('')
+    track('internship_compare_started', { tool: TOOL })
+  }
+  const clearCompare = () => {
+    setB(null)
+    setCityB('')
+    track('internship_compare_cleared', { tool: TOOL })
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-[600px]">
+      {/* ── The offer ──────────────────────────────────────────────────── */}
+      <section className="rounded-2xl border-2 border-[#386641] bg-white p-5 md:p-6">
+        <InternshipFields
+          idPrefix="intern"
+          value={a}
+          city={cityA}
+          metros={metrosA.metros}
+          loadingMetros={metrosA.loading}
+          onChange={patchA}
+          onCity={onCityA}
+        />
+      </section>
+
+      {/* ── The answer ─────────────────────────────────────────────────── */}
+      {result ? (
+        <>
+          <Headline r={result} housing={a.housing} className="mt-4" />
+
+          {/* Directly under the result, nothing between. */}
+          <div className="mt-4">
+            <AppCta
+              tool="internship"
+              eyebrow="This summer, then the one after"
+              headline="Want this money to go somewhere first?"
+              body={`${fc(result.leftAfterHousing)} is what the term leaves. Left alone it goes into the summer; the app decides where it goes before that happens, and keeps the numbers when the full-time offer arrives.`}
+              buttonLabel={result.leftAfterHousing > 0 ? `Show me where my ${fc(result.leftAfterHousing)} should go →` : 'Create my free account →'}
+              bullets={[
+                'Your pay and your rent, tracked across the term',
+                'A savings plan sized to a term, not a year',
+                'The same numbers, repriced when the full-time offer lands',
+              ]}
+              prefill={{ state: a.state }}
+            />
+          </div>
+
+          <Breakdown r={result} inputs={a} className="mt-4" />
+
+          {/* ── The second internship ─────────────────────────────────── */}
+          <div className={cn('mt-4', b && 'lg:-mx-[84px] lg:w-[768px]')}>
+            {/*
+              Two columns need more than the 600px the tool gets. The page
+              container is max-w-3xl (768px); (768 − 600) / 2 = 84px into each
+              margin. If the page container changes, this changes with it.
+            */}
+            {b ? (
+              <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+                <section className="rounded-2xl border-2 border-[#386641] bg-white p-5 md:p-6">
+                  <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">The second internship</h3>
+                    <button type="button" onClick={clearCompare}
+                      className="-my-2 inline-flex min-h-11 items-center text-[13px] font-semibold text-gray-500 underline underline-offset-2 hover:text-gray-800">
+                      Remove
+                    </button>
+                  </div>
+                  <p className="mb-5 text-[14px] leading-relaxed text-gray-600">
+                    Same term and housing answer as above to start with. Change whatever this one does differently.
+                  </p>
+                  <InternshipFields
+                    idPrefix="intern-b"
+                    value={b}
+                    city={cityB}
+                    metros={metrosB.metros}
+                    loadingMetros={metrosB.loading}
+                    onChange={(patch) => setB((prev) => (prev ? { ...prev, ...patch } : prev))}
+                    onCity={setCityB}
+                  />
+                </section>
+                <Comparison
+                  a={result}
+                  b={resultB}
+                  cityA={cityA}
+                  cityB={cityB}
+                  rentMissingA={a.housing !== 'provided' && a.rentMonthly === 0}
+                  rentMissingB={!!b && b.housing !== 'provided' && b.rentMonthly === 0}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={startCompare}
+                className="w-full rounded-2xl border-2 border-dashed border-gray-300 bg-white px-5 py-5 text-center transition hover:border-[#386641] hover:bg-gray-50"
+              >
+                <span className="block text-[15px] font-bold text-gray-900">Weighing this against another internship?</span>
+                <span className="mt-1 block text-[13.5px] leading-relaxed text-gray-500">
+                  Add the second one and both get priced side by side — including what each leaves after housing,
+                  which is where the higher hourly rate often comes out behind.
+                </span>
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="mt-4 text-center text-[14px] text-gray-500">
+          Put in the pay and the answer appears here — what the term leaves after housing.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ── Result blocks ──────────────────────────────────────────────────────── */
+
+function Headline({ r, housing, className }: { r: InternshipResult; housing: HousingMode; className?: string }) {
+  return (
+    <section className={cn('rounded-2xl border border-gray-200 bg-[#F3F7F3] p-5 md:p-6', className)}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#3F6B42]">What the term leaves</p>
+      <p className={cn('mt-1 text-[38px] font-black leading-none tabular-nums', r.leftAfterHousing < 0 ? 'text-red-600' : 'text-[#111827]')}>
+        {r.leftAfterHousing < 0 ? `−${fc(-r.leftAfterHousing)}` : fc(r.leftAfterHousing)}
+      </p>
+      <p className="mt-2 text-[14px] leading-relaxed text-gray-600">
+        {fc(r.takeHome)} lands across {r.months.toFixed(1)} months
+        {r.housingCost > 0
+          ? <>, and housing takes {fc(r.housingCost)} of it</>
+          : housing === 'provided'
+            ? <>, with housing covered</>
+            : <>, before rent &mdash; pick a city or put in a monthly figure</>}.
+        {r.refund > 0 && <> About {fc(r.refund)} more comes back when you file.</>}
+      </p>
+    </section>
+  )
+}
+
+function Row({ label, value, muted, note }: { label: string; value: string; muted?: boolean; note?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-gray-100 py-2.5">
+      <div>
+        <p className={cn('text-[14px]', muted ? 'text-gray-500' : 'text-gray-700')}>{label}</p>
+        {note && <p className="mt-0.5 text-[12px] leading-snug text-gray-400">{note}</p>}
+      </div>
+      <p className={cn('shrink-0 text-[14.5px] font-bold tabular-nums', muted ? 'text-gray-500' : 'text-gray-900')}>{value}</p>
+    </div>
+  )
+}
+
+function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: InternshipInputs; className?: string }) {
+  return (
+    <section className={cn('rounded-2xl border border-gray-200 bg-white p-5 md:p-6', className)}>
+      <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Where it goes</h3>
+      <div className="mt-2">
+        <Row label="Pay for the term" value={fc(r.wages)} />
+        {r.housingStipend > 0 && <Row label="Housing stipend, for the term" value={fc(r.housingStipend)} note="Taxable — it is wages." />}
+        {r.relocation > 0 && <Row label="Relocation allowance" value={fc(r.relocation)} note="Taxable since 2018." />}
+        <Row label="Withheld by payroll" value={`−${fc(r.withheld.total)}`} muted
+          note={`Federal ${fc(r.withheld.federal)} · state ${fc(r.withheld.state)} · Social Security and Medicare ${fc(r.withheld.fica)}`} />
+        <Row label="Lands in your account" value={fc(r.takeHome)} note={`${fc(r.takeHomeMonthly)} a month`} />
+        {r.housingCost > 0 && <Row label="Rent for the term" value={`−${fc(r.housingCost)}`} muted />}
+        <Row label="Left after housing" value={fc(r.leftAfterHousing)} />
+      </div>
+
+      {/* The refund, as a number. Payroll withholds as if the rate continued
+          all year; what is owed on a term's income alone is far less. */}
+      <div className="mt-4 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-3">
+        <p className="text-[13.5px] leading-relaxed text-gray-800">
+          <strong className="font-bold">Payroll will hold back about {fc(r.withheld.total)}.</strong>{' '}
+          {r.refund > 0 ? (
+            <>
+              Roughly {fc(r.refund)} of that comes back when you file, because withholding assumes this rate
+              continues all year and {fc(r.gross)} on its own is taxed far less. The {fc(r.withheld.fica)} of
+              Social Security and Medicare doesn&apos;t.
+            </>
+          ) : (
+            <>None of it comes back: at this level the tax owed matches what was withheld.</>
+          )}{' '}
+          <span className="text-gray-500">Assumes no other income this year.</span>
+        </p>
+      </div>
+
+      {r.upfrontCash > 0 && (
+        <p className="mt-4 text-[13.5px] leading-relaxed text-gray-600">
+          <strong className="font-bold text-gray-800">Before the first paycheck:</strong> about {fc(r.upfrontCash)} —
+          a deposit and the first month, due before any pay lands, usually two to three weeks in. Rule of thumb:
+          deposit ≈ {UPFRONT_RENT_MONTHS - 1} month&apos;s rent.
+        </p>
+      )}
+
+      {!r.stateNamed && (
+        <p className="mt-3 text-[12.5px] text-gray-500">
+          {inputs.state ? 'State tax is a national blend for this state.' : 'Pick a work state and the tax uses that state rather than a national blend.'}
+        </p>
+      )}
+
+      <p className="mt-4 border-t border-gray-100 pt-3 text-[12.5px] leading-relaxed text-gray-400">
+        Annualised, this rate would be {fc(r.annualised)} a year. A comparison aid for holding it against a
+        full-time offer — and the number that makes $45/hr sound like $93,000. Not what you will earn.
+      </p>
+    </section>
+  )
+}
+
+function Comparison({
+  a, b, cityA, cityB, rentMissingA, rentMissingB,
+}: {
+  a: InternshipResult
+  b: InternshipResult | null
+  cityA: string
+  cityB: string
+  rentMissingA: boolean
+  rentMissingB: boolean
+}) {
+  const cell = 'px-2 py-2.5 text-right text-[14px] tabular-nums'
+  const head = 'px-2 py-2 text-right text-[12px] font-bold uppercase tracking-wide text-gray-500'
+  const rows: Array<{ label: string; a: number; b: number; negative?: boolean }> = b
+    ? [
+        { label: 'Pay for the term', a: a.wages, b: b.wages },
+        { label: 'Withheld by payroll', a: a.withheld.total, b: b.withheld.total, negative: true },
+        { label: 'Lands in your account', a: a.takeHome, b: b.takeHome },
+        { label: 'Rent for the term', a: a.housingCost, b: b.housingCost, negative: true },
+        { label: 'Comes back at filing', a: a.refund, b: b.refund },
+        { label: 'Needed up front', a: a.upfrontCash, b: b.upfrontCash, negative: true },
+      ]
+    : []
+  const winner = b ? (a.leftAfterHousing === b.leftAfterHousing ? null : a.leftAfterHousing > b.leftAfterHousing ? 'a' : 'b') : null
+
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6">
+      <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Both internships, side by side</h3>
+      {!b ? (
+        <p className="mt-3 rounded-lg bg-gray-50 px-4 py-4 text-[14px] leading-relaxed text-gray-600">
+          Add the second internship&apos;s pay and both get priced here as you type.
+        </p>
+      ) : (
+        <div className="-mx-5 mt-3 overflow-x-auto px-5 md:mx-0 md:px-0">
+          <table className="w-full min-w-[300px] border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-2 py-2 text-left text-[12px] font-bold uppercase tracking-wide text-gray-500">For the term</th>
+                <th className={head}>
+                  First
+                  <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">{cityA || 'no city set'}</span>
+                </th>
+                <th className={head}>
+                  Second
+                  <span className="block text-[11.5px] font-medium normal-case tracking-normal text-gray-400">{cityB || 'no city set'}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.label} className="border-b border-gray-100">
+                  <td className="px-2 py-2.5 text-left text-[13.5px] text-gray-600">{row.label}</td>
+                  <td className={cn(cell, 'text-gray-500')}>{row.a === 0 ? '—' : `${row.negative ? '−' : ''}${fc(row.a)}`}</td>
+                  <td className={cn(cell, 'text-gray-900')}>{row.b === 0 ? '—' : `${row.negative ? '−' : ''}${fc(row.b)}`}</td>
+                </tr>
+              ))}
+              <tr className="bg-gray-50">
+                <td className="px-2 py-3 text-left text-[14px] font-extrabold text-gray-900">Left after housing</td>
+                <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'a' ? 'text-[#386641]' : 'text-gray-500')}>{fc(a.leftAfterHousing)}</td>
+                <td className={cn(cell, 'py-3 text-[17px] font-black', winner === 'b' ? 'text-[#386641]' : 'text-gray-500')}>{fc(b.leftAfterHousing)}</td>
+              </tr>
+            </tbody>
+          </table>
+          {(rentMissingA || rentMissingB) && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-[13.5px] leading-relaxed text-amber-900">
+                <strong className="font-bold">
+                  {rentMissingA && rentMissingB ? 'Neither has a rent figure yet' : rentMissingA ? 'The first has no rent figure yet' : 'The second has no rent figure yet'}
+                </strong>
+                {' '}— pick a city or put in a monthly rent for both, or this is a pay comparison dressed as a housing one.
+              </p>
+            </div>
+          )}
+          {winner && !rentMissingA && !rentMissingB && (
+            <p className="mt-4 text-[14px] font-bold leading-snug text-gray-900">
+              The {winner === 'a' ? 'first' : 'second'} one leaves {fc(Math.abs(a.leftAfterHousing - b.leftAfterHousing))} more for the term
+              {(winner === 'a' ? a.wages < b.wages : b.wages < a.wages) && <> — on lower pay</>}.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}

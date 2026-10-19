@@ -134,6 +134,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: '/intern',
+        destination: '/what-is-my-internship-offer-worth',
+        permanent: true,
+      },
+      {
         // /allocator already points here. Two aliases to one destination is
         // fine and this is the one a person would guess; the other is the
         // internal engine name and exists only to keep old links alive.
