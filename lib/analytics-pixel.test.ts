@@ -68,3 +68,44 @@ describe('Meta pixel on tool completion', () => {
     expect(strip(src('components/ToolPageView.tsx'))).toMatch(/fbq\(\s*'track',\s*'ViewContent'/)
   })
 })
+
+/**
+ * Google Ads sees the same funnel through the same one chokepoint.
+ *
+ * `tool_completed` is emitted by ten separate components. Wiring the
+ * conversion at each of them would make a missing one look exactly like a tool
+ * that does not convert, which is the mistake this codebase has already made
+ * once with `rent_form_start`. So the conversion rides inside `track()`, and
+ * what is worth testing is that it rides there and nowhere else.
+ */
+describe('Google Ads conversions through track()', () => {
+  const gtag = vi.fn()
+
+  beforeEach(() => {
+    gtag.mockClear()
+    vi.stubGlobal('window', { location: { hostname: 'www.weleap.ai' }, gtag })
+  })
+
+  it('reports a completion and a CTA click, each with its own label', async () => {
+    const track = await freshTrack()
+    const { ADS_CONVERSIONS } = await import('./google-ads')
+
+    await track('tool_completed', { tool: 'rent' })
+    await track('tool_cta_clicked', { tool: 'rent', placement: 'button' })
+
+    const sent = gtag.mock.calls
+      .filter((c) => c[0] === 'event' && c[1] === 'conversion')
+      .map((c) => (c[2] as { send_to: string }).send_to)
+
+    expect(sent).toEqual([ADS_CONVERSIONS.tool_completed, ADS_CONVERSIONS.tool_cta_clicked])
+  })
+
+  it('does not report the top of the funnel as a conversion', async () => {
+    const track = await freshTrack()
+    await track('tool_viewed', { tool: 'rent' })
+    await track('tool_engaged', { tool: 'rent', first_field: 'salary' })
+    await track('cta_click_signup', { source: 'hero' })
+
+    expect(gtag.mock.calls.some((c) => c[1] === 'conversion')).toBe(false)
+  })
+})

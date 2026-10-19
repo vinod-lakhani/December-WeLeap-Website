@@ -192,6 +192,7 @@ import { fbq } from '@/lib/meta-pixel'
 // page, so importing the SDK here would keep it in the initial bundle no
 // matter how the provider loads it. See lib/posthog-lazy.ts.
 import { getPostHog } from '@/lib/posthog-lazy';
+import { fireAdsConversion } from './google-ads';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -325,6 +326,17 @@ export async function track(eventName: string, params?: Record<string, any>, wai
   if (metaEvent && params?.tool) {
     fbq('trackCustom', metaEvent, { tool: params.tool }, { eventID: params.event_id });
   }
+
+  /**
+   * The Google Ads twin.
+   *
+   * Here rather than at the call sites for the same reason the Meta one is:
+   * `tool_completed` is emitted by ten different components, and a conversion
+   * missing from one of them is indistinguishable from that tool simply not
+   * converting. lib/google-ads.ts decides which events count and no-ops off
+   * the production host.
+   */
+  fireAdsConversion(eventName);
 
   // Debug logging when enabled
   if (DEBUG_ANALYTICS || (typeof window !== 'undefined' && (window as any).DEBUG_ANALYTICS)) {
