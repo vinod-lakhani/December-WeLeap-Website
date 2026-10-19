@@ -72,6 +72,21 @@ export interface RentToolProps {
   campaign?: boolean
 }
 
+/**
+ * The lowest annual salary the hero's rent range means anything at.
+ *
+ * Not a validation rule — the field accepts whatever you type. It stops the
+ * completion firing mid-word. Changing a prefilled $70,000 to $95,000 means
+ * passing through "9", "95", "950" and "9500", and each of those is a change
+ * to the field that matters with a result still on screen. Without a floor the
+ * completion lands on "9", reporting a rent range of about $2 a month.
+ *
+ * $10,000 is below any salary this tool has ever been given and above every
+ * prefix of a five-figure one, so a five-digit salary completes on the
+ * keystroke that finishes it.
+ */
+const MIN_PLAUSIBLE_SALARY = 10000;
+
 export function RentTool({ campaign = false }: RentToolProps = {}) {
   /**
    * Campaign traffic starts on the worked example from the creative, so the
@@ -149,20 +164,52 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
   const [engagementCount, setEngagementCount] = useState(0);
   const hasResult = !!results || heroResultShown;
 
+  /**
+   * Fields the visitor actually CHANGED, as opposed to touched.
+   *
+   * `engagementCount` counts focus as well as input, which is what
+   * `tool_engaged` wants and useless to a threshold: tabbing through the form
+   * is not supplying a number. Only the change handlers write here.
+   */
+  const [changedFields, setChangedFields] = useState<Set<string>>(new Set());
+
   useResultShown('rent', hasResult, campaign);
 
   /**
-   * Completion: a result, and the visitor did something. The same definition
-   * every other tool uses — see lib/tool-funnel.ts.
+   * Completion: an answer that is the visitor's own, and they did something.
    *
-   * Unchanged for organic traffic, where reaching a result means having filled
-   * the form and pressed Calculate, so engagement always precedes it. It is
-   * the campaign path this matters on, where the result arrives pre-filled.
+   * `results` is set only by a successful submit, so on the canonical path
+   * reaching a result means having filled salary, city and a start date and
+   * pressed Calculate — that clause is the gate this tool has always had.
+   *
+   * The campaign path is the one that needed narrowing. The hero prefills
+   * salary and city from RENT_EXAMPLE so the first screen can be an answer,
+   * which means `heroResultShown` is true at mount and a single keystroke
+   * anywhere — a focus on the start date, a digit in a field nobody read —
+   * used to report a completed tool. Measured 19 Oct on `?campaign=1`: one
+   * keystroke, `tool_completed` with `fields_changed: 1`, carrying a rent
+   * range computed from the ad's $70,000 rather than the visitor's salary.
+   *
+   * Same defect as the 100% default on the offer tool and the `'100'`/`'4'`
+   * on first-paycheck: a non-empty default makes a value-based gate vacuous.
+   * So the hero has to see one of the two inputs that move its answer change.
+   * Not `state`, which is only reachable by having changed `city` to Other,
+   * and not `start_date`, which the hero does not read.
    */
+  const heroInputSupplied =
+    (changedFields.has('salary') || changedFields.has('city')) &&
+    parseFloat(salary) >= MIN_PLAUSIBLE_SALARY;
+
   useEffect(() => {
     // claimToolCompletion is per SESSION; the ref alone re-armed on reload, so
     // one sitting with a refresh in it reported two completions.
-    if (hasResult && engagementCount > 0 && !toolCompletedRef.current && claimToolCompletion('rent')) {
+    if (
+      hasResult &&
+      (!!results || heroInputSupplied) &&
+      engagementCount > 0 &&
+      !toolCompletedRef.current &&
+      claimToolCompletion('rent')
+    ) {
       toolCompletedRef.current = true;
       track('tool_completed', {
         tool: 'rent',
@@ -174,10 +221,17 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
          */
         trigger: 'field_change',
         fields_changed: engagementCount,
+        /**
+         * Which fields the visitor changed, so a completion can be audited
+         * rather than trusted. `fields_changed` counts focus too and cannot
+         * distinguish "typed a salary" from "tabbed past the date picker" —
+         * the distinction this gate now turns on.
+         */
+        inputs_supplied: [...changedFields].sort(),
         ...(campaign ? { campaign: true } : {}),
       });
     }
-  }, [hasResult, engagementCount, campaign]);
+  }, [hasResult, results, heroInputSupplied, changedFields, engagementCount, campaign]);
 
   const availableCities = getAvailableCities();
   const showOtherState = city === 'Other';
@@ -305,8 +359,11 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
   // per visit here but under a rent-only name, so it could not be the middle of
   // a funnel keyed on the shared events. Both fire now, from the same guard, so
   // the count is identical and the old event keeps its history.
-  const handleFormStart = (field: string) => {
+  const handleFormStart = (field: string, changed = false) => {
     setEngagementCount((n) => n + 1);
+    if (changed) {
+      setChangedFields((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
+    }
     if (!formStartedRef.current) {
       formStartedRef.current = true;
       track('tool_engaged', { tool: 'rent', first_field: field });
@@ -521,9 +578,9 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
           // is type="number" and whose every consumer reads it with parseFloat
           // — and parseFloat('70,000') is 70. The hero groups it for display
           // without ever putting a comma in here.
-          onSalaryChange={(raw) => { setSalary(raw.replace(/[^0-9]/g, '')); handleFormStart('salary'); }}
+          onSalaryChange={(raw) => { setSalary(raw.replace(/[^0-9]/g, '')); handleFormStart('salary', true); }}
           city={city}
-          onCityChange={(next) => { setCity(next); handleFormStart('city'); }}
+          onCityChange={(next) => { setCity(next); handleFormStart('city', true); }}
           otherState={otherState}
           onResultShown={() => setHeroResultShown(true)}
           onOtherStateChange={(next) => {
@@ -531,7 +588,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
             // Same reset the form below does: a metro from the previous state
             // is not a metro in this one.
             setOtherMetro('');
-            handleFormStart('state');
+            handleFormStart('state', true);
           }}
         />
       )}
@@ -554,7 +611,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
               value={salary}
               onChange={(e) => {
                 setSalary(e.target.value);
-                handleFormStart('salary');
+                handleFormStart('salary', true);
               }}
               onFocus={() => handleFormStart('salary')}
               className="border-[#D1D5DB] !placeholder:text-[#111827]/40"
@@ -568,7 +625,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
             </Label>
             <Select value={city} onValueChange={(value) => {
               setCity(value);
-              handleFormStart('city');
+              handleFormStart('city', true);
             }}>
               <SelectTrigger
                 id="city"
@@ -685,7 +742,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
               value={startDate}
               onChange={(e) => {
                 setStartDate(e.target.value);
-                handleFormStart('start_date');
+                handleFormStart('start_date', true);
               }}
               onFocus={() => handleFormStart('start_date')}
               className="border-[#D1D5DB] text-base md:text-sm min-h-[44px] text-left w-full pr-10"
