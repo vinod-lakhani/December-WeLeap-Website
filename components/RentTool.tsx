@@ -26,7 +26,7 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
-import { RentTextOptIn } from '@/components/RentTextOptIn';
+import { RentTextOptIn, RentTextStickyBar } from '@/components/RentTextOptIn';
 import type { ResultView } from '@/components/ResultsCards';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
@@ -803,6 +803,13 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
         <div className="space-y-8">
           <ResultsCards
             onView={setResultView}
+            answerSlot={
+              textPilot && planData ? (
+                // The text door sits right under the number. On a phone the results start below the
+                // fold, so the sticky bar below points back here.
+                <RentTextOptIn planData={planData} />
+              ) : undefined
+            }
             afterHero={
               <RentFirstMove
                 rentRangeLow={rentRangeLow}
@@ -939,7 +946,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
 
           {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
               "Email me my plan instead" link. */}
-          {textPilot && planData && <div className="mt-8"><RentTextOptIn planData={planData} /></div>}
+          {textPilot && planData && results && <RentTextStickyBar />}
 
           <div id="email-plan" className="scroll-mt-24">
             <WaitlistForm planData={planData} variant="secondary" />

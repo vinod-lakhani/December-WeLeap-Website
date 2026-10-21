@@ -109,10 +109,13 @@ interface ResultsCardsProps {
   /** Rendered immediately after the hero answer — the conversion moment
    *  belongs next to the number, not after four more cards. */
   afterHero?: ReactNode;
+  /** Rendered inside the answer card, straight under the number and share line. */
+  answerSlot?: ReactNode;
 }
 
 export function ResultsCards({
   afterHero,
+  answerSlot,
   onView,
   takeHomeMonthly,
   takeHomeAnnual,
@@ -369,6 +372,8 @@ export function ResultsCards({
                 />
               </div>
             </div>
+
+            {answerSlot}
 
             {/* The reality check. This is the takeaway that turns an abstract
                 range into a decision, and it was previously 12px grey text at
