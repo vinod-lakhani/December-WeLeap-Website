@@ -26,6 +26,7 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { RentTextOptIn } from '@/components/RentTextOptIn';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
@@ -70,6 +71,8 @@ export interface RentToolProps {
    * scrolls gets the same tool either way, already filled in.
    */
   campaign?: boolean
+  /** Internal pilot: show the text opt-in under the result. */
+  textPilot?: boolean
 }
 
 /**
@@ -87,7 +90,7 @@ export interface RentToolProps {
  */
 const MIN_PLAUSIBLE_SALARY = 10000;
 
-export function RentTool({ campaign = false }: RentToolProps = {}) {
+export function RentTool({ campaign = false, textPilot = false }: RentToolProps = {}) {
   /**
    * Campaign traffic starts on the worked example from the creative, so the
    * first screen is an answer rather than an empty form. Organic traffic
@@ -922,6 +925,8 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
 
           {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
               "Email me my plan instead" link. */}
+          {textPilot && planData && <div className="mt-8"><RentTextOptIn planData={planData} /></div>}
+
           <div id="email-plan" className="scroll-mt-24">
             <WaitlistForm planData={planData} variant="secondary" />
           </div>

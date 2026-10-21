@@ -21,7 +21,7 @@ import {
   mapCityToTier,
 } from '@/lib/buckets';
 
-interface PlanData {
+export interface PlanData {
   salary: string;
   city: string;
   startDate: string;
