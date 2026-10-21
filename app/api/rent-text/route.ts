@@ -47,6 +47,9 @@ export async function POST(req: Request) {
   const takeHome = num(p.takeHomeMonthly)
   const upfrontLow = num(p.upfrontCashLow)
   const upfrontHigh = num(p.upfrontCashHigh)
+  // Local rentals range the calculator shows (ZORI). Optional: absent when the area has no data.
+  const marketLow = num(p.marketLow)
+  const marketHigh = num(p.marketHigh)
   if (rentLow === null || rentHigh === null || takeHome === null || upfrontLow === null || upfrontHigh === null) {
     return NextResponse.json({ error: 'Run the calculator first.' }, { status: 400 })
   }
@@ -76,6 +79,8 @@ export async function POST(req: Request) {
       takeHomeMonthly: takeHome,
       upfrontLow,
       upfrontHigh,
+      marketLow: marketLow ?? undefined,
+      marketHigh: marketHigh ?? undefined,
     },
   }
 

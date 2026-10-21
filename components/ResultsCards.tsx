@@ -63,7 +63,16 @@ interface PlanData {
   zoriAvailable?: boolean;
 }
 
+export interface MarketRent {
+  medianRent: number;
+  marketLow: number;
+  marketHigh: number;
+  tier: string;
+}
+
 interface ResultsCardsProps {
+  /** Reports the local rent range once it is loaded, so the calculator can pass it on. */
+  onMarketRent?: (m: MarketRent | null) => void;
   takeHomeMonthly: number;
   takeHomeAnnual: number;
   rentRange: string;
@@ -86,6 +95,7 @@ interface ResultsCardsProps {
 
 export function ResultsCards({
   afterHero,
+  onMarketRent,
   takeHomeMonthly,
   takeHomeAnnual,
   rentRange,
@@ -111,6 +121,9 @@ export function ResultsCards({
   } | null>(null);
   const [loadingMarketRent, setLoadingMarketRent] = useState(false);
   const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
+  useEffect(() => {
+    onMarketRent?.(marketRentData);
+  }, [marketRentData, onMarketRent]);
 
   // Load ZORI market rent data when location is available
   useEffect(() => {

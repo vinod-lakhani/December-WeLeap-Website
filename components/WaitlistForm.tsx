@@ -53,6 +53,9 @@ export interface PlanData {
   stateName?: string;
   regionName?: string;
   zoriAvailable?: boolean;
+  marketLow?: number;
+  marketHigh?: number;
+  medianRent?: number;
 }
 
 interface WaitlistFormProps {

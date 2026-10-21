@@ -27,6 +27,7 @@ import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { RentTextOptIn } from '@/components/RentTextOptIn';
+import type { MarketRent } from '@/components/ResultsCards';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
@@ -91,6 +92,7 @@ export interface RentToolProps {
 const MIN_PLAUSIBLE_SALARY = 10000;
 
 export function RentTool({ campaign = false, textPilot = false }: RentToolProps = {}) {
+  const [marketRent, setMarketRent] = useState<MarketRent | null>(null);
   /**
    * Campaign traffic starts on the worked example from the creative, so the
    * first screen is an answer rather than an empty form. Organic traffic
@@ -570,6 +572,9 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
     stateName: stateName || undefined,
     regionName: regionName || undefined,
     zoriAvailable: zoriAvailable,
+    marketLow: marketRent?.marketLow,
+    marketHigh: marketRent?.marketHigh,
+    medianRent: marketRent?.medianRent,
   } : undefined;
 
   return (
@@ -789,6 +794,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       {results && (
         <div className="space-y-8">
           <ResultsCards
+            onMarketRent={setMarketRent}
             afterHero={
               <RentFirstMove
                 rentRangeLow={rentRangeLow}
