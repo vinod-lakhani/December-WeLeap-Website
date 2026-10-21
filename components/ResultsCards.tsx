@@ -70,9 +70,27 @@ export interface MarketRent {
   tier: string;
 }
 
+export interface UpfrontBreakdown {
+  gapDays: number;
+  depositLow: number;
+  depositHigh: number;
+  firstMonthLow: number;
+  firstMonthHigh: number;
+  gapLivingCosts: number;
+  movingSetup: number;
+  totalLow: number;
+  totalHigh: number;
+}
+
+export interface ResultView {
+  marketRent: MarketRent | null;
+  marketComparison: 'above' | 'overlap' | 'below' | null;
+  upfront: UpfrontBreakdown | null;
+}
+
 interface ResultsCardsProps {
-  /** Reports the local rent range once it is loaded, so the calculator can pass it on. */
-  onMarketRent?: (m: MarketRent | null) => void;
+  /** Reports what the card shows (local rentals, how it compares, the upfront breakdown) so the calculator can pass it on. */
+  onView?: (v: ResultView) => void;
   takeHomeMonthly: number;
   takeHomeAnnual: number;
   rentRange: string;
@@ -95,7 +113,7 @@ interface ResultsCardsProps {
 
 export function ResultsCards({
   afterHero,
-  onMarketRent,
+  onView,
   takeHomeMonthly,
   takeHomeAnnual,
   rentRange,
@@ -121,9 +139,6 @@ export function ResultsCards({
   } | null>(null);
   const [loadingMarketRent, setLoadingMarketRent] = useState(false);
   const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
-  useEffect(() => {
-    onMarketRent?.(marketRentData);
-  }, [marketRentData, onMarketRent]);
 
   // Load ZORI market rent data when location is available
   useEffect(() => {
@@ -266,6 +281,12 @@ export function ResultsCards({
   };
 
   const upfrontCash = calculateUpfrontCash();
+  // Report the card's figures up whenever they change. The key keeps this from firing on every render.
+  const upfrontKey = JSON.stringify(upfrontCash ?? null);
+  useEffect(() => {
+    onView?.({ marketRent: marketRentData, marketComparison: marketRentComparison, upfront: upfrontCash ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketRentData, marketRentComparison, upfrontKey]);
 
   /**
    * What a share actually asserts.

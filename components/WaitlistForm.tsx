@@ -56,6 +56,20 @@ export interface PlanData {
   marketLow?: number;
   marketHigh?: number;
   medianRent?: number;
+  marketTier?: string;
+  marketComparison?: 'above' | 'overlap' | 'below';
+  upfrontBreakdown?: {
+    gapDays: number;
+    depositLow: number;
+    depositHigh: number;
+    firstMonthLow: number;
+    firstMonthHigh: number;
+    gapLivingCosts: number;
+    movingSetup: number;
+    totalLow: number;
+    totalHigh: number;
+  };
+  firstMove?: { monthlySaving: number; thirtyYearValue: number };
 }
 
 interface WaitlistFormProps {

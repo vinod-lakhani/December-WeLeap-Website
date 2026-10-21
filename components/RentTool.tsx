@@ -27,7 +27,8 @@ import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
 import { RentTextOptIn } from '@/components/RentTextOptIn';
-import type { MarketRent } from '@/components/ResultsCards';
+import type { ResultView } from '@/components/ResultsCards';
+import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
@@ -92,7 +93,7 @@ export interface RentToolProps {
 const MIN_PLAUSIBLE_SALARY = 10000;
 
 export function RentTool({ campaign = false, textPilot = false }: RentToolProps = {}) {
-  const [marketRent, setMarketRent] = useState<MarketRent | null>(null);
+  const [resultView, setResultView] = useState<ResultView | null>(null);
   /**
    * Campaign traffic starts on the worked example from the creative, so the
    * first screen is an answer rather than an empty form. Organic traffic
@@ -572,9 +573,16 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
     stateName: stateName || undefined,
     regionName: regionName || undefined,
     zoriAvailable: zoriAvailable,
-    marketLow: marketRent?.marketLow,
-    marketHigh: marketRent?.marketHigh,
-    medianRent: marketRent?.medianRent,
+    marketLow: resultView?.marketRent?.marketLow,
+    marketHigh: resultView?.marketRent?.marketHigh,
+    medianRent: resultView?.marketRent?.medianRent,
+    marketTier: resultView?.marketRent?.tier,
+    marketComparison: resultView?.marketComparison ?? undefined,
+    upfrontBreakdown: resultView?.upfront ?? undefined,
+    firstMove: rentRangeHigh > rentRangeLow ? {
+      monthlySaving: rentRangeHigh - rentRangeLow,
+      thirtyYearValue: Math.round(computeInvestingImpact(rentRangeHigh - rentRangeLow, 0.07, 30)),
+    } : undefined,
   } : undefined;
 
   return (
@@ -794,7 +802,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       {results && (
         <div className="space-y-8">
           <ResultsCards
-            onMarketRent={setMarketRent}
+            onView={setResultView}
             afterHero={
               <RentFirstMove
                 rentRangeLow={rentRangeLow}

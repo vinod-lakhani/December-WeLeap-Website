@@ -54,6 +54,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Run the calculator first.' }, { status: 400 })
   }
 
+  // Everything else the calculator shows, so Ribbit can answer from the same figures. Absent values stay absent.
+  const tax = (p.taxBreakdown ?? {}) as Record<string, unknown>
+  const up = (p.upfrontBreakdown ?? {}) as Record<string, unknown>
+  const fm = (p.firstMove ?? {}) as Record<string, unknown>
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
+  const debt = Number(p.debtMonthly)
+  const extra = {
+    grossAnnual: num(tax.grossAnnual) ?? undefined,
+    federalTaxAnnual: num(tax.federalTaxAnnual) ?? undefined,
+    stateTaxAnnual: num(tax.stateTaxAnnual) ?? undefined,
+    ficaTaxAnnual: num(tax.ficaTaxAnnual) ?? undefined,
+    totalTaxAnnual: num(tax.totalTaxAnnual) ?? undefined,
+    takeHomeAnnual: num(p.takeHomeAnnual) ?? undefined,
+    daysUntilStart: num(p.daysUntilStart) ?? undefined,
+    startDate: str(p.startDate),
+    debtMonthly: Number.isFinite(debt) && debt > 0 ? debt : undefined,
+    location: str(p.regionName) ?? str(p.presetCity) ?? str(p.stateName) ?? str(p.city),
+    marketMedian: num(p.medianRent) ?? undefined,
+    marketTier: str(p.marketTier),
+    marketComparison: str(p.marketComparison),
+    gapDays: num(up.gapDays) ?? undefined,
+    depositLow: num(up.depositLow) ?? undefined,
+    depositHigh: num(up.depositHigh) ?? undefined,
+    firstMonthLow: num(up.firstMonthLow) ?? undefined,
+    firstMonthHigh: num(up.firstMonthHigh) ?? undefined,
+    gapLivingCosts: num(up.gapLivingCosts) ?? undefined,
+    movingSetup: num(up.movingSetup) ?? undefined,
+    firstMoveMonthly: num(fm.monthlySaving) ?? undefined,
+    firstMoveThirtyYear: num(fm.thirtyYearValue) ?? undefined,
+  }
+
   const id = crypto.randomUUID()
   const payload = {
     id,
@@ -81,6 +112,7 @@ export async function POST(req: Request) {
       upfrontHigh,
       marketLow: marketLow ?? undefined,
       marketHigh: marketHigh ?? undefined,
+      ...extra,
     },
   }
 
