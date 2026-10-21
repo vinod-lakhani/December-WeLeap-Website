@@ -5,9 +5,9 @@ import { track } from '@/lib/analytics'
 import type { PlanData } from './WaitlistForm'
 
 /** The approved wording (counsel, Variant A). The server refuses any other version. */
-export const RENT_TEXT_CONSENT_VERSION = 'variant-a-v1'
+export const RENT_TEXT_CONSENT_VERSION = 'variant-a-v2'
 export const RENT_TEXT_CONSENT_COPY =
-  'Text me this breakdown and follow-ups from Ribbit from WeLeap about this rent result, up to 4 texts a month, including Friday check-ins until move-in. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.'
+  'Text me this breakdown and follow-ups from Ribbit from WeLeap about this rent result, up to 4 texts a month, including Friday check-ins until move-in. Ask me anything about rent or money. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.'
 
 /** US numbers only for the pilot. Returns E.164 or null. */
 export function toE164(input: string): string | null {

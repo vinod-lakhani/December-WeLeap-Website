@@ -9,7 +9,9 @@ import { NextResponse } from 'next/server'
  */
 export const runtime = 'nodejs'
 
-const APPROVED_CONSENT_VERSION = 'variant-a-v1'
+// The wording the page shows now, and the earlier wording a page opened before the change still sends.
+const APPROVED_CONSENT_VERSION = 'variant-a-v2'
+const ACCEPTED_CONSENT_VERSIONS = ['variant-a-v1', 'variant-a-v2']
 const E164_US = /^\+1\d{10}$/
 
 type Body = {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
   if (!body.phone || !E164_US.test(body.phone)) {
     return NextResponse.json({ error: 'Enter a US phone number.' }, { status: 400 })
   }
-  if (body.consent !== true || body.consentVersion !== APPROVED_CONSENT_VERSION) {
+  if (body.consent !== true || !ACCEPTED_CONSENT_VERSIONS.includes(body.consentVersion ?? '')) {
     return NextResponse.json({ error: 'Consent is required.' }, { status: 400 })
   }
 
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
   const payload = {
     id,
     phone: body.phone,
-    consentVersion: APPROVED_CONSENT_VERSION,
+    consentVersion: body.consentVersion,
     consentAt: new Date().toISOString(),
     toolVersion: 'rent-tool-web',
     // Inputs for the record. No phone number here.
