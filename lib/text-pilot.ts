@@ -6,29 +6,49 @@
 
 export type TextPilotTool = 'rent' | 'offer'
 
-/** The approved wording for each calculator. Tapping the button is the consent; there is no checkbox. */
+/**
+ * The approved wording for each calculator. Tapping the button is the consent; there is no checkbox. `sms` is the
+ * phone wording, where the button opens Messages with `body` already written and sending it is the consent.
+ */
 export const TEXT_PILOT_COPY = {
   rent: {
-    consentVersion: 'variant-a-v3',
+    consentVersion: 'variant-a-v4',
     headline: 'Ask Ribbit anything about your rent or money. Answers come by text.',
     consent:
-      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown, answers to your rent and money questions, and Friday check-ins if you turn them on. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown, answers to your rent and money questions, and follow-up questions about your rent and money: up to 6 texts over the first 3 weeks, plus replies to anything you send, then Friday check-ins if you turn them on (up to 4 a month). Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+    sms: {
+      consentVersion: 'rent-sms-v1',
+      button: 'Text me my breakdown',
+      body: 'Text me my rent breakdown',
+      consent:
+        'Tapping the button opens Messages with a text to Ribbit from WeLeap. By sending it, you agree to get texts from Ribbit with your breakdown, answers to your rent and money questions, and follow-up questions about your rent and money: up to 6 texts over the first 3 weeks, plus replies to anything you send, then Friday check-ins if you turn them on (up to 4 a month). Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+    },
   },
   offer: {
-    consentVersion: 'offer-a-v1',
+    consentVersion: 'offer-a-v2',
     headline: 'Ask Ribbit anything about your offer, rent or money. Answers come by text.',
     consent:
-      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown and answers to your offer, rent and money questions. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown, answers to your offer, rent and money questions, and follow-up questions about your offer and money: up to 6 texts over the first 3 weeks, plus replies to anything you send. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+    sms: {
+      consentVersion: 'offer-sms-v1',
+      button: 'Text me my breakdown',
+      body: 'Text me my offer breakdown',
+      consent:
+        'Tapping the button opens Messages with a text to Ribbit from WeLeap. By sending it, you agree to get texts from Ribbit with your breakdown, answers to your offer, rent and money questions, and follow-up questions about your offer and money: up to 6 texts over the first 3 weeks, plus replies to anything you send. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+    },
   },
 } as const
 
 /** The line under the headline, the same for both calculators. */
 export const TEXT_PILOT_SUBLINE = 'General answers from your numbers, not personal financial advice.'
 
-/** The versions each route accepts: the wording shown now, and earlier wordings opt-ins were recorded under. */
+/**
+ * The versions each route accepts: the wording shown now, and earlier wordings opt-ins were recorded under.
+ * Earlier opt-ins stand without opting in again.
+ */
 export const ACCEPTED_CONSENT_VERSIONS: Record<TextPilotTool, readonly string[]> = {
-  rent: ['variant-a-v1', 'variant-a-v2', TEXT_PILOT_COPY.rent.consentVersion],
-  offer: [TEXT_PILOT_COPY.offer.consentVersion],
+  rent: ['variant-a-v1', 'variant-a-v2', 'variant-a-v3', TEXT_PILOT_COPY.rent.consentVersion],
+  offer: ['offer-a-v1', TEXT_PILOT_COPY.offer.consentVersion],
 }
 
 const E164_US = /^\+1\d{10}$/
