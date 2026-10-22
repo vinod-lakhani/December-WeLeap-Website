@@ -5,6 +5,7 @@
 
 import { roundToNearest25, formatCurrencyRange } from './rounding';
 import { computeInvestingImpact } from '@/lib/networthImpact/math';
+import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants';
 
 /** Real return assumption (7%) — aligned with Net Worth Impact tool */
 const REAL_RETURN = 0.07;
@@ -176,4 +177,14 @@ export function marketRentVerdict(
   if (marketLow > rentHigh) return 'out_of_reach'
   if (marketHigh <= rentHigh) return 'in_reach'
   return 'low_end_only'
+}
+
+/**
+ * The first move: renting at the low end of the range instead of the high end. What it frees each month, and
+ * that amount invested for 30 years. The card and the text both read it here.
+ */
+export function rentFirstMove(rentLow: number, rentHigh: number): { monthlySaving: number; thirtyYearValue: number } {
+  const monthlySaving = Math.max(0, rentHigh - rentLow)
+  const thirtyYearValue = monthlySaving > 0 ? Math.round(computeInvestingImpact(monthlySaving, REAL_RETURN_DEFAULT, 30)) : 0
+  return { monthlySaving, thirtyYearValue }
 }

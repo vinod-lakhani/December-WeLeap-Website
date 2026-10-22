@@ -24,7 +24,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { computeInvestingImpact } from '@/lib/networthImpact/math';
+import { rentFirstMove } from '@/lib/rent';
 
 export interface RentFirstMoveProps {
   /** Low end of their rent range — the cheaper lease. */
@@ -42,8 +42,7 @@ export function RentFirstMove({
   onCtaClick,
   formatCurrency,
 }: RentFirstMoveProps) {
-  const leapMonthly = Math.max(0, rentRangeHigh - rentRangeLow);
-  const leapThirtyYear = leapMonthly > 0 ? Math.round(computeInvestingImpact(leapMonthly, 0.07, 30)) : 0;
+  const { monthlySaving: leapMonthly, thirtyYearValue: leapThirtyYear } = rentFirstMove(rentRangeLow, rentRangeHigh);
 
   return (
     <Card className="border-2 border-[#3F6B42] bg-[#F3F7F3] shadow-sm">

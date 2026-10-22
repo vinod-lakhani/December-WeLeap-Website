@@ -27,6 +27,8 @@ const DISALLOW = [
    * first place.
    */
   '/create_link',
+  '/rent_text',
+  '/offer_text',
 ]
 
 export default function robots(): MetadataRoute.Robots {

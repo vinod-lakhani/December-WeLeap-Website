@@ -2,36 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { track } from '@/lib/analytics'
-
-/**
- * The approved wording for each calculator (counsel). Tapping the button is the consent: there is no
- * checkbox. The server refuses any consent version not listed for the tool.
- */
-export const TEXT_PILOT_COPY = {
-  rent: {
-    consentVersion: 'variant-a-v3',
-    headline: 'Ask Ribbit anything about your rent or money. Answers come by text.',
-    consent:
-      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown, answers to your rent and money questions, and Friday check-ins if you turn them on. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
-  },
-  offer: {
-    consentVersion: 'offer-a-v1',
-    headline: 'Ask Ribbit anything about your offer, rent or money. Answers come by text.',
-    consent:
-      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown and answers to your offer, rent and money questions. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
-  },
-} as const
-
-/** The line under the headline, the same for both calculators. */
-export const TEXT_PILOT_SUBLINE = 'General answers from your numbers, not personal financial advice.'
-
-/** US numbers only for the pilot. Returns E.164 or null. */
-export function toE164(input: string): string | null {
-  const digits = input.replace(/\D/g, '')
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  return null
-}
+import { TEXT_PILOT_COPY, TEXT_PILOT_SUBLINE, toE164, type TextPilotTool } from '@/lib/text-pilot'
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
@@ -43,14 +14,14 @@ const NO_PHONE = 'Enter a US phone number.'
  * The text opt-in shared by the rent and offer calculators. The tool supplies its own figures and the
  * route that takes them, and the copy for its own tool; the form is the same for both.
  */
-export function RentTextOptIn({
+export function TextOptIn({
   planData,
   endpoint = '/api/rent-text',
   tool = 'rent',
 }: {
   planData: object
   endpoint?: string
-  tool?: 'rent' | 'offer'
+  tool?: TextPilotTool
 }) {
   const copy = TEXT_PILOT_COPY[tool]
   const [phone, setPhone] = useState('')
@@ -150,7 +121,7 @@ export function RentTextOptIn({
  * Phone-only. Once the results are shown, a bottom bar keeps the text door in reach until the
  * form itself is on screen. Most phone users never scroll to the bottom of the page.
  */
-export function RentTextStickyBar({ tool = 'rent' }: { tool?: 'rent' | 'offer' }) {
+export function TextOptInStickyBar({ tool = 'rent' }: { tool?: TextPilotTool }) {
   const [formVisible, setFormVisible] = useState(true)
 
   useEffect(() => {

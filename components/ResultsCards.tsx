@@ -134,12 +134,7 @@ export function ResultsCards({
   planData,
 }: ResultsCardsProps) {
   // ZORI market rent data
-  const [marketRentData, setMarketRentData] = useState<{
-    medianRent: number;
-    marketLow: number;
-    marketHigh: number;
-    tier: string;
-  } | null>(null);
+  const [marketRentData, setMarketRentData] = useState<MarketRent | null>(null);
   const [loadingMarketRent, setLoadingMarketRent] = useState(false);
   const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
 

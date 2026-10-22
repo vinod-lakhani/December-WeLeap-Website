@@ -20,8 +20,9 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
+import type { UpfrontBreakdown } from '@/components/ResultsCards';
 
-export interface PlanData {
+interface PlanData {
   salary: string;
   city: string;
   startDate: string;
@@ -58,17 +59,7 @@ export interface PlanData {
   medianRent?: number;
   marketTier?: string;
   marketComparison?: 'above' | 'overlap' | 'below';
-  upfrontBreakdown?: {
-    gapDays: number;
-    depositLow: number;
-    depositHigh: number;
-    firstMonthLow: number;
-    firstMonthHigh: number;
-    gapLivingCosts: number;
-    movingSetup: number;
-    totalLow: number;
-    totalHigh: number;
-  };
+  upfrontBreakdown?: UpfrontBreakdown;
   firstMove?: { monthlySaving: number; thirtyYearValue: number };
 }
 

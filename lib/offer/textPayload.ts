@@ -5,30 +5,29 @@
  * names match the backend's OfferResult; the values are the calculator's, copied as they are. It
  * exists as its own file so the mapping can be read and tested apart from the 2,000-line tool.
  */
-import type { OfferInputs, OfferValue, TaxResult } from './calculate'
-import type { Comparison } from './compare'
+import type { TaxResult } from './calculate'
+import type { Comparison, OfferSide } from './compare'
 import { leftAfterRent } from './compare'
 import type { Lever } from './levers'
 
 export interface OfferTextArgs {
   /** Stable id for this run: the calculator result's key on the backend. */
   id: string
-  /** "Offer A" when comparing, otherwise empty. */
-  label: string
-  /** "Austin, TX", or empty until a city is chosen. */
-  location: string
-  inputs: OfferInputs
+  /** This offer: label, location, inputs and value, as the comparison reads it. */
+  side: OfferSide
   /** The tax the value was worked out from, city tax included. Null while the tax call is in flight. */
   tax: TaxResult | null
-  value: OfferValue
   levers: Lever[]
   /** The comparison and the other offer, when two offers are on screen. */
   comparison: Comparison | null
-  other: { label: string; location: string; inputs: OfferInputs; value: OfferValue } | null
+  other: OfferSide | null
 }
 
 export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
-  const { id, label, location, inputs, value, levers, comparison, other, tax } = args
+  const { id, side, levers, comparison, other, tax } = args
+  const { location, inputs, value } = side
+  // "Offer A" only means something next to an Offer B.
+  const label = comparison && other ? side.label : ''
   return {
     id,
     label,
@@ -77,7 +76,7 @@ export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
       tax,
       levers,
       comparison,
-      other: other ? { label: other.label, location: other.location, inputs: other.inputs, value: other.value } : null,
+      other,
     },
     comparison:
       comparison && other

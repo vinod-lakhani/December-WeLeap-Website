@@ -18,7 +18,7 @@ import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
-import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash } from '@/lib/rent';
+import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash, rentFirstMove } from '@/lib/rent';
 import { RENT_EXAMPLE } from '@/lib/rentCampaign/example';
 import { localTaxAnnual } from '@/lib/localTax';
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
@@ -26,9 +26,8 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
-import { RentTextOptIn, RentTextStickyBar } from '@/components/RentTextOptIn';
+import { TextOptIn, TextOptInStickyBar } from '@/components/TextOptIn';
 import type { ResultView } from '@/components/ResultsCards';
-import { computeInvestingImpact } from '@/lib/networthImpact/math';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
@@ -579,10 +578,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
     marketTier: resultView?.marketRent?.tier,
     marketComparison: resultView?.marketComparison ?? undefined,
     upfrontBreakdown: resultView?.upfront ?? undefined,
-    firstMove: rentRangeHigh > rentRangeLow ? {
-      monthlySaving: rentRangeHigh - rentRangeLow,
-      thirtyYearValue: Math.round(computeInvestingImpact(rentRangeHigh - rentRangeLow, 0.07, 30)),
-    } : undefined,
+    firstMove: rentRangeHigh > rentRangeLow ? rentFirstMove(rentRangeLow, rentRangeHigh) : undefined,
   } : undefined;
 
   return (
@@ -807,7 +803,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
               textPilot && planData ? (
                 // The text door sits right under the number. On a phone the results start below the
                 // fold, so the sticky bar below points back here.
-                <RentTextOptIn planData={planData} />
+                <TextOptIn planData={planData} />
               ) : undefined
             }
             afterHero={
@@ -946,7 +942,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
 
           {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
               "Email me my plan instead" link. */}
-          {textPilot && planData && results && <RentTextStickyBar />}
+          {textPilot && planData && results && <TextOptInStickyBar />}
 
           <div id="email-plan" className="scroll-mt-24">
             <WaitlistForm planData={planData} variant="secondary" />
