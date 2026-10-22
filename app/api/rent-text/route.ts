@@ -58,12 +58,16 @@ export async function POST(req: Request) {
 
   // Everything else the calculator shows, so Ribbit can answer from the same figures. Absent values stay absent.
   const tax = (p.taxBreakdown ?? {}) as Record<string, unknown>
+  const budget = (p.budgetBreakdown ?? {}) as Record<string, unknown>
   const up = (p.upfrontBreakdown ?? {}) as Record<string, unknown>
   const fm = (p.firstMove ?? {}) as Record<string, unknown>
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
   const debt = Number(p.debtMonthly)
   const extra = {
     grossAnnual: num(tax.grossAnnual) ?? undefined,
+    budgetNeeds: num(budget.needs) ?? undefined,
+    budgetWants: num(budget.wants) ?? undefined,
+    budgetSavings: num(budget.savings) ?? undefined,
     federalTaxAnnual: num(tax.federalTaxAnnual) ?? undefined,
     stateTaxAnnual: num(tax.stateTaxAnnual) ?? undefined,
     ficaTaxAnnual: num(tax.ficaTaxAnnual) ?? undefined,

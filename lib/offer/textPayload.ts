@@ -5,7 +5,7 @@
  * names match the backend's OfferResult; the values are the calculator's, copied as they are. It
  * exists as its own file so the mapping can be read and tested apart from the 2,000-line tool.
  */
-import type { OfferInputs, OfferValue } from './calculate'
+import type { OfferInputs, OfferValue, TaxResult } from './calculate'
 import type { Comparison } from './compare'
 import { leftAfterRent } from './compare'
 import type { Lever } from './levers'
@@ -18,15 +18,17 @@ export interface OfferTextArgs {
   /** "Austin, TX", or empty until a city is chosen. */
   location: string
   inputs: OfferInputs
+  /** The tax the value was worked out from, city tax included. Null while the tax call is in flight. */
+  tax: TaxResult | null
   value: OfferValue
   levers: Lever[]
   /** The comparison and the other offer, when two offers are on screen. */
   comparison: Comparison | null
-  other: { label: string; inputs: OfferInputs; value: OfferValue } | null
+  other: { label: string; location: string; inputs: OfferInputs; value: OfferValue } | null
 }
 
 export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
-  const { id, label, location, inputs, value, levers, comparison, other } = args
+  const { id, label, location, inputs, value, levers, comparison, other, tax } = args
   return {
     id,
     label,
@@ -35,6 +37,18 @@ export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
     bonusPct: inputs.bonusPct,
     matchRatePct: inputs.matchRatePct,
     matchUpToPct: inputs.matchUpToPct,
+    signingBonus: inputs.signingBonus,
+    ptoDays: inputs.ptoDays,
+    savingsPct: inputs.savingsPct,
+    rsuAnnual: inputs.rsuAnnual,
+    hsaMonthly: inputs.hsaMonthly,
+    healthcarePremiumMonthly: inputs.healthcarePremium,
+    esppContrib: inputs.esppContrib,
+    esppDiscount: inputs.esppDiscount,
+    federalTaxAnnual: tax?.federalTaxAnnual ?? 0,
+    stateTaxAnnual: tax?.stateTaxAnnual ?? 0,
+    ficaTaxAnnual: tax?.ficaTaxAnnual ?? 0,
+    netIncomeAnnual: tax?.netIncomeAnnual ?? 0,
     takeHomeMonthly: value.takeHomeMonthly,
     effectiveTaxRate: value.effectiveTaxRate,
     annualBonus: value.annualBonus,
@@ -62,6 +76,11 @@ export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
             otherTotalComp: other.value.totalPackage,
             otherSalary: other.inputs.salary,
             otherTakeHome: other.value.takeHomeMonthly,
+            otherLocation: other.location,
+            otherRentMonthly: other.inputs.rentMonthly,
+            otherBonusPct: other.inputs.bonusPct,
+            otherMatchRatePct: other.inputs.matchRatePct,
+            otherMatchUpToPct: other.inputs.matchUpToPct,
             packages: comparison.packageRows,
             monthly: comparison.monthlyRows,
             totals: comparison.totals,

@@ -746,12 +746,16 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
       label,
       location: city ? `${city}, ${jobState}` : '',
       inputs: offerInputs,
+      tax: taxWithLocal,
       value: calc,
       levers,
       comparison: comparison && calcB ? comparison : null,
-      other: offerB && calcB ? { label: 'Offer B', inputs: offerB, value: calcB } : null,
+      other:
+        offerB && calcB
+          ? { label: 'Offer B', location: bCity ? `${bCity}, ${bState}` : '', inputs: offerB, value: calcB }
+          : null,
     });
-  }, [textPilot, calc, calcB, comparison, levers, offerInputs, offerB, city, jobState]);
+  }, [textPilot, calc, calcB, comparison, levers, offerInputs, offerB, city, jobState, taxWithLocal, bCity, bState]);
 
 
   // ── Market rent data load ────────────────────────────────────────────────────
