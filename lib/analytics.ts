@@ -111,12 +111,16 @@
  *
  * Text door. The rent and offer calculators share one opt-in and the same four
  * events, so the two can be read side by side. `tool` is the FREE_TOOLS slug
- * (rent | offer). The funnel is shown → submitted → sent; anything that did not
- * send is failed, with a reason:
- * - text_optin_shown (tool) — once per page, when the door renders
- * - text_optin_submitted (tool, consent_version, placement: form)
- * - text_optin_sent (tool, consent_version)
- * - text_optin_failed (tool, reason: invalid_phone|not_sent|error, backend_reason?)
+ * (rent | offer). `method` is the door: sms_link on a phone (the button opens
+ * Messages with the text written; submitted is the tap, and the thread opens
+ * when the text arrives, so there is no sent event), phone_form elsewhere.
+ * The funnel is shown → submitted → sent; anything that did not send is
+ * failed, with a reason:
+ * - text_optin_shown (tool, method) — once per page, when the door renders
+ * - text_optin_submitted (tool, consent_version, placement: form, method)
+ * - text_optin_sent (tool, consent_version, method)
+ * - text_optin_failed (tool, method, reason: invalid_phone|not_sent|error|no_ref, backend_reason?)
+ *   no_ref: the phone's code could not be fetched, so the form was shown.
  *   backend_reason is the server's code when it held the text back, e.g.
  *   daily_cap_reached. The person never sees it.
  * - text_optin_sticky_clicked (tool) — the phone bar that scrolls to the door

@@ -1,18 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
-import { TEXT_PILOT_COPY, TEXT_PILOT_SUBLINE, toE164, type TextPilotTool } from '@/lib/text-pilot'
+import {
+  TEXT_PILOT_COPY,
+  TEXT_PILOT_SUBLINE,
+  phonePlatform,
+  smsBody,
+  smsHref,
+  toE164,
+  type TextPilotTool,
+} from '@/lib/text-pilot'
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
 const SENT = 'Check your messages. Ribbit from WeLeap is texting you now.'
 const NOT_SENT = "We couldn't send that just now. Try again later."
 const NO_PHONE = 'Enter a US phone number.'
+const SEND_IT = 'Send the text in Messages and Ribbit will reply with your breakdown.'
+
+/** Phones get the pre-written text; everything else, or a phone whose code could not be fetched, the form. */
+type Door = 'ios' | 'android' | 'form'
 
 /**
  * The text opt-in shared by the rent and offer calculators. The tool supplies its own figures and the
- * route that takes them, and the copy for its own tool; the form is the same for both.
+ * route that takes them, and the copy for its own tool; the door is the same for both. On a phone the button
+ * opens Messages with the text already written and a code that finds the result; sending it is the consent.
+ * Elsewhere it is the number form, and Ribbit texts first.
  */
 export function TextOptIn({
   planData,
@@ -27,24 +41,73 @@ export function TextOptIn({
   const [phone, setPhone] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
+  // Null until the page has read the user agent; the server cannot know.
+  const [door, setDoor] = useState<Door | null>(null)
+  const [link, setLink] = useState<{ href: string; id: string } | null>(null)
+  const shown = useRef(false)
+  const onPhone = door === 'ios' || door === 'android'
+  const method = onPhone ? 'sms_link' : 'phone_form'
+
+  useEffect(() => {
+    setDoor(phonePlatform(navigator.userAgent, navigator.maxTouchPoints) ?? 'form')
+  }, [])
 
   // Once per page, so submitted ÷ shown is the door's conversion rate.
   useEffect(() => {
-    track('text_optin_shown', { tool })
-  }, [tool])
+    if (!door || shown.current) return
+    shown.current = true
+    track('text_optin_shown', { tool, method })
+  }, [door, tool, method])
+
+  // On a phone, save the result and get its code now, so the button is a plain link when it is tapped.
+  const planKey = JSON.stringify(planData)
+  useEffect(() => {
+    if (door !== 'ios' && door !== 'android') return
+    let live = true
+    setLink(null)
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: `{"method":"ref","planData":${planKey}}`,
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<{ ref: string; to: string; id: string }>) : Promise.reject()))
+      .then((d) => {
+        if (live) setLink({ href: smsHref(d.to, smsBody(tool, d.ref), door), id: d.id })
+      })
+      .catch(() => {
+        if (!live) return
+        track('text_optin_failed', { tool, method: 'sms_link', reason: 'no_ref' })
+        setDoor('form')
+      })
+    return () => {
+      live = false
+    }
+  }, [door, planKey, endpoint, tool])
+
+  // The tap opens Messages by itself; this only records it, for the match when the code is deleted.
+  const tap = () => {
+    if (!link) return
+    track('text_optin_submitted', { tool, consent_version: copy.sms.consentVersion, placement: 'form', method })
+    const body = JSON.stringify({ method: 'tap', id: link.id })
+    const beaconed = navigator.sendBeacon?.(endpoint, new Blob([body], { type: 'application/json' }))
+    if (!beaconed) {
+      fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => {})
+    }
+    setMessage(SEND_IT)
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const e164 = toE164(phone)
     if (!e164) {
-      track('text_optin_failed', { tool, reason: 'invalid_phone' })
+      track('text_optin_failed', { tool, method, reason: 'invalid_phone' })
       setStatus('error')
       setMessage(NO_PHONE)
       return
     }
     setStatus('sending')
     setMessage('')
-    track('text_optin_submitted', { tool, consent_version: copy.consentVersion, placement: 'form' })
+    track('text_optin_submitted', { tool, consent_version: copy.consentVersion, placement: 'form', method })
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -58,12 +121,13 @@ export function TextOptIn({
       })
       const body = (await res.json().catch(() => ({}))) as { sent?: boolean; reason?: string }
       if (res.ok && body.sent) {
-        track('text_optin_sent', { tool, consent_version: copy.consentVersion })
+        track('text_optin_sent', { tool, consent_version: copy.consentVersion, method })
         setStatus('sent')
         setMessage(SENT)
       } else {
         track('text_optin_failed', {
           tool,
+          method,
           reason: res.status === 202 ? 'not_sent' : 'error',
           ...(body.reason ? { backend_reason: body.reason } : {}),
         })
@@ -71,22 +135,59 @@ export function TextOptIn({
         setMessage(NOT_SENT)
       }
     } catch {
-      track('text_optin_failed', { tool, reason: 'error' })
+      track('text_optin_failed', { tool, method, reason: 'error' })
       setStatus('error')
       setMessage(NOT_SENT)
     }
+  }
+
+  const heading = (
+    <div>
+      <p className="text-lg font-bold text-stone-900">{copy.headline}</p>
+      <p className="text-sm text-stone-600">{TEXT_PILOT_SUBLINE}</p>
+    </div>
+  )
+  const card = 'scroll-mt-24 rounded-xl border-2 border-emerald-800/25 bg-emerald-50/70 p-5 space-y-4'
+  const buttonClass = 'block w-full rounded-md bg-emerald-800 px-4 py-3 text-center font-semibold text-white sm:w-auto sm:inline-block'
+
+  if (door === null) {
+    return (
+      <div id="text-breakdown" className={card}>
+        {heading}
+      </div>
+    )
+  }
+
+  if (onPhone) {
+    return (
+      <div id="text-breakdown" className={card}>
+        {heading}
+        <p className="text-xs text-stone-600">{copy.sms.consent}</p>
+        {link ? (
+          <a href={link.href} onClick={tap} className={buttonClass}>
+            {copy.sms.button}
+          </a>
+        ) : (
+          <button type="button" disabled className={`${buttonClass} opacity-60`}>
+            {copy.sms.button}
+          </button>
+        )}
+        {message && (
+          <p role="status" className="text-sm text-stone-700">
+            {message}
+          </p>
+        )}
+      </div>
+    )
   }
 
   return (
     <form
       id="text-breakdown"
       onSubmit={submit}
-      className="scroll-mt-24 rounded-xl border-2 border-emerald-800/25 bg-emerald-50/70 p-5 space-y-4"
+      className={card}
     >
-      <div>
-        <p className="text-lg font-bold text-stone-900">{copy.headline}</p>
-        <p className="text-sm text-stone-600">{TEXT_PILOT_SUBLINE}</p>
-      </div>
+      {heading}
       <label className="block">
         <span className="text-sm font-medium">Mobile number</span>
         <input

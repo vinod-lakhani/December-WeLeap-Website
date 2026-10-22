@@ -69,6 +69,28 @@ type Body = {
   consent?: boolean
   consentVersion?: string
   planData?: Record<string, unknown>
+  /** The phone path: "ref" saves the result and returns its code; "tap" says the button was tapped. */
+  method?: 'ref' | 'tap'
+  id?: string
+}
+
+/** Which phone the page is on, from the user agent. Null is everything else, which gets the number form. */
+export function phonePlatform(userAgent: string, maxTouchPoints = 0): 'ios' | 'android' | null {
+  if (/iPhone|iPad|iPod/.test(userAgent)) return 'ios'
+  // iPadOS reports itself as a Mac; the touch screen gives it away.
+  if (/Macintosh/.test(userAgent) && maxTouchPoints > 1) return 'ios'
+  if (/Android/.test(userAgent)) return 'android'
+  return null
+}
+
+/** The link that opens Messages with the text written. iOS and Android separate the body differently. */
+export function smsHref(to: string, body: string, platform: 'ios' | 'android'): string {
+  return `sms:${to}${platform === 'ios' ? '&' : '?'}body=${encodeURIComponent(body)}`
+}
+
+/** The text the phone path sends: the tool's approved words, then the code that finds the result. */
+export function smsBody(tool: TextPilotTool, ref: string): string {
+  return `${TEXT_PILOT_COPY[tool].sms.body} (ref ${ref})`
 }
 
 /**
@@ -94,6 +116,9 @@ export async function forwardTextPilot(
     body = (await req.json()) as Body
   } catch {
     return json({ error: 'Bad request.' }, 400)
+  }
+  if (body.method) {
+    return forwardPhonePath(url, key, opts, body)
   }
   if (!body.phone || !E164_US.test(body.phone)) {
     return json({ error: 'Enter a US phone number.' }, 400)
@@ -121,4 +146,42 @@ export async function forwardTextPilot(
     console.error(`[${opts.tool}-text] backend unreachable`)
   }
   return json({ error: 'We could not send that. Try again later.' }, 502)
+}
+
+/**
+ * The phone path's two calls. Neither sends a text, so neither carries a phone number or consent: sending the
+ * pre-written text is the consent, and the backend records it when the text arrives.
+ */
+async function forwardPhonePath(
+  url: string,
+  key: string,
+  opts: { tool: TextPilotTool; buildPayload: (planData: Record<string, unknown>) => Record<string, unknown> | null },
+  body: Body,
+): Promise<Response> {
+  let payload: Record<string, unknown>
+  if (body.method === 'tap') {
+    if (!body.id) return json({ error: 'Bad request.' }, 400)
+    payload = { id: body.id, method: 'tap' }
+  } else if (body.method === 'ref') {
+    const built = opts.buildPayload(body.planData ?? {})
+    if (!built) return json({ error: 'Run the calculator first.' }, 400)
+    payload = { ...built, method: 'ref' }
+  } else {
+    return json({ error: 'Bad request.' }, 400)
+  }
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Rentpilot-Key': key },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (body.method === 'tap') return new Response(null, { status: res.ok ? 204 : 502 })
+    const data = (await res.json().catch(() => ({}))) as { ref?: string; to?: string }
+    if (res.ok && data.ref && data.to) return json({ ref: data.ref, to: data.to, id: payload.id })
+    console.error(`[${opts.tool}-text] backend status`, res.status)
+  } catch {
+    console.error(`[${opts.tool}-text] backend unreachable`)
+  }
+  return json({ error: 'Not available.' }, 502)
 }
