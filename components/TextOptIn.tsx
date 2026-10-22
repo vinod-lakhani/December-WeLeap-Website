@@ -59,28 +59,33 @@ export function TextOptIn({
     track('text_optin_shown', { tool, method })
   }, [door, tool, method])
 
-  // On a phone, save the result and get its code now, so the button is a plain link when it is tapped.
+  // On a phone, save the result and get its code now, so the button is a plain link when it is tapped. The
+  // figures settle a moment after the result first shows (late-loading rent data), so wait for them: each
+  // fetch saves a result.
   const planKey = JSON.stringify(planData)
   useEffect(() => {
     if (door !== 'ios' && door !== 'android') return
     let live = true
     setLink(null)
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: `{"method":"ref","planData":${planKey}}`,
-    })
-      .then((res) => (res.ok ? (res.json() as Promise<{ ref: string; to: string; id: string }>) : Promise.reject()))
-      .then((d) => {
-        if (live) setLink({ href: smsHref(d.to, smsBody(tool, d.ref), door), id: d.id })
+    const timer = setTimeout(() => {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: `{"method":"ref","planData":${planKey}}`,
       })
-      .catch(() => {
-        if (!live) return
-        track('text_optin_failed', { tool, method: 'sms_link', reason: 'no_ref' })
-        setDoor('form')
-      })
+        .then((res) => (res.ok ? (res.json() as Promise<{ ref: string; to: string; id: string }>) : Promise.reject()))
+        .then((d) => {
+          if (live) setLink({ href: smsHref(d.to, smsBody(tool, d.ref), door), id: d.id })
+        })
+        .catch(() => {
+          if (!live) return
+          track('text_optin_failed', { tool, method: 'sms_link', reason: 'no_ref' })
+          setDoor('form')
+        })
+    }, 800)
     return () => {
       live = false
+      clearTimeout(timer)
     }
   }, [door, planKey, endpoint, tool])
 
