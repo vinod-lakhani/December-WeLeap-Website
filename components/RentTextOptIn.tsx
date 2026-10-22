@@ -57,17 +57,23 @@ export function RentTextOptIn({
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
 
+  // Once per page, so submitted ÷ shown is the door's conversion rate.
+  useEffect(() => {
+    track('text_optin_shown', { tool })
+  }, [tool])
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const e164 = toE164(phone)
     if (!e164) {
+      track('text_optin_failed', { tool, reason: 'invalid_phone' })
       setStatus('error')
       setMessage(NO_PHONE)
       return
     }
     setStatus('sending')
     setMessage('')
-    track('tool_door_tap', { tool, door: 'text' })
+    track('text_optin_submitted', { tool, consent_version: copy.consentVersion, placement: 'form' })
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -79,15 +85,22 @@ export function RentTextOptIn({
           planData,
         }),
       })
-      const body = (await res.json().catch(() => ({}))) as { sent?: boolean }
+      const body = (await res.json().catch(() => ({}))) as { sent?: boolean; reason?: string }
       if (res.ok && body.sent) {
+        track('text_optin_sent', { tool, consent_version: copy.consentVersion })
         setStatus('sent')
         setMessage(SENT)
       } else {
+        track('text_optin_failed', {
+          tool,
+          reason: res.status === 202 ? 'not_sent' : 'error',
+          ...(body.reason ? { backend_reason: body.reason } : {}),
+        })
         setStatus('error')
         setMessage(NOT_SENT)
       }
     } catch {
+      track('text_optin_failed', { tool, reason: 'error' })
       setStatus('error')
       setMessage(NOT_SENT)
     }
@@ -154,7 +167,7 @@ export function RentTextStickyBar({ tool = 'rent' }: { tool?: 'rent' | 'offer' }
   if (formVisible) return null
 
   const goToForm = () => {
-    track('tool_door_tap', { tool, door: 'text_sticky' })
+    track('text_optin_sticky_clicked', { tool })
     document.getElementById('text-breakdown')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     document.getElementById('text-breakdown-phone')?.focus({ preventScroll: true })
   }
