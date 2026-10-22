@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { track } from '@/lib/analytics'
-import type { PlanData } from './WaitlistForm'
 
 /** The approved wording (counsel, Variant A). The server refuses any other version. */
 export const RENT_TEXT_CONSENT_VERSION = 'variant-a-v2'
@@ -19,7 +18,19 @@ export function toE164(input: string): string | null {
 
 type Status = 'idle' | 'sending' | 'sent' | 'not_sent' | 'error'
 
-export function RentTextOptIn({ planData }: { planData: PlanData }) {
+/**
+ * The text opt-in shared by the rent and offer calculators. The tool supplies its own payload and the
+ * route that takes it; the consent wording and the form are the same for both.
+ */
+export function RentTextOptIn({
+  planData,
+  endpoint = '/api/rent-text',
+  tool = 'rent',
+}: {
+  planData: object
+  endpoint?: string
+  tool?: 'rent' | 'offer'
+}) {
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
@@ -40,9 +51,9 @@ export function RentTextOptIn({ planData }: { planData: PlanData }) {
     }
     setStatus('sending')
     setMessage('')
-    track('tool_door_tap', { tool: 'rent', door: 'text' })
+    track('tool_door_tap', { tool, door: 'text' })
     try {
-      const res = await fetch('/api/rent-text', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

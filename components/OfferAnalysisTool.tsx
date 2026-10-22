@@ -40,6 +40,8 @@ import {
 } from '@/lib/offer/calculate';
 import { compareOffers } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
+import { offerTextPayload } from '@/lib/offer/textPayload';
+import { RentTextOptIn } from '@/components/RentTextOptIn';
 import { EXAMPLE } from '@/lib/offer/example';
 import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
@@ -194,9 +196,11 @@ export interface OfferAnalysisToolProps {
    * the first screen is identical — same sections, same math, same results.
    */
   campaign?: boolean
+  /** Internal text pilot: shows the "Get this breakdown by text" door under the headline. */
+  textPilot?: boolean
 }
 
-export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps = {}) {
+export function OfferAnalysisTool({ campaign = false, textPilot = false }: OfferAnalysisToolProps = {}) {
   // 1. Base salary
   /**
    * Campaign traffic opens on the figure from the creative, so the promise in
@@ -732,6 +736,22 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
       { label: 'Offer B', location: bCity ? `${bCity}, ${bState}` : '', inputs: offerB, value: calcB ?? EMPTY_OFFER_VALUE },
     );
   }, [calc, calcB, offerInputs, offerB, city, jobState, bCity, bState]);
+
+  // The figures the text door sends. Built from what is on screen, so the text and the page agree.
+  const offerText = useMemo(() => {
+    if (!textPilot || !calc) return null;
+    const label = comparison ? 'Offer A' : '';
+    return offerTextPayload({
+      id: crypto.randomUUID(),
+      label,
+      location: city ? `${city}, ${jobState}` : '',
+      inputs: offerInputs,
+      value: calc,
+      levers,
+      comparison: comparison && calcB ? comparison : null,
+      other: offerB && calcB ? { label: 'Offer B', inputs: offerB, value: calcB } : null,
+    });
+  }, [textPilot, calc, calcB, comparison, levers, offerInputs, offerB, city, jobState]);
 
 
   // ── Market rent data load ────────────────────────────────────────────────────
@@ -1626,6 +1646,12 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
             <p className="mt-1.5 text-[13px] text-faint">
               You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
             </p>
+
+            {textPilot && offerText && (
+              <div className="mx-auto mt-6 max-w-md text-left">
+                <RentTextOptIn planData={offerText} endpoint="/api/offer-text" tool="offer" />
+              </div>
+            )}
 
             {/* THE ASK, directly under the number that earns it.
                 Measured 18 Oct on the canonical page at 414x896: the only app
