@@ -111,6 +111,8 @@ export async function POST(req: Request) {
     },
     result: {
       id,
+      // Every value the calculator shows, as it sent them.
+      figures: p,
       rentLow,
       rentHigh,
       takeHomeMonthly: takeHome,

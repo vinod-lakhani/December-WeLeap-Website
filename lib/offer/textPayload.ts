@@ -69,6 +69,16 @@ export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
     rentPct: value.rentPct ?? 0,
     leftAfterRent: leftAfterRent(value, inputs),
     levers: levers.map(l => ({ ask: l.ask, amount: l.amount, cadence: l.cadence, detail: l.detail })),
+    // Every value the calculator holds, so the text answers from the same state the page shows.
+    figures: {
+      location,
+      inputs,
+      value,
+      tax,
+      levers,
+      comparison,
+      other: other ? { label: other.label, location: other.location, inputs: other.inputs, value: other.value } : null,
+    },
     comparison:
       comparison && other
         ? {
