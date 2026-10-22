@@ -5,13 +5,13 @@ import { NextResponse } from 'next/server'
  *
  * Forwards the calculator's own figures to the WeLeap backend's offer start, which saves the run and
  * decides whether a text may go out. The phone number is never logged. Refuses any consent version
- * other than the approved rent wording, which offers share. Needs OFFERPILOT_URL and RENTPILOT_KEY;
- * without them it refuses to run.
+ * other than the approved offer wording. Needs OFFERPILOT_URL and RENTPILOT_KEY; without them it
+ * refuses to run.
  */
 export const runtime = 'nodejs'
 
-// Offers use the rent consent wording counsel approved: the same version and the earlier one.
-const ACCEPTED_CONSENT_VERSIONS = ['variant-a-v1', 'variant-a-v2']
+// The offer wording counsel approved. It names the offer, not the rent result.
+const ACCEPTED_CONSENT_VERSIONS = ['offer-a-v1']
 const E164_US = /^\+1\d{10}$/
 
 type Body = {

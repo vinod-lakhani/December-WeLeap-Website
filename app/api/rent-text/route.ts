@@ -9,9 +9,9 @@ import { NextResponse } from 'next/server'
  */
 export const runtime = 'nodejs'
 
-// The wording the page shows now, and the earlier wording a page opened before the change still sends.
-const APPROVED_CONSENT_VERSION = 'variant-a-v2'
-const ACCEPTED_CONSENT_VERSIONS = ['variant-a-v1', 'variant-a-v2']
+// The wording the page shows now (no checkbox), and the earlier wordings a page opened before a change still sends.
+const APPROVED_CONSENT_VERSION = 'variant-a-v3'
+const ACCEPTED_CONSENT_VERSIONS = ['variant-a-v1', 'variant-a-v2', 'variant-a-v3']
 const E164_US = /^\+1\d{10}$/
 
 type Body = {

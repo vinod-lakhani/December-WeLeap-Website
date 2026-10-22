@@ -3,10 +3,27 @@
 import { useEffect, useState } from 'react'
 import { track } from '@/lib/analytics'
 
-/** The approved wording (counsel, Variant A). The server refuses any other version. */
-export const RENT_TEXT_CONSENT_VERSION = 'variant-a-v2'
-export const RENT_TEXT_CONSENT_COPY =
-  'Text me this breakdown and follow-ups from Ribbit from WeLeap about this rent result, up to 4 texts a month, including Friday check-ins until move-in. Ask me anything about rent or money. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.'
+/**
+ * The approved wording for each calculator (counsel). Tapping the button is the consent: there is no
+ * checkbox. The server refuses any consent version not listed for the tool.
+ */
+export const TEXT_PILOT_COPY = {
+  rent: {
+    consentVersion: 'variant-a-v3',
+    headline: 'Ask Ribbit anything about your rent or money. Answers come by text.',
+    consent:
+      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown, answers to your rent and money questions, and Friday check-ins if you turn them on. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+  },
+  offer: {
+    consentVersion: 'offer-a-v1',
+    headline: 'Ask Ribbit anything about your offer, rent or money. Answers come by text.',
+    consent:
+      'By tapping the button, you agree to get texts from Ribbit from WeLeap with your breakdown and answers to your offer, rent and money questions. Up to 4 texts a month. Msg & data rates may apply. Reply STOP to end, HELP for help. Not a condition of using this tool.',
+  },
+} as const
+
+/** The line under the headline, the same for both calculators. */
+export const TEXT_PILOT_SUBLINE = 'General answers from your numbers, not personal financial advice.'
 
 /** US numbers only for the pilot. Returns E.164 or null. */
 export function toE164(input: string): string | null {
@@ -16,11 +33,15 @@ export function toE164(input: string): string | null {
   return null
 }
 
-type Status = 'idle' | 'sending' | 'sent' | 'not_sent' | 'error'
+type Status = 'idle' | 'sending' | 'sent' | 'error'
+
+const SENT = 'Check your messages. Ribbit from WeLeap is texting you now.'
+const NOT_SENT = "We couldn't send that just now. Try again later."
+const NO_PHONE = 'Enter a US phone number.'
 
 /**
- * The text opt-in shared by the rent and offer calculators. The tool supplies its own payload and the
- * route that takes it; the consent wording and the form are the same for both.
+ * The text opt-in shared by the rent and offer calculators. The tool supplies its own figures and the
+ * route that takes them, and the copy for its own tool; the form is the same for both.
  */
 export function RentTextOptIn({
   planData,
@@ -31,8 +52,8 @@ export function RentTextOptIn({
   endpoint?: string
   tool?: 'rent' | 'offer'
 }) {
+  const copy = TEXT_PILOT_COPY[tool]
   const [phone, setPhone] = useState('')
-  const [consent, setConsent] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
 
@@ -41,12 +62,7 @@ export function RentTextOptIn({
     const e164 = toE164(phone)
     if (!e164) {
       setStatus('error')
-      setMessage('Enter a US phone number.')
-      return
-    }
-    if (!consent) {
-      setStatus('error')
-      setMessage('Tick the box to get the breakdown by text.')
+      setMessage(NO_PHONE)
       return
     }
     setStatus('sending')
@@ -59,24 +75,21 @@ export function RentTextOptIn({
         body: JSON.stringify({
           phone: e164,
           consent: true,
-          consentVersion: RENT_TEXT_CONSENT_VERSION,
+          consentVersion: copy.consentVersion,
           planData,
         }),
       })
-      const body = (await res.json().catch(() => ({}))) as { sent?: boolean; reason?: string; error?: string }
+      const body = (await res.json().catch(() => ({}))) as { sent?: boolean }
       if (res.ok && body.sent) {
         setStatus('sent')
-        setMessage('Ribbit will text you shortly.')
-      } else if (res.status === 202) {
-        setStatus('not_sent')
-        setMessage(`Not sent yet (${body.reason ?? 'not enabled'}).`)
+        setMessage(SENT)
       } else {
         setStatus('error')
-        setMessage(body.error ?? 'We could not send that. Try again later.')
+        setMessage(NOT_SENT)
       }
     } catch {
       setStatus('error')
-      setMessage('We could not send that. Try again later.')
+      setMessage(NOT_SENT)
     }
   }
 
@@ -87,8 +100,8 @@ export function RentTextOptIn({
       className="scroll-mt-24 rounded-xl border-2 border-emerald-800/25 bg-emerald-50/70 p-5 space-y-4"
     >
       <div>
-        <p className="text-lg font-bold text-stone-900">Get this breakdown by text</p>
-        <p className="text-sm text-stone-600">We text the number from this result, then follow up only if you reply.</p>
+        <p className="text-lg font-bold text-stone-900">{copy.headline}</p>
+        <p className="text-sm text-stone-600">{TEXT_PILOT_SUBLINE}</p>
       </div>
       <label className="block">
         <span className="text-sm font-medium">Mobile number</span>
@@ -103,21 +116,13 @@ export function RentTextOptIn({
           className="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-3 text-base"
         />
       </label>
-      <label className="flex items-start gap-3 text-sm">
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
-          className="mt-1"
-        />
-        <span className="text-xs text-stone-600">{RENT_TEXT_CONSENT_COPY}</span>
-      </label>
+      <p className="text-xs text-stone-600">{copy.consent}</p>
       <button
         type="submit"
         disabled={status === 'sending'}
         className="w-full rounded-md bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-60 sm:w-auto"
       >
-        {status === 'sending' ? 'Sending…' : 'Text me this breakdown'}
+        {status === 'sending' ? 'Sending…' : 'Text me the breakdown'}
       </button>
       {message && (
         <p role="status" className={status === 'error' ? 'text-sm text-red-700' : 'text-sm text-stone-700'}>
@@ -132,7 +137,7 @@ export function RentTextOptIn({
  * Phone-only. Once the results are shown, a bottom bar keeps the text door in reach until the
  * form itself is on screen. Most phone users never scroll to the bottom of the page.
  */
-export function RentTextStickyBar() {
+export function RentTextStickyBar({ tool = 'rent' }: { tool?: 'rent' | 'offer' }) {
   const [formVisible, setFormVisible] = useState(true)
 
   useEffect(() => {
@@ -149,7 +154,7 @@ export function RentTextStickyBar() {
   if (formVisible) return null
 
   const goToForm = () => {
-    track('tool_door_tap', { tool: 'rent', door: 'text_sticky' })
+    track('tool_door_tap', { tool, door: 'text_sticky' })
     document.getElementById('text-breakdown')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     document.getElementById('text-breakdown-phone')?.focus({ preventScroll: true })
   }
@@ -161,7 +166,7 @@ export function RentTextStickyBar() {
         onClick={goToForm}
         className="w-full rounded-md bg-emerald-800 px-4 py-3 font-semibold text-white"
       >
-        Text me this breakdown
+        Text me the breakdown
       </button>
     </div>
   )
