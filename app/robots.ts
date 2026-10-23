@@ -27,8 +27,8 @@ const DISALLOW = [
    * first place.
    */
   '/create_link',
-  '/rent_text',
-  '/offer_text',
+  // /rent_text and /offer_text are deliberately absent: they are paid landings with `noindex` on the page,
+  // and a disallowed page is never fetched, so the noindex would never be seen.
 ]
 
 export default function robots(): MetadataRoute.Robots {
