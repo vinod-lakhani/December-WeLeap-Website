@@ -36,12 +36,15 @@ interface RentShareCardProps {
   shareUrl: string;
   /** The claim the link asserts, used as the share text. */
   shareText: string;
+  /** The `page` property on this component's events: the host page's path (default: the canonical rent page). */
+  page?: string;
 }
 
 export function RentShareCard({
   shareUrl,
   shareText,
   trigger,
+  page = '/how-much-rent-can-i-afford',
 }: RentShareCardProps) {
   const [open, setOpen] = useState(false);
   /** Desktop has no share sheet, so the link is copied and the button says so. */
@@ -54,7 +57,7 @@ export function RentShareCard({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
+      track('rent_share_card_shared', { page, method: 'copy_link' });
       track('tool_shared', { tool: 'rent', method: 'copy_link' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -100,7 +103,7 @@ export function RentShareCard({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      track('rent_share_card_downloaded', { page: '/how-much-rent-can-i-afford' });
+      track('rent_share_card_downloaded', { page });
       setOpen(false);
     } catch (err) {
       console.error('Failed to download card:', err);
@@ -136,13 +139,13 @@ export function RentShareCard({
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
-        track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'native' });
+        track('rent_share_card_shared', { page, method: 'native' });
         track('tool_shared', { tool: 'rent', method: 'native' });
         setOpen(false);
       } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(shareUrl);
         setCopied(true);
-        track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'copy_link' });
+        track('rent_share_card_shared', { page, method: 'copy_link' });
         track('tool_shared', { tool: 'rent', method: 'copy_link' });
       } else {
         // Fallback: download on desktop or unsupported browsers
@@ -154,7 +157,7 @@ export function RentShareCard({
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        track('rent_share_card_shared', { page: '/how-much-rent-can-i-afford', method: 'download' });
+        track('rent_share_card_shared', { page, method: 'download' });
         track('tool_shared', { tool: 'rent', method: 'download' });
         setOpen(false);
       }

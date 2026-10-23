@@ -74,6 +74,11 @@ export interface RentToolProps {
   campaign?: boolean
   /** Internal pilot: show the text opt-in under the result. */
   textPilot?: boolean
+  /**
+   * The `page` property on the tool's own events. The canonical page keeps the default; a landing that
+   * hosts the tool passes its own path, so a PostHog breakdown by `page` does not merge the two.
+   */
+  page?: string
 }
 
 /**
@@ -91,7 +96,7 @@ export interface RentToolProps {
  */
 const MIN_PLAUSIBLE_SALARY = 10000;
 
-export function RentTool({ campaign = false, textPilot = false }: RentToolProps = {}) {
+export function RentTool({ campaign = false, textPilot = false, page = '/how-much-rent-can-i-afford' }: RentToolProps = {}) {
   const [resultView, setResultView] = useState<ResultView | null>(null);
   /**
    * Campaign traffic starts on the worked example from the creative, so the
@@ -373,7 +378,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       formStartedRef.current = true;
       track('tool_engaged', { tool: 'rent', first_field: field });
       track('rent_form_start', {
-        page: '/how-much-rent-can-i-afford',
+        page,
         tool_version: 'rent_tool_v1',
       });
     }
@@ -393,7 +398,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
   const handleCalculate = async () => {
     // Track hero CTA click (this is the "See my rent reality" button)
     track('hero_cta_click', {
-      page: '/how-much-rent-can-i-afford',
+      page,
       tool_version: 'rent_tool_v1',
     });
     
@@ -449,7 +454,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       const rentRangeAfterSubmit = calculateRentRange(takeHomeMonthlyAfterTax, debtAmount);
       
       track('rent_form_submit', {
-        page: '/how-much-rent-can-i-afford',
+        page,
         tool_version: 'rent_tool_v1',
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
@@ -464,7 +469,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       // Track playbook generated (after successful calculation)
       setPlaybookRuns((n) => n + 1);
       track('playbook_generated', {
-        page: '/how-much-rent-can-i-afford',
+        page,
         tool_version: 'rent_tool_v1',
         salary_bucket: bucketSalary(salaryNum),
         city_tier: mapCityToTier(city),
@@ -669,7 +674,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
                   setOtherState(value);
                   setOtherMetro(''); // Reset metro when state changes
                   track('other_state_selected_v1', {
-                    page: '/how-much-rent-can-i-afford',
+                    page,
                     stateName: value,
                   });
                 }}
@@ -700,7 +705,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
                   setOtherMetro(value);
                   if (value !== '__OTHER__') {
                     track('other_metro_selected_v1', {
-                      page: '/how-much-rent-can-i-afford',
+                      page,
                       stateName: otherState,
                       regionName: value,
                     });
@@ -718,7 +723,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
                      * the event that will say how narrow the gap actually is.
                      */
                     track('other_metro_outside_selected_v1', {
-                      page: '/how-much-rent-can-i-afford',
+                      page,
                       stateName: otherState,
                     });
                   }
@@ -798,6 +803,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
       {results && (
         <div className="space-y-8">
           <ResultsCards
+            page={page}
             onView={setResultView}
             answerSlot={
               textPilot && planData ? (
@@ -945,7 +951,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
           {textPilot && planData && results && <TextOptInStickyBar />}
 
           <div id="email-plan" className="scroll-mt-24">
-            <WaitlistForm planData={planData} variant="secondary" />
+            <WaitlistForm planData={planData} variant="secondary" page={page} />
           </div>
 
           {/* Assumptions Accordion */}

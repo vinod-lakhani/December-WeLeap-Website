@@ -69,9 +69,11 @@ interface WaitlistFormProps {
   onLeapClick?: () => void;
   /** Secondary tile: lighter styling, outlined button */
   variant?: 'default' | 'secondary';
+  /** The `page` property on this component's events: the host page's path (default: the canonical rent page). */
+  page?: string;
 }
 
-export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: WaitlistFormProps) {
+export function WaitlistForm({ planData, onLeapClick, variant = 'default', page = '/how-much-rent-can-i-afford' }: WaitlistFormProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -108,7 +110,7 @@ export function WaitlistForm({ planData, onLeapClick, variant = 'default' }: Wai
         const rentMidpoint = (planData.rentRangeLow + planData.rentRangeHigh) / 2;
         
         track('playbook_email_sent', {
-          page: '/how-much-rent-can-i-afford',
+          page,
           tool_version: 'rent_tool_v1',
           salary_bucket: bucketSalary(salaryNum),
           city_tier: mapCityToTier(planData.city),
