@@ -20,6 +20,14 @@ export const metadata: Metadata = {
   description:
     'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys. Free, no signup.',
   robots: CAMPAIGN_ROBOTS,
+  // Byte-identical to what `title` renders through the root layout's `%s | WeLeap` template, as on the live
+  // page; scripts/checkMetadata.js checks the two match. The share image is the live page's (opengraph-image.tsx).
+  openGraph: {
+    title: 'How much rent can I afford? Free calculator | WeLeap',
+    description:
+      'Turn a salary into a monthly rent range based on take-home pay, not gross — plus the cash you need upfront before you get keys.',
+    url: '/rent_text',
+  },
 }
 
 export default function Page({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {

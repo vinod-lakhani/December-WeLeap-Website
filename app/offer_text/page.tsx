@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   description:
     'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
   robots: CAMPAIGN_ROBOTS,
+  // Byte-identical to the rendered `title` (root `%s | WeLeap` template), as on the live page; checked by
+  // scripts/checkMetadata.js. The share image is the live page's (opengraph-image.tsx).
+  openGraph: {
+    title: 'What is my job offer really worth? Free calculator | WeLeap',
+    description:
+      'See what a job offer is worth beyond base salary — bonus, 401(k) match, benefits, equity and PTO — plus monthly take-home after tax and local rent.',
+    url: '/offer_text',
+  },
 }
 
 export default function Page({ searchParams }: { searchParams?: Record<string, string | string[] | undefined> }) {
