@@ -38,8 +38,10 @@ import {
   type OfferInputs,
   type TaxResult,
 } from '@/lib/offer/calculate';
-import { compareOffers } from '@/lib/offer/compare';
+import { compareOffers, type OfferSide } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
+import { offerTextPayload } from '@/lib/offer/textPayload';
+import { TextOptIn } from '@/components/TextOptIn';
 import { EXAMPLE } from '@/lib/offer/example';
 import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
@@ -194,9 +196,11 @@ export interface OfferAnalysisToolProps {
    * the first screen is identical — same sections, same math, same results.
    */
   campaign?: boolean
+  /** Internal text pilot: shows the "Get this breakdown by text" door under the headline. */
+  textPilot?: boolean
 }
 
-export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps = {}) {
+export function OfferAnalysisTool({ campaign = false, textPilot = false }: OfferAnalysisToolProps = {}) {
   // 1. Base salary
   /**
    * Campaign traffic opens on the figure from the creative, so the promise in
@@ -722,16 +726,34 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
 
   const calcB = useMemo(() => (offerB ? computeOfferValue(offerB, bTax) : null), [offerB, bTax]);
 
-  const comparison = useMemo(() => {
-    if (!calc || !offerB) return null;
-    // calcB is null until the second offer has a salary, and the place you
-    // type that salary is inside this table — so it renders empty rather than
-    // not at all.
-    return compareOffers(
-      { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc },
-      { label: 'Offer B', location: bCity ? `${bCity}, ${bState}` : '', inputs: offerB, value: calcB ?? EMPTY_OFFER_VALUE },
-    );
-  }, [calc, calcB, offerInputs, offerB, city, jobState, bCity, bState]);
+  // The two offers as the comparison, its table and the text door all read them.
+  const sideA = useMemo<OfferSide | null>(
+    () => (calc ? { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc } : null),
+    [calc, city, jobState, offerInputs],
+  );
+  // calcB is null until the second offer has a salary, and the place you
+  // type that salary is inside this table — so it renders empty rather than
+  // not at all.
+  const sideB = useMemo<OfferSide | null>(
+    () => (offerB ? { label: 'Offer B', location: bCity ? `${bCity}, ${bState}` : '', inputs: offerB, value: calcB ?? EMPTY_OFFER_VALUE } : null),
+    [offerB, calcB, bCity, bState],
+  );
+  const comparison = useMemo(() => (sideA && sideB ? compareOffers(sideA, sideB) : null), [sideA, sideB]);
+
+  // The figures the text door sends. Built from what is on screen, so the text and the page agree.
+  const offerText = useMemo(() => {
+    if (!textPilot || !sideA) return null;
+    // The other offer counts once it has a salary; until then the comparison is an empty table.
+    const other = sideB && calcB ? sideB : null;
+    return offerTextPayload({
+      id: crypto.randomUUID(),
+      side: sideA,
+      tax: taxWithLocal,
+      levers,
+      comparison: other ? comparison : null,
+      other,
+    });
+  }, [textPilot, sideA, sideB, calcB, comparison, levers, taxWithLocal]);
 
 
   // ── Market rent data load ────────────────────────────────────────────────────
@@ -1627,6 +1649,12 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
               You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
             </p>
 
+            {textPilot && offerText && (
+              <div className="mx-auto mt-6 max-w-md text-left">
+                <TextOptIn planData={offerText} endpoint="/api/offer-text" tool="offer" />
+              </div>
+            )}
+
             {/* THE ASK, directly under the number that earns it.
                 Measured 18 Oct on the canonical page at 414x896: the only app
                 handoff sat 5.6 screens down — 29% of a 19.5-screen page, below
@@ -1791,7 +1819,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
               people have one offer, and the page told the other ones to run the
               calculator twice and write four numbers down — this is that, done
               for them. Costs a visitor with one offer a single line of copy. */}
-          {offerB && comparison ? (
+          {offerB && comparison && sideA ? (
             /**
              * Wider than the tool on a wide screen. The tool is a 600px
              * column inside the page's max-w-4xl container (896px, 24px
@@ -1803,7 +1831,7 @@ export function OfferAnalysisTool({ campaign = false }: OfferAnalysisToolProps =
              */
             <div className="lg:-mx-[124px] lg:w-[848px]">
             <OfferCompare
-              a={{ label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc }}
+              a={sideA}
               b={offerB}
               bLocation={bCity}
               bState={bState}

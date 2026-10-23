@@ -18,7 +18,7 @@ import { WaitlistForm } from '@/components/WaitlistForm';
 import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnaire';
 import { useCountReveal } from '@/lib/feedback-reveal';
 import { getStateCodeForCity, getAvailableCities } from '@/lib/cities';
-import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash } from '@/lib/rent';
+import { calculateRentRange, calculateBudgetBreakdown, calculateUpfrontCash, rentFirstMove } from '@/lib/rent';
 import { RENT_EXAMPLE } from '@/lib/rentCampaign/example';
 import { localTaxAnnual } from '@/lib/localTax';
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
@@ -26,6 +26,8 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
+import { TextOptIn, TextOptInStickyBar } from '@/components/TextOptIn';
+import type { ResultView } from '@/components/ResultsCards';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
 import { trackLeapShown } from '@/lib/leap-shown';
@@ -70,6 +72,8 @@ export interface RentToolProps {
    * scrolls gets the same tool either way, already filled in.
    */
   campaign?: boolean
+  /** Internal pilot: show the text opt-in under the result. */
+  textPilot?: boolean
 }
 
 /**
@@ -87,7 +91,8 @@ export interface RentToolProps {
  */
 const MIN_PLAUSIBLE_SALARY = 10000;
 
-export function RentTool({ campaign = false }: RentToolProps = {}) {
+export function RentTool({ campaign = false, textPilot = false }: RentToolProps = {}) {
+  const [resultView, setResultView] = useState<ResultView | null>(null);
   /**
    * Campaign traffic starts on the worked example from the creative, so the
    * first screen is an answer rather than an empty form. Organic traffic
@@ -567,6 +572,13 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
     stateName: stateName || undefined,
     regionName: regionName || undefined,
     zoriAvailable: zoriAvailable,
+    marketLow: resultView?.marketRent?.marketLow,
+    marketHigh: resultView?.marketRent?.marketHigh,
+    medianRent: resultView?.marketRent?.medianRent,
+    marketTier: resultView?.marketRent?.tier,
+    marketComparison: resultView?.marketComparison ?? undefined,
+    upfrontBreakdown: resultView?.upfront ?? undefined,
+    firstMove: rentRangeHigh > rentRangeLow ? rentFirstMove(rentRangeLow, rentRangeHigh) : undefined,
   } : undefined;
 
   return (
@@ -777,7 +789,7 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
             {isCalculating ? 'Calculating...' : 'See my numbers'}
           </Button>
           <p className="text-xs text-gray-500 text-center mt-2">
-            Takes about 2 minutes. We'll email your plan.
+            Takes about 2 minutes.
           </p>
         </CardContent>
       </Card>
@@ -786,6 +798,14 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
       {results && (
         <div className="space-y-8">
           <ResultsCards
+            onView={setResultView}
+            answerSlot={
+              textPilot && planData ? (
+                // The text door sits right under the number. On a phone the results start below the
+                // fold, so the sticky bar below points back here.
+                <TextOptIn planData={planData} />
+              ) : undefined
+            }
             afterHero={
               <RentFirstMove
                 rentRangeLow={rentRangeLow}
@@ -922,6 +942,8 @@ export function RentTool({ campaign = false }: RentToolProps = {}) {
 
           {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
               "Email me my plan instead" link. */}
+          {textPilot && planData && results && <TextOptInStickyBar />}
+
           <div id="email-plan" className="scroll-mt-24">
             <WaitlistForm planData={planData} variant="secondary" />
           </div>

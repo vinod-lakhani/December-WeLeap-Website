@@ -20,6 +20,7 @@ import {
   bucketDaysUntilStart,
   mapCityToTier,
 } from '@/lib/buckets';
+import type { UpfrontBreakdown } from '@/components/ResultsCards';
 
 interface PlanData {
   salary: string;
@@ -53,6 +54,13 @@ interface PlanData {
   stateName?: string;
   regionName?: string;
   zoriAvailable?: boolean;
+  marketLow?: number;
+  marketHigh?: number;
+  medianRent?: number;
+  marketTier?: string;
+  marketComparison?: 'above' | 'overlap' | 'below';
+  upfrontBreakdown?: UpfrontBreakdown;
+  firstMove?: { monthlySaving: number; thirtyYearValue: number };
 }
 
 interface WaitlistFormProps {

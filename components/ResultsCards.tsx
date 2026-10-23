@@ -63,7 +63,34 @@ interface PlanData {
   zoriAvailable?: boolean;
 }
 
+export interface MarketRent {
+  medianRent: number;
+  marketLow: number;
+  marketHigh: number;
+  tier: string;
+}
+
+export interface UpfrontBreakdown {
+  gapDays: number;
+  depositLow: number;
+  depositHigh: number;
+  firstMonthLow: number;
+  firstMonthHigh: number;
+  gapLivingCosts: number;
+  movingSetup: number;
+  totalLow: number;
+  totalHigh: number;
+}
+
+export interface ResultView {
+  marketRent: MarketRent | null;
+  marketComparison: 'above' | 'overlap' | 'below' | null;
+  upfront: UpfrontBreakdown | null;
+}
+
 interface ResultsCardsProps {
+  /** Reports what the card shows (local rentals, how it compares, the upfront breakdown) so the calculator can pass it on. */
+  onView?: (v: ResultView) => void;
   takeHomeMonthly: number;
   takeHomeAnnual: number;
   rentRange: string;
@@ -82,10 +109,14 @@ interface ResultsCardsProps {
   /** Rendered immediately after the hero answer — the conversion moment
    *  belongs next to the number, not after four more cards. */
   afterHero?: ReactNode;
+  /** Rendered inside the answer card, straight under the number and share line. */
+  answerSlot?: ReactNode;
 }
 
 export function ResultsCards({
   afterHero,
+  answerSlot,
+  onView,
   takeHomeMonthly,
   takeHomeAnnual,
   rentRange,
@@ -103,12 +134,7 @@ export function ResultsCards({
   planData,
 }: ResultsCardsProps) {
   // ZORI market rent data
-  const [marketRentData, setMarketRentData] = useState<{
-    medianRent: number;
-    marketLow: number;
-    marketHigh: number;
-    tier: string;
-  } | null>(null);
+  const [marketRentData, setMarketRentData] = useState<MarketRent | null>(null);
   const [loadingMarketRent, setLoadingMarketRent] = useState(false);
   const [marketRentComparison, setMarketRentComparison] = useState<'above' | 'overlap' | 'below' | null>(null);
 
@@ -253,6 +279,12 @@ export function ResultsCards({
   };
 
   const upfrontCash = calculateUpfrontCash();
+  // Report the card's figures up whenever they change. The key keeps this from firing on every render.
+  const upfrontKey = JSON.stringify(upfrontCash ?? null);
+  useEffect(() => {
+    onView?.({ marketRent: marketRentData, marketComparison: marketRentComparison, upfront: upfrontCash ?? null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketRentData, marketRentComparison, upfrontKey]);
 
   /**
    * What a share actually asserts.
@@ -335,6 +367,8 @@ export function ResultsCards({
                 />
               </div>
             </div>
+
+            {answerSlot}
 
             {/* The reality check. This is the takeaway that turns an abstract
                 range into a decision, and it was previously 12px grey text at

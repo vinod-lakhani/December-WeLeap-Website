@@ -27,9 +27,10 @@ beforeEach(() => gtag.mockClear())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('the label table', () => {
-  it('wires exactly the three events this site can honestly fire', () => {
+  it('wires exactly the four events this site can honestly fire', () => {
     expect(Object.keys(ADS_CONVERSIONS).sort()).toEqual([
       'store_link_clicked',
+      'text_optin_submitted',
       'tool_completed',
       'tool_cta_clicked',
     ])
@@ -73,6 +74,14 @@ describe('fireAdsConversion', () => {
     fireAdsConversion('store_link_clicked')
     expect(gtag).toHaveBeenCalledWith('event', 'conversion', {
       send_to: ADS_CONVERSIONS.store_link_clicked,
+    })
+  })
+
+  it('reports the text opt-in under the Ads action text_optin', () => {
+    stubWindow('weleap.ai')
+    fireAdsConversion('text_optin_submitted')
+    expect(gtag).toHaveBeenCalledWith('event', 'conversion', {
+      send_to: 'AW-18514097818/du0vCJv0r6YdEJrtmvxE',
     })
   })
 
