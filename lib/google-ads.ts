@@ -1,7 +1,8 @@
 /**
  * Google Ads conversion tracking.
  *
- * Four conversion actions exist in account AW-18514097818, created 19 Oct.
+ * Five conversion actions exist in account AW-18514097818: four created 19 Oct, and `text_optin`
+ * created 22 Oct for the text door.
  * This file is the only place that knows which weleap.ai event fires which
  * one, because the two sets of names do not match: the actions were named for
  * what they mean to a bidder, the events for what happens on the page.
@@ -41,6 +42,9 @@ export const GOOGLE_ADS_ID = 'AW-18514097818'
  */
 export const ADS_CONVERSIONS: Record<string, string> = {
   tool_completed: `${GOOGLE_ADS_ID}/M2r6CIvFuqIdEJrtmvxE`,
+  // The Ads action `text_optin`: the person opted in to texts, on the number form (a valid number
+  // submitted) or the phone path (the tap that opens Messages). Not the first reply.
+  text_optin_submitted: `${GOOGLE_ADS_ID}/du0vCJv0r6YdEJrtmvxE`,
   tool_cta_clicked: `${GOOGLE_ADS_ID}/_fHLCI7FuqIdEJrtmvxE`,
   store_link_clicked: `${GOOGLE_ADS_ID}/JJh4CJTFuqIdEJrtmvxE`,
 }
@@ -75,8 +79,9 @@ export function adsConversionsEnabled(): boolean {
 /**
  * Report one conversion, if this event is one.
  *
- * Fire-and-forget by design. Two of the three events immediately navigate
- * away — a store tap on /get, a CTA click to weleap.app — and nothing may
+ * Fire-and-forget by design. Three of the four events immediately navigate
+ * away — a store tap on /get, a CTA click to weleap.app, the phone-path text
+ * tap that opens Messages — and nothing may
  * delay that: an in-app browser hands off to the store app only on a genuine
  * anchor activation, so a deferred navigation is a lost install. gtag sends
  * these over sendBeacon where the browser has it, which is what survives the
