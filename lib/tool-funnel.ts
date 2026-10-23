@@ -37,13 +37,16 @@ import { track } from '@/lib/analytics'
  * `campaign` is sent only when true, so the ordinary payload stays identical
  * across sources and a dashboard can still split on it when it needs to.
  */
-export function useResultShown(tool: string, hasResult: boolean, campaign = false) {
+export function useResultShown(tool: string, hasResult: boolean, campaign = false, extra?: Record<string, unknown>) {
   const fired = useRef(false)
+  // Read at the moment it fires: the event describes the first result, not whatever the props become later.
+  const extraRef = useRef(extra)
+  extraRef.current = extra
 
   useEffect(() => {
     if (!hasResult || fired.current) return
     fired.current = true
-    track('tool_result_shown', { tool, ...(campaign ? { campaign: true } : {}) })
+    track('tool_result_shown', { tool, ...(campaign ? { campaign: true } : {}), ...(extraRef.current ?? {}) })
   }, [tool, hasResult, campaign])
 }
 

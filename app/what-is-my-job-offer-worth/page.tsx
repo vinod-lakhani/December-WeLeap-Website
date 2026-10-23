@@ -164,9 +164,15 @@ export default function OfferAnalysisPage({
             What is your job offer{' '}
             <span className="text-brand-700">really worth?</span>
           </h1>
-          <p className="mx-auto max-w-md text-lg leading-relaxed text-subtle">
-            Your offer letter has seven numbers in it. Most people only read one.
+          {/* One line on a phone: the salary field has to clear a 390x844 screen without scrolling. */}
+          <p className="mx-auto max-w-md text-base leading-relaxed text-subtle sm:text-lg">
+            Your offer letter has seven numbers in it.<span className="hidden sm:inline"> Most people only read one.</span>
           </p>
+          {/* The tool sits inside the hero, as on the rent page: the gap a second section put between the
+              subhead and the salary card (the hero's bottom padding, 64-80px) pushed the input to the fold. */}
+          <div className="mt-8 text-left">
+            <OfferAnalysisTool campaign={campaign} />
+          </div>
         </Container>
       </Section>
       )}
@@ -174,11 +180,13 @@ export default function OfferAnalysisPage({
       {/* Tool sits directly under the hero — same reasoning as the rent tool:
           people arrive knowing what they want, so the input comes first and
           the explainer becomes reinforcement below. */}
-      <Section variant="canvas" className={campaign ? 'pb-10 pt-8' : 'pt-0'}>
-        <Container maxWidth="narrow">
-          <OfferAnalysisTool campaign={campaign} />
-        </Container>
-      </Section>
+      {campaign && (
+        <Section variant="canvas" className="pb-10 pt-8">
+          <Container maxWidth="narrow">
+            <OfferAnalysisTool campaign />
+          </Container>
+        </Section>
+      )}
 
       {/* Everything below the result is optional refinement, and on a campaign
           landing it is a corridor of exits. Measured 15 Oct on C3 traffic:

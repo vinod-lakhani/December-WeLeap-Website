@@ -118,7 +118,8 @@ describe('campaign mode on the first-paycheck tool', () => {
      */
     expect(tool).toMatch(/useResultShown\('first_paycheck', !!plan, campaign\)/)
     const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
-    expect(offer).toMatch(/useResultShown\('offer', hasResults, campaign\)/)
+    // The offer tool also says which headline the first result showed (take-home or package; see Change D).
+    expect(offer).toMatch(/useResultShown\('offer', hasResults, campaign, \{ headline \}\)/)
   })
 
   it('counts a document that parsed as engagement', () => {

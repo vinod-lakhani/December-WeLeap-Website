@@ -31,13 +31,7 @@ import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel';
 import { localTaxAnnual } from '@/lib/localTax';
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants';
 import { cn } from '@/lib/utils';
-import {
-  computeOfferValue,
-  EMPTY_OFFER_VALUE,
-  MARKET_PTO_DAYS,
-  type OfferInputs,
-  type TaxResult,
-} from '@/lib/offer/calculate';
+import { computeOfferValue, EMPTY_OFFER_VALUE, MARKET_PTO_DAYS, type OfferInputs, type TaxResult, enteredOfferInputs, enteredPackageParts } from '@/lib/offer/calculate';
 import { compareOffers, type OfferSide } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
 import { offerTextPayload } from '@/lib/offer/textPayload';
@@ -185,6 +179,25 @@ const ANALYTICS_TO_MARK: Record<string, string> = {
   rsu_annual: 'rsuAnnual',
   pto_days: 'ptoDays',
   espp_discount_pct: 'esppDiscount',
+  // No document carries these; listed so a typed value is recorded as entered (see `typed`).
+  signing_bonus: 'signingBonus',
+  espp_contrib_pct: 'esppContrib',
+  rent_monthly: 'rentMonthly',
+  city: 'city',
+}
+
+/**
+ * The example terms the form opens with. Shown in the fields (greyed, "example") and named in the one
+ * conditional line under a take-home result; never in a figure that reads as a fact about this offer.
+ */
+const EXAMPLE_BONUS_PCT = 10;
+const EXAMPLE_MATCH_RATE_PCT = 100;
+const EXAMPLE_MATCH_UP_TO_PCT = 6;
+
+/** "base", "base and match", "base, bonus and match". */
+function listParts(parts: string[]): string {
+  if (parts.length <= 1) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -220,11 +233,11 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
   const [taxLoading, setTaxLoading] = useState(false);
 
   // 2. Bonus
-  const [bonusPct, setBonusPct] = useState(10);
+  const [bonusPct, setBonusPct] = useState(EXAMPLE_BONUS_PCT);
 
   // 3. 401k match
-  const [matchRatePct, setMatchRatePct] = useState(100);
-  const [matchUpToPct, setMatchUpToPct] = useState(6);
+  const [matchRatePct, setMatchRatePct] = useState(EXAMPLE_MATCH_RATE_PCT);
+  const [matchUpToPct, setMatchUpToPct] = useState(EXAMPLE_MATCH_UP_TO_PCT);
 
   // 4. Health & benefits
   const [hsaMonthly, setHsaMonthly] = useState(0);
@@ -297,10 +310,24 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
     scrollToAnswer();
   }, [salary, scrollToAnswer]);
 
+  /**
+   * The upload card renders only once asked for. Sitting open under the salary card it was a second decision
+   * before the first one was made — two buttons and three paragraphs about a document most search visitors do
+   * not have to hand (first-paycheck's upload-first screen engaged 1 in 28). The one-line link stays.
+   */
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const scrollToUploadRef = useRef(false);
   const jumpToUpload = useCallback(() => {
     track('offer_quickstart_upload_link', { tool: 'offer' });
+    track('offer_upload_opened', { tool: 'offer', via: campaign ? 'campaign_hero' : 'link' });
+    scrollToUploadRef.current = true;
+    setUploadOpen(true);
+  }, [campaign]);
+  useEffect(() => {
+    if (!uploadOpen || !scrollToUploadRef.current) return;
+    scrollToUploadRef.current = false;
     document.getElementById('offer-upload')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+  });
   const [showEspp, setShowEspp] = useState(false);
   const [esppContrib, setEsppContrib] = useState(10);
   const [esppDiscount, setEsppDiscount] = useState(15);
@@ -369,6 +396,12 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
    * this offer, so it renders solid alongside anything typed.
    */
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  /**
+   * Every field the visitor has typed into, by input key — the complement of `fromLetter` for deciding what
+   * counts as entered (see enteredOfferInputs). `touched` above covers only the fields that open with an
+   * example; this covers all of them, recorded in the one handler every field reports through.
+   */
+  const [typed, setTyped] = useState<Record<string, true>>({});
   const touch = (key: string) =>
     setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
   const example = (key: string) =>
@@ -643,7 +676,50 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
   }, [taxResult, city, salary]);
 
   const calc = useMemo(() => computeOfferValue(offerInputs, taxWithLocal), [offerInputs, taxWithLocal]);
-  const levers = useMemo(() => computeLevers(offerInputs, taxWithLocal), [offerInputs, taxWithLocal]);
+
+  /**
+   * What the visitor has actually told us, and the offer priced on that alone.
+   *
+   * `calc` keeps the example terms so the fields above can show what they are worth; everything that reads as a
+   * statement about this offer — the headline, the package card, the asks, the comparison, the app handoff and
+   * the text — reads `shown`. The one exception is the ad's own example on a campaign landing, shown as an
+   * example until a salary is typed.
+   */
+  const entered = useMemo(() => {
+    const s = new Set<string>([...Object.keys(typed), ...Object.keys(fromLetter)]);
+    if (salary > 0) s.add('salary');
+    if (jobState) s.add('jobState');
+    return s;
+  }, [typed, fromLetter, salary, jobState]);
+  const enteredInputs = useMemo(() => enteredOfferInputs(offerInputs, entered), [offerInputs, entered]);
+  const calcEntered = useMemo(() => computeOfferValue(enteredInputs, taxWithLocal), [enteredInputs, taxWithLocal]);
+  const campaignDemo = campaign && !typed.salary && !fromLetter.salary;
+  const shownInputs = campaignDemo ? offerInputs : enteredInputs;
+  const shown = campaignDemo ? calc : calcEntered;
+  const packageParts = useMemo(
+    () => (calcEntered ? enteredPackageParts(calcEntered, enteredInputs) : []),
+    [calcEntered, enteredInputs],
+  );
+  /** Which result the headline states: take-home on the salary alone, the package once part of it is entered. */
+  const headline: 'example' | 'package' | 'take_home' = campaignDemo ? 'example' : packageParts.length > 0 ? 'package' : 'take_home';
+  /** The worked example for the conditional line, on this salary. Only while neither bonus nor match is entered. */
+  const exampleTotal = useMemo(() => {
+    if (entered.has('bonusPct') || entered.has('matchRatePct') || entered.has('matchUpToPct')) return null;
+    return computeOfferValue(
+      { ...enteredInputs, bonusPct: EXAMPLE_BONUS_PCT, matchRatePct: EXAMPLE_MATCH_RATE_PCT, matchUpToPct: EXAMPLE_MATCH_UP_TO_PCT },
+      taxWithLocal,
+    )?.totalPackage ?? null;
+  }, [entered, enteredInputs, taxWithLocal]);
+  const levers = useMemo(() => computeLevers(shownInputs, taxWithLocal), [shownInputs, taxWithLocal]);
+  /** The one place the example terms are named next to a result: conditional, and with the assumptions said. */
+  const exampleLine =
+    exampleTotal !== null && exampleTotal > salary ? (
+      <>
+        If the letter also has a bonus or a 401(k) match, the package is bigger: for example, a {EXAMPLE_BONUS_PCT}%
+        bonus and a {EXAMPLE_MATCH_RATE_PCT}% match on the first {EXAMPLE_MATCH_UP_TO_PCT}% of salary would put it
+        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Add yours to the form to see it.'}
+      </>
+    ) : null;
 
   // ── The second offer ─────────────────────────────────────────────────────────
   /**
@@ -667,9 +743,10 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
     // Seeded from the first offer, because the fields most likely to be equal
     // are the ones nobody wants to retype: match terms, HSA, premium, leave.
     // Salary and location start empty — those are the reason there are two.
-    setOfferB({ ...offerInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
+    // Entered terms only: A's example bonus and match are not facts about A, let alone about B.
+    setOfferB({ ...enteredInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
     track('offer_compare_started', { tool: 'offer' });
-  }, [offerInputs]);
+  }, [enteredInputs]);
 
   const clearCompare = useCallback(() => {
     setOfferB(null);
@@ -731,10 +808,10 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
 
   const calcB = useMemo(() => (offerB ? computeOfferValue(offerB, bTax) : null), [offerB, bTax]);
 
-  // The two offers as the comparison, its table and the text door all read them.
+  // The two offers as the comparison and its table read them: entered terms only (see `shown`).
   const sideA = useMemo<OfferSide | null>(
-    () => (calc ? { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc } : null),
-    [calc, city, jobState, offerInputs],
+    () => (shown ? { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: shownInputs, value: shown } : null),
+    [shown, city, jobState, shownInputs],
   );
   // calcB is null until the second offer has a salary, and the place you
   // type that salary is inside this table — so it renders empty rather than
@@ -745,20 +822,22 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
   );
   const comparison = useMemo(() => (sideA && sideB ? compareOffers(sideA, sideB) : null), [sideA, sideB]);
 
-  // The figures the text door sends. Built from what is on screen, so the text and the page agree.
+  // The figures the text door sends: every one the calculator holds, example terms included, so Ribbit can
+  // answer a what-if — plus which fields the visitor entered, because the texts quote only those.
   const offerText = useMemo(() => {
-    if (!textPilot || !sideA) return null;
+    if (!textPilot || !calc || !calcEntered) return null;
     // The other offer counts once it has a salary; until then the comparison is an empty table.
     const other = sideB && calcB ? sideB : null;
     return offerTextPayload({
       id: crypto.randomUUID(),
-      side: sideA,
+      side: { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc },
       tax: taxWithLocal,
       levers,
       comparison: other ? comparison : null,
       other,
+      entered: { fields: [...entered].sort(), value: calcEntered },
     });
-  }, [textPilot, sideA, sideB, calcB, comparison, levers, taxWithLocal]);
+  }, [textPilot, calc, calcEntered, city, jobState, offerInputs, sideB, calcB, comparison, levers, taxWithLocal, entered]);
 
 
   // ── Market rent data load ────────────────────────────────────────────────────
@@ -850,6 +929,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
         tool: 'offer',
       });
     }
+    if (markKey) setTyped((prev) => (prev[markKey] ? prev : { ...prev, [markKey]: true }));
     markEngaged(field);
     track('offer_tool_field_changed', {
       field,
@@ -962,11 +1042,13 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       src: 'offer_tool',
       salary: String(salary),
       state: jobState,
-      bonus: bonusPct ? String(bonusPct) : '',
-      matchRate: matchRatePct ? String(matchRatePct) : '',
-      matchUpTo: matchUpToPct ? String(matchUpToPct) : '',
-      hsa: hsaMonthly ? String(hsaMonthly) : '',
-      rsu: rsuAnnual ? String(rsuAnnual) : '',
+      // Entered terms only. The app prefills onboarding from these and marks them as from the offer, so an
+      // example value sent here would come back to the visitor as something their letter said.
+      bonus: shownInputs.bonusPct ? String(shownInputs.bonusPct) : '',
+      matchRate: shownInputs.matchRatePct ? String(shownInputs.matchRatePct) : '',
+      matchUpTo: shownInputs.matchUpToPct ? String(shownInputs.matchUpToPct) : '',
+      hsa: shownInputs.hsaMonthly ? String(shownInputs.hsaMonthly) : '',
+      rsu: shownInputs.rsuAnnual ? String(shownInputs.rsuAnnual) : '',
       city,
       rent: rentMonthly ? String(rentMonthly) : '',
     });
@@ -989,12 +1071,12 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
     track('offer_tool_cta_clicked', { salary: Math.round(salary / 10000) * 10000, state: jobState, placement });
 
     window.location.href = destination;
-  }, [salary, jobState, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, rsuAnnual, city, rentMonthly]);
+  }, [salary, jobState, shownInputs, city, rentMonthly]);
 
   const hasResults = !!calc;
 
   // A result is on screen, whoever put it there. See lib/tool-funnel.ts.
-  useResultShown('offer', hasResults, campaign);
+  useResultShown('offer', hasResults, campaign, { headline });
 
   /**
    * Fourth step of the funnel, fired once: the visitor did something, and there
@@ -1066,18 +1148,21 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
         fields_filled: 1 + extrasFilled,
         seconds_since_view: Math.round((Date.now() - viewedAtRef.current) / 1000),
         via: firstTrigger === 'upload' ? 'upload' : 'typed',
+        // Which result the visitor is looking at when it completes: the package once part of it is entered,
+        // take-home when the qualifying field was the state alone.
+        headline,
         ...(campaign ? { campaign: true } : {}),
       });
       // The CTA leads with the employer match where there is one, and falls
       // back to total-package uplift otherwise, so the Leap reported here is
       // whichever of those the visitor is actually being shown.
       trackLeapShown(
-        calc && calc.annual401kMatch > 0
-          ? { tool: 'offer', leapType: 'employer_match', leapValueUsd: calc.annual401kMatch / 12 }
-          : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (calc?.totalPackage ?? 0) - salary) / 12 }
+        shown && shown.annual401kMatch > 0
+          ? { tool: 'offer', leapType: 'employer_match', leapValueUsd: shown.annual401kMatch / 12 }
+          : { tool: 'offer', leapType: 'offer_uplift', leapValueUsd: Math.max(0, (shown?.totalPackage ?? 0) - salary) / 12 }
       );
     }
-  }, [analysisComplete, calc, salary, campaign, firstTrigger, fieldChangeCount, extrasFilled]);
+  }, [analysisComplete, shown, salary, campaign, firstTrigger, fieldChangeCount, extrasFilled, headline]);
 
   return (
     <div className="w-full max-w-[600px] mx-auto">
@@ -1093,13 +1178,13 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
           covered the headline and — worse — disagreed with it: the sticky bar
           reads totalPackage, which excludes the example's equity, so the screen
           showed $71,920 nine pixels above a card saying $78,500. */}
-      {!campaign && hasResults && calc && (
+      {!campaign && hasResults && shown && (
         <div className="sticky top-[86px] z-20 mb-4 flex items-center justify-between gap-3 rounded-xl bg-[#2d5a26] px-4 py-2.5">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">
             Package so far
           </span>
           <span className="text-base font-extrabold text-[#A7C957] tabular-nums">
-            {fc(calc.totalPackage)}
+            {fc(shown.totalPackage)}
           </span>
         </div>
       )}
@@ -1108,8 +1193,10 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
         <OfferCampaignHero
           salaryInput={salaryInput}
           salary={salary}
-          equityAnnual={rsuAnnual}
-          calc={calc}
+          equityAnnual={shownInputs.rsuAnnual}
+          calc={shown}
+          headline={headline}
+          exampleLine={exampleLine}
           onSalaryChange={(raw) => {
             const digits = raw.replace(/[^0-9]/g, '');
             setSalaryInput(digits ? Number(digits).toLocaleString() : '');
@@ -1130,10 +1217,10 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
             </div>
           }
           shareSlot={
-            calc && calc.totalPackage > salary ? (
+            shown && shown.totalPackage > salary ? (
               <OfferShareCard
                 page={page}
-                upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                upliftPct={((shown.totalPackage - salary) / salary) * 100}
                 compare={shareCompare}
                 shareUrl={shareUrl}
                 shareText={shareText}
@@ -1245,9 +1332,11 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
         </>
       )}
 
-      <div id="offer-upload" className="scroll-mt-24">
-        <OfferLetterUpload onParsed={applyParsed} formAbove />
-      </div>
+      {(uploadOpen || letterUploaded) && (
+        <div id="offer-upload" className="scroll-mt-24">
+          <OfferLetterUpload onParsed={applyParsed} formAbove />
+        </div>
+      )}
 
       {benefitsUploaded && (
         /* The one assumption the benefits path makes, stated in plain words.
@@ -1630,30 +1719,56 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       </Section>
 
       {/* ── Full package breakdown ─────────────────────────────────────────── */}
-      {calc && (
+      {calc && shown && (
         <div className="space-y-3 mb-3">
-          {/* THE ANSWER. The tool's whole premise is that an offer is worth more
-              than the base number — but that finding was rendering as
-              "+$15,200 more than base salary" in 12px white/30 at the bottom of
-              the breakdown card. It leads now; the breakdown below is the proof. */}
+          {/* THE ANSWER, from what the visitor entered. A salary alone gives take-home, the figure every number
+              on it is the visitor's own; the package leads only once part of it is entered. The form's example
+              bonus and match appear once, in a sentence that says "if" and names them — never as the
+              headline. The ad's worked example on a campaign landing is the one exception, labelled as such. */}
           <div id="offer-answer" className="scroll-mt-24 rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
-              Your offer is actually worth
-            </p>
-            <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-              {fc(calc.totalPackage)}
-            </p>
-            {calc.totalPackage > salary && (
-              <p className="mt-3 text-[15px] text-subtle">
-                <span className="font-bold text-brand-700">
-                  +{Math.round(((calc.totalPackage - salary) / salary) * 100)}% more
-                </span>{' '}
-                than the {fc(salary)} base they quoted you
-              </p>
+            {headline === 'take_home' ? (
+              <>
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+                  On {fc(salary)} you&apos;d keep about
+                </p>
+                <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                  {fc(shown.takeHomeMonthly)}
+                  <span className="text-[0.4em] font-bold tracking-normal text-subtle">/mo</span>
+                </p>
+                <p className="mt-2 text-[13px] text-faint">after tax{jobState ? ` in ${jobState}` : ''}</p>
+                {exampleLine && (
+                  <p className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-subtle">{exampleLine}</p>
+                )}
+              </>
+            ) : (
+              <>
+                {headline === 'example' && (
+                  <p className="mb-3 inline-block rounded-full bg-canvas px-3 py-1 text-[12px] font-semibold text-subtle">
+                    Example from the ad — replace with your numbers
+                  </p>
+                )}
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+                  {headline === 'example' ? 'This example offer is worth' : 'Your offer is worth about'}
+                </p>
+                <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                  {fc(shown.totalPackage)}
+                </p>
+                {headline === 'package' && (
+                  <p className="mt-2 text-[14px] text-subtle">{listParts(['base', ...packageParts])}</p>
+                )}
+                {shown.totalPackage > salary && (
+                  <p className="mt-3 text-[15px] text-subtle">
+                    <span className="font-bold text-brand-700">
+                      +{Math.round(((shown.totalPackage - salary) / salary) * 100)}% more
+                    </span>{' '}
+                    than the {fc(salary)} base{headline === 'example' ? '' : ' they quoted you'}
+                  </p>
+                )}
+                <p className="mt-1.5 text-[13px] text-faint">
+                  You&apos;d keep about {fc(shown.takeHomeMonthly)}/mo after tax
+                </p>
+              </>
             )}
-            <p className="mt-1.5 text-[13px] text-faint">
-              You&apos;d keep about {fc(calc.takeHomeMonthly)}/mo after tax
-            </p>
 
             {textPilot && offerText && (
               <div className="mx-auto mt-6 max-w-md text-left">
@@ -1688,11 +1803,11 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
 
             {/* Share belongs with the number it's about — this is peak
                 "wait, really?". Five blocks later, past the CTA, it wasn't. */}
-            {calc.totalPackage > salary && (
+            {shown.totalPackage > salary && (
               <div className="mt-5 border-t border-hairline pt-4">
                 <OfferShareCard
                   page={page}
-                  upliftPct={((calc.totalPackage - salary) / salary) * 100}
+                  upliftPct={((shown.totalPackage - salary) / salary) * 100}
                   compare={shareCompare}
                   shareUrl={shareUrl}
                   shareText={shareText}
@@ -1715,24 +1830,31 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
             <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-4">Your full package</div>
             {[
               { label: 'Base salary', value: salary },
-              { label: `Bonus target (${bonusPct}%)`, value: calc.annualBonus, show: bonusPct > 0 },
-              { label: `401k match`, value: calc.annual401kMatch, show: matchUpToPct > 0 },
-              { label: 'Employer HSA', value: calc.annualHsa, show: hsaMonthly > 0 },
-              { label: 'Healthcare premium', value: calc.annualHealthcare, show: healthcarePremium > 0 },
-              { label: 'RSUs (annual vesting)', value: rsuAnnual, show: rsuAnnual > 0 },
-              { label: 'ESPP discount', value: calc.annualEspp, show: showEspp && calc.annualEspp > 0 },
-              { label: `PTO (+${ptoDays - MARKET_PTO_DAYS} days)`, value: calc.ptoValue, show: calc.ptoValue > 0 },
+              { label: `Bonus target (${shownInputs.bonusPct}%)`, value: shown.annualBonus, show: shownInputs.bonusPct > 0 },
+              { label: `401k match`, value: shown.annual401kMatch, show: shownInputs.matchUpToPct > 0 },
+              { label: 'Employer HSA', value: shown.annualHsa, show: shownInputs.hsaMonthly > 0 },
+              { label: 'Healthcare premium', value: shown.annualHealthcare, show: shownInputs.healthcarePremium > 0 },
+              { label: 'RSUs (annual vesting)', value: shownInputs.rsuAnnual, show: shownInputs.rsuAnnual > 0 },
+              { label: 'ESPP discount', value: shown.annualEspp, show: shownInputs.showEspp && shown.annualEspp > 0 },
+              { label: `PTO (+${shownInputs.ptoDays - MARKET_PTO_DAYS} days)`, value: shown.ptoValue, show: shown.ptoValue > 0 },
+              // The two terms most offers have and most visitors have not typed: named, not guessed.
+              { label: 'Bonus target', value: 0, show: !campaignDemo && !entered.has('bonusPct'), missing: true },
+              { label: '401k match', value: 0, show: !campaignDemo && !entered.has('matchRatePct') && !entered.has('matchUpToPct'), missing: true },
             ].filter(r => r.show !== false).map((row, i, arr) => (
               <div key={i} className={`flex justify-between items-baseline py-1.5 ${i < arr.length - 1 ? 'border-b border-white/5' : ''}`}>
-                <span className={`text-sm ${i === 0 ? 'text-white/90' : 'text-white/50'}`}>{row.label}</span>
-                <span className={`text-sm font-bold ${row.value < 0 ? 'text-red-400' : i === 0 ? 'text-white/90' : 'text-[#A7C957]'}`}>
-                  {row.value < 0 ? `−${fc(row.value)}` : fc(row.value)}
-                </span>
+                <span className={`text-sm ${row.missing ? 'text-white/30' : i === 0 ? 'text-white/90' : 'text-white/50'}`}>{row.label}</span>
+                {row.missing ? (
+                  <span className="text-xs italic text-white/30">not entered yet</span>
+                ) : (
+                  <span className={`text-sm font-bold ${row.value < 0 ? 'text-red-400' : i === 0 ? 'text-white/90' : 'text-[#A7C957]'}`}>
+                    {row.value < 0 ? `−${fc(row.value)}` : fc(row.value)}
+                  </span>
+                )}
               </div>
             ))}
             <div className="border-t border-white/20 mt-3 pt-3 flex justify-between items-baseline">
               <span className="text-sm font-bold text-white">Total package</span>
-              <span className="text-2xl font-black text-[#A7C957]">{fc(calc.totalPackage)}</span>
+              <span className="text-2xl font-black text-[#A7C957]">{fc(shown.totalPackage)}</span>
             </div>
             {/* A signing bonus is not part of what the job pays every year, so
                 it sits below the per-year total rather than inside it. Both
@@ -1745,7 +1867,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
                 </div>
                 <div className="flex justify-between items-baseline">
                   <span className="text-sm font-bold text-white/90">First year only</span>
-                  <span className="text-lg font-black text-white">{fc(calc.firstYearTotal)}</span>
+                  <span className="text-lg font-black text-white">{fc(shown.firstYearTotal)}</span>
                 </div>
               </div>
             )}
@@ -1815,9 +1937,9 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
             <div className="mt-4 bg-green-50 border border-[#A7C957] rounded-xl px-4 py-3">
               <div className="flex justify-between items-baseline mb-1">
                 <span className="text-sm font-semibold text-[#386641]">Total monthly wealth building</span>
-                <span className="text-base font-extrabold text-[#386641]">{fc(calc.monthlyWealth)}/mo</span>
+                <span className="text-base font-extrabold text-[#386641]">{fc(shown.monthlyWealth)}/mo</span>
               </div>
-              <p className="text-xs text-gray-500">Savings + 401k match + equity → <strong className="text-gray-900">${(calc.nw40yr / 1_000_000).toFixed(1)}M in 40 years at 7%</strong></p>
+              <p className="text-xs text-gray-500">Savings + 401k match + equity → <strong className="text-gray-900">${(shown.nw40yr / 1_000_000).toFixed(1)}M in 40 years at 7%</strong></p>
             </div>
           </div>
 
@@ -1895,16 +2017,16 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
                 previously buried in the breakdown while the CTA showed a
                 feature list. Falls back to total-package uplift when the
                 offer has no match. */}
-            {calc.annual401kMatch > 0 ? (
+            {shown.annual401kMatch > 0 ? (
               <div className="mb-5 rounded-xl border border-[#A7C957] bg-green-50 px-4 py-4 text-center">
                 <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641] mb-1">
                   Your first move
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900 leading-tight">
-                  Capture the full {fc(calc.annual401kMatch)}/yr match
+                  Capture the full {fc(shown.annual401kMatch)}/yr match
                 </p>
                 <p className="text-xs text-gray-500 mt-1.5">
-                  You only get it if you contribute at least {matchUpToPct}%. Most plans let you change this
+                  You only get it if you contribute at least {shownInputs.matchUpToPct}%. Most plans let you change this
                   any time — but it doesn&apos;t backdate.
                 </p>
               </div>
@@ -1914,7 +2036,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
                   Your first move
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900 leading-tight">
-                  Put {fc(calc.monthlyWealth)}/mo to work
+                  Put {fc(shown.monthlyWealth)}/mo to work
                 </p>
                 <p className="text-xs text-gray-500 mt-1.5">
                   That&apos;s what this offer leaves you to build with. Where it goes first is the decision
