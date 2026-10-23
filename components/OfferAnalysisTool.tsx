@@ -194,6 +194,29 @@ const EXAMPLE_BONUS_PCT = 10;
 const EXAMPLE_MATCH_RATE_PCT = 100;
 const EXAMPLE_MATCH_UP_TO_PCT = 6;
 
+/**
+ * The question under a term that still shows its example value. Someone whose letter really says 10% would
+ * leave a 10% slider alone, and an untouched example does not count as theirs (see enteredOfferInputs) — so the
+ * example asks to be confirmed or ruled out rather than waiting for a nudge it has no reason to get.
+ */
+function ExampleConfirm({ yesLabel, noLabel, onYes, onNo }: {
+  yesLabel: string; noLabel: string; onYes: () => void; onNo: () => void;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-canvas px-3.5 py-3">
+      <span className="mr-1 text-[13.5px] font-semibold text-gray-700">Is this in your offer?</span>
+      <button type="button" onClick={onYes}
+        className="min-h-10 rounded-lg border-2 border-[#386641] bg-white px-3 text-[13.5px] font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white">
+        {yesLabel}
+      </button>
+      <button type="button" onClick={onNo}
+        className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 text-[13.5px] font-semibold text-gray-600 transition hover:border-gray-400">
+        {noLabel}
+      </button>
+    </div>
+  );
+}
+
 /** "base", "base and match", "base, bonus and match". */
 function listParts(parts: string[]): string {
   if (parts.length <= 1) return parts.join('');
@@ -1457,6 +1480,23 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
           {calc && bonusPct > 0 && (
             <p className="text-sm text-gray-500 mt-2">At target: <strong className={cn(example('bonusPct') || 'text-gray-900')}>{fc(calc.annualBonus)}/yr</strong></p>
           )}
+          {!entered.has('bonusPct') && (
+            <ExampleConfirm
+              yesLabel={`Yes, ${bonusPct}%`}
+              noLabel="No bonus"
+              onYes={() => {
+                touch('bonusPct');
+                track('offer_example_answered', { tool: 'offer', term: 'bonus', answer: 'yes', value: bonusPct });
+                trackFieldChange('bonus_pct', bonusPct);
+              }}
+              onNo={() => {
+                setBonusPct(0);
+                touch('bonusPct');
+                track('offer_example_answered', { tool: 'offer', term: 'bonus', answer: 'no' });
+                trackFieldChange('bonus_pct', 0);
+              }}
+            />
+          )}
         </div>
       </Section>
 
@@ -1494,6 +1534,27 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
         </div>
         {calc && calc.annual401kMatch > 0 && (
           <p className="text-sm text-gray-500 mt-3">Contribute at least {matchUpToPct}% to capture the full <strong className={cn(example('matchRatePct') || 'text-[#386641]')}>{fc(calc.annual401kMatch)}/yr match</strong>.</p>
+        )}
+        {!entered.has('matchRatePct') && !entered.has('matchUpToPct') && (
+          <ExampleConfirm
+            yesLabel={`Yes, ${matchRatePct}% up to ${matchUpToPct}%`}
+            noLabel="No match"
+            onYes={() => {
+              touch('matchRatePct');
+              touch('matchUpToPct');
+              track('offer_example_answered', { tool: 'offer', term: 'match', answer: 'yes', value: matchRatePct, up_to: matchUpToPct });
+              // One field reported, not two: confirming the formula is one answer, and fields_filled counts answers.
+              trackFieldChange('match_rate_pct', matchRatePct);
+            }}
+            onNo={() => {
+              setMatchRatePct(0);
+              setMatchUpToPct(0);
+              touch('matchRatePct');
+              touch('matchUpToPct');
+              track('offer_example_answered', { tool: 'offer', term: 'match', answer: 'no' });
+              trackFieldChange('match_rate_pct', 0);
+            }}
+          />
         )}
       </Section>
 
