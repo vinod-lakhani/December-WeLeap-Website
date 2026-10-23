@@ -31,9 +31,10 @@ import { ToolFeedbackQuestionnaire } from '@/components/ToolFeedbackQuestionnair
 import { AppCta } from '@/components/AppCta'
 import { computeFirstPaycheck } from '@/lib/firstPaycheck/calculation'
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
+import { TermQuestion, TermSummary } from '@/components/TermQuestion'
 import { FirstPaycheckCampaignHero } from '@/components/FirstPaycheckCampaignHero'
 import { PAYCHECK_EXAMPLE } from '@/lib/firstPaycheck/example'
-import { TAX_YEAR_FIRST_PAYCHECK, TYPICAL_ENROLLMENT_WINDOW_DAYS } from '@/lib/firstPaycheck/constants'
+import { TAX_YEAR_FIRST_PAYCHECK, TYPICAL_ENROLLMENT_WINDOW_DAYS , type PaycheckVariant } from '@/lib/firstPaycheck/constants'
 import { PAY_FREQUENCIES, type PayFrequency, type ParsedOffer } from '@/lib/offer-parse/fields'
 import { trackDocFieldEdited, stampFirstDocClass } from '@/lib/offer-parse/doc-analytics'
 
@@ -62,9 +63,18 @@ export interface FirstPaycheckToolProps {
    * identical, so a visitor who scrolls gets the same tool either way.
    */
   campaign?: boolean
+  /**
+   * The ad group's copy variant (`?v=`, read by the page on the server). `match` asks the match question directly
+   * under the salary; every variant reports itself on the funnel events so the two ad groups read apart.
+   */
+  variant?: PaycheckVariant
 }
 
-export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps = {}) {
+/** The example formula the match fields open with. Named in the question and in the conditional result line only. */
+const EXAMPLE_MATCH_RATE = '100'
+const EXAMPLE_MATCH_CAP = '4'
+
+export function FirstPaycheckTool({ campaign = false, variant = 'default' }: FirstPaycheckToolProps = {}) {
   const [startDate, setStartDate] = useState('')
   /**
    * Campaign traffic starts on the worked example from the creative, so the
@@ -78,8 +88,10 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
   )
   const [state, setState] = useState('')
   const [payFrequency, setPayFrequency] = useState<PayFrequency>('semimonthly')
-  const [matchRatePct, setMatchRatePct] = useState('100')
-  const [matchCapPct, setMatchCapPct] = useState('4')
+  const [matchRatePct, setMatchRatePct] = useState(EXAMPLE_MATCH_RATE)
+  const [matchCapPct, setMatchCapPct] = useState(EXAMPLE_MATCH_CAP)
+  /** The match question's view; unset, it follows the answer (question until the match is known, then a summary). */
+  const [matchView, setMatchView] = useState<'ask' | 'edit' | null>(null)
   const [hsaEligible, setHsaEligible] = useState(false)
   const engaged = useRef(false)
   const completed = useRef(false)
@@ -146,9 +158,9 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
     setEngagementCount((n) => n + 1)
     if (engaged.current) return
     engaged.current = true
-    track('tool_engaged', { tool: TOOL, first_field: field })
+    track('tool_engaged', { tool: TOOL, first_field: field, variant })
     track('tool_form_start', { tool: TOOL, page: PAGE })
-  }, [])
+  }, [variant])
 
   const noteEdit = useCallback((field: string) => {
     if (!fromDoc.current.has(field)) return
@@ -232,7 +244,7 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
    * those sessions this fires on load — which is what it is supposed to say.
    * It is deliberately NOT tool_completed; see below.
    */
-  useResultShown('first_paycheck', !!plan, campaign)
+  useResultShown('first_paycheck', !!plan, campaign, { variant })
 
   /**
    * Completion: the visitor did something, and there is a plan.
@@ -304,18 +316,28 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
         // visitor supplied, not the ones left at their defaults.
         fields_filled: 1 + extrasTouched,
         via: viaUpload ? 'upload' : 'typed',
+        variant,
         ...(campaign ? { campaign: true } : {}),
       })
     }
   }
 
+  /**
+   * Whether the match formula is the visitor's: typed, answered, or read off a document. Until it is, the fields
+   * hold an example (100% up to 4%) and the result says what that example would mean, conditionally — the same
+   * rule as the offer tool: no figure stated as fact that rests on a field nobody filled.
+   */
+  const matchKnown = matchSupplied || fromDoc.current.has('match_rate') || fromDoc.current.has('match_cap')
+  const matchPerCheck = plan ? plan.employerMatchAnnual / plan.periodsPerYear : 0
+
   const rows = plan
     ? [
         {
           k: '401(k) contribution',
-          v: `${Number(plan.contributionPct.toFixed(2))}%`,
-          d:
-            plan.contributionPct > 0
+          v: matchKnown ? `${Number(plan.contributionPct.toFixed(2))}%` : 'Your match cap',
+          d: !matchKnown
+            ? `If your plan matches ${EXAMPLE_MATCH_RATE}% up to ${EXAMPLE_MATCH_CAP}%, for example, that's ${money(matchPerCheck)} a check and ${money(plan.employerMatchAnnual)} a year you'd leave behind by not enrolling. Answer the match question above to make this yours.`
+            : plan.contributionPct > 0
               ? `Captures the full match. ${money(plan.contributionPerCheck)} per check before tax, about ${money(plan.contributionCostPerCheck)} out of take-home.`
               : 'No employer match on this plan, so there is no amount you have to hit. What to contribute is a wider question — the money plan answers it.',
         },
@@ -342,10 +364,71 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
         {
           k: 'Your first full paycheck, about',
           v: money(plan.takeHomePerCheck),
-          d: `After federal tax, FICA, state, and the contributions above, paid ${FREQUENCY_LABELS[payFrequency].toLowerCase()}. Starting mid-period makes the very first one smaller.`,
+          d: `After federal tax, FICA, state, and the contributions above, paid ${FREQUENCY_LABELS[payFrequency].toLowerCase()}. Starting mid-period makes the very first one smaller.${matchKnown ? '' : ` Until you answer the match question it assumes the example ${EXAMPLE_MATCH_CAP}% 401(k) contribution.`}`,
         },
       ]
     : []
+
+  const matchAnswer = (answer: 'yes' | 'different' | 'no') =>
+    track('first_paycheck_example_answered', { tool: TOOL, term: 'match', answer, variant })
+  const matchMode = matchView ?? (matchKnown ? 'summary' : 'ask')
+  const rateNum = parseFloat(matchRatePct) || 0
+  const capNum = parseFloat(matchCapPct) || 0
+  /**
+   * The match formula, asked rather than pre-set. Under the salary on the `match` variant (that searcher's whole
+   * question), in the form otherwise. Either answer reports through markEngaged, so it can complete the tool.
+   */
+  const matchBlock =
+    matchMode === 'ask' ? (
+      <TermQuestion
+        question={<>Does your plan match {EXAMPLE_MATCH_RATE}% up to {EXAMPLE_MATCH_CAP}% of salary?</>}
+        differentLabel="Different match"
+        noLabel="No match"
+        onYes={() => {
+          setMatchRatePct(EXAMPLE_MATCH_RATE); setMatchCapPct(EXAMPLE_MATCH_CAP)
+          markEngaged('match_rate'); matchAnswer('yes'); setMatchView(null)
+        }}
+        onDifferent={() => {
+          if (rateNum <= 0 && capNum <= 0) { setMatchRatePct(EXAMPLE_MATCH_RATE); setMatchCapPct(EXAMPLE_MATCH_CAP) }
+          matchAnswer('different'); setMatchView('edit')
+        }}
+        onNo={() => {
+          setMatchRatePct('0'); setMatchCapPct('0')
+          markEngaged('match_rate'); matchAnswer('no'); setMatchView(null)
+        }}
+      />
+    ) : matchMode === 'summary' ? (
+      <TermSummary label="Employer match" onChange={() => {
+        track('first_paycheck_example_reopened', { tool: TOOL, term: 'match', variant }); setMatchView('ask')
+      }}>
+        {rateNum > 0 && capNum > 0 ? <>{rateNum}% up to {capNum}% of salary</> : 'none'}
+      </TermSummary>
+    ) : (
+      <div>
+        <Label htmlFor="fp-match-rate" className="text-[#111827]">Employer match</Label>
+        <div className="mt-1 flex items-center gap-1.5">
+          <Input
+            id="fp-match-rate" type="number" inputMode="decimal" value={matchRatePct}
+            onChange={(e) => { markEngaged('match_rate'); noteEdit('match_rate'); setMatchRatePct(e.target.value) }}
+            className="border-[#D1D5DB]" aria-label="Match rate percent"
+          />
+          <span className="shrink-0 text-sm text-gray-500">% up to</span>
+          <Input
+            id="fp-match-cap" type="number" inputMode="decimal" value={matchCapPct}
+            onChange={(e) => { markEngaged('match_cap'); noteEdit('match_cap'); setMatchCapPct(e.target.value) }}
+            className="border-[#D1D5DB]" aria-label="Match cap percent of salary"
+          />
+          <span className="shrink-0 text-sm text-gray-500">% of salary</span>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-gray-500">100 means a dollar for every dollar you put in.</p>
+          <button type="button" onClick={() => {
+            if (!matchKnown) markEngaged('match_rate')
+            setMatchView(null)
+          }} className="min-h-10 shrink-0 rounded-lg bg-[#3F6B42] px-4 text-[13.5px] font-bold text-white hover:bg-[#35593a]">Done</button>
+        </div>
+      </div>
+    )
 
   return (
     <div className="space-y-4">
@@ -381,8 +464,9 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
       <Card className="border-2 border-[#3F6B42] bg-white">
         <CardContent className="space-y-4 pt-6">
           <div>
+            {/* "Offer" tells somebody already in the job they are on the wrong page; the ad variants are for them. */}
             <Label htmlFor="fp-salary" className="text-sm font-semibold text-[#111827]">
-              What does the offer pay?
+              {variant === 'default' ? 'What does the offer pay?' : 'Your salary'}
             </Label>
             <div className="relative mt-1.5">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-gray-400">$</span>
@@ -399,6 +483,8 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
             </div>
           </div>
 
+          {variant === 'match' && <div className="rounded-xl bg-[#3F6B42]/[0.05] px-4 py-4">{matchBlock}</div>}
+
           <button
             type="button"
             onClick={revealPlan}
@@ -408,7 +494,7 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
           </button>
 
           <p className="text-center text-[15px] text-gray-600">
-            Have the offer letter?{' '}
+            {variant === 'default' ? 'Have the offer letter?' : 'Have your benefits guide?'}{' '}
             <button
               type="button"
               onClick={jumpToUpload}
@@ -483,23 +569,6 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
               </select>
             </div>
             <div>
-              <Label htmlFor="fp-match-rate" className="text-[#111827]">Employer match</Label>
-              <div className="mt-1 flex items-center gap-1.5">
-                <Input
-                  id="fp-match-rate" type="number" inputMode="decimal" value={matchRatePct}
-                  onChange={(e) => { markEngaged('match_rate'); noteEdit('match_rate'); setMatchRatePct(e.target.value) }}
-                  className="border-[#D1D5DB]" aria-label="Match rate percent"
-                />
-                <span className="shrink-0 text-sm text-gray-500">% up to</span>
-                <Input
-                  id="fp-match-cap" type="number" inputMode="decimal" value={matchCapPct}
-                  onChange={(e) => { markEngaged('match_cap'); noteEdit('match_cap'); setMatchCapPct(e.target.value) }}
-                  className="border-[#D1D5DB]" aria-label="Match cap percent of salary"
-                />
-                <span className="shrink-0 text-sm text-gray-500">%</span>
-              </div>
-            </div>
-            <div>
               <Label htmlFor="fp-hsa" className="text-[#111827]">Health plan offered</Label>
               <select
                 id="fp-hsa" value={hsaEligible ? 'hdhp' : 'other'} className={SELECT}
@@ -510,6 +579,8 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
               </select>
             </div>
           </div>
+
+          {variant !== 'match' && <div className="rounded-xl border border-gray-200 px-4 py-4">{matchBlock}</div>}
 
           {plan?.enrollmentDeadline && (
             <div className="rounded-xl bg-[#FBF2E0] px-4 py-3 text-sm leading-relaxed text-[#6B3F00]">
@@ -549,7 +620,7 @@ export function FirstPaycheckTool({ campaign = false }: FirstPaycheckToolProps =
               ))}
             </dl>
 
-            {plan.employerMatchAnnual > 0 && (
+            {matchKnown && plan.employerMatchAnnual > 0 && (
               <div className="mt-4 rounded-xl bg-[#3F6B42]/[0.06] px-4 py-4">
                 <p className="text-[13px] font-semibold text-[#3F6B42]">
                   Match you leave behind by not setting this up

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { FirstPaycheckTool } from '@/components/FirstPaycheckTool'
-import { CAMPAIGN_ROBOTS, isCampaign } from '@/lib/campaign'
+import { CAMPAIGN_ROBOTS, isCampaign, readVariant } from '@/lib/campaign'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
 import { ToolBreadcrumb } from '@/components/ToolBreadcrumb'
@@ -8,7 +8,7 @@ import { ToolJsonLd } from '@/components/ToolJsonLd'
 import { ToolPageView } from '@/components/ToolPageView'
 import { RelatedTools, type RelatedTool } from '@/components/RelatedTools'
 import { RelatedReading, type RelatedArticle } from '@/components/RelatedReading'
-import { TAX_YEAR_FIRST_PAYCHECK } from '@/lib/firstPaycheck/constants'
+import { PAYCHECK_VARIANTS, TAX_YEAR_FIRST_PAYCHECK, type PaycheckVariant } from '@/lib/firstPaycheck/constants'
 
 /**
  * /first-paycheck-setup — what to type into the benefits forms.
@@ -95,6 +95,26 @@ const STEPS: readonly MethodStep[] = [
   },
 ]
 
+/**
+ * The first line, keyed to the search that brought the visitor (`?v=` on the ad's final URL). The default is for
+ * someone with an offer in hand; the ad groups are for people already in the job, so neither leads with "offer"
+ * or with documents. The title and canonical stay the default page's: the variants are the same page.
+ */
+const HERO: Record<PaycheckVariant, { h1: string; sub: string }> = {
+  default: {
+    h1: 'What do I type into my benefits forms?',
+    sub: "New job? Type your salary and we'll show you the exact numbers for each box — the 401k percentage that captures your match, Roth or traditional, your W-4, and what your first check will be. Have the offer letter and benefits guide? Upload them and skip the typing.",
+  },
+  match: {
+    h1: 'How much should you put in your 401k to get the full match?',
+    sub: 'Type your salary. Add your match formula if you know it — the number updates. Nothing to upload.',
+  },
+  paycheck: {
+    h1: 'What will your first paycheck actually be?',
+    sub: "Type your salary and state. See what comes out for federal tax, FICA, your 401k and HSA — and the match you'd leave behind.",
+  },
+}
+
 const RELATED: readonly RelatedTool[] = [
   {
     href: '/how-should-i-split-my-paycheck',
@@ -129,12 +149,15 @@ export default function FirstPaycheckSetupPage({
   searchParams?: Record<string, string | string[] | undefined>
 }) {
   const campaign = isCampaign(searchParams)
+  // Read here, on the server, so the first page view already carries it (see readVariant).
+  const variant = readVariant(searchParams, PAYCHECK_VARIANTS)
+  const hero = HERO[variant]
 
   return (
     <PageShell className="bg-canvas" bare={campaign}>
       <ToolJsonLd href="/first-paycheck-setup" />
       <ToolPageView tool="first_paycheck" page="/first-paycheck-setup" toolVersion="first_paycheck_v1"
-        campaign={campaign}
+        campaign={campaign} variant={variant}
       />
 
       {/* Hero. Campaign traffic gets none of it: FirstPaycheckCampaignHero
@@ -151,13 +174,9 @@ export default function FirstPaycheckSetupPage({
             <div className="mx-auto max-w-3xl text-center">
               <ToolBreadcrumb href="/first-paycheck-setup" />
               <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
-                What do I type into my benefits forms?
+                {hero.h1}
               </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">
-                New job? Drop in your offer letter and benefits guide. We read the match formula, the HSA and
-                the premium, then give you the exact numbers for each box — before your enrolment window
-                closes.
-              </p>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-subtle">{hero.sub}</p>
             </div>
           )}
 
@@ -165,7 +184,7 @@ export default function FirstPaycheckSetupPage({
             id="calculator"
             className={campaign ? 'mx-auto max-w-3xl scroll-mt-24' : 'mx-auto mt-10 max-w-3xl scroll-mt-24'}
           >
-            <FirstPaycheckTool campaign={campaign} />
+            <FirstPaycheckTool campaign={campaign} variant={variant} />
           </div>
 
           {!campaign && (

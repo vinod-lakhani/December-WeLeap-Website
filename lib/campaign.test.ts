@@ -3,7 +3,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { CAMPAIGN_PARAM, CAMPAIGN_ROBOTS, isCampaign } from './campaign'
+import { CAMPAIGN_PARAM, CAMPAIGN_ROBOTS, isCampaign, readVariant, VARIANT_PARAM } from './campaign'
+import { PAYCHECK_VARIANTS } from './firstPaycheck/constants'
 
 /**
  * Campaign mode takes the site off a page: no navigation, no breadcrumb, no
@@ -83,3 +84,26 @@ describe('the campaign hero share slot', () => {
     expect(noteAt).toBeGreaterThan(slotAt)
   })
 })
+
+/**
+ * The ad's copy variant has to come through beside the click IDs Google appends, or the two ad groups blur into
+ * one in PostHog: the page reads it from the same searchParams that carry gclid, on the first request.
+ */
+describe('readVariant', () => {
+  it('reads a known variant, alongside gclid and UTMs', () => {
+    expect(readVariant({ [VARIANT_PARAM]: 'match', gclid: 'Cj0KCQ', utm_source: 'google' }, PAYCHECK_VARIANTS)).toBe('match')
+    expect(readVariant({ gclid: 'Cj0KCQ', [VARIANT_PARAM]: 'paycheck' }, PAYCHECK_VARIANTS)).toBe('paycheck')
+  })
+
+  it('reads anything else as the default page', () => {
+    expect(readVariant(undefined, PAYCHECK_VARIANTS)).toBe('default')
+    expect(readVariant({ gclid: 'Cj0KCQ' }, PAYCHECK_VARIANTS)).toBe('default')
+    expect(readVariant({ [VARIANT_PARAM]: 'Match' }, PAYCHECK_VARIANTS)).toBe('default')
+    expect(readVariant({ [VARIANT_PARAM]: 'rent' }, PAYCHECK_VARIANTS)).toBe('default')
+  })
+
+  it('takes the first value when the param repeats', () => {
+    expect(readVariant({ [VARIANT_PARAM]: ['paycheck', 'match'] }, PAYCHECK_VARIANTS)).toBe('paycheck')
+  })
+})
+

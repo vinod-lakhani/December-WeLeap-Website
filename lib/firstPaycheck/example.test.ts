@@ -116,7 +116,8 @@ describe('campaign mode on the first-paycheck tool', () => {
      * passed through or the on-load population cannot be separated from the
      * organic one that reached a result by typing.
      */
-    expect(tool).toMatch(/useResultShown\('first_paycheck', !!plan, campaign\)/)
+    // The first-paycheck tool also says which ad variant (?v=) the visitor arrived on.
+    expect(tool).toMatch(/useResultShown\('first_paycheck', !!plan, campaign, \{ variant \}\)/)
     const offer = readFileSync(join(process.cwd(), 'components/OfferAnalysisTool.tsx'), 'utf8')
     // The offer tool also says which headline the first result showed (take-home or package; see Change D).
     expect(offer).toMatch(/useResultShown\('offer', hasResults, campaign, \{ headline \}\)/)

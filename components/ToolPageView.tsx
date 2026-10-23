@@ -37,6 +37,7 @@ export function ToolPageView({
   legacyPage,
   toolVersion,
   campaign = false,
+  variant,
 }: {
   /** Analytics slug — must match the tool's `slug` in FREE_TOOLS. */
   tool: string
@@ -57,12 +58,14 @@ export function ToolPageView({
    * byte-identical to what saved dashboards already read.
    */
   campaign?: boolean
+  /** The page's copy variant (`?v=`), read on the server from the first request. Sent only when the page has them. */
+  variant?: string
 }) {
   useEffect(() => {
     // Waits for gtag (up to 3s) — page views are the one event worth waiting
     // on, since they are the denominator for everything below them.
     const timer = setTimeout(() => {
-      track('tool_viewed', { tool, page, ...(campaign ? { campaign: true } : {}) }, true)
+      track('tool_viewed', { tool, page, ...(campaign ? { campaign: true } : {}), ...(variant ? { variant } : {}) }, true)
 
       /**
        * Meta's ViewContent, named by the tool.
@@ -88,7 +91,7 @@ export function ToolPageView({
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [tool, page, legacyEvent, legacyPage, toolVersion, campaign])
+  }, [tool, page, legacyEvent, legacyPage, toolVersion, campaign, variant])
 
   return null
 }

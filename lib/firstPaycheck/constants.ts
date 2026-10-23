@@ -69,3 +69,12 @@ export const SS_WAGE_BASE_2026 = 184_500
  * here costs somebody a year of coverage.
  */
 export const TYPICAL_ENROLLMENT_WINDOW_DAYS = 30
+
+/**
+ * Copy variants for paid search (`?v=` on the ad's final URL; see readVariant). `match` is the open-enrollment ad
+ * group (people already in a job, asking about the match), `paycheck` the first-paycheck group. Organic, campus and
+ * app-handoff traffic gets `default`.
+ */
+export const PAYCHECK_VARIANTS = ['match', 'paycheck'] as const
+export type PaycheckVariant = (typeof PAYCHECK_VARIANTS)[number] | 'default'
+
