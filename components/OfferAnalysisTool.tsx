@@ -740,7 +740,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       <>
         If the letter also has a bonus or a 401(k) match, the package is bigger: for example, a {EXAMPLE_BONUS_PCT}%
         bonus and a {EXAMPLE_MATCH_RATE_PCT}% match on the first {EXAMPLE_MATCH_UP_TO_PCT}% of salary would put it
-        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Add yours to the form to see it.'}
+        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Add yours below to see it.'}
       </>
     ) : null;
 
@@ -1187,6 +1187,120 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
     }
   }, [analysisComplete, shown, salary, campaign, firstTrigger, fieldChangeCount, extrasFilled, headline]);
 
+  /**
+   * The answer: headline, text door, app handoff, share and compare. Directly under the salary card, as on the
+   * rent page, so the result and the text button are on the first screen; the seven sections follow as
+   * "Refine your package" and every edit there re-renders it. Campaign traffic gets its result in the hero,
+   * so there it keeps its old place below the sections.
+   */
+  const answerCard = calc && shown ? (
+    <>
+    {/* THE ANSWER, from what the visitor entered. A salary alone gives take-home, the figure every number
+        on it is the visitor's own; the package leads only once part of it is entered. The form's example
+        bonus and match appear once, in a sentence that says "if" and names them — never as the
+        headline. The ad's worked example on a campaign landing is the one exception, labelled as such. */}
+    <div id="offer-answer" className="scroll-mt-24 rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
+      {headline === 'take_home' ? (
+        <>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+            On {fc(salary)} you&apos;d keep about
+          </p>
+          <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+            {fc(shown.takeHomeMonthly)}
+            <span className="text-[0.4em] font-bold tracking-normal text-subtle">/mo</span>
+          </p>
+          <p className="mt-2 text-[13px] text-faint">after tax{jobState ? ` in ${jobState}` : ''}</p>
+          {exampleLine && (
+            <p className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-subtle">{exampleLine}</p>
+          )}
+        </>
+      ) : (
+        <>
+          {headline === 'example' && (
+            <p className="mb-3 inline-block rounded-full bg-canvas px-3 py-1 text-[12px] font-semibold text-subtle">
+              Example from the ad — replace with your numbers
+            </p>
+          )}
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
+            {headline === 'example' ? 'This example offer is worth' : 'Your offer is worth about'}
+          </p>
+          <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+            {fc(shown.totalPackage)}
+          </p>
+          {headline === 'package' && (
+            <p className="mt-2 text-[14px] text-subtle">{listParts(['base', ...packageParts])}</p>
+          )}
+          {shown.totalPackage > salary && (
+            <p className="mt-3 text-[15px] text-subtle">
+              <span className="font-bold text-brand-700">
+                +{Math.round(((shown.totalPackage - salary) / salary) * 100)}% more
+              </span>{' '}
+              than the {fc(salary)} base{headline === 'example' ? '' : ' they quoted you'}
+            </p>
+          )}
+          <p className="mt-1.5 text-[13px] text-faint">
+            You&apos;d keep about {fc(shown.takeHomeMonthly)}/mo after tax
+          </p>
+        </>
+      )}
+
+      {textPilot && offerText && (
+        <div className="mx-auto mt-6 max-w-md text-left">
+          <TextOptIn planData={offerText} endpoint="/api/offer-text" tool="offer" />
+        </div>
+      )}
+
+      {/* THE ASK, directly under the number that earns it.
+          Measured 18 Oct on the canonical page at 414x896: the only app
+          handoff sat 5.6 screens down — 29% of a 19.5-screen page, below
+          the share button and the compare prompt. 86 people reached the
+          result and none pressed it. Paid search lands here, so this is
+          the layout that matters now; the campaign variant already got
+          the same treatment in its hero.
+
+          No sub-line time claim. The spec asked for "About five minutes"
+          unless PostHog's onboarding median exceeded it — measured 434s
+          (7.2 min) from signup_started to onboarding_completed over the
+          last 60 days, so the claim is dropped rather than shipped
+          knowingly wrong. */}
+      <div className="mt-5">
+        <Button
+          onClick={() => handleSignUp('button')}
+          className="w-full bg-[#386641] py-3.5 text-[15px] font-bold text-white hover:bg-[#2d5235]"
+        >
+          Save my numbers and see what to do first →
+        </Button>
+        <p className="mt-2 text-center text-[13.5px] text-faint">
+          Free. Your match, buffer and the first move, in dollars.
+        </p>
+      </div>
+
+      {/* Share belongs with the number it's about — this is peak
+          "wait, really?". Five blocks later, past the CTA, it wasn't. */}
+      {shown.totalPackage > salary && (
+        <div className="mt-5 border-t border-hairline pt-4">
+          <OfferShareCard
+            page={page}
+            upliftPct={((shown.totalPackage - salary) / salary) * 100}
+            compare={shareCompare}
+            shareUrl={shareUrl}
+            shareText={shareText}
+            trigger={
+              <button
+                type="button"
+                onClick={() => track('offer_share_card_opened', { page })}
+                className="-my-2 inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
+              >
+                {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
+              </button>
+            }
+          />
+        </div>
+      )}
+    </div>
+    </>
+  ) : null;
+
   return (
     <div className="w-full max-w-[600px] mx-auto">
 
@@ -1328,12 +1442,16 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
             same function that prices a real offer, so it cannot drift away
             from what this tool would actually report — and example.test.ts
             fails if it stops matching the creative. */}
+        {/* Until there is a salary of their own: once there is, the result sits directly below and this would be
+            somebody else's offer standing between the visitor and theirs. */}
+        {salary <= 0 && (
         <p className="mt-4 rounded-xl bg-canvas px-4 py-3 text-center text-[13.5px] leading-relaxed text-subtle">
           A {fc(EXAMPLE.salary)} offer with a {EXAMPLE.bonusPct}% bonus, a{' '}
           {EXAMPLE.matchUpToPct}% match and {fc(EXAMPLE.equity)} of equity comes out at{' '}
           <strong className="font-bold text-ink">{fc(EXAMPLE.total)}</strong>. That is{' '}
           {fc(EXAMPLE.found)} most people never add up.
         </p>
+        )}
 
         {/* The upload, demoted to one line. It is a shortcut, and it reads as
             one now rather than as the price of entry. */}
@@ -1354,6 +1472,8 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       </div>
         </>
       )}
+
+      {!campaign && answerCard && <div className="mb-4">{answerCard}</div>}
 
       {(uploadOpen || letterUploaded) && (
         <div id="offer-upload" className="scroll-mt-24">
@@ -1418,6 +1538,13 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {!campaign && calc && (
+        <div className="mb-3 mt-8 px-1">
+          <h2 className="text-lg font-extrabold tracking-[-0.01em] text-ink">Refine your package</h2>
+          <p className="mt-0.5 text-[14px] text-subtle">Bonus, match, HSA, equity, PTO, rent. Each change updates the result above.</p>
         </div>
       )}
 
@@ -1782,109 +1909,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       {/* ── Full package breakdown ─────────────────────────────────────────── */}
       {calc && shown && (
         <div className="space-y-3 mb-3">
-          {/* THE ANSWER, from what the visitor entered. A salary alone gives take-home, the figure every number
-              on it is the visitor's own; the package leads only once part of it is entered. The form's example
-              bonus and match appear once, in a sentence that says "if" and names them — never as the
-              headline. The ad's worked example on a campaign landing is the one exception, labelled as such. */}
-          <div id="offer-answer" className="scroll-mt-24 rounded-2xl border border-hairline bg-white px-6 py-8 text-center shadow-card">
-            {headline === 'take_home' ? (
-              <>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
-                  On {fc(salary)} you&apos;d keep about
-                </p>
-                <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-                  {fc(shown.takeHomeMonthly)}
-                  <span className="text-[0.4em] font-bold tracking-normal text-subtle">/mo</span>
-                </p>
-                <p className="mt-2 text-[13px] text-faint">after tax{jobState ? ` in ${jobState}` : ''}</p>
-                {exampleLine && (
-                  <p className="mx-auto mt-4 max-w-md text-[14px] leading-relaxed text-subtle">{exampleLine}</p>
-                )}
-              </>
-            ) : (
-              <>
-                {headline === 'example' && (
-                  <p className="mb-3 inline-block rounded-full bg-canvas px-3 py-1 text-[12px] font-semibold text-subtle">
-                    Example from the ad — replace with your numbers
-                  </p>
-                )}
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700">
-                  {headline === 'example' ? 'This example offer is worth' : 'Your offer is worth about'}
-                </p>
-                <p className="mt-2 text-[clamp(2.6rem,7vw,3.6rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-                  {fc(shown.totalPackage)}
-                </p>
-                {headline === 'package' && (
-                  <p className="mt-2 text-[14px] text-subtle">{listParts(['base', ...packageParts])}</p>
-                )}
-                {shown.totalPackage > salary && (
-                  <p className="mt-3 text-[15px] text-subtle">
-                    <span className="font-bold text-brand-700">
-                      +{Math.round(((shown.totalPackage - salary) / salary) * 100)}% more
-                    </span>{' '}
-                    than the {fc(salary)} base{headline === 'example' ? '' : ' they quoted you'}
-                  </p>
-                )}
-                <p className="mt-1.5 text-[13px] text-faint">
-                  You&apos;d keep about {fc(shown.takeHomeMonthly)}/mo after tax
-                </p>
-              </>
-            )}
-
-            {textPilot && offerText && (
-              <div className="mx-auto mt-6 max-w-md text-left">
-                <TextOptIn planData={offerText} endpoint="/api/offer-text" tool="offer" />
-              </div>
-            )}
-
-            {/* THE ASK, directly under the number that earns it.
-                Measured 18 Oct on the canonical page at 414x896: the only app
-                handoff sat 5.6 screens down — 29% of a 19.5-screen page, below
-                the share button and the compare prompt. 86 people reached the
-                result and none pressed it. Paid search lands here, so this is
-                the layout that matters now; the campaign variant already got
-                the same treatment in its hero.
-
-                No sub-line time claim. The spec asked for "About five minutes"
-                unless PostHog's onboarding median exceeded it — measured 434s
-                (7.2 min) from signup_started to onboarding_completed over the
-                last 60 days, so the claim is dropped rather than shipped
-                knowingly wrong. */}
-            <div className="mt-5">
-              <Button
-                onClick={() => handleSignUp('button')}
-                className="w-full bg-[#386641] py-3.5 text-[15px] font-bold text-white hover:bg-[#2d5235]"
-              >
-                Save my numbers and see what to do first →
-              </Button>
-              <p className="mt-2 text-center text-[13.5px] text-faint">
-                Free. Your match, buffer and the first move, in dollars.
-              </p>
-            </div>
-
-            {/* Share belongs with the number it's about — this is peak
-                "wait, really?". Five blocks later, past the CTA, it wasn't. */}
-            {shown.totalPackage > salary && (
-              <div className="mt-5 border-t border-hairline pt-4">
-                <OfferShareCard
-                  page={page}
-                  upliftPct={((shown.totalPackage - salary) / salary) * 100}
-                  compare={shareCompare}
-                  shareUrl={shareUrl}
-                  shareText={shareText}
-                  trigger={
-                    <button
-                      type="button"
-                      onClick={() => track('offer_share_card_opened', { page })}
-                      className="-my-2 inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
-                    >
-                      {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
-                    </button>
-                  }
-                />
-              </div>
-            )}
-          </div>
+          {campaign && answerCard}
 
           {/* Package card */}
           <div className="bg-[#1a2e1a] rounded-2xl px-6 py-5">
