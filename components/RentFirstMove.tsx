@@ -56,20 +56,24 @@ export function RentFirstMove({
         {leapThirtyYear > 0 && (
           <div className="rounded-2xl border border-[#3F6B42]/25 bg-white px-5 py-4">
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">
-              What that&apos;s worth if you invest it
+              Hypothetical: what that could grow to
             </p>
             <p className="mt-1 text-[30px] font-extrabold leading-none tabular-nums text-[#111827]">
               {formatCurrency(leapThirtyYear)}
             </p>
+            {/* The assumptions are the ones rentFirstMove uses: the monthly amount invested every month for
+                30 years at REAL_RETURN_DEFAULT (7%, after inflation), compounded monthly. Stated in full
+                because a projection shown without them reads as a promise. */}
             <p className="mt-1.5 text-xs text-gray-500">
-              Over 30 years at 7% a year. Same salary, same city — just the cheaper apartment.
+              Illustration only: {formatCurrency(leapMonthly)} invested every month for 30 years at a 7% average
+              yearly return after inflation. Not a guarantee; investments can lose value.
             </p>
           </div>
         )}
 
         <p className="text-sm text-gray-700">
-          That&apos;s the whole decision. Left alone it disappears into everyday spending — WeLeap makes sure it
-          goes somewhere first.
+          That&apos;s the whole decision. Left alone it disappears into everyday spending — WeLeap gives it a job
+          first.
         </p>
 
         <div>

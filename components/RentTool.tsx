@@ -789,7 +789,7 @@ export function RentTool({ campaign = false, textPilot = false }: RentToolProps 
             {isCalculating ? 'Calculating...' : 'See my numbers'}
           </Button>
           <p className="text-xs text-gray-500 text-center mt-2">
-            Takes about 2 minutes. We'll email your plan.
+            Takes about 2 minutes.
           </p>
         </CardContent>
       </Card>
