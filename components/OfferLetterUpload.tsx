@@ -328,7 +328,9 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
         {/* Full width on a phone, inline once there is room. `shrink-0` on the
             wrapper meant it kept its two-buttons-wide natural size at 375px and
             the benefits button was clipped by the box it sits in. */}
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
+        {/* Dense sits in the second offer's half-width column on a wide screen, where a row that refuses to
+            shrink pushed "Upload benefits guide" out past the card. There it stays full width and wraps. */}
+        <div className={dense ? 'flex w-full flex-wrap items-center gap-2' : 'flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0'}>
           <Picker kind="offer" refObj={offerRef} />
           <Picker kind="benefits" refObj={benefitsRef} />
         </div>

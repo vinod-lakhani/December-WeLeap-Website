@@ -787,8 +787,9 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
     // Seeded from the first offer, because the fields most likely to be equal
     // are the ones nobody wants to retype: match terms, HSA, premium, leave.
     // Salary and location start empty — those are the reason there are two.
-    // Entered terms only: A's example bonus and match are not facts about A, let alone about B.
-    setOfferB({ ...enteredInputs, salary: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
+    // Entered terms only: A's example bonus and match are not facts about A, let alone about B. The bonus is
+    // never carried: it is set per offer, and the note under the form names only what was carried.
+    setOfferB({ ...enteredInputs, salary: 0, bonusPct: 0, rentMonthly: 0, rsuAnnual: 0, signingBonus: 0 });
     track('offer_compare_started', { tool: 'offer' });
   }, [enteredInputs]);
 
