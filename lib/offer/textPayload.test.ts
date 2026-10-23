@@ -37,4 +37,25 @@ describe('the offer text payload', () => {
     expect(c.otherLocation).toBe('Austin, TX')
     expect(c.verdict).toEqual(comparison.verdict)
   })
+
+  it('sends which fields were entered and the package on those alone, beside every figure', () => {
+    const a = side('Offer A', 62_000)
+    const enteredOnly = computeOfferValue({ ...a.inputs, bonusPct: 0, matchRatePct: 0, matchUpToPct: 0 }, tax)!
+    const p = offerTextPayload({
+      id: 'x', side: a, tax, levers: [], comparison: null, other: null,
+      entered: { fields: ['jobState', 'salary'], value: enteredOnly },
+    })
+    expect(p.enteredFields).toEqual(['jobState', 'salary'])
+    expect(p.enteredTotalPackage).toBe(enteredOnly.totalPackage)
+    // Every figure still goes, example terms included, so Ribbit can answer a what-if.
+    expect(p.totalPackage).toBe(a.value.totalPackage)
+    expect(p.bonusPct).toBe(a.inputs.bonusPct)
+  })
+
+  it('leaves the entered fields out when the page does not send them', () => {
+    const a = side('Offer A', 62_000)
+    const p = offerTextPayload({ id: 'x', side: a, tax, levers: [], comparison: null, other: null })
+    expect(p).not.toHaveProperty('enteredFields')
+  })
 })
+

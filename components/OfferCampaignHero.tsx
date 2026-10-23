@@ -54,10 +54,18 @@ export interface OfferCampaignHeroProps {
   shareSlot?: React.ReactNode
   /** The app CTA. Rendered directly under the result, on the first screen. */
   ctaSlot?: React.ReactNode
+  /**
+   * Which result to state, from the tool: the ad's worked example until the visitor types a salary, then
+   * take-home on that salary, or the package once part of it is entered. `calc` is priced to match — the
+   * example terms only while this is 'example'.
+   */
+  headline: 'example' | 'package' | 'take_home'
+  /** The tool's "if the letter also has a bonus or match" sentence, shown under a take-home result. */
+  exampleLine?: React.ReactNode
 }
 
 export function OfferCampaignHero({
-  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick, shareSlot, ctaSlot,
+  salaryInput, onSalaryChange, calc, salary, equityAnnual, onUploadClick, shareSlot, ctaSlot, headline, exampleLine,
 }: OfferCampaignHeroProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -69,7 +77,9 @@ export function OfferCampaignHero({
    * the label has to go, because leaving it would be describing their salary as
    * an example.
    */
-  const isExample = salary === EXAMPLE.salary
+  // From the tool, which knows whether a salary was typed. Comparing to the ad's figure called a visitor
+  // whose offer really is $62,000 — the audience the creative was written for — an example.
+  const isExample = headline === 'example'
 
   const rows = calc
     ? [
@@ -134,20 +144,34 @@ export function OfferCampaignHero({
               ))}
             </dl>
 
-            <div className="mt-3.5 text-center">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641]">
-                {isExample ? 'That offer is worth' : 'Your offer is worth'}
-              </p>
-              <p className="mt-1 text-[clamp(2.4rem,11vw,3.2rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
-                {fc(total)}
-              </p>
-              {found > 0 && (
-                <p className="mt-2 text-[15px] leading-snug text-subtle">
-                  <span className="font-bold text-[#386641]">{fc(found)} more</span> than the {fc(salary)} on the
-                  offer letter.
+            {headline === 'take_home' ? (
+              <div className="mt-3.5 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641]">
+                  On {fc(salary)} you&rsquo;d keep about
                 </p>
-              )}
-            </div>
+                <p className="mt-1 text-[clamp(2.4rem,11vw,3.2rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                  {fc(calc.takeHomeMonthly)}
+                  <span className="text-[0.4em] font-bold tracking-normal text-subtle">/mo</span>
+                </p>
+                <p className="mt-1.5 text-[13px] text-faint">after tax</p>
+                {exampleLine && <p className="mt-3 text-[13.5px] leading-relaxed text-subtle">{exampleLine}</p>}
+              </div>
+            ) : (
+              <div className="mt-3.5 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#386641]">
+                  {isExample ? 'That offer is worth' : 'Your offer is worth about'}
+                </p>
+                <p className="mt-1 text-[clamp(2.4rem,11vw,3.2rem)] font-extrabold leading-none tracking-[-0.03em] text-ink tabular-nums">
+                  {fc(total)}
+                </p>
+                {found > 0 && (
+                  <p className="mt-2 text-[15px] leading-snug text-subtle">
+                    <span className="font-bold text-[#386641]">{fc(found)} more</span> than the {fc(salary)}{' '}
+                    {isExample ? 'base in the ad.' : 'on the offer letter.'}
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -180,7 +204,7 @@ export function OfferCampaignHero({
         {isExample && (
           <p className="mt-3.5 rounded-lg bg-canvas px-3.5 py-2.5 text-[12.5px] leading-relaxed text-subtle">
             These are the ad&rsquo;s numbers, with a {EXAMPLE.bonusPct}% bonus, a {EXAMPLE.matchUpToPct}% match and{' '}
-            {fc(EXAMPLE.equity)} of equity. Type your salary above and they become yours.
+            {fc(EXAMPLE.equity)} of equity. Type your salary above to see yours.
           </p>
         )}
       </div>

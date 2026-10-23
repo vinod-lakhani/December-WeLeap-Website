@@ -5,7 +5,7 @@
  * names match the backend's OfferResult; the values are the calculator's, copied as they are. It
  * exists as its own file so the mapping can be read and tested apart from the 2,000-line tool.
  */
-import type { TaxResult } from './calculate'
+import type { OfferValue, TaxResult } from './calculate'
 import type { Comparison, OfferSide } from './compare'
 import { leftAfterRent } from './compare'
 import type { Lever } from './levers'
@@ -21,10 +21,15 @@ export interface OfferTextArgs {
   /** The comparison and the other offer, when two offers are on screen. */
   comparison: Comparison | null
   other: OfferSide | null
+  /**
+   * What the visitor entered (typed, or read off a document) and this offer priced on those alone. `side`
+   * keeps the example terms the form opens with; the texts quote only what is listed here.
+   */
+  entered?: { fields: string[]; value: OfferValue }
 }
 
 export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
-  const { id, side, levers, comparison, other, tax } = args
+  const { id, side, levers, comparison, other, tax, entered } = args
   const { location, inputs, value } = side
   // "Offer A" only means something next to an Offer B.
   const label = comparison && other ? side.label : ''
@@ -68,6 +73,9 @@ export function offerTextPayload(args: OfferTextArgs): Record<string, unknown> {
     rentPct: value.rentPct ?? 0,
     leftAfterRent: leftAfterRent(value, inputs),
     levers: levers.map(l => ({ ask: l.ask, amount: l.amount, cadence: l.cadence, detail: l.detail })),
+    // Quote-only-entered: the fields the visitor gave, and the package on those alone. Absent from an older
+    // page, in which case the backend treats nothing beyond salary and take-home as entered.
+    ...(entered ? { enteredFields: entered.fields, enteredTotalPackage: entered.value.totalPackage } : {}),
     // Every value the calculator holds, so the text answers from the same state the page shows.
     figures: {
       location,

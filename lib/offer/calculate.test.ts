@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants'
-import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type TaxResult } from './calculate'
+import { computeOfferValue, enteredOfferInputs, enteredPackageParts, MARKET_PTO_DAYS, type OfferInputs, type TaxResult } from './calculate'
 
 /**
  * The offer calculation shipped for months with no test of any kind. These
@@ -247,5 +247,42 @@ describe('computeOfferValue', () => {
       const leftB = b.takeHomeMonthly - 3_300
       expect(leftB).toBeLessThan(leftA)
     })
+  })
+})
+
+describe('enteredOfferInputs', () => {
+  const TAX: TaxResult = { netIncomeAnnual: 48_000, federalTaxAnnual: 6_000, stateTaxAnnual: 3_000, ficaTaxAnnual: 4_743 }
+
+  it('prices a salary alone as a salary: the example bonus and match are not part of it', () => {
+    const inputs = offer({ salary: 62_000 })
+    const shown = computeOfferValue(enteredOfferInputs(inputs, new Set(['salary'])), TAX)!
+    expect(shown.totalPackage).toBe(62_000)
+    expect(enteredPackageParts(shown, enteredOfferInputs(inputs, new Set(['salary'])))).toEqual([])
+    // The example-inclusive figure the conditional line names: $62,000 + 10% + a 100% match on 6%.
+    expect(computeOfferValue(inputs, TAX)!.totalPackage).toBe(71_920)
+  })
+
+  it('keeps what was entered, and counts either half of the match as describing it', () => {
+    const inputs = offer({ salary: 62_000, bonusPct: 5, matchRatePct: 50, matchUpToPct: 4 })
+    const e = enteredOfferInputs(inputs, new Set(['salary', 'matchUpToPct']))
+    expect(e.bonusPct).toBe(0)
+    expect(e.matchRatePct).toBe(50)
+    expect(e.matchUpToPct).toBe(4)
+    expect(enteredPackageParts(computeOfferValue(e, TAX)!, e)).toEqual(['match'])
+  })
+
+  it('drops the ESPP until its terms are entered, and PTO back to the market default', () => {
+    const inputs = offer({ salary: 62_000, showEspp: true, ptoDays: 25 })
+    const e = enteredOfferInputs(inputs, new Set(['salary']))
+    expect(e.showEspp).toBe(false)
+    expect(e.ptoDays).toBe(MARKET_PTO_DAYS)
+    const typed = enteredOfferInputs(inputs, new Set(['salary', 'esppDiscount', 'ptoDays']))
+    expect(typed.showEspp).toBe(true)
+    expect(typed.ptoDays).toBe(25)
+  })
+
+  it('treats a bonus entered as zero as entered, and names nothing for it', () => {
+    const e = enteredOfferInputs(offer({ salary: 62_000, bonusPct: 0 }), new Set(['salary', 'bonusPct']))
+    expect(enteredPackageParts(computeOfferValue(e, TAX)!, e)).toEqual([])
   })
 })

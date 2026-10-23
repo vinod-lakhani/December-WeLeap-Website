@@ -144,6 +144,47 @@ export const EMPTY_OFFER_VALUE: OfferValue = {
   monthlyWealth: 0, nw40yr: 0, rentPct: null,
 }
 
+/**
+ * The offer as the visitor has actually described it: every package figure they did not type, and no letter
+ * supplied, set to "not in the offer".
+ *
+ * The form opens with example values (a 10% bonus, a 100% match on the first 6%) so the sections read as a
+ * worked example. Those are fine inside the fields, labelled as examples. They are not fine in anything that
+ * reads as a statement about this person's offer: the headline, the package card, the asks, the comparison,
+ * the app handoff or a text quoting it back. Everything that makes a claim reads these inputs instead.
+ *
+ * `entered` holds OfferInputs keys (plus `jobState`): fields typed, or read off an uploaded document.
+ * Touching either half of the match counts as describing the match.
+ */
+export function enteredOfferInputs(inputs: OfferInputs, entered: ReadonlySet<string>): OfferInputs {
+  const has = (k: keyof OfferInputs) => entered.has(k)
+  const match = has('matchRatePct') || has('matchUpToPct')
+  return {
+    ...inputs,
+    bonusPct: has('bonusPct') ? inputs.bonusPct : 0,
+    matchRatePct: match ? inputs.matchRatePct : 0,
+    matchUpToPct: match ? inputs.matchUpToPct : 0,
+    hsaMonthly: has('hsaMonthly') ? inputs.hsaMonthly : 0,
+    healthcarePremium: has('healthcarePremium') ? inputs.healthcarePremium : 0,
+    rsuAnnual: has('rsuAnnual') ? inputs.rsuAnnual : 0,
+    signingBonus: has('signingBonus') ? inputs.signingBonus : 0,
+    showEspp: inputs.showEspp && (has('esppContrib') || has('esppDiscount')),
+    ptoDays: has('ptoDays') ? inputs.ptoDays : MARKET_PTO_DAYS,
+  }
+}
+
+/** The parts of the yearly package the visitor has entered with a value, in the order a sentence names them. */
+export function enteredPackageParts(value: OfferValue, inputs: OfferInputs): string[] {
+  const parts: string[] = []
+  if (value.annualBonus > 0) parts.push('bonus')
+  if (value.annual401kMatch > 0) parts.push('match')
+  if (value.annualHsa > 0) parts.push('HSA')
+  if (inputs.rsuAnnual > 0) parts.push('equity')
+  if (value.annualEspp > 0) parts.push('ESPP')
+  if (value.ptoValue > 0) parts.push('extra PTO')
+  return parts
+}
+
 export function computeOfferValue(inputs: OfferInputs, tax: TaxResult | null): OfferValue | null {
   const {
     salary, bonusPct, matchRatePct, matchUpToPct, hsaMonthly, healthcarePremium,
