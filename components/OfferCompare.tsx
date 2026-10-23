@@ -38,7 +38,7 @@ import { OfferLetterUpload } from '@/components/OfferLetterUpload'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { track } from '@/lib/analytics'
-import type { OfferInputs } from '@/lib/offer/calculate'
+import { MARKET_PTO_DAYS, type OfferInputs } from '@/lib/offer/calculate'
 import type { Comparison, OfferSide } from '@/lib/offer/compare'
 import type { ParsedOffer } from '@/lib/offer-parse/fields'
 import { cn } from '@/lib/utils'
@@ -89,17 +89,17 @@ function Field({
   return (
     <div>
       <Label htmlFor={id} className="text-[13px] text-gray-700">{label}</Label>
-      <div className="relative">
+      <div className="relative mt-1">
         <Input
           id={id}
           inputMode="numeric"
-          className={cn('mt-1 border-[#D1D5DB]', suffix && 'pr-8')}
+          className={cn('border-[#D1D5DB]', suffix && 'pr-8')}
           value={value ? value.toLocaleString() : ''}
           placeholder={placeholder}
           onChange={(e) => onChange(num(e.target.value))}
         />
         {suffix && (
-          <span className="pointer-events-none absolute right-3 top-1/2 text-[13px] text-gray-400">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400">
             {suffix}
           </span>
         )}
@@ -274,6 +274,14 @@ export function OfferCompare(props: OfferCompareProps) {
     </button>
   )
 
+  // The terms startCompare copied from the first offer, as the first offer states them.
+  const ai = a.inputs
+  const carried: string[] = []
+  if (ai.matchRatePct > 0 && ai.matchUpToPct > 0) carried.push(`a ${ai.matchRatePct}% match up to ${ai.matchUpToPct}% of salary`)
+  if (ai.ptoDays !== MARKET_PTO_DAYS) carried.push(`${ai.ptoDays} days off`)
+  if (ai.hsaMonthly > 0) carried.push(`${fc(ai.hsaMonthly)}/mo employer HSA`)
+  if (ai.healthcarePremium > 0) carried.push(`a ${fc(ai.healthcarePremium)}/mo premium`)
+
   const cell = 'px-3 py-2.5 text-right text-[14.5px]'
   const head = 'px-3 py-2 text-right text-[12.5px] font-bold uppercase tracking-wide text-gray-500'
 
@@ -307,13 +315,15 @@ export function OfferCompare(props: OfferCompareProps) {
 
         <OfferBFields {...props} />
 
-        <p className="mt-5 rounded-lg bg-gray-50 px-4 py-3 text-[12.5px] leading-relaxed text-gray-600">
-          <strong className="font-bold text-gray-800">Prefilled from the first offer:</strong> a{' '}
-          {b.matchRatePct}% match up to {b.matchUpToPct}% of salary, {b.ptoDays} days off
-          {b.hsaMonthly > 0 && <>, {fc(b.hsaMonthly)}/mo employer HSA</>}
-          {b.healthcarePremium > 0 && <>, a {fc(b.healthcarePremium)}/mo premium</>}. Change whatever the second
-          offer does differently.
-        </p>
+        {/* What the first offer actually carried over, named. The first offer now holds only terms the visitor
+            entered, so a blanket "a 0% match up to 0% of salary, 15 days off" would describe defaults, not
+            anything copied. Nothing carried over, no note. */}
+        {carried.length > 0 && (
+          <p className="mt-5 rounded-lg bg-gray-50 px-4 py-3 text-[12.5px] leading-relaxed text-gray-600">
+            <strong className="font-bold text-gray-800">Prefilled from the first offer:</strong> {carried.join(', ')}.
+            Change whatever the second offer does differently.
+          </p>
+        )}
 
         {/* Phone only: on a wide screen the table is already beside this. */}
         {!hasSecondOffer && (
