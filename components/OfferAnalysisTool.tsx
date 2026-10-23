@@ -195,23 +195,37 @@ const EXAMPLE_MATCH_RATE_PCT = 100;
 const EXAMPLE_MATCH_UP_TO_PCT = 6;
 
 /**
- * The question under a term that still shows its example value. Someone whose letter really says 10% would
- * leave a 10% slider alone, and an untouched example does not count as theirs (see enteredOfferInputs) — so the
- * example asks to be confirmed or ruled out rather than waiting for a nudge it has no reason to get.
+ * The question a term opens with while nobody has said what the offer has. The example value is in the question,
+ * so "Yes" says what it confirms, and the controls stay hidden until "Different" asks for them: a slider set to
+ * the example read as decoration, and leaving it alone meant the term never counted (see enteredOfferInputs).
  */
-function ExampleConfirm({ yesLabel, noLabel, onYes, onNo }: {
-  yesLabel: string; noLabel: string; onYes: () => void; onNo: () => void;
+function TermQuestion({ question, differentLabel, noLabel, onYes, onDifferent, onNo }: {
+  question: React.ReactNode; differentLabel: string; noLabel: string;
+  onYes: () => void; onDifferent: () => void; onNo: () => void;
 }) {
+  const btn = 'min-h-11 rounded-lg px-2 text-[13.5px] font-bold leading-tight transition';
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-canvas px-3.5 py-3">
-      <span className="mr-1 text-[13.5px] font-semibold text-gray-700">Is this in your offer?</span>
-      <button type="button" onClick={onYes}
-        className="min-h-10 rounded-lg border-2 border-[#386641] bg-white px-3 text-[13.5px] font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white">
-        {yesLabel}
-      </button>
-      <button type="button" onClick={onNo}
-        className="min-h-10 rounded-lg border border-gray-300 bg-white px-3 text-[13.5px] font-semibold text-gray-600 transition hover:border-gray-400">
-        {noLabel}
+    <div>
+      <p className="text-[15px] font-semibold leading-snug text-gray-800">{question}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <button type="button" onClick={onYes} className={cn(btn, 'border-2 border-[#386641] bg-[#386641] text-white hover:bg-[#2d5a26]')}>Yes</button>
+        <button type="button" onClick={onDifferent} className={cn(btn, 'border-2 border-[#386641] bg-white text-[#386641] hover:bg-[#386641]/5')}>{differentLabel}</button>
+        <button type="button" onClick={onNo} className={cn(btn, 'border border-gray-300 bg-white text-gray-700 hover:border-gray-400')}>{noLabel}</button>
+      </div>
+    </div>
+  );
+}
+
+/** An answered term: what the offer has, in one line, and an obvious way back to the question. */
+function TermSummary({ label, children, onChange }: { label: React.ReactNode; children: React.ReactNode; onChange: () => void }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <p className="text-[15px] leading-snug text-gray-800">
+        <span className="font-semibold">{label}:</span> {children}
+      </p>
+      <button type="button" onClick={onChange}
+        className="-my-2 inline-flex min-h-11 shrink-0 items-center text-[14px] font-bold text-brand-700 underline underline-offset-4">
+        Change
       </button>
     </div>
   );
@@ -425,6 +439,13 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
    * example; this covers all of them, recorded in the one handler every field reports through.
    */
   const [typed, setTyped] = useState<Record<string, true>>({});
+  /**
+   * Which view the bonus and match sections show. Unset, it follows the answer: the question until the term is
+   * entered (typed, confirmed, or read off a letter), then a one-line summary. "Change" reopens the question and
+   * "Different" opens the controls.
+   */
+  const [termView, setTermView] = useState<Record<'bonus' | 'match', 'ask' | 'edit' | null>>({ bonus: null, match: null });
+  const showTerm = (term: 'bonus' | 'match', view: 'ask' | 'edit' | null) => setTermView((prev) => ({ ...prev, [term]: view }));
   const touch = (key: string) =>
     setTouched((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
   const example = (key: string) =>
@@ -740,7 +761,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       <>
         If the letter also has a bonus or a 401(k) match, the package is bigger: for example, a {EXAMPLE_BONUS_PCT}%
         bonus and a {EXAMPLE_MATCH_RATE_PCT}% match on the first {EXAMPLE_MATCH_UP_TO_PCT}% of salary would put it
-        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Add yours below to see it.'}
+        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Answer the bonus and match questions below to see yours.'}
       </>
     ) : null;
 
@@ -1591,98 +1612,153 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       {salary > 0 && (<>
       {/* ── 2. Bonus ──────────────────────────────────────────────────────── */}
       <Section num={2} title="Bonus Target" subtitle="Annual performance bonus — not guaranteed but real comp" annualValue={calc?.annualBonus} example={!touched.bonusPct && !fromLetter.bonusPct}>
-        <div>
-          <div className="flex justify-between mb-2">
-            <Label className="text-sm font-semibold text-gray-700">Target bonus<FieldSource {...sourceOf('bonusPct')} src={fromLetter.bonusPct} /></Label>
-            <span className={cn('text-lg font-extrabold text-gray-900', example('bonusPct'))}>{bonusPct}%</span>
-          </div>
-          <input type="range" min={0} max={50} step={5} value={bonusPct} onChange={e => {
-            const newVal = Number(e.target.value);
-            setBonusPct(newVal);
-            touch('bonusPct');
-            trackFieldChange('bonus_pct', newVal);
-          }}
-            className="w-full accent-[#386641] cursor-pointer" />
-          <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0%</span><span>Typical: 10–20%</span><span>50%</span></div>
-          {calc && bonusPct > 0 && (
-            <p className="text-sm text-gray-500 mt-2">At target: <strong className={cn(example('bonusPct') || 'text-gray-900')}>{fc(calc.annualBonus)}/yr</strong></p>
-          )}
-          {!entered.has('bonusPct') && (
-            <ExampleConfirm
-              yesLabel={`Yes, ${bonusPct}%`}
-              noLabel="No bonus"
-              onYes={() => {
+        {(() => {
+          const view = termView.bonus ?? (entered.has('bonusPct') ? 'summary' : 'ask');
+          const answer = (a: 'yes' | 'different' | 'no') =>
+            track('offer_example_answered', { tool: 'offer', term: 'bonus', answer: a, ...(a === 'yes' ? { value: EXAMPLE_BONUS_PCT } : {}) });
+          if (view === 'ask') {
+            return (
+              <TermQuestion
+                question={<>Does your offer have a {EXAMPLE_BONUS_PCT}% target bonus?</>}
+                differentLabel="Different amount"
+                noLabel="No bonus"
+                onYes={() => {
+                  setBonusPct(EXAMPLE_BONUS_PCT); touch('bonusPct'); answer('yes');
+                  trackFieldChange('bonus_pct', EXAMPLE_BONUS_PCT); showTerm('bonus', null);
+                }}
+                onDifferent={() => {
+                  if (bonusPct <= 0) setBonusPct(EXAMPLE_BONUS_PCT);
+                  answer('different'); showTerm('bonus', 'edit');
+                }}
+                onNo={() => {
+                  setBonusPct(0); touch('bonusPct'); answer('no');
+                  trackFieldChange('bonus_pct', 0); showTerm('bonus', null);
+                }}
+              />
+            );
+          }
+          if (view === 'summary') {
+            return (
+              <TermSummary label={<>Bonus<FieldSource {...sourceOf('bonusPct')} src={fromLetter.bonusPct} /></>} onChange={() => {
+                track('offer_example_reopened', { tool: 'offer', term: 'bonus' }); showTerm('bonus', 'ask');
+              }}>
+                {bonusPct > 0 && calc ? <>{bonusPct}% target, {fc(calc.annualBonus)}/yr</> : 'none'}
+              </TermSummary>
+            );
+          }
+          return (
+            <div>
+              <div className="flex justify-between mb-2">
+                <Label className="text-sm font-semibold text-gray-700">Target bonus<FieldSource {...sourceOf('bonusPct')} src={fromLetter.bonusPct} /></Label>
+                <span className="text-lg font-extrabold text-gray-900">{bonusPct}%</span>
+              </div>
+              <input type="range" min={0} max={50} step={5} value={bonusPct} aria-label="Target bonus, percent of salary" onChange={e => {
+                const newVal = Number(e.target.value);
+                setBonusPct(newVal);
                 touch('bonusPct');
-                track('offer_example_answered', { tool: 'offer', term: 'bonus', answer: 'yes', value: bonusPct });
-                trackFieldChange('bonus_pct', bonusPct);
+                trackFieldChange('bonus_pct', newVal);
               }}
-              onNo={() => {
-                setBonusPct(0);
-                touch('bonusPct');
-                track('offer_example_answered', { tool: 'offer', term: 'bonus', answer: 'no' });
-                trackFieldChange('bonus_pct', 0);
-              }}
-            />
-          )}
-        </div>
+                className="w-full accent-[#386641] cursor-pointer" />
+              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0%</span><span>Typical: 10–20%</span><span>50%</span></div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-gray-500">{calc && bonusPct > 0 ? <>At target: <strong className="text-gray-900">{fc(calc.annualBonus)}/yr</strong></> : 'Slide to the bonus in your letter.'}</p>
+                <button type="button" onClick={() => {
+                  if (!entered.has('bonusPct')) { touch('bonusPct'); trackFieldChange('bonus_pct', bonusPct); }
+                  showTerm('bonus', null);
+                }} className="min-h-10 shrink-0 rounded-lg bg-[#386641] px-4 text-[13.5px] font-bold text-white hover:bg-[#2d5a26]">Done</button>
+              </div>
+            </div>
+          );
+        })()}
       </Section>
 
       {/* ── 3. 401k match ─────────────────────────────────────────────────── */}
       <Section num={3} title="401k Match" subtitle="Free money — often the most-missed line in an offer" annualValue={calc?.annual401kMatch} example={!touched.matchRatePct && !touched.matchUpToPct && !fromLetter.matchRatePct}>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FieldSource {...sourceOf('matchRatePct')} src={fromLetter.matchRatePct} /></Label>
-            <div className="relative">
-              <Input type="text" inputMode="numeric" placeholder="100" value={matchRatePct || ''}
-                onChange={e => {
-                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                  setMatchRatePct(newVal);
-                  touch('matchRatePct');
-                  trackFieldChange('match_rate_pct', newVal);
+        {(() => {
+          const matchAnswered = entered.has('matchRatePct') || entered.has('matchUpToPct');
+          const view = termView.match ?? (matchAnswered ? 'summary' : 'ask');
+          const answer = (a: 'yes' | 'different' | 'no') =>
+            track('offer_example_answered', { tool: 'offer', term: 'match', answer: a, ...(a === 'yes' ? { value: EXAMPLE_MATCH_RATE_PCT, up_to: EXAMPLE_MATCH_UP_TO_PCT } : {}) });
+          // One field reported per answer, not two: confirming the formula is one answer, and fields_filled counts answers.
+          const record = (rate: number, upTo: number) => {
+            setMatchRatePct(rate); setMatchUpToPct(upTo); touch('matchRatePct'); touch('matchUpToPct');
+            trackFieldChange('match_rate_pct', rate);
+          };
+          const formula = (rate: number, upTo: number) =>
+            rate === 100 ? <>dollar for dollar, up to {upTo}% of salary</> : <>{rate}% of what you put in, up to {upTo}% of salary</>;
+          if (view === 'ask') {
+            return (
+              <TermQuestion
+                question={<>Does your offer match your 401(k) {formula(EXAMPLE_MATCH_RATE_PCT, EXAMPLE_MATCH_UP_TO_PCT)}?</>}
+                differentLabel="Different match"
+                noLabel="No match"
+                onYes={() => { record(EXAMPLE_MATCH_RATE_PCT, EXAMPLE_MATCH_UP_TO_PCT); answer('yes'); showTerm('match', null); }}
+                onDifferent={() => {
+                  if (matchRatePct <= 0 && matchUpToPct <= 0) { setMatchRatePct(EXAMPLE_MATCH_RATE_PCT); setMatchUpToPct(EXAMPLE_MATCH_UP_TO_PCT); }
+                  answer('different'); showTerm('match', 'edit');
                 }}
-                className={cn('pr-6', example('matchRatePct'))} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                onNo={() => { record(0, 0); answer('no'); showTerm('match', null); }}
+              />
+            );
+          }
+          if (view === 'summary') {
+            return (
+              <>
+                <TermSummary label={<>401(k) match<FieldSource {...sourceOf('matchRatePct')} src={fromLetter.matchRatePct} /></>} onChange={() => {
+                  track('offer_example_reopened', { tool: 'offer', term: 'match' }); showTerm('match', 'ask');
+                }}>
+                  {matchRatePct > 0 && matchUpToPct > 0 && calc ? <>{formula(matchRatePct, matchUpToPct)}, {fc(calc.annual401kMatch)}/yr</> : 'none'}
+                </TermSummary>
+                {calc && calc.annual401kMatch > 0 && (
+                  <p className="text-sm text-gray-500 mt-2">Contribute at least {matchUpToPct}% to collect all of it.</p>
+                )}
+              </>
+            );
+          }
+          return (
+            <div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Match rate<FieldSource {...sourceOf('matchRatePct')} src={fromLetter.matchRatePct} /></Label>
+                  <div className="relative">
+                    <Input type="text" inputMode="numeric" placeholder="100" value={matchRatePct || ''}
+                      onChange={e => {
+                        const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                        setMatchRatePct(newVal);
+                        touch('matchRatePct');
+                        trackFieldChange('match_rate_pct', newVal);
+                      }}
+                      className="pr-6" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)<FieldSource {...sourceOf('matchUpToPct')} src={fromLetter.matchUpToPct} /></Label>
+                  <div className="relative">
+                    <Input type="text" inputMode="numeric" placeholder="6" value={matchUpToPct || ''}
+                      onChange={e => {
+                        const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
+                        setMatchUpToPct(newVal);
+                        touch('matchUpToPct');
+                        trackFieldChange('match_up_to_pct', newVal);
+                      }}
+                      className="pr-6" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-gray-500">
+                  {calc && calc.annual401kMatch > 0 ? <>Worth <strong className="text-[#386641]">{fc(calc.annual401kMatch)}/yr</strong> if you contribute {matchUpToPct}%.</> : '100 means a dollar for every dollar you put in.'}
+                </p>
+                <button type="button" onClick={() => {
+                  if (!matchAnswered) { touch('matchRatePct'); touch('matchUpToPct'); trackFieldChange('match_rate_pct', matchRatePct); }
+                  showTerm('match', null);
+                }} className="min-h-10 shrink-0 rounded-lg bg-[#386641] px-4 text-[13.5px] font-bold text-white hover:bg-[#2d5a26]">Done</button>
+              </div>
             </div>
-          </div>
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 mb-1.5 block">Up to (% of salary)<FieldSource {...sourceOf('matchUpToPct')} src={fromLetter.matchUpToPct} /></Label>
-            <div className="relative">
-              <Input type="text" inputMode="numeric" placeholder="6" value={matchUpToPct || ''}
-                onChange={e => {
-                  const newVal = Number(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                  setMatchUpToPct(newVal);
-                  touch('matchUpToPct');
-                  trackFieldChange('match_up_to_pct', newVal);
-                }}
-                className={cn('pr-6', example('matchUpToPct'))} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-            </div>
-          </div>
-        </div>
-        {calc && calc.annual401kMatch > 0 && (
-          <p className="text-sm text-gray-500 mt-3">Contribute at least {matchUpToPct}% to capture the full <strong className={cn(example('matchRatePct') || 'text-[#386641]')}>{fc(calc.annual401kMatch)}/yr match</strong>.</p>
-        )}
-        {!entered.has('matchRatePct') && !entered.has('matchUpToPct') && (
-          <ExampleConfirm
-            yesLabel={`Yes, ${matchRatePct}% up to ${matchUpToPct}%`}
-            noLabel="No match"
-            onYes={() => {
-              touch('matchRatePct');
-              touch('matchUpToPct');
-              track('offer_example_answered', { tool: 'offer', term: 'match', answer: 'yes', value: matchRatePct, up_to: matchUpToPct });
-              // One field reported, not two: confirming the formula is one answer, and fields_filled counts answers.
-              trackFieldChange('match_rate_pct', matchRatePct);
-            }}
-            onNo={() => {
-              setMatchRatePct(0);
-              setMatchUpToPct(0);
-              touch('matchRatePct');
-              touch('matchUpToPct');
-              track('offer_example_answered', { tool: 'offer', term: 'match', answer: 'no' });
-              trackFieldChange('match_rate_pct', 0);
-            }}
-          />
-        )}
+          );
+        })()}
       </Section>
 
       {/* ── 4. Health & Benefits ──────────────────────────────────────────── */}
