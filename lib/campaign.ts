@@ -36,3 +36,18 @@ export function isCampaign(searchParams: SearchParams | undefined): boolean {
  * are still worth something.
  */
 export const CAMPAIGN_ROBOTS = { index: false, follow: true } as const
+
+/**
+ * The ad's copy variant, `?v=…` on the final URL: which search a paid visitor came from, so the page can answer
+ * that question first. Read from searchParams on the server, on the first load, so the page view carries it from
+ * the start; nothing on the site rewrites the URL, so it sits beside gclid for as long as the visitor stays.
+ * Anything not in `allowed` (absent, misspelled, or another page's value) reads as 'default'.
+ */
+export const VARIANT_PARAM = 'v'
+
+export function readVariant<T extends string>(searchParams: SearchParams | undefined, allowed: readonly T[]): T | 'default' {
+  const raw = searchParams?.[VARIANT_PARAM]
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return value && (allowed as readonly string[]).includes(value) ? (value as T) : 'default'
+}
+
