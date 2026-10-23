@@ -57,7 +57,7 @@ export default function Page({ searchParams }: { searchParams?: Record<string, s
       )}
       <Section variant="canvas" className={campaign ? 'pb-10 pt-8' : 'pt-0'}>
         <Container maxWidth="narrow">
-          <OfferAnalysisTool campaign={campaign} textPilot />
+          <OfferAnalysisTool campaign={campaign} textPilot page="/offer_text" />
         </Container>
       </Section>
     </PageShell>

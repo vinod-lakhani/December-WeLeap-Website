@@ -111,6 +111,8 @@ interface ResultsCardsProps {
   afterHero?: ReactNode;
   /** Rendered inside the answer card, straight under the number and share line. */
   answerSlot?: ReactNode;
+  /** The `page` property on this component's events: the host page's path (default: the canonical rent page). */
+  page?: string;
 }
 
 export function ResultsCards({
@@ -132,6 +134,7 @@ export function ResultsCards({
   zoriAvailable,
   taxBreakdown,
   planData,
+  page = '/how-much-rent-can-i-afford',
 }: ResultsCardsProps) {
   // ZORI market rent data
   const [marketRentData, setMarketRentData] = useState<MarketRent | null>(null);
@@ -172,7 +175,7 @@ export function ResultsCards({
             
             // Track market rent loaded
             track('market_rent_loaded_v1', {
-              page: '/how-much-rent-can-i-afford',
+              page,
               locationMode: locationMode || 'unknown',
               presetCity: presetCity || null,
               stateName,
@@ -184,7 +187,7 @@ export function ResultsCards({
             });
           } else {
             track('market_rent_unavailable_v1', {
-              page: '/how-much-rent-can-i-afford',
+              page,
               locationMode: locationMode || 'unknown',
               presetCity: presetCity || null,
               stateName,
@@ -195,7 +198,7 @@ export function ResultsCards({
         .catch(err => {
           console.error('Error loading market rent:', err);
           track('market_rent_unavailable_v1', {
-            page: '/how-much-rent-can-i-afford',
+            page,
             locationMode: locationMode || 'unknown',
             presetCity: presetCity || null,
             stateName,
@@ -353,12 +356,13 @@ export function ResultsCards({
                   of it, buried the same mechanic. */}
               <div className="mt-5 border-t border-hairline pt-4">
                 <RentShareCard
+                  page={page}
                   shareUrl={shareUrl}
                   shareText={shareText}
                   trigger={
                     <button
                       type="button"
-                      onClick={() => track('rent_share_card_opened', { page: '/how-much-rent-can-i-afford' })}
+                      onClick={() => track('rent_share_card_opened', { page })}
                       className="text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
                     >
                       Share this without showing your salary →

@@ -55,6 +55,8 @@ interface OfferShareCardProps {
    */
   compare?: { pkgPct: number; monthPct: number; split: boolean } | null;
   trigger: React.ReactNode;
+  /** The `page` property on this component's events: the host page's path (default: the canonical offer slug). */
+  page?: string;
 }
 
 export function OfferShareCard({
@@ -64,6 +66,7 @@ export function OfferShareCard({
   shareText,
   compare,
   trigger,
+  page = '/offer',
 }: OfferShareCardProps) {
   const [open, setOpen] = useState(false);
   /** Desktop has no share sheet, so the link is copied and the button says so. */
@@ -76,7 +79,7 @@ export function OfferShareCard({
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      track('offer_share_card_shared', { page: '/offer', method: 'copy_link', uplift_pct: Math.round(upliftPct) });
+      track('offer_share_card_shared', { page, method: 'copy_link', uplift_pct: Math.round(upliftPct) });
       track('tool_shared', { tool: 'offer', method: 'copy_link' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -116,7 +119,7 @@ export function OfferShareCard({
       const blob = await fetchPngBlob();
       if (!blob) return;
       downloadBlob(blob);
-      track('offer_share_card_downloaded', { page: '/offer', uplift_pct: Math.round(upliftPct) });
+      track('offer_share_card_downloaded', { page, uplift_pct: Math.round(upliftPct) });
       setOpen(false);
     } catch (err) {
       console.error('Failed to download card:', err);
@@ -143,14 +146,14 @@ export function OfferShareCard({
       };
       if (typeof navigator !== 'undefined' && navigator.canShare?.(shareData)) {
         await navigator.share(shareData);
-        track('offer_share_card_shared', { page: '/offer', method: 'native', uplift_pct: Math.round(upliftPct) });
+        track('offer_share_card_shared', { page, method: 'native', uplift_pct: Math.round(upliftPct) });
         track('tool_shared', { tool: 'offer', method: 'native' });
         setOpen(false);
       } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
         await handleCopy();
       } else {
         downloadBlob(blob);
-        track('offer_share_card_shared', { page: '/offer', method: 'download', uplift_pct: Math.round(upliftPct) });
+        track('offer_share_card_shared', { page, method: 'download', uplift_pct: Math.round(upliftPct) });
         track('tool_shared', { tool: 'offer', method: 'download' });
         setOpen(false);
       }

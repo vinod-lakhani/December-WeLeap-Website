@@ -198,9 +198,14 @@ export interface OfferAnalysisToolProps {
   campaign?: boolean
   /** Internal text pilot: shows the "Get this breakdown by text" door under the headline. */
   textPilot?: boolean
+  /**
+   * The `page` property on the tool's own events (share card, feedback). The canonical page keeps the
+   * default; a landing that hosts the tool passes its own path, so a breakdown by `page` does not merge them.
+   */
+  page?: string
 }
 
-export function OfferAnalysisTool({ campaign = false, textPilot = false }: OfferAnalysisToolProps = {}) {
+export function OfferAnalysisTool({ campaign = false, textPilot = false, page = '/offer' }: OfferAnalysisToolProps = {}) {
   // 1. Base salary
   /**
    * Campaign traffic opens on the figure from the creative, so the promise in
@@ -1127,6 +1132,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
           shareSlot={
             calc && calc.totalPackage > salary ? (
               <OfferShareCard
+                page={page}
                 upliftPct={((calc.totalPackage - salary) / salary) * 100}
                 compare={shareCompare}
                 shareUrl={shareUrl}
@@ -1134,7 +1140,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
                 trigger={
                   <button
                     type="button"
-                    onClick={() => track('offer_share_card_opened', { page: '/offer', placement: 'campaign_hero' })}
+                    onClick={() => track('offer_share_card_opened', { page, placement: 'campaign_hero' })}
                     className="flex min-h-11 w-full items-center justify-center rounded-xl border-2 border-[#386641] px-4 py-3 text-[15px] font-bold text-[#386641] transition hover:bg-[#386641] hover:text-white"
                   >
                     Share this without showing your salary →
@@ -1685,6 +1691,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
             {calc.totalPackage > salary && (
               <div className="mt-5 border-t border-hairline pt-4">
                 <OfferShareCard
+                  page={page}
                   upliftPct={((calc.totalPackage - salary) / salary) * 100}
                   compare={shareCompare}
                   shareUrl={shareUrl}
@@ -1692,7 +1699,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
                   trigger={
                     <button
                       type="button"
-                      onClick={() => track('offer_share_card_opened', { page: '/offer' })}
+                      onClick={() => track('offer_share_card_opened', { page })}
                       className="-my-2 inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4 hover:text-brand-800"
                     >
                       {shareCompare ? 'Share the comparison without showing your salary →' : 'Share this without showing your salary →'}
@@ -2008,7 +2015,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false }: Offer
               are not pooled into a blended sentiment rate by mistake. */}
           {feedbackRevealed && (
           <ToolFeedbackQuestionnaire
-            page="/offer"
+            page={page}
             tool="offer"
             eventName="offer_tool_feedback_submitted"
             question="Is this total higher or lower than you thought your offer was worth?"

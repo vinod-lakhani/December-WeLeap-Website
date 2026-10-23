@@ -58,7 +58,7 @@ export default function Page({ searchParams }: { searchParams?: Record<string, s
             id="calculator"
             className={campaign ? 'mx-auto max-w-3xl scroll-mt-24' : 'mx-auto mt-10 max-w-3xl scroll-mt-24'}
           >
-            <RentTool campaign={campaign} textPilot />
+            <RentTool campaign={campaign} textPilot page="/rent_text" />
           </div>
           {!campaign && (
             <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-faint md:text-sm">
