@@ -2,16 +2,15 @@
  * The link from the Ribbit chat into the WeLeap web app: the contract both sides read.
  *
  * The chat knows most of what onboarding asks (salary or take-home, place, rent, debt, start date, the 401k
- * election), so the app opens with the plan already in and goes straight to the bank connection, skipping the
- * form (spec: "Save My Plan: Chat to App Without the Form"). Every number here comes from the chat's own facts,
- * computed by the tool logic, never typed by the model.
+ * election), so the app opens with the plan already in, skips the form, and after sign-in asks to connect the
+ * bank; it never opens the bank on arrival (spec: "Save My Plan: Chat to App Without the Form"). Every number
+ * here comes from the chat's own facts, computed by the tool logic, never typed by the model.
  *
  * The experiment runs on dev3 (decided Oct 26): NEXT_PUBLIC_RIBBIT_APP_URL is the one setting that moves it to
  * production. Attribution (UTMs, click ids, the PostHog id) rides along through appLinkAt, as on every other CTA.
  *
  * Parameters the app reads (all optional except src and why):
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
- *   open=connect-bank go to the bank connection once signed in
  *   why               plan_preview | spending_check | plan_invite | account (which ask was tapped)
  *   rt                the chat thread id, to stitch the web events to the app
  *   flow              rent | offer | general
@@ -43,7 +42,6 @@ const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n)
 export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string): Record<string, string> {
   const p: Record<string, string | undefined> = {
     src: 'ribbit_chat',
-    open: 'connect-bank',
     why,
     rt: threadId || undefined,
     flow: flow ?? 'general',
