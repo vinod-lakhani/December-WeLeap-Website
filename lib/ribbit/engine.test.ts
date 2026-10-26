@@ -85,6 +85,17 @@ describe('rent flow', () => {
     expect(said(s[8])).toContain(`until you hit $${up.high.toLocaleString('en-US')}`)
   })
 
+  it('labels each headline, and shows the market range against the range that fits', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }])
+    const fits = s[1].messages.find((m) => m.figure)!
+    expect(fits.figureLabel).toBe('Rent that fits')
+    const market = s[2].messages.find((m) => m.figure)!
+    expect(market.figureLabel).toBe('New York rentals')
+    expect(market.compare?.label).toBe('Rent that fits')
+    expect(market.figure).toMatch(/^\$[\d,]+–\$[\d,]+\/mo$/)
+    expect(market.compare?.value).toMatch(/^\$[\d,]+–\$[\d,]+\/mo$/)
+  })
+
   it('NYC charges city tax, as the rent page does for its preset', async () => {
     const s = await run('rent', [{ text: '90000' }, { chip: 'NYC' }])
     const local = localTaxAnnual('NYC', 90_000 - STANDARD_DEDUCTION_2026_SINGLE)

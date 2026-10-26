@@ -35,6 +35,11 @@ export interface ChatMessage {
   text: string
   /** The win's key figure, set large in the bubble. */
   figure?: string
+  /** What the figure is, in a few words above it ("Rent that fits", "Seattle rentals"): two big ranges in a row
+   * read as the same thing without it. */
+  figureLabel?: string
+  /** A second figure set small under the first, for a comparison ("Your range $1,600–$2,000/mo"). */
+  compare?: { label: string; value: string }
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -125,6 +130,8 @@ export interface ChatServices {
 export interface AskResult { kind: 'question' | 'step' | 'account'; reply?: string; value?: string }
 
 export const fc = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+/** A monthly range as every headline shows it: "$1,600–$2,000/mo". */
+const span = (low: number, high: number) => `${fc(low)}–${fc(high)}/mo`
 const mid50 = (a: number, b: number) => Math.round((a + b) / 2 / 50) * 50
 const SOMEWHERE_ELSE = '__elsewhere__'
 const OUTSIDE_METRO = '__OTHER__'
@@ -223,7 +230,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         : `On ${fc(n)} a month take-home,`
       const line = f.takeHomeFrom === 'salary' ? `${basis} Rent that fits is ${f.range.formatted}.` : `${basis} rent that fits is ${f.range.formatted}.`
       return say({ ...state, turn: 'R2' }, [
-        { from: 'ribbit', text: line, figure: `${f.range.formatted}/mo`, turn: 'R2' },
+        { from: 'ribbit', text: line, figure: span(f.range.low, f.range.high), figureLabel: 'Rent that fits', turn: 'R2' },
         { from: 'ribbit', text: 'Which city?' },
       ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('R2')])
     }
@@ -272,7 +279,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
           ? `${fc(pick)} is above your range of ${range.formatted}, so it leaves less for everything else.`
           : `${fc(pick)} is the top of your range.`
       return say({ ...state, turn: 'R5' }, [
-        { from: 'ribbit', text: lead, figure: saving > 0 ? `${fc(saving)}/mo freed up` : undefined, turn: 'R5' },
+        { from: 'ribbit', text: lead, figure: saving > 0 ? `${fc(saving)}/mo` : undefined, figureLabel: 'Freed up each month', turn: 'R5' },
         { from: 'ribbit', text: 'When does the job start?' },
       ], [
         { label: 'Already working', value: 'working' }, { label: 'This month', value: 'this_month' },
@@ -326,7 +333,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       f.takeHomeMonthly = beforeStateTakeHome(n)
       f.takeHomeBeforeState = true
       return say({ ...state, turn: 'O2' }, [
-        { from: 'ribbit', text: `On ${fc(n)}, take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`, figure: `${fc(f.takeHomeMonthly)}/mo`, turn: 'O2' },
+        { from: 'ribbit', text: `On ${fc(n)}, take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`, figure: `${fc(f.takeHomeMonthly)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
         { from: 'ribbit', text: 'Which city is the job in?' },
       ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
     }
@@ -504,7 +511,7 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
   // Sallie Mae survey reported by Realtor.com (Jul 21, 2025): in the first two years after school, 8% rent solo
   // and 8% rent with roommates — about half of recent grads who rent.
   return say({ ...state, turn: 'R3_roommate' }, [
-    { from: 'ribbit', text: [taxLine, `${band}, ${where}. Among recent grads who rent, about half share with roommates.`].filter(Boolean).join(' '), figure: `${fc(market.low)} to ${fc(market.high)}`, turn: 'R3' },
+    { from: 'ribbit', text: [taxLine, `${band}, ${where}. Among recent grads who rent, about half share with roommates.`].filter(Boolean).join(' '), figure: span(market.low, market.high), figureLabel: `${f.place} rentals`, compare: { label: 'Rent that fits', value: span(range.low, range.high) }, turn: 'R3' },
     { from: 'ribbit', text: 'Roommate?' },
   ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure yet', value: 'not_sure' }], 'text', [win('R3')])
 }
@@ -526,7 +533,7 @@ function applyDebt(state: ChatState, debt: number): Step {
 function askPick(state: ChatState, lead: string): Step {
   const r = state.facts.range!
   return say({ ...state, turn: 'R4' }, [
-    ...(lead ? [{ from: 'ribbit' as const, text: lead, figure: state.facts.debtMonthly ? `${r.formatted}/mo` : undefined }] : []),
+    ...(lead ? [{ from: 'ribbit' as const, text: lead, figure: state.facts.debtMonthly ? span(r.low, r.high) : undefined, figureLabel: 'Rent that fits, after debt' }] : []),
     { from: 'ribbit', text: "Pick the number you'd actually sign at.", turn: 'R4' },
   ], [
     { label: fc(r.low), value: 'low' }, { label: fc(mid50(r.low, r.high)), value: 'mid' }, { label: fc(r.high), value: 'high' },
@@ -544,7 +551,7 @@ function upfrontTurn(state: ChatState): Step {
     : `Your first paycheck may not land for a few weeks, so you'll want ${fc(up.low)} to ${fc(up.high)} upfront.`
   if (saving <= 0) return handoff({ ...state, turn: 'R6' }, lead)
   return say({ ...state, turn: 'R6' }, [
-    { from: 'ribbit', text: lead, figure: `${fc(up.low)} to ${fc(up.high)}`, turn: 'R6' },
+    { from: 'ribbit', text: lead, figure: `${fc(up.low)}–${fc(up.high)}`, figureLabel: 'Cash to have before you move', turn: 'R6' },
     { from: 'ribbit', text: `What's the ${fc(saving)} for?` },
   ], [
     { label: 'A cushion before the first paycheck', value: 'cushion' }, { label: 'The credit card', value: 'card' },
@@ -582,7 +589,7 @@ function purposeTurn(state: ChatState): Step {
     return say({ ...state, turn: 'R7' }, [{
       from: 'ribbit',
       text: `${fc(saving)} a month for 30 years at ${Math.round(REAL_RETURN_DEFAULT * 100)}% a year after inflation is about ${fc(value)}. Illustration only, not a guarantee. The first step is the same: auto-transfer ${fc(perCheck)} the day after each paycheck.`,
-      figure: fc(value), turn: 'R7',
+      figure: fc(value), figureLabel: 'What it could grow to in 30 years', turn: 'R7',
     }], followThrough, 'text', [win('R7')])
   }
   const target = f.upfront?.high ?? 0
@@ -590,7 +597,7 @@ function purposeTurn(state: ChatState): Step {
   return say({ ...state, turn: 'R7' }, [{
     from: 'ribbit',
     text: `Cushion it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does. So that's ${fc(perCheck)} after each paycheck and a check on the 1st. I can text you each one, or I can watch and only text you when something's off.`,
-    figure: `${fc(perCheck)} each paycheck`, turn: 'R7',
+    figure: fc(perCheck), figureLabel: 'To move after each paycheck', turn: 'R7',
   }], [...followThrough, { label: 'What would it grow to', value: 'grow' }], 'text', [win('R7')])
 }
 
@@ -610,7 +617,7 @@ function cardPayoff(state: ChatState, balance: number, apr: number): Step {
   const text = Number.isFinite(months)
     ? `Putting ${fc(saving)} a month on ${fc(balance)} at ${apr}% clears it in about ${months} months. That's if the balance doesn't grow; the math is only as good as the balance you gave me.`
     : `At ${apr}%, ${fc(saving)} a month doesn't cover the interest on ${fc(balance)}, so the balance won't go down on that alone. The card's minimum has to stay on top of it.`
-  return say({ ...state, turn: 'R7' }, [{ from: 'ribbit', text, figure: Number.isFinite(months) ? `${months} months` : undefined, turn: 'R7' }],
+  return say({ ...state, turn: 'R7' }, [{ from: 'ribbit', text, figure: Number.isFinite(months) ? `${months} months` : undefined, figureLabel: 'Time to clear the card', turn: 'R7' }],
     [{ label: 'Text me each one', value: 'text' }, { label: 'Watch it for me', value: 'watch' }], 'text', [win('R7')])
 }
 
@@ -628,7 +635,7 @@ function offerAfterLocation(state: ChatState): Step {
   const f = state.facts
   const line = placeTaxLine(f) || `In ${f.place}, take-home before any 401k is about ${fc(f.takeHomeMonthly ?? 0)} a month.`
   return say({ ...state, turn: 'O3' }, [
-    { from: 'ribbit', text: f.tax ? `${line} That's before any 401k.` : line, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, turn: 'O3' },
+    { from: 'ribbit', text: f.tax ? `${line} That's before any 401k.` : line, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, figureLabel: 'Take-home', turn: 'O3' },
     { from: 'ribbit', text: 'Anything on top of the salary?' },
   ], [...EXTRA_CHIPS, { label: 'Just salary', value: 'none' }, { label: 'Show me the math', value: '__math__' }], 'text', [win('O3')])
 }
@@ -714,7 +721,7 @@ function applyMatch(state: ChatState, rate: number, cap: number): Step {
   const salary = f.salary ?? 0
   const halfLoss = (salary * (cap / 2 / 100) * (rate / 100)) / 12
   const text = `With that match, the offer is worth ${fc(f.value?.totalPackage ?? salary)} a year, not ${fc(salary)}, but only if you put in at least ${cap}%. At half that you leave ${fc(halfLoss)} a month on the table.`
-  return say({ ...state, turn: 'O5' }, [{ from: 'ribbit', text, figure: `${fc(f.value?.totalPackage ?? salary)}/yr`, turn: 'O5' }],
+  return say({ ...state, turn: 'O5' }, [{ from: 'ribbit', text, figure: `${fc(f.value?.totalPackage ?? salary)}/yr`, figureLabel: 'What the offer is worth', turn: 'O5' }],
     [{ label: 'What should I put in', value: 'put_in' }, { label: 'Skip', value: 'skip' }], 'text', [win('O5')])
 }
 
@@ -732,7 +739,7 @@ function offerElection(state: ChatState): Step {
   return say({ ...state, turn: 'O6' }, [{
     from: 'ribbit',
     text: `Put in ${cap}%. It costs you about ${fc(cost)} a month of take-home and adds ${fc(contribution + match)} a month to your retirement account with the match. That's the ${cap}% form with HR on day one, then a look at the first stub to confirm it took. I can text you each one, or I can watch and only text you when something's off.`,
-    figure: `${cap}%`, turn: 'O6',
+    figure: `${cap}%`, figureLabel: 'Put into your 401k', turn: 'O6',
   }], [{ label: 'Text me each one', value: 'text' }, { label: 'Watch it for me', value: 'watch' }, { label: "What's a good rent on this", value: 'rent' }], 'text', [win('O6')])
 }
 

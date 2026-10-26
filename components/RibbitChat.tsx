@@ -220,7 +220,18 @@ function Bubble({ m, facts, threadId }: { m: ChatMessage; facts: ChatState['fact
   return (
     <div className="max-w-[92%] self-start">
       <div className="rounded-2xl rounded-bl-md bg-[#386641] px-4 py-3 text-[15px] leading-snug text-white">
-        {m.figure && <div className="mb-1 text-[26px] font-extrabold leading-tight tracking-[-0.02em] tabular-nums">{m.figure}</div>}
+        {m.figure && (
+          <div className="mb-2">
+            {m.figureLabel && <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-white/75">{m.figureLabel}</div>}
+            <div className="text-[26px] font-extrabold leading-tight tracking-[-0.02em] tabular-nums">{m.figure}</div>
+            {m.compare && (
+              <div className="mt-1 flex items-baseline gap-2 text-[13.5px] text-white/85">
+                <span>{m.compare.label}</span>
+                <span className="font-bold tabular-nums text-white">{m.compare.value}</span>
+              </div>
+            )}
+          </div>
+        )}
         <p>{m.text}</p>
         {m.math && (
           <dl className="mt-2.5 rounded-xl bg-white/10 px-3 py-2">
