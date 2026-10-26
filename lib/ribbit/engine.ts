@@ -804,6 +804,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   }
   const events: ChatEvent[] = [{ name: 'ribbit_question_typed', props: { turn: state.turn } }]
   const msg = res?.reply ?? "I can't answer that right now."
-  const parked = waitingFor ? state.ui?.ask ?? '' : undefined
+  // Before a tool is picked there is no plan to go back to: the two choices stay up as they are.
+  const parked = waitingFor && state.turn !== 'P0' ? state.ui?.ask ?? '' : undefined
   return { state: { ...state, history: [...state.history, { from: 'out' as const, text: msg }].slice(-12) }, messages: [{ from: 'ribbit', text: msg }], chips, input, events, parked }
 }

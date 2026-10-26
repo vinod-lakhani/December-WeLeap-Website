@@ -23,7 +23,7 @@ const svc = (over: Partial<ChatServices> = {}): ChatServices => ({
   ...over,
 })
 
-async function run(flow: 'rent' | 'offer', replies: Array<{ chip?: string; text?: string }>, s: ChatServices = svc()): Promise<Step[]> {
+async function run(flow: 'rent' | 'offer' | null, replies: Array<{ chip?: string; text?: string }>, s: ChatServices = svc()): Promise<Step[]> {
   const steps: Step[] = [start(flow)]
   for (const r of replies) steps.push(await reply(steps[steps.length - 1].state, r, s))
   return steps
@@ -120,6 +120,12 @@ describe('rent flow', () => {
     // The answer still lands after two side questions, and the next turn is not parked.
     expect(said(s[4])).toContain('Rentals in Austin')
     expect(s[4].parked).toBeUndefined()
+  })
+
+  it('before a tool is picked, a question leaves the two choices up', async () => {
+    const s = await run(null, [{ text: 'should I put money into a Roth IRA' }])
+    expect(s[1].parked).toBeUndefined()
+    expect(s[1].chips.map((c) => c.value)).toEqual(['rent', 'offer'])
   })
 
   it('parks the question the turn asked, even when the turn goes on after it', async () => {
