@@ -102,6 +102,12 @@ export interface Step {
   /** What the text field is for at this turn; 'none' hides it (the handoff turn has its own form). */
   input: 'money' | 'location' | 'text' | 'none'
   events: ChatEvent[]
+  /**
+   * Set after Ribbit answers a side question: the open question, which is not asked again. The page folds the
+   * options into one "back to your plan" line naming it ('' when the turn's question has no "?"), and the field
+   * still takes the answer.
+   */
+  parked?: string
 }
 
 /** The tool pages' own routes, and Ribbit for typed questions. Injected so the engine is testable. */
@@ -140,10 +146,19 @@ export function start(flow: Flow | null): Step {
 }
 
 function say(state: ChatState, messages: ChatMessage[], chips: Chip[], input: Step['input'], events: ChatEvent[] = []): Step {
+  const ask = openQuestion(messages)
   const out = messages.filter((m) => m.from === 'ribbit').map((m) => ({ from: 'out' as const, text: m.text }))
-  const last = messages[messages.length - 1]?.text ?? ''
-  const ask = last.trim().endsWith('?') ? last : state.ui?.ask
   return { state: { ...state, history: [...state.history, ...out].slice(-12), ui: { chips, input, ask } }, messages, chips, input, events }
+}
+
+/**
+ * The question a turn asks: the last sentence ending in "?" in its last message ("Any monthly debt payments, like
+ * a car, student loans or card minimums?" out of a message that goes on after it). A turn that ends on an
+ * instruction ("Pick the number you'd actually sign at.") has no question to name; the previous one is closed.
+ */
+function openQuestion(messages: ChatMessage[]): string | undefined {
+  const asked = messages.filter((m) => m.from === 'ribbit').pop()?.text.match(/[^.?!]*\?/g)
+  return asked?.[asked.length - 1].trim()
 }
 
 const win = (turn: string): ChatEvent => ({ name: 'ribbit_win_shown', props: { turn } })
@@ -771,10 +786,10 @@ function showMath(state: ChatState): Step {
   return { state, messages: [{ from: 'ribbit', text: 'Here is the math:', math: rows }], chips, input: state.ui?.input ?? 'text', events: [{ name: 'ribbit_math_opened', props: { turn: state.turn } }] }
 }
 
-/** The open question, in words, for the assistant: what Ribbit is waiting on. */
 /**
  * A typed message that is not an answer to the open question: Ribbit answers it from the person's figures (the
- * same assistant as the text thread), then the open question comes back with its options, unchanged.
+ * same assistant as the text thread). The open question is not asked again after the answer (the text thread's
+ * rule too); it stays open, with its options, parked for the page to show folded.
  */
 async function question(state: ChatState, text: string, svc: ChatServices, waitingFor: string): Promise<Step> {
   const chips = state.ui?.chips ?? []
@@ -789,7 +804,6 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   }
   const events: ChatEvent[] = [{ name: 'ribbit_question_typed', props: { turn: state.turn } }]
   const msg = res?.reply ?? "I can't answer that right now."
-  const ask = state.ui?.ask
-  const messages: ChatMessage[] = [{ from: 'ribbit', text: msg }, ...(ask && waitingFor ? [{ from: 'ribbit' as const, text: ask }] : [])]
-  return { state: { ...state, history: [...state.history, { from: 'out' as const, text: msg }].slice(-12) }, messages, chips, input, events }
+  const parked = waitingFor ? state.ui?.ask ?? '' : undefined
+  return { state: { ...state, history: [...state.history, { from: 'out' as const, text: msg }].slice(-12) }, messages: [{ from: 'ribbit', text: msg }], chips, input, events, parked }
 }

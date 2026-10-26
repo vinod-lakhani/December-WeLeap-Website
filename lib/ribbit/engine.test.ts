@@ -110,12 +110,21 @@ describe('rent flow', () => {
     expect(called).toBe(false)
   })
 
-  it('a side question goes to Ribbit and the open question comes back with its options', async () => {
-    const s = await run('rent', [{ text: '80000' }, { text: 'is that before or after tax?' }])
-    expect(said(s[2])).toContain('answer to: is that before or after tax?')
-    expect(said(s[2])).toContain('Which city?')
-    expect(s[2].chips.some((c) => c.value === 'Austin')).toBe(true)
+  it('a side question goes to Ribbit; the open question is parked, not asked again', async () => {
+    const s = await run('rent', [{ text: '80000' }, { text: 'is that before or after tax?' }, { text: 'what is a roth IRA' }, { text: 'austin' }])
+    expect(said(s[2])).toBe('answer to: is that before or after tax?')
+    expect(said(s[3])).toBe('answer to: what is a roth IRA')
+    expect(s[3].parked).toBe('Which city?')
+    expect(s[3].chips.some((c) => c.value === 'Austin')).toBe(true)
     expect(s[2].events.some((e) => e.name === 'ribbit_question_typed')).toBe(true)
+    // The answer still lands after two side questions, and the next turn is not parked.
+    expect(said(s[4])).toContain('Rentals in Austin')
+    expect(s[4].parked).toBeUndefined()
+  })
+
+  it('parks the question the turn asked, even when the turn goes on after it', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { text: 'do student loans count?' }])
+    expect(s[4].parked).toBe('Any monthly debt payments, like a car, student loans or card minimums?')
   })
 
   it('the first win comes after one answer', async () => {

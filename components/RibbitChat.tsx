@@ -24,7 +24,12 @@ interface Saved {
   state: ChatState
   chips: Chip[]
   input: Step['input']
+  /** The open question while it is parked after a side answer (Step.parked): its options are folded. */
+  parked?: string
 }
+
+/** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
+const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
 
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t${Date.now().toString(36)}`
@@ -90,7 +95,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     setText('')
     // A tapped "Show me the math" is not an answer, so it isn't echoed as one.
     const echo: ChatMessage[] = r.chip === '__math__' ? [] : [{ from: 'you', text: shown }]
-    setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [] }))
+    setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [], parked: undefined }))
     setBusy(true)
     const began = Date.now()
     const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, browserServices)
@@ -98,9 +103,15 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     const wait = Math.max(0, 450 - (Date.now() - began))
     await new Promise((res) => setTimeout(res, wait))
     setBusy(false)
-    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input }))
+    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked }))
     send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow)
   }, [busy, thread.state, thread.id, send])
+
+  // Unfolds the parked question's options; the question itself is already in the thread above.
+  const backToPlan = () => {
+    setThread((t) => ({ ...t, parked: undefined }))
+    track('ribbit_back_to_plan', { thread_id: thread.id, flow: thread.state.flow ?? 'picker', turn: thread.state.turn })
+  }
 
   const startOver = () => {
     try { localStorage.removeItem(STORE_KEY) } catch { /* nothing stored */ }
@@ -148,7 +159,16 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
       {thread.input !== 'none' && (
         <div className="sticky bottom-0 mt-4 border-t border-hairline bg-canvas pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
-          {thread.chips.length > 0 && (
+          {thread.parked !== undefined ? (
+            <button
+              type="button"
+              onClick={backToPlan}
+              className="mb-2.5 inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border-2 border-dashed border-[#386641] bg-white px-3.5 py-1.5 text-left text-[14px] font-semibold leading-snug text-[#386641] transition hover:bg-[#386641]/5"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14l-4-4 4-4" /><path d="M5 10h11a4 4 0 0 1 0 8h-1" /></svg>
+              <span>{thread.parked ? `Back to your plan: ${inSentence(thread.parked)}` : 'Back to your plan'}</span>
+            </button>
+          ) : thread.chips.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-2">
               {thread.chips.map((c) => (
                 <button
@@ -171,7 +191,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
               value={text}
               onChange={(e) => setText(e.target.value)}
               inputMode={thread.input === 'money' ? 'decimal' : 'text'}
-              placeholder={thread.input === 'money' ? 'Type a number, or ask anything' : thread.input === 'location' ? 'Type a city or state, or ask anything' : 'Type an answer, or ask anything'}
+              placeholder={thread.parked !== undefined ? 'Ask anything else' : thread.input === 'money' ? 'Type a number, or ask anything' : thread.input === 'location' ? 'Type a city or state, or ask anything' : 'Type an answer, or ask anything'}
               aria-label="Your reply"
               className="h-12 min-w-0 flex-1 rounded-xl border border-[#D1D5DB] bg-white px-4 text-[16px] outline-none focus-visible:border-[#386641] focus-visible:ring-2 focus-visible:ring-[#386641]/20"
             />
