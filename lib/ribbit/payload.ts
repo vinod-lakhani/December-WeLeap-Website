@@ -60,6 +60,10 @@ export function rentPlanData(f: Facts): Record<string, unknown> | null {
     firstMove: f.range.high > f.range.low ? rentFirstMove(f.range.low, f.range.high) : undefined,
     pickedRent: f.pick,
     savingFor: f.purpose,
+    // The chat's plan, so the first text picks it up rather than restating the range (users/rentpilot.go
+    // FirstMessage reads these when source is ribbit_chat).
+    perCheck: f.perCheck,
+    moveInTarget: f.purpose === 'cushion' ? f.upfront?.high : undefined,
     roommate: f.roommate,
     takeHomeBasis: takeHomeBasis(f),
   }
