@@ -61,7 +61,19 @@ export function rentPlanData(f: Facts): Record<string, unknown> | null {
     pickedRent: f.pick,
     savingFor: f.purpose,
     roommate: f.roommate,
+    takeHomeBasis: takeHomeBasis(f),
   }
+}
+
+/**
+ * What the take-home figure includes, in words, for Ribbit. Before a location it is federal income tax and FICA
+ * only; without this, a question like "is that after tax?" was answered as if state tax were in it.
+ */
+export function takeHomeBasis(f: Facts): string {
+  if (f.takeHomeFrom === 'typed') return 'typed by the person as their monthly take-home'
+  if (f.takeHomeBeforeState || !f.tax) return 'salary less federal income tax and FICA only; no location yet, so state and city income tax are not taken out'
+  const parts = ['federal income tax', f.tax.stateTaxAnnual > 0 ? 'state income tax' : 'no state income tax in this state', ...(f.tax.localTaxAnnual > 0 ? ['city income tax'] : []), 'FICA']
+  return `salary less ${parts.join(', ')}`
 }
 
 /**
@@ -88,16 +100,16 @@ export function offerPlanData(f: Facts): Record<string, unknown> | null {
   if (f.match === 'known' || f.match === 'none') entered.push('matchRatePct', 'matchUpToPct')
   if (f.rsuAnnual !== undefined) entered.push('rsuAnnual')
   if (f.signingBonus !== undefined) entered.push('signingBonus')
-  return {
-    ...offerTextPayload({
-      id: crypto.randomUUID(),
-      side: { label: 'Offer A', location: f.place ?? '', inputs, value },
-      tax,
-      levers: computeLevers(inputs, tax),
-      comparison: null,
-      other: null,
-      entered: { fields: entered.sort(), value },
-    }),
-    source: CHAT_SOURCE,
-  }
+  const payload = offerTextPayload({
+    id: crypto.randomUUID(),
+    side: { label: 'Offer A', location: f.place ?? '', inputs, value },
+    tax,
+    levers: computeLevers(inputs, tax),
+    comparison: null,
+    other: null,
+    entered: { fields: entered.sort(), value },
+  })
+  // The backend reads extra facts from `figures` (OfferResult.Figures), so the basis goes there too.
+  const figures = { ...((payload.figures as Record<string, unknown>) ?? {}), takeHomeBasis: takeHomeBasis(f) }
+  return { ...payload, figures, source: CHAT_SOURCE }
 }
