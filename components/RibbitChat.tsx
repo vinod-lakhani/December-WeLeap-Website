@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
+import { ribbitAppLink } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 
@@ -30,8 +31,6 @@ interface Saved {
   chipsLabel?: string
 }
 
-/** The app install page, tagged like the text thread's link (source, mechanism, campaign, variant). */
-const appLink = (reason = 'plan') => `/get?utm_source=web&utm_medium=ribbit&utm_campaign=ribbit_chat_oct26&utm_content=${reason}_invite`
 const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
@@ -151,7 +150,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             threadId={thread.id}
             flow={thread.state.flow}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
-            onFinish={m.invite && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
+            onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
+            onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
           />
         ))}
         {thread.messages.length === first.current.messages.length && initialFlow && !restored && (
@@ -228,8 +228,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, onFinish }: {
-  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; onFinish?: () => void
+function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
+  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; onFinish?: () => void; onTextInstead?: () => void
 }) {
   if (m.from === 'you') {
     return (
@@ -266,29 +266,70 @@ function Bubble({ m, facts, threadId, flow, onFinish }: {
         )}
       </div>
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
-      {m.invite && (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          <a
-            href={appLink(m.inviteReason)}
-            onClick={() => track('ribbit_app_invite_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, reason: m.inviteReason ?? 'plan' })}
-            // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
-            className="inline-flex h-12 items-center gap-2 rounded-xl bg-lime px-5 text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
-          >
-            Click to get WeLeap
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
-          </a>
-          {onFinish && flow && (
-            <button
-              type="button"
-              onClick={onFinish}
-              className="inline-flex h-11 items-center rounded-xl border-2 border-[#386641] bg-white px-4 text-[15px] font-semibold text-[#386641] transition hover:bg-[#386641]/5"
+      {m.planCard && <PlanCard card={m.planCard} />}
+      {m.appAsk && (
+        <div className="mt-2.5 flex flex-col items-start gap-2">
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={ribbitAppLink(facts, flow, m.appAsk.why, threadId)}
+              onClick={() => track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: m.appAsk!.why })}
+              // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
+              className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
-              {FINISH_LABEL[flow]}
+              {m.appAsk.label}
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+            </a>
+            {onFinish && flow && (
+              <button
+                type="button"
+                onClick={onFinish}
+                className="inline-flex h-12 items-center rounded-xl border-2 border-[#386641] bg-white px-4 text-[15px] font-semibold text-[#386641] transition hover:bg-[#386641]/5"
+              >
+                {FINISH_LABEL[flow]}
+              </button>
+            )}
+          </div>
+          {onTextInstead && (
+            <button type="button" onClick={onTextInstead} className="py-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
+              Not ready to connect? Text me each step instead
             </button>
           )}
+          {m.appAsk.note && <p className="text-[13px] leading-snug text-subtle">{m.appAsk.note}</p>}
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * The plan as WeLeap would show it: what the chat knows, then the rows only the bank can fill, shown locked.
+ */
+function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
+  return (
+    <section aria-label="Your WeLeap plan preview" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-[16px] font-extrabold text-ink">Your WeLeap plan</span>
+        <span className="rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold text-brand-700">From this chat</span>
+      </div>
+      {card.known.map((row) => (
+        <div key={row.label} className="flex items-baseline justify-between gap-3 border-t border-[#f0efec] py-2.5 text-[14px]">
+          <span className="text-ink-soft">{row.label}</span>
+          <span className="text-right font-bold tabular-nums text-ink">{row.value}</span>
+        </div>
+      ))}
+      <div className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle`}>
+        Unlocks when you connect your bank
+      </div>
+      {card.locked.map((label) => (
+        <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
+          <span className="inline-flex items-center gap-2">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+            {label}
+          </span>
+          <span aria-label="Shown after you connect" className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
+        </div>
+      ))}
+    </section>
   )
 }
 

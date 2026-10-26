@@ -24,6 +24,7 @@ import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type OfferValue, 
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
 import { matchPresetCity, matchState, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
+import type { AppReason } from './appLink'
 
 const metroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>
 
@@ -40,10 +41,14 @@ export interface ChatMessage {
   figureLabel?: string
   /** A second figure set small under the first, for a comparison ("Your range $1,600–$2,000/mo"). */
   compare?: { label: string; value: string }
-  /** The app-link card under this message: a planning question's invite, an account question, or "watch it". */
-  invite?: boolean
-  /** Why the card is shown, for the link's tag and the events. */
-  inviteReason?: 'plan' | 'account' | 'watch'
+  /**
+   * An ask into the WeLeap app under this message: the lime button (the link is built by the page from the
+   * thread's facts, lib/ribbit/appLink.ts), small print under it, and for the endings a text link that opens the
+   * text sign-up instead ("Not ready to connect?").
+   */
+  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean }
+  /** The plan as WeLeap would show it: rows the chat knows, and rows only the bank can fill (shown locked). */
+  planCard?: { known: { label: string; value: string }[]; locked: string[] }
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -71,6 +76,15 @@ export interface Facts {
   place?: string
   metroOptions?: { label: string; value: string }[]
   debtMonthly?: number
+  /** What to move after each paycheck toward the move-in cash (the freed-up amount over two paychecks). */
+  perCheck?: number
+  /** The 401k at the elected rate: monthly in with the match, and its monthly after-tax cost (O6). */
+  electionMonthlyIn?: number
+  electionCost?: number
+  /** A monthly saving amount named in a general question ("I'm saving $1,000 a month"). */
+  mentionedSaving?: number
+  /** The spending check has been offered in this thread (once per thread). */
+  spendingCheckShown?: boolean
   range?: RentRange
   market?: { low: number; high: number; median: number; tier: string; source: 'zori' | 'hud' } | null
   pick?: number
@@ -304,14 +318,20 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         : pick > range.high
           ? `${fc(pick)} is above your range of ${range.formatted}, so it leaves less for everything else.`
           : `${fc(pick)} is the top of your range.`
-      return say({ ...state, turn: 'R5' }, [
-        { from: 'ribbit', text: lead, figure: saving > 0 ? `${fc(saving)}/mo` : undefined, figureLabel: 'Freed up each month', turn: 'R5' },
-        { from: 'ribbit', text: 'When does the job start?' },
-      ], [
-        { label: 'Already working', value: 'working' }, { label: 'This month', value: 'this_month' },
-        { label: 'Next month', value: 'next_month' }, { label: 'Pick a date', value: 'date' },
-      ], 'text', [win('R5')])
+      const won: ChatMessage = { from: 'ribbit', text: lead, figure: saving > 0 ? `${fc(saving)}/mo` : undefined, figureLabel: 'Freed up each month', turn: 'R5' }
+      if (!f.spendingCheckShown) {
+        f.spendingCheckShown = true
+        return say({ ...state, turn: 'R4b' }, [won, spendingCheck(
+          `Before you sign at ${fc(pick)}: this range assumes the rest of your spending fits. That's the one thing I can't see. Want to check it against what you actually spend?`,
+          `Connect your bank in WeLeap, about 2 minutes. You'll see what you spent last month next to ${fc(pick)}, and what's left.`,
+        )], KEEP_GOING, 'text', [win('R5'), { name: 'ribbit_spending_check_shown', props: { turn: 'R4' } }])
+      }
+      return askStart(state, [won], [win('R5')])
     }
+    case 'R4b':
+      // Past the spending check without tapping it: on to the start date. A typed start answer is read as one.
+      if (chip === 'keep') return askStart(state, [])
+      return route({ ...state, turn: 'R5' }, r, svc)
     case 'R5': {
       const v = chip ?? (/already|working/i.test(text) ? 'working' : /this month/i.test(text) ? 'this_month' : /next month/i.test(text) ? 'next_month' : '')
       if (v === 'date') return say({ ...state, turn: 'R5_date' }, [{ from: 'ribbit', text: 'What date? Month and day is fine.' }], [], 'text')
@@ -338,14 +358,10 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       if (!two) return question(state, text, svc, 'the card balance and its interest rate')
       return cardPayoff(state, two[0], two[1])
     }
-    case 'R7':
     case 'O6': {
-      const v = chip ?? (/each|text/i.test(text) ? 'text' : /watch/i.test(text) ? 'watch' : /grow/i.test(text) ? 'grow' : /rent/i.test(text) ? 'rent' : '')
-      if (v === 'grow') { f.purpose = 'future'; return purposeTurn(state) }
-      if (v === 'rent' && state.turn === 'O6') return offerRent(state)
-      if (v === 'watch') return watchInApp(state)
-      if (v === 'text') return handoff(state)
-      return question(state, text, svc, 'how they want the follow-through: a text for each step, or watching it for them')
+      // Past the 401k spending check: on to rent. Asking about rent directly works too.
+      if (chip === 'keep' || chip === 'rent' || /keep|go on|continue|rent/i.test(text)) return offerRent(state)
+      return question(state, text, svc, '')
     }
 
     // ── Offer ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -379,12 +395,14 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         const next: ChatState = { ...state, flow: 'rent', facts: { ...f, switchedFrom: 'offer', range: calculateRentRange(f.takeHomeMonthly ?? 0, 0) } }
         return f.region || f.presetCity || f.outsideMetro ? marketTurn(next, svc) : say({ ...next, turn: 'R2' }, [{ from: 'ribbit', text: 'Which city?' }], cityChips(), 'location')
       }
-      if (chip === 'later' || /later|no/i.test(text)) return handoff(state)
+      if (chip === 'later' || /later|no/i.test(text)) return planEnding(state, [])
       return question(state, text, svc, 'whether to work out rent now')
     }
     case 'R8':
     case 'O8':
     case 'done':
+      // The ending's "Not ready to connect? Text me each step instead" opens the text sign-up.
+      if (chip === 'text') return handoff(state)
       return question(state, text, svc, '')
   }
   return question(state, text, svc, '')
@@ -592,6 +610,22 @@ function purposeQuestion(f: Facts): string {
   return `Signing at ${fc(f.pick ?? 0)} instead of ${fc(f.range?.high ?? 0)} leaves ${fc(saving)} a month. Where should that ${fc(saving)} go?`
 }
 
+function askStart(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
+  return say({ ...state, turn: 'R5' }, [...lead, { from: 'ribbit', text: 'When does the job start?' }], [
+    { label: 'Already working', value: 'working' }, { label: 'This month', value: 'this_month' },
+    { label: 'Next month', value: 'next_month' }, { label: 'Pick a date', value: 'date' },
+  ], 'text', events)
+}
+
+/**
+ * The second moment (decided Oct 26): at the decision with real stakes (the rent they'd sign at, the 401k they'd
+ * elect), the one thing the chat can't see is their spending. Once per thread; "Keep going" carries on.
+ */
+const KEEP_GOING: Chip[] = [{ label: 'Keep going without it', value: 'keep' }]
+function spendingCheck(text: string, note: string): ChatMessage {
+  return { from: 'ribbit', text, appAsk: { label: 'Check it against my real spending', why: 'spending_check', note } }
+}
+
 function upfrontMath(state: ChatState): Step {
   const f = state.facts
   const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly ?? 0)
@@ -611,25 +645,25 @@ function purposeTurn(state: ChatState): Step {
   const f = state.facts
   const saving = Math.max(0, (f.range?.high ?? 0) - (f.pick ?? 0))
   const perCheck = Math.round(saving / 2)
-  const followThrough: Chip[] = [{ label: 'Text me each one', value: 'text' }, { label: 'Watch it for me', value: 'watch' }]
+  f.perCheck = perCheck
   if (f.purpose === 'card') {
     return say({ ...state, turn: 'R7_card' }, [{ from: 'ribbit', text: `Card first. Reply with the balance and the rate and I'll tell you how many months ${fc(saving)} a month takes to clear it.`, turn: 'R7' }], [], 'text')
   }
   if (f.purpose === 'future') {
     const value = Math.round(computeInvestingImpact(saving, REAL_RETURN_DEFAULT, 30))
-    return say({ ...state, turn: 'R7' }, [{
+    return planEnding(state, [{
       from: 'ribbit',
       text: `${fc(saving)} a month for 30 years at ${Math.round(REAL_RETURN_DEFAULT * 100)}% a year after inflation is about ${fc(value)}. Illustration only, not a guarantee. The first step is the same: auto-transfer ${fc(perCheck)} the day after each paycheck.`,
       figure: fc(value), figureLabel: 'What it could grow to in 30 years', turn: 'R7',
-    }], followThrough, 'text', [win('R7')])
+    }], [win('R7')])
   }
   const target = f.upfront?.high ?? 0
   const takeHome = fc(f.takeHomeMonthly ?? 0)
-  return say({ ...state, turn: 'R7' }, [{
+  return planEnding(state, [{
     from: 'ribbit',
-    text: `Move-in cash it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does. So that's ${fc(perCheck)} after each paycheck and a check on the 1st. I can text you each one, or I can watch and only text you when something's off.`,
+    text: `Move-in cash it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does.`,
     figure: fc(perCheck), figureLabel: 'To move after each paycheck', turn: 'R7',
-  }], [...followThrough, { label: 'What would it grow to', value: 'grow' }], 'text', [win('R7')])
+  }], [win('R7')])
 }
 
 /** Months to clear a balance paying a fixed amount at a card's APR. Infinity when the payment never covers the interest. */
@@ -648,8 +682,7 @@ function cardPayoff(state: ChatState, balance: number, apr: number): Step {
   const text = Number.isFinite(months)
     ? `Putting ${fc(saving)} a month on ${fc(balance)} at ${apr}% clears it in about ${months} months. That's if the balance doesn't grow; the math is only as good as the balance you gave me.`
     : `At ${apr}%, ${fc(saving)} a month doesn't cover the interest on ${fc(balance)}, so the balance won't go down on that alone. The card's minimum has to stay on top of it.`
-  return say({ ...state, turn: 'R7' }, [{ from: 'ribbit', text, figure: Number.isFinite(months) ? `${months} months` : undefined, figureLabel: 'Time to clear the card', turn: 'R7' }],
-    [{ label: 'Text me each one', value: 'text' }, { label: 'Watch it for me', value: 'watch' }], 'text', [win('R7')])
+  return planEnding(state, [{ from: 'ribbit', text, figure: Number.isFinite(months) ? `${months} months` : undefined, figureLabel: 'Time to clear the card', turn: 'R7' }], [win('R7')])
 }
 
 // ── Offer turns ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -767,11 +800,19 @@ function offerElection(state: ChatState): Step {
   // their state's effective rate, as the first-paycheck tool prices it.
   const stateRate = f.tax && salary ? f.tax.stateTaxAnnual / salary : 0
   const cost = contribution * (1 - marginalFederalRate(taxableIncome(salary, (salary * cap) / 100)) - stateRate)
-  return say({ ...state, turn: 'O6' }, [{
+  f.electionMonthlyIn = contribution + match
+  f.electionCost = cost
+  const elected: ChatMessage = {
     from: 'ribbit',
-    text: `Put in ${cap}%. It costs you about ${fc(cost)} a month of take-home and adds ${fc(contribution + match)} a month to your retirement account with the match. That's the ${cap}% form with HR on day one, then a look at the first stub to confirm it took. I can text you each one, or I can watch and only text you when something's off.`,
+    text: `Put in ${cap}%. It costs you about ${fc(cost)} a month of take-home and adds ${fc(contribution + match)} a month to your retirement account with the match. That's the ${cap}% form with HR on day one, then a look at the first stub to confirm it took.`,
     figure: `${cap}%`, figureLabel: 'Put into your 401k', turn: 'O6',
-  }], [{ label: 'Text me each one', value: 'text' }, { label: 'Watch it for me', value: 'watch' }, { label: "What's a good rent on this", value: 'rent' }], 'text', [win('O6')])
+  }
+  if (f.spendingCheckShown) return offerRent({ ...state, turn: 'O6' }, undefined, [elected])
+  f.spendingCheckShown = true
+  return say({ ...state, turn: 'O6' }, [elected, spendingCheck(
+    `That ${fc(cost)} is fine if your spending leaves room for it, and your spending is the one thing I can't see. Want to check before you tell HR?`,
+    `Connect your bank in WeLeap, about 2 minutes. You'll see last month's spending next to ${fc(f.takeHomeMonthly ?? 0)} take-home, before and after the ${cap}%.`,
+  )], [...KEEP_GOING, { label: "What's a good rent on this", value: 'rent' }], 'text', [win('O6'), { name: 'ribbit_spending_check_shown', props: { turn: 'O6' } }])
 }
 
 function offerRentMessages(f: Facts): ChatMessage[] {
@@ -779,8 +820,8 @@ function offerRentMessages(f: Facts): ChatMessage[] {
   return [{ from: 'ribbit', text: `Rent? You'd be looking at ${r.formatted} a month${f.place ? ` in ${f.place}` : ''}. Want to work that out properly?`, turn: 'O7' }]
 }
 
-function offerRent(state: ChatState, lead?: string): Step {
-  return say({ ...state, turn: 'O7' }, [...(lead ? [{ from: 'ribbit' as const, text: lead }] : []), ...offerRentMessages(state.facts)],
+function offerRent(state: ChatState, lead?: string, before: ChatMessage[] = []): Step {
+  return say({ ...state, turn: 'O7' }, [...before, ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []), ...offerRentMessages(state.facts)],
     [{ label: 'Yes', value: 'yes' }, { label: 'Later', value: 'later' }], 'text')
 }
 
@@ -801,15 +842,54 @@ function handoff(state: ChatState, lead?: string): Step {
 }
 
 /**
- * "Watch it for me": watching needs their bank connected, which is what the WeLeap app does, so this is an app
- * link, not the text door. Texting each step stays one tap away. It counts as the thread's invite.
+ * The ending (decided Oct 26, replacing "Watch it for me"): the plan as WeLeap would show it. Known rows are the
+ * thread's own numbers; locked rows name what only the bank can show. The button saves the plan in the app (the
+ * pre-filled plan and the landing page are the app's side); a text link opens the text sign-up instead.
  */
-export const WATCH_TEXT = "Watching it means seeing your bank, and that happens in the WeLeap app: connect your bank there and I'll watch and only ping you when something's off."
-function watchInApp(state: ChatState): Step {
-  const step = say({ ...state, invited: true }, [{ from: 'ribbit', text: WATCH_TEXT, invite: true, inviteReason: 'watch', turn: state.turn }],
-    [{ label: 'Text me each one instead', value: 'text' }], 'text',
-    [{ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'watch' } }])
-  return step
+export const PLAN_PREVIEW_TEXT = "Want to keep this? Here's your plan as WeLeap would show it. The rest fills in when you connect your bank."
+function planEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
+  const flow: Flow = state.flow ?? 'rent'
+  const turn = flow === 'offer' ? 'O8' : 'R8'
+  const card = flow === 'offer' ? offerCard(state.facts) : rentCard(state.facts)
+  return say({ ...state, turn, invited: true }, [...lead, {
+    from: 'ribbit', text: PLAN_PREVIEW_TEXT, turn, planCard: card,
+    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: true },
+  }], [], 'text', [...events, { name: 'ribbit_plan_preview_shown', props: { turn, known_rows: card.known.length } }])
+}
+
+function rentCard(f: Facts): NonNullable<ChatMessage['planCard']> {
+  const saving = Math.max(0, (f.range?.high ?? 0) - (f.pick ?? 0))
+  const known = [
+    ...(f.takeHomeMonthly ? [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
+    ...(f.pick ? [{ label: 'Rent', value: `${fc(f.pick)}/mo` }] : []),
+    ...(f.debtMonthly ? [{ label: 'Debt payments', value: `${fc(f.debtMonthly)}/mo` }] : []),
+    ...(f.purpose === 'cushion' && f.perCheck && f.upfront ? [{ label: 'Move-in cash', value: `${fc(f.perCheck)} a paycheck to ${fc(f.upfront.high)}` }] : []),
+    ...(f.purpose === 'card' && saving ? [{ label: 'Toward the card', value: `${fc(saving)}/mo` }] : []),
+    ...(f.purpose === 'future' && saving ? [{ label: 'Saving for later', value: `${fc(saving)}/mo` }] : []),
+  ]
+  return {
+    known,
+    locked: ['What you actually spend a month', f.pick ? `Does ${fc(f.pick)} still fit after that?` : 'Whether the rent still fits after that', "Subscriptions you're paying for", 'Is this month on pace?'],
+  }
+}
+
+function offerCard(f: Facts): NonNullable<ChatMessage['planCard']> {
+  const cap = f.matchUpToPct
+  const known = [
+    ...(f.takeHomeMonthly ? [{ label: f.place ? `Take-home in ${f.place}` : 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
+    ...(f.match === 'known' && f.value ? [{ label: 'Offer worth, with the match', value: `${fc(f.value.totalPackage)}/yr` }] : []),
+    ...(f.electionMonthlyIn && cap ? [{ label: `401(k) at ${cap}%`, value: `${fc(f.electionMonthlyIn)}/mo in` }] : []),
+    ...(f.electionCost && cap ? [{ label: `What the ${cap}% costs you`, value: `${fc(f.electionCost)}/mo` }] : []),
+  ]
+  return {
+    known,
+    locked: [
+      'Your first paycheck, checked against this',
+      ...(f.electionMonthlyIn && cap ? [`Did the ${cap}% actually come out?`] : []),
+      'Rent that fits what you really spend',
+      'Is this month on pace?',
+    ],
+  }
 }
 
 function showMath(state: ChatState): Step {
@@ -858,15 +938,30 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   if (res?.kind === 'account') {
     // Needs their own accounts: the hand-off the first time (it is the thread's invite), the app link after.
     invite = !state.invited
-    messages.push({ from: 'ribbit', text: invite ? HANDOFF_TEXT : APP_LINK_TEXT, invite: true, inviteReason: 'account', turn: state.turn })
+    messages.push({ from: 'ribbit', text: invite ? HANDOFF_TEXT : APP_LINK_TEXT, appAsk: { label: 'Click to get WeLeap', why: 'account' }, turn: state.turn })
     if (invite) events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'account' } })
   } else {
     messages.push({ from: 'ribbit', text: res?.reply ?? "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." })
     // A planning question: the answer, then the thread's one invite (mid-flow too; the page offers finishing the
     // numbers next to it).
     invite = Boolean(res?.plan) && !state.invited
-    if (invite) {
-      messages.push({ from: 'ribbit', text: INVITE_TEXT, invite: true, inviteReason: 'plan', turn: state.turn })
+    if (invite && state.turn === 'P0') {
+      // No tool picked, so no numbers yet: the card is built from the question. An amount they mentioned is the
+      // known row; what would answer it properly is locked.
+      const amount = /sav/i.test(text) ? parseMoney(text) : null
+      if (amount) state.facts.mentionedSaving = amount
+      messages.push({
+        from: 'ribbit', text: INVITE_TEXT, turn: state.turn,
+        planCard: {
+          known: amount ? [{ label: 'Saving each month', value: fc(amount) }] : [],
+          locked: ['Months your emergency fund covers', 'Your card balances and rates', `Where ${amount ? `your ${fc(amount)}` : 'your money'} should go first`],
+        },
+        appAsk: { label: 'Get my plan and unlock the rest', why: 'plan_invite', note: 'Connecting your bank takes about 2 minutes.' },
+      })
+      events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan', card: true } })
+    } else if (invite) {
+      // Mid-flow: the line and the button, next to finishing the numbers; the flow's own ending shows the card.
+      messages.push({ from: 'ribbit', text: INVITE_TEXT, appAsk: { label: 'Click to get WeLeap', why: 'plan_invite' }, turn: state.turn })
       events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan' } })
     }
   }

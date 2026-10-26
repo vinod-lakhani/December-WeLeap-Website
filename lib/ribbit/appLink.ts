@@ -1,0 +1,73 @@
+/**
+ * The link from the Ribbit chat into the WeLeap web app: the contract both sides read.
+ *
+ * The chat knows most of what onboarding asks (salary or take-home, place, rent, debt, start date, the 401k
+ * election), so the app opens with the plan already in and goes straight to the bank connection, skipping the
+ * form (spec: "Save My Plan: Chat to App Without the Form"). Every number here comes from the chat's own facts,
+ * computed by the tool logic, never typed by the model.
+ *
+ * The experiment runs on dev3 (decided Oct 26): NEXT_PUBLIC_RIBBIT_APP_URL is the one setting that moves it to
+ * production. Attribution (UTMs, click ids, the PostHog id) rides along through appLinkAt, as on every other CTA.
+ *
+ * Parameters the app reads (all optional except src and why):
+ *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
+ *   open=connect-bank go to the bank connection once signed in
+ *   why               plan_preview | spending_check | plan_invite | account (which ask was tapped)
+ *   rt                the chat thread id, to stitch the web events to the app
+ *   flow              rent | offer | general
+ *   salary            yearly salary, dollars (when given)
+ *   takehome          monthly take-home, dollars (net of federal, FICA, state and city tax where known)
+ *   state, city       two-letter state; the city or metro as the chat named it
+ *   rent              the monthly rent the person picked
+ *   debt              monthly debt payments
+ *   start             working | this_month | next_month | YYYY-MM-DD
+ *   upfront           the cash-before-keys target (the top of the upfront range)
+ *   percheck          what to move after each paycheck toward it
+ *   purpose           cushion | card | future (what the freed-up money is for)
+ *   match_rate, match_cap   the 401k match formula as given (percent)
+ *   k401_monthly      monthly into the 401k at the elected rate, with the match
+ *   k401_cost         its monthly after-tax cost to take-home
+ *   worth             the offer's yearly worth on entered terms
+ *   saving            a monthly saving amount the person mentioned (general questions)
+ */
+import { appLinkAt } from '@/lib/app-link'
+import type { Facts, Flow } from './engine'
+
+export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
+
+export type AppReason = 'plan_preview' | 'spending_check' | 'plan_invite' | 'account'
+
+const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
+
+/** The plan's numbers as link parameters. Absent facts are left out, never guessed. */
+export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string): Record<string, string> {
+  const p: Record<string, string | undefined> = {
+    src: 'ribbit_chat',
+    open: 'connect-bank',
+    why,
+    rt: threadId || undefined,
+    flow: flow ?? 'general',
+    salary: f.takeHomeFrom === 'salary' ? round(f.salary) : undefined,
+    takehome: round(f.takeHomeMonthly),
+    state: f.stateCode,
+    city: f.place,
+    rent: round(f.pick),
+    debt: f.debtMonthly ? round(f.debtMonthly) : undefined,
+    start: f.start === 'date' ? f.startDate : f.start,
+    upfront: round(f.upfront?.high),
+    percheck: round(f.perCheck),
+    purpose: f.purpose,
+    match_rate: f.match === 'known' ? round(f.matchRatePct) : undefined,
+    match_cap: f.match === 'known' ? round(f.matchUpToPct) : undefined,
+    k401_monthly: round(f.electionMonthlyIn),
+    k401_cost: round(f.electionCost),
+    worth: f.match === 'known' ? round(f.value?.totalPackage) : undefined,
+    saving: round(f.mentionedSaving),
+  }
+  return Object.fromEntries(Object.entries(p).filter((e): e is [string, string] => e[1] !== undefined && e[1] !== ''))
+}
+
+/** The full link into the app, with attribution. Client-side (attribution reads storage and PostHog). */
+export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threadId: string): string {
+  return appLinkAt(RIBBIT_APP_URL, '/react/', ribbitPlanParams(f, flow, why, threadId))
+}

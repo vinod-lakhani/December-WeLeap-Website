@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, WATCH_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -215,38 +215,73 @@ describe('typed answers Ribbit reads', () => {
 describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   const planAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: /what should i do|card or invest/i.test(message) }) })
 
-  it('a planning question gets the answer and the invite, once per thread', async () => {
+  it('a planning question before a tool gets the answer and a card built from the question, once per thread', async () => {
     const s = await run(null, [{ text: 'I am saving $1000 a month, what should I do with it' }, { text: 'should I pay off my card or invest' }], planAsk)
     expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I am saving $1000 a month, what should I do with it', INVITE_TEXT])
-    expect(s[1].messages[1].invite).toBe(true)
-    expect(s[1].events.some((e) => e.name === 'ribbit_app_invite_shown')).toBe(true)
+    const card = s[1].messages[1]
+    expect(card.planCard?.known).toEqual([{ label: 'Saving each month', value: '$1,000' }])
+    expect(card.planCard?.locked).toContain('Where your $1,000 should go first')
+    expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Get my plan and unlock the rest', why: 'plan_invite' }))
+    expect(card.appAsk?.textInstead).toBeFalsy()
+    expect(facts(s[1]).mentionedSaving).toBe(1000)
     expect(s[2].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
   })
 
-  it('mid-flow too: the invite comes with the question parked', async () => {
+  it('mid-flow: the line and the button with the question parked; the card waits for the ending', async () => {
     const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
-    expect(s[2].messages.some((m) => m.invite)).toBe(true)
+    const invite = s[2].messages.find((m) => m.appAsk)!
+    expect(invite.appAsk?.why).toBe('plan_invite')
+    expect(invite.planCard).toBeUndefined()
     expect(s[2].parked).toBe('Which city?')
   })
 
   it('an account question gets the hand-off first (the one invite), then the app link', async () => {
     const acct = svc({ ask: async ({ message }) => (/savings rate|401k/.test(message) ? { kind: 'account' as const } : { kind: 'question' as const, reply: 'ok', plan: true }) })
     const s = await run(null, [{ text: 'what is my savings rate' }, { text: 'and my 401k' }, { text: 'what should I do with it' }], acct)
-    expect(s[1].messages).toEqual([expect.objectContaining({ text: HANDOFF_TEXT, invite: true })])
-    expect(s[2].messages).toEqual([expect.objectContaining({ text: APP_LINK_TEXT, invite: true })])
-    expect(s[3].messages.some((m) => m.invite)).toBe(false)
+    expect(s[1].messages).toEqual([expect.objectContaining({ text: HANDOFF_TEXT, appAsk: expect.objectContaining({ why: 'account' }) })])
+    expect(s[2].messages).toEqual([expect.objectContaining({ text: APP_LINK_TEXT, appAsk: expect.objectContaining({ why: 'account' }) })])
+    expect(s[3].messages.some((m) => m.appAsk)).toBe(false)
   })
 
-  it('"watch it for me" is the app (bank connection lives there), with texting one tap away', async () => {
+  it('rent: the spending check after the pick, once, and a typed start date still lands', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { text: 'next month' }])
+    const check = s[5].messages.find((m) => m.appAsk)!
+    expect(check.appAsk).toEqual(expect.objectContaining({ label: 'Check it against my real spending', why: 'spending_check' }))
+    expect(check.text).toContain(`Before you sign at $${facts(s[5]).pick!.toLocaleString('en-US')}`)
+    expect(s[5].chips.map((c) => c.value)).toEqual(['keep'])
+    expect(s[5].events.some((e) => e.name === 'ribbit_spending_check_shown')).toBe(true)
+    expect(facts(s[6]).start).toBe('next_month')
+  })
+
+  it('rent: the ending is the plan card, with the text sign-up one tap away', async () => {
     const s = await run('rent', [
-      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'watch' }, { chip: 'text' },
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'low' }, { chip: 'keep' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'text' },
     ])
-    const watch = s[8]
-    expect(watch.messages).toEqual([expect.objectContaining({ text: WATCH_TEXT, invite: true, inviteReason: 'watch' })])
-    expect(watch.messages.some((m) => m.handoff)).toBe(false)
-    expect(watch.chips.map((c) => c.value)).toEqual(['text'])
-    expect(watch.state.invited).toBe(true)
-    expect(s[9].messages.some((m) => m.handoff === 'rent')).toBe(true)
+    const end = s[9]
+    const card = end.messages.find((m) => m.planCard)!
+    const f = facts(end)
+    expect(card.text).toBe(PLAN_PREVIEW_TEXT)
+    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', 'Debt payments', 'Move-in cash'])
+    expect(card.planCard!.known[3].value).toBe(`$${f.perCheck!.toLocaleString('en-US')} a paycheck to $${f.upfront!.high.toLocaleString('en-US')}`)
+    expect(card.planCard!.locked[1]).toBe(`Does $${f.pick!.toLocaleString('en-US')} still fit after that?`)
+    expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Save my plan and unlock the rest', why: 'plan_preview', textInstead: true }))
+    expect(end.events.some((e) => e.name === 'ribbit_plan_preview_shown')).toBe(true)
+    expect(end.messages.some((m) => /watch/i.test(m.text))).toBe(false)
+    expect(s[10].messages.some((m) => m.handoff === 'rent')).toBe(true)
+  })
+
+  it('offer: the spending check after the 401k, then rent, and Later ends on the offer card', async () => {
+    const s = await run('offer', [
+      { text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'put_in' }, { chip: 'keep' }, { chip: 'later' },
+    ])
+    const check = s[6].messages.find((m) => m.appAsk)!
+    expect(check.appAsk?.why).toBe('spending_check')
+    expect(check.text).toContain('Want to check before you tell HR?')
+    expect(said(s[7])).toContain('Want to work that out properly?')
+    const card = s[8].messages.find((m) => m.planCard)!
+    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home in Austin', 'Offer worth, with the match', '401(k) at 4%', 'What the 4% costs you'])
+    expect(card.planCard!.locked).toContain('Did the 4% actually come out?')
+    expect(s[8].state.turn).toBe('O8')
   })
 
   it('at the picker the two tools stay up, captioned as tasks', async () => {
