@@ -1,7 +1,7 @@
 /**
  * The chat's services in the browser: the same routes the tool pages call (/api/tax, /api/zori), and Ribbit for
  * typed questions (/api/ribbit-ask). Every failure comes back null, which the engine answers honestly ("I don't
- * have rental prices for…", "I can't answer that right now") rather than with a guess.
+ * have rental prices for…", "My answers are down for a moment") rather than with a guess.
  */
 import type { AskResult, ChatServices } from './engine'
 import { offerPlanData, rentPlanData } from './payload'

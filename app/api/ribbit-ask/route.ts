@@ -12,7 +12,9 @@ import { offerPayload, rentPayload } from '@/lib/text-pilot'
 export const runtime = 'nodejs'
 
 const limiter = makeRateLimiter({ hourly: 40, daily: 150 })
-const FALLBACK = { kind: 'question', reply: "I can't answer that right now." }
+// Ribbit could not be reached: the text thread's wording for the same case (an answer it could not give from the
+// figures comes back from the backend with its own reason).
+const FALLBACK = { kind: 'question', reply: "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." }
 
 export async function POST(req: Request) {
   const limit = limiter.check(clientKey(req.headers), Date.now())
