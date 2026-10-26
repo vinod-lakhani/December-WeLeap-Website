@@ -130,13 +130,17 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-col">
-      {restored && (
-        <div className="mb-3 text-right">
-          <button type="button" onClick={startOver} className="text-[13px] font-semibold text-brand-700 underline underline-offset-2">
-            Start over
-          </button>
-        </div>
-      )}
+      {/* Always there: a thread can need a restart before any reload (it used to show only on a restored one). */}
+      <div className="mb-3 text-right">
+        <button
+          type="button"
+          onClick={startOver}
+          disabled={busy}
+          className="text-[13px] font-semibold text-brand-700 underline underline-offset-2 disabled:opacity-50"
+        >
+          Start over
+        </button>
+      </div>
 
       <div className="flex flex-col gap-2.5" aria-live="polite">
         {thread.messages.map((m, i) => (
