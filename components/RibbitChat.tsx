@@ -267,9 +267,11 @@ function Bubble({ m, facts, threadId, flow, onFinish }: {
           <a
             href={APP_LINK}
             onClick={() => track('ribbit_app_invite_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn })}
-            className="inline-flex h-11 items-center rounded-xl bg-[#386641] px-5 text-[15px] font-bold text-white transition hover:bg-[#2d5a26]"
+            // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
+            className="inline-flex h-12 items-center gap-2 rounded-xl bg-lime px-5 text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
           >
-            Get WeLeap
+            Click to get WeLeap
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
           </a>
           {onFinish && flow && (
             <button
