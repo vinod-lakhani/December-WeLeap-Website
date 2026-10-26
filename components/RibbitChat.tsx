@@ -1,0 +1,238 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+
+import { TextOptIn } from '@/components/TextOptIn'
+import { track } from '@/lib/analytics'
+import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
+import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
+import { browserServices } from '@/lib/ribbit/services'
+
+/**
+ * The Ribbit chat on /ribbit_chat (spec: "Ribbit Chat Tool — Rent and Offer Flows"). The thread is the page: one
+ * column, Ribbit on the left in brand green, the person on the right in linen, the options for the current turn
+ * above a text field that is always there. The engine (lib/ribbit/engine.ts) decides every turn; this renders it,
+ * keeps the thread in localStorage, and sends the events with the thread id and flow on each.
+ */
+
+const STORE_KEY = 'ribbit_chat_thread_v1'
+const TOOL_PAGE: Record<Flow, string> = { rent: '/how-much-rent-can-i-afford', offer: '/what-is-my-job-offer-worth' }
+
+interface Saved {
+  id: string
+  messages: ChatMessage[]
+  state: ChatState
+  chips: Chip[]
+  input: Step['input']
+}
+
+function newId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t${Date.now().toString(36)}`
+}
+
+function load(flow: Flow | null): Saved | null {
+  try {
+    const raw = localStorage.getItem(STORE_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as Saved
+    // A thread opened for the other tool does not follow the person to this one.
+    if (flow && saved.state.flow && saved.state.flow !== flow && !saved.state.facts.switchedFrom) return null
+    return saved.messages?.length ? saved : null
+  } catch {
+    return null
+  }
+}
+
+export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; entry: 'flow_param' | 'utm' | 'picker' }) {
+  // The first message is computed synchronously, so it is in the page's HTML at load: no spinner before it.
+  const first = useRef(start(initialFlow))
+  const [thread, setThread] = useState<Saved>(() => ({
+    id: '', messages: first.current.messages, state: first.current.state, chips: first.current.chips, input: first.current.input,
+  }))
+  const [restored, setRestored] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [text, setText] = useState('')
+  const lastAt = useRef<number>(Date.now())
+  const endRef = useRef<HTMLDivElement>(null)
+
+  const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null) => {
+    for (const e of events) track(e.name, { ...e.props, thread_id: id, flow: flow ?? 'picker' })
+  }, [])
+
+  // Restore a thread in progress, or start a new one with an id.
+  useEffect(() => {
+    const saved = load(initialFlow)
+    if (saved) {
+      setThread(saved)
+      setRestored(true)
+      return
+    }
+    const id = newId()
+    setThread((t) => ({ ...t, id }))
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry })
+  }, [initialFlow, entry])
+
+  useEffect(() => {
+    if (!thread.id) return
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(thread)) } catch { /* private mode: the thread just won't survive a refresh */ }
+  }, [thread])
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [thread.messages.length, busy])
+
+  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string }) => {
+    if (busy) return
+    const shown = r.label ?? r.text ?? ''
+    if (!shown.trim()) return
+    const seconds = Math.round((Date.now() - lastAt.current) / 1000)
+    lastAt.current = Date.now()
+    setText('')
+    // A tapped "Show me the math" is not an answer, so it isn't echoed as one.
+    const echo: ChatMessage[] = r.chip === '__math__' ? [] : [{ from: 'you', text: shown }]
+    setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [] }))
+    setBusy(true)
+    const began = Date.now()
+    const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, browserServices)
+    // A short typing state, so the reply reads as answered rather than loaded (under a second).
+    const wait = Math.max(0, 450 - (Date.now() - began))
+    await new Promise((res) => setTimeout(res, wait))
+    setBusy(false)
+    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input }))
+    send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow)
+  }, [busy, thread.state, thread.id, send])
+
+  const startOver = () => {
+    try { localStorage.removeItem(STORE_KEY) } catch { /* nothing stored */ }
+    const s = start(initialFlow)
+    const id = newId()
+    setThread({ id, messages: s.messages, state: s.state, chips: s.chips, input: s.input })
+    setRestored(false)
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, restart: true })
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-[480px] flex-col">
+      {restored && (
+        <div className="mb-3 text-right">
+          <button type="button" onClick={startOver} className="text-[13px] font-semibold text-brand-700 underline underline-offset-2">
+            Start over
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5" aria-live="polite">
+        {thread.messages.map((m, i) => (
+          <Bubble key={i} m={m} facts={thread.state.facts} threadId={thread.id} />
+        ))}
+        {thread.messages.length === first.current.messages.length && initialFlow && !restored && (
+          <a
+            href={TOOL_PAGE[initialFlow]}
+            onClick={() => track('ribbit_skipped', { thread_id: thread.id, flow: initialFlow, turn: thread.state.turn })}
+            className="self-start pl-1 text-[13px] font-semibold text-subtle underline underline-offset-2"
+          >
+            Just give me the number
+          </a>
+        )}
+        {busy && (
+          <div className="self-start rounded-2xl rounded-bl-md bg-[#386641] px-4 py-3 text-white" aria-label="Ribbit is typing">
+            <span className="inline-flex gap-1">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80 [animation-delay:120ms]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/80 [animation-delay:240ms]" />
+            </span>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {thread.input !== 'none' && (
+        <div className="sticky bottom-0 mt-4 border-t border-hairline bg-canvas pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+          {thread.chips.length > 0 && (
+            <div className="mb-2.5 flex flex-wrap gap-2">
+              {thread.chips.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => answer({ chip: c.value, label: c.label })}
+                  className="min-h-10 rounded-full border-2 border-[#386641] bg-white px-3.5 text-[14px] font-semibold text-[#386641] transition hover:bg-[#386641] hover:text-white disabled:opacity-50"
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <form
+            onSubmit={(e) => { e.preventDefault(); answer({ text }) }}
+            className="flex items-center gap-2"
+          >
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              inputMode={thread.input === 'money' ? 'decimal' : 'text'}
+              placeholder={thread.input === 'money' ? 'Type a number, or ask anything' : thread.input === 'location' ? 'Type a city or state, or ask anything' : 'Type an answer, or ask anything'}
+              aria-label="Your reply"
+              className="h-12 min-w-0 flex-1 rounded-xl border border-[#D1D5DB] bg-white px-4 text-[16px] outline-none focus-visible:border-[#386641] focus-visible:ring-2 focus-visible:ring-[#386641]/20"
+            />
+            <button
+              type="submit"
+              disabled={busy || !text.trim()}
+              className="h-12 shrink-0 rounded-xl bg-[#386641] px-5 text-[15px] font-bold text-white transition hover:bg-[#2d5a26] disabled:opacity-40"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Bubble({ m, facts, threadId }: { m: ChatMessage; facts: ChatState['facts']; threadId: string }) {
+  if (m.from === 'you') {
+    return (
+      <div className="max-w-[85%] self-end rounded-2xl rounded-br-md bg-[#EFE9DD] px-4 py-2.5 text-[15px] leading-snug text-ink">
+        {m.text}
+      </div>
+    )
+  }
+  return (
+    <div className="max-w-[92%] self-start">
+      <div className="rounded-2xl rounded-bl-md bg-[#386641] px-4 py-3 text-[15px] leading-snug text-white">
+        {m.figure && <div className="mb-1 text-[26px] font-extrabold leading-tight tracking-[-0.02em] tabular-nums">{m.figure}</div>}
+        <p>{m.text}</p>
+        {m.math && (
+          <dl className="mt-2.5 rounded-xl bg-white/10 px-3 py-2">
+            {m.math.map((row, i) => (
+              <div key={i} className={`flex justify-between gap-3 py-1 text-[13.5px] ${row.strong ? 'font-bold' : 'text-white/85'}`}>
+                <dt>{row.label}</dt>
+                <dd className="shrink-0 tabular-nums">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+      {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
+    </div>
+  )
+}
+
+/**
+ * The follow-up turn: the existing text door, with its counsel-approved consent and button, fed the same figures
+ * the tool pages send (lib/ribbit/payload.ts). The figures are taken once, when the turn appears.
+ */
+function Handoff({ flow, facts, threadId }: { flow: Flow; facts: ChatState['facts']; threadId: string }) {
+  const [plan] = useState(() => (flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)))
+  if (!plan) return null
+  return (
+    <div className="mt-2.5 rounded-2xl border border-hairline bg-white p-4">
+      <TextOptIn
+        planData={plan}
+        endpoint={flow === 'offer' ? '/api/offer-text' : '/api/rent-text'}
+        tool={flow}
+        onSubmitted={(method) => track('ribbit_handoff_accepted', { thread_id: threadId, flow, method })}
+      />
+    </div>
+  )
+}
