@@ -73,7 +73,7 @@ describe('rent flow', () => {
     const f = facts(s[6])
     const saving = f.range!.high - f.pick!
     expect(said(s[6])).toContain(`Signing at $${f.pick!.toLocaleString('en-US')} instead of $${f.range!.high.toLocaleString('en-US')} leaves $${saving.toLocaleString('en-US')} a month. Where should that`)
-    expect(s[6].chips.map((c) => c.label)).toEqual(['Toward the move-in cash', 'Paying down a card', 'Saving for later', 'How the upfront is worked out'])
+    expect(s[6].chips.map((c) => c.label)).toEqual(['Rebuild my savings after the move', 'Paying down a card', 'Saving for later', 'How the upfront is worked out'])
     expect(facts((await run('rent', [...base, { text: 'saving for later' }]))[7]).purpose).toBe('future')
     expect(facts((await run('rent', [...base, { text: 'the move-in money' }]))[7]).purpose).toBe('cushion')
     const math = (await run('rent', [...base, { chip: 'upfront_math' }]))[7]
@@ -95,7 +95,7 @@ describe('rent flow', () => {
     expect(said(s[7])).toContain(`$${up.low.toLocaleString('en-US')} to $${up.high.toLocaleString('en-US')}`)
     // Cushion: half the freed amount after each of two paychecks, toward the top of the upfront range.
     expect(said(s[8])).toContain(`$${Math.round((range.high - range.low) / 2).toLocaleString('en-US')} the day after each paycheck`)
-    expect(said(s[8])).toContain(`until you hit $${up.high.toLocaleString('en-US')}`)
+    expect(said(s[8])).toContain(`until you're back to $${up.high.toLocaleString('en-US')}, what the move takes out`)
   })
 
   it('labels each headline, and shows the market range against the range that fits', async () => {
@@ -261,7 +261,7 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     const card = end.messages.find((m) => m.planCard)!
     const f = facts(end)
     expect(card.text).toBe(PLAN_PREVIEW_TEXT)
-    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', 'Debt payments', 'Move-in cash'])
+    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', 'Debt payments', 'Rebuilding savings'])
     expect(card.planCard!.known[3].value).toBe(`$${f.perCheck!.toLocaleString('en-US')} a paycheck to $${f.upfront!.high.toLocaleString('en-US')}`)
     expect(card.planCard!.locked[1]).toBe(`Does $${f.pick!.toLocaleString('en-US')} still fit after that?`)
     expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Save my plan and unlock the rest', why: 'plan_preview', textInstead: true }))

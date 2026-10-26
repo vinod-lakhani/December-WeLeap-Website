@@ -76,7 +76,11 @@ export interface Facts {
   place?: string
   metroOptions?: { label: string; value: string }[]
   debtMonthly?: number
-  /** What to move after each paycheck toward the move-in cash (the freed-up amount over two paychecks). */
+  /**
+   * What to move after each paycheck to rebuild what the move took out (the freed-up amount over two paychecks).
+   * The freed-up money only exists once the lower rent is being paid, after the move, so it refills savings; it
+   * cannot pay the move-in cash itself, which is due before the keys.
+   */
   perCheck?: number
   /** The 401k at the elected rate: monthly in with the match, and its monthly after-tax cost (O6). */
   electionMonthlyIn?: number
@@ -347,7 +351,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       return upfrontTurn(state)
     }
     case 'R6': {
-      const v = chip ?? (/cushion|buffer|move|moving|upfront|deposit/i.test(text) ? 'cushion' : /card|debt/i.test(text) ? 'card' : /future|invest|retire|later|sav(e|ing)/i.test(text) ? 'future' : '')
+      const v = chip ?? (/rebuild|refill|cushion|buffer|emergency|back up|move|moving|upfront|deposit/i.test(text) ? 'cushion' : /card|debt/i.test(text) ? 'card' : /future|invest|retire|later|sav(e|ing)/i.test(text) ? 'future' : '')
       if (v === 'upfront_math') return upfrontMath(state)
       if (!v) return question(state, text, svc, 'what the money they free up is for')
       f.purpose = v as Facts['purpose']
@@ -603,7 +607,7 @@ function upfrontTurn(state: ChatState): Step {
 // The freed-up amount was stated two turns back (R5), with the start date and the upfront cash in between, so the
 // question says again where it comes from. The options are what the money does, not labels.
 const PURPOSE_CHIPS: Chip[] = [
-  { label: 'Toward the move-in cash', value: 'cushion' }, { label: 'Paying down a card', value: 'card' }, { label: 'Saving for later', value: 'future' },
+  { label: 'Rebuild my savings after the move', value: 'cushion' }, { label: 'Paying down a card', value: 'card' }, { label: 'Saving for later', value: 'future' },
 ]
 function purposeQuestion(f: Facts): string {
   const saving = Math.max(0, (f.range?.high ?? 0) - (f.pick ?? 0))
@@ -661,7 +665,7 @@ function purposeTurn(state: ChatState): Step {
   const takeHome = fc(f.takeHomeMonthly ?? 0)
   return planEnding(state, [{
     from: 'ribbit',
-    text: `Move-in cash it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does.`,
+    text: `Rebuilding it is. Move ${fc(perCheck)} the day after each paycheck until you're back to ${fc(target)}, what the move takes out. That's if ${takeHome} actually lands; I can't see whether it does.`,
     figure: fc(perCheck), figureLabel: 'To move after each paycheck', turn: 'R7',
   }], [win('R7')])
 }
@@ -863,7 +867,7 @@ function rentCard(f: Facts): NonNullable<ChatMessage['planCard']> {
     ...(f.takeHomeMonthly ? [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
     ...(f.pick ? [{ label: 'Rent', value: `${fc(f.pick)}/mo` }] : []),
     ...(f.debtMonthly ? [{ label: 'Debt payments', value: `${fc(f.debtMonthly)}/mo` }] : []),
-    ...(f.purpose === 'cushion' && f.perCheck && f.upfront ? [{ label: 'Move-in cash', value: `${fc(f.perCheck)} a paycheck to ${fc(f.upfront.high)}` }] : []),
+    ...(f.purpose === 'cushion' && f.perCheck && f.upfront ? [{ label: 'Rebuilding savings', value: `${fc(f.perCheck)} a paycheck to ${fc(f.upfront.high)}` }] : []),
     ...(f.purpose === 'card' && saving ? [{ label: 'Toward the card', value: `${fc(saving)}/mo` }] : []),
     ...(f.purpose === 'future' && saving ? [{ label: 'Saving for later', value: `${fc(saving)}/mo` }] : []),
   ]
