@@ -235,7 +235,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     case 'R1_amount': {
       if (chip === 'salary' || chip === 'take_home') {
         return say({ ...state, turn: 'R1_amount', facts: { ...f, takeHomeFrom: chip === 'salary' ? 'salary' : 'typed' } },
-          [{ from: 'ribbit', text: chip === 'salary' ? 'What does it pay a year?' : 'How much lands each month?' }], [], 'money')
+          [{ from: 'ribbit', text: chip === 'salary' ? "What's the yearly salary?" : 'How much take-home lands each month?' }], [], 'money')
       }
       const n = parseMoney(text)
       if (!n) return question(state, text, svc, 'their salary or monthly take-home')
@@ -496,8 +496,10 @@ async function afterLocation(state: ChatState, svc: ChatServices): Promise<Step>
 
 function askSalary(state: ChatState): Step {
   return say({ ...state, turn: 'R1' }, [
-    { from: 'ribbit', text: "Let's work out what rent fits. What's the salary, or take-home per month? Either works.", turn: 'R1' },
-  ], [{ label: 'Salary', value: 'salary' }, { label: 'Take-home', value: 'take_home' }], 'money')
+    // Each option names its period: "salary, or take-home per month" read as both monthly, then "Salary" asked
+    // for a yearly figure.
+    { from: 'ribbit', text: "Let's work out what rent fits. What's your yearly salary, or your monthly take-home? Either works.", turn: 'R1' },
+  ], [{ label: 'Yearly salary', value: 'salary' }, { label: 'Monthly take-home', value: 'take_home' }], 'money')
 }
 
 /**

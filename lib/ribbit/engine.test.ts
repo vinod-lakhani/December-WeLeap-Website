@@ -144,6 +144,14 @@ describe('rent flow', () => {
     expect(s[4].parked).toBe('Any monthly debt payments, like a car, student loans or card minimums?')
   })
 
+  it('the first question names the period for each option, and so do the follow-ups', async () => {
+    const s0 = start('rent')
+    expect(said(s0)).toContain('yearly salary, or your monthly take-home')
+    expect(s0.chips.map((c) => c.label)).toEqual(['Yearly salary', 'Monthly take-home'])
+    expect(said(await reply(s0.state, { chip: 'salary' }, svc()))).toBe("What's the yearly salary?")
+    expect(said(await reply(s0.state, { chip: 'take_home' }, svc()))).toBe('How much take-home lands each month?')
+  })
+
   it('the first win comes after one answer', async () => {
     const s = await run('rent', [{ text: '80000' }])
     expect(s[1].events.some((e) => e.name === 'ribbit_win_shown' && e.props.turn === 'R2')).toBe(true)
