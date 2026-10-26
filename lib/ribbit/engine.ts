@@ -327,7 +327,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       return upfrontTurn(state)
     }
     case 'R6': {
-      const v = chip ?? (/cushion|buffer|savings?/i.test(text) ? 'cushion' : /card|debt/i.test(text) ? 'card' : /future|invest|retire/i.test(text) ? 'future' : '')
+      const v = chip ?? (/cushion|buffer|move|moving|upfront|deposit/i.test(text) ? 'cushion' : /card|debt/i.test(text) ? 'card' : /future|invest|retire|later|sav(e|ing)/i.test(text) ? 'future' : '')
       if (v === 'upfront_math') return upfrontMath(state)
       if (!v) return question(state, text, svc, 'what the money they free up is for')
       f.purpose = v as Facts['purpose']
@@ -578,11 +578,18 @@ function upfrontTurn(state: ChatState): Step {
   if (saving <= 0) return handoff({ ...state, turn: 'R6' }, lead)
   return say({ ...state, turn: 'R6' }, [
     { from: 'ribbit', text: lead, figure: `${fc(up.low)}–${fc(up.high)}`, figureLabel: 'Cash to have before you move', turn: 'R6' },
-    { from: 'ribbit', text: `What's the ${fc(saving)} for?` },
-  ], [
-    { label: 'A cushion before the first paycheck', value: 'cushion' }, { label: 'The credit card', value: 'card' },
-    { label: 'Future me', value: 'future' }, { label: 'Where does that upfront number come from', value: 'upfront_math' },
-  ], 'text', [win('R6')])
+    { from: 'ribbit', text: purposeQuestion(f) },
+  ], [...PURPOSE_CHIPS, { label: 'How the upfront is worked out', value: 'upfront_math' }], 'text', [win('R6')])
+}
+
+// The freed-up amount was stated two turns back (R5), with the start date and the upfront cash in between, so the
+// question says again where it comes from. The options are what the money does, not labels.
+const PURPOSE_CHIPS: Chip[] = [
+  { label: 'Toward the move-in cash', value: 'cushion' }, { label: 'Paying down a card', value: 'card' }, { label: 'Saving for later', value: 'future' },
+]
+function purposeQuestion(f: Facts): string {
+  const saving = Math.max(0, (f.range?.high ?? 0) - (f.pick ?? 0))
+  return `Signing at ${fc(f.pick ?? 0)} instead of ${fc(f.range?.high ?? 0)} leaves ${fc(saving)} a month. Where should that ${fc(saving)} go?`
 }
 
 function upfrontMath(state: ChatState): Step {
@@ -597,9 +604,7 @@ function upfrontMath(state: ChatState): Step {
       { label: 'Moving and setup', value: fc(up.movingSetup) },
       { label: 'Total, rounded', value: `${fc(up.low)} to ${fc(up.high)}`, strong: true },
     ],
-  }], [
-    { label: 'A cushion before the first paycheck', value: 'cushion' }, { label: 'The credit card', value: 'card' }, { label: 'Future me', value: 'future' },
-  ], 'text')
+  }, { from: 'ribbit', text: purposeQuestion(f) }], PURPOSE_CHIPS, 'text')
 }
 
 function purposeTurn(state: ChatState): Step {
@@ -622,7 +627,7 @@ function purposeTurn(state: ChatState): Step {
   const takeHome = fc(f.takeHomeMonthly ?? 0)
   return say({ ...state, turn: 'R7' }, [{
     from: 'ribbit',
-    text: `Cushion it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does. So that's ${fc(perCheck)} after each paycheck and a check on the 1st. I can text you each one, or I can watch and only text you when something's off.`,
+    text: `Move-in cash it is. Move ${fc(perCheck)} the day after each paycheck until you hit ${fc(target)}. That's if ${takeHome} actually lands; I can't see whether it does. So that's ${fc(perCheck)} after each paycheck and a check on the 1st. I can text you each one, or I can watch and only text you when something's off.`,
     figure: fc(perCheck), figureLabel: 'To move after each paycheck', turn: 'R7',
   }], [...followThrough, { label: 'What would it grow to', value: 'grow' }], 'text', [win('R7')])
 }

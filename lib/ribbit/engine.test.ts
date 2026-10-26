@@ -67,6 +67,19 @@ describe('parse', () => {
 })
 
 describe('rent flow', () => {
+  it('the purpose question says where the money comes from, and typed answers land on the right option', async () => {
+    const base = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { chip: 'next_month' }]
+    const s = await run('rent', base)
+    const f = facts(s[6])
+    const saving = f.range!.high - f.pick!
+    expect(said(s[6])).toContain(`Signing at $${f.pick!.toLocaleString('en-US')} instead of $${f.range!.high.toLocaleString('en-US')} leaves $${saving.toLocaleString('en-US')} a month. Where should that`)
+    expect(s[6].chips.map((c) => c.label)).toEqual(['Toward the move-in cash', 'Paying down a card', 'Saving for later', 'How the upfront is worked out'])
+    expect(facts((await run('rent', [...base, { text: 'saving for later' }]))[7]).purpose).toBe('future')
+    expect(facts((await run('rent', [...base, { text: 'the move-in money' }]))[7]).purpose).toBe('cushion')
+    const math = (await run('rent', [...base, { chip: 'upfront_math' }]))[7]
+    expect(said(math)).toContain('Where should that')
+  })
+
   it('a preset city: range, market rents and upfront from the shared libraries, debt included', async () => {
     const s = await run('rent', [
       { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '300' }, { chip: 'low' }, { chip: 'next_month' }, { chip: 'cushion' },
