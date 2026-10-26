@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, WATCH_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -214,6 +214,18 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[1].messages).toEqual([expect.objectContaining({ text: HANDOFF_TEXT, invite: true })])
     expect(s[2].messages).toEqual([expect.objectContaining({ text: APP_LINK_TEXT, invite: true })])
     expect(s[3].messages.some((m) => m.invite)).toBe(false)
+  })
+
+  it('"watch it for me" is the app (bank connection lives there), with texting one tap away', async () => {
+    const s = await run('rent', [
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'watch' }, { chip: 'text' },
+    ])
+    const watch = s[8]
+    expect(watch.messages).toEqual([expect.objectContaining({ text: WATCH_TEXT, invite: true, inviteReason: 'watch' })])
+    expect(watch.messages.some((m) => m.handoff)).toBe(false)
+    expect(watch.chips.map((c) => c.value)).toEqual(['text'])
+    expect(watch.state.invited).toBe(true)
+    expect(s[9].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
   it('at the picker the two tools stay up, captioned as tasks', async () => {

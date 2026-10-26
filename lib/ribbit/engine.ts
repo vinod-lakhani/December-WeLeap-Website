@@ -40,8 +40,10 @@ export interface ChatMessage {
   figureLabel?: string
   /** A second figure set small under the first, for a comparison ("Your range $1,600–$2,000/mo"). */
   compare?: { label: string; value: string }
-  /** The thread's one invite to the app, shown after the answer to a planning question (AskResult.plan). */
+  /** The app-link card under this message: a planning question's invite, an account question, or "watch it". */
   invite?: boolean
+  /** Why the card is shown, for the link's tag and the events. */
+  inviteReason?: 'plan' | 'account' | 'watch'
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -341,9 +343,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       const v = chip ?? (/each|text/i.test(text) ? 'text' : /watch/i.test(text) ? 'watch' : /grow/i.test(text) ? 'grow' : /rent/i.test(text) ? 'rent' : '')
       if (v === 'grow') { f.purpose = 'future'; return purposeTurn(state) }
       if (v === 'rent' && state.turn === 'O6') return offerRent(state)
-      if (v === 'watch') {
-        return handoff(state, "Watching it for you needs your bank connected, and that part isn't ready here yet. For now, I can do it by text.")
-      }
+      if (v === 'watch') return watchInApp(state)
       if (v === 'text') return handoff(state)
       return question(state, text, svc, 'how they want the follow-through: a text for each step, or watching it for them')
     }
@@ -793,6 +793,18 @@ function handoff(state: ChatState, lead?: string): Step {
   ], [], 'text', [{ name: 'ribbit_handoff_offered', props: { turn } }])
 }
 
+/**
+ * "Watch it for me": watching needs their bank connected, which is what the WeLeap app does, so this is an app
+ * link, not the text door. Texting each step stays one tap away. It counts as the thread's invite.
+ */
+export const WATCH_TEXT = "Watching it means seeing your bank, and that happens in the WeLeap app: connect your bank there and I'll watch and only ping you when something's off."
+function watchInApp(state: ChatState): Step {
+  const step = say({ ...state, invited: true }, [{ from: 'ribbit', text: WATCH_TEXT, invite: true, inviteReason: 'watch', turn: state.turn }],
+    [{ label: 'Text me each one instead', value: 'text' }], 'text',
+    [{ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'watch' } }])
+  return step
+}
+
 function showMath(state: ChatState): Step {
   const f = state.facts
   const rows: MathRow[] = []
@@ -839,7 +851,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   if (res?.kind === 'account') {
     // Needs their own accounts: the hand-off the first time (it is the thread's invite), the app link after.
     invite = !state.invited
-    messages.push({ from: 'ribbit', text: invite ? HANDOFF_TEXT : APP_LINK_TEXT, invite: true, turn: state.turn })
+    messages.push({ from: 'ribbit', text: invite ? HANDOFF_TEXT : APP_LINK_TEXT, invite: true, inviteReason: 'account', turn: state.turn })
     if (invite) events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'account' } })
   } else {
     messages.push({ from: 'ribbit', text: res?.reply ?? "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." })
@@ -847,7 +859,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
     // numbers next to it).
     invite = Boolean(res?.plan) && !state.invited
     if (invite) {
-      messages.push({ from: 'ribbit', text: INVITE_TEXT, invite: true, turn: state.turn })
+      messages.push({ from: 'ribbit', text: INVITE_TEXT, invite: true, inviteReason: 'plan', turn: state.turn })
       events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan' } })
     }
   }

@@ -31,7 +31,7 @@ interface Saved {
 }
 
 /** The app install page, tagged like the text thread's link (source, mechanism, campaign, variant). */
-const APP_LINK = '/get?utm_source=web&utm_medium=ribbit&utm_campaign=ribbit_chat_oct26&utm_content=plan_invite'
+const appLink = (reason = 'plan') => `/get?utm_source=web&utm_medium=ribbit&utm_campaign=ribbit_chat_oct26&utm_content=${reason}_invite`
 const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
@@ -265,8 +265,8 @@ function Bubble({ m, facts, threadId, flow, onFinish }: {
       {m.invite && (
         <div className="mt-2.5 flex flex-wrap gap-2">
           <a
-            href={APP_LINK}
-            onClick={() => track('ribbit_app_invite_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn })}
+            href={appLink(m.inviteReason)}
+            onClick={() => track('ribbit_app_invite_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, reason: m.inviteReason ?? 'plan' })}
             // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
             className="inline-flex h-12 items-center gap-2 rounded-xl bg-lime px-5 text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
           >
