@@ -26,7 +26,13 @@ interface Saved {
   input: Step['input']
   /** The open question while it is parked after a side answer (Step.parked): its options are folded. */
   parked?: string
+  /** Caption over the options when they are not the answer to the last question (Step.chipsLabel). */
+  chipsLabel?: string
 }
+
+/** The app install page, tagged like the text thread's link (source, mechanism, campaign, variant). */
+const APP_LINK = '/get?utm_source=web&utm_medium=ribbit&utm_campaign=ribbit_chat_oct26&utm_content=plan_invite'
+const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
 const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
@@ -95,7 +101,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     setText('')
     // A tapped "Show me the math" is not an answer, so it isn't echoed as one.
     const echo: ChatMessage[] = r.chip === '__math__' ? [] : [{ from: 'you', text: shown }]
-    setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [], parked: undefined }))
+    setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [], parked: undefined, chipsLabel: undefined }))
     setBusy(true)
     const began = Date.now()
     const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, browserServices)
@@ -103,7 +109,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     const wait = Math.max(0, 450 - (Date.now() - began))
     await new Promise((res) => setTimeout(res, wait))
     setBusy(false)
-    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked }))
+    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked, chipsLabel: step.chipsLabel }))
     send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow)
   }, [busy, thread.state, thread.id, send])
 
@@ -134,7 +140,15 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
       <div className="flex flex-col gap-2.5" aria-live="polite">
         {thread.messages.map((m, i) => (
-          <Bubble key={i} m={m} facts={thread.state.facts} threadId={thread.id} />
+          <Bubble
+            key={i}
+            m={m}
+            facts={thread.state.facts}
+            threadId={thread.id}
+            flow={thread.state.flow}
+            // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
+            onFinish={m.invite && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
+          />
         ))}
         {thread.messages.length === first.current.messages.length && initialFlow && !restored && (
           <a
@@ -169,7 +183,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
               <span>{thread.parked ? `Back to your plan: ${inSentence(thread.parked)}` : 'Back to your plan'}</span>
             </button>
           ) : thread.chips.length > 0 && (
-            <div className="mb-2.5 flex flex-wrap gap-2">
+            <div className="mb-2.5 flex flex-wrap items-center gap-2">
+              {thread.chipsLabel && <span className="w-full text-[13px] font-semibold text-subtle">{thread.chipsLabel}</span>}
               {thread.chips.map((c) => (
                 <button
                   key={c.value}
@@ -209,7 +224,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId }: { m: ChatMessage; facts: ChatState['facts']; threadId: string }) {
+function Bubble({ m, facts, threadId, flow, onFinish }: {
+  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; onFinish?: () => void
+}) {
   if (m.from === 'you') {
     return (
       <div className="max-w-[85%] self-end rounded-2xl rounded-br-md bg-[#EFE9DD] px-4 py-2.5 text-[15px] leading-snug text-ink">
@@ -245,6 +262,26 @@ function Bubble({ m, facts, threadId }: { m: ChatMessage; facts: ChatState['fact
         )}
       </div>
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
+      {m.invite && (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <a
+            href={APP_LINK}
+            onClick={() => track('ribbit_app_invite_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn })}
+            className="inline-flex h-11 items-center rounded-xl bg-[#386641] px-5 text-[15px] font-bold text-white transition hover:bg-[#2d5a26]"
+          >
+            Get WeLeap
+          </a>
+          {onFinish && flow && (
+            <button
+              type="button"
+              onClick={onFinish}
+              className="inline-flex h-11 items-center rounded-xl border-2 border-[#386641] bg-white px-4 text-[15px] font-semibold text-[#386641] transition hover:bg-[#386641]/5"
+            >
+              {FINISH_LABEL[flow]}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

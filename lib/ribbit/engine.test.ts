@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -188,6 +188,38 @@ describe('typed answers Ribbit reads', () => {
     const s = await run('rent', [{ text: 'about eighty grand' }], svc({ ask: async () => ({ kind: 'step' as const, value: '80000' }) }))
     expect(facts(s[1]).salary).toBe(80_000)
     expect(said(s[1])).toContain('Which city?')
+  })
+})
+
+describe('prompts to use WeLeap (the text thread\'s rules)', () => {
+  const planAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: /what should i do|card or invest/i.test(message) }) })
+
+  it('a planning question gets the answer and the invite, once per thread', async () => {
+    const s = await run(null, [{ text: 'I am saving $1000 a month, what should I do with it' }, { text: 'should I pay off my card or invest' }], planAsk)
+    expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I am saving $1000 a month, what should I do with it', INVITE_TEXT])
+    expect(s[1].messages[1].invite).toBe(true)
+    expect(s[1].events.some((e) => e.name === 'ribbit_app_invite_shown')).toBe(true)
+    expect(s[2].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
+  })
+
+  it('mid-flow too: the invite comes with the question parked', async () => {
+    const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
+    expect(s[2].messages.some((m) => m.invite)).toBe(true)
+    expect(s[2].parked).toBe('Which city?')
+  })
+
+  it('an account question gets the hand-off first (the one invite), then the app link', async () => {
+    const acct = svc({ ask: async ({ message }) => (/savings rate|401k/.test(message) ? { kind: 'account' as const } : { kind: 'question' as const, reply: 'ok', plan: true }) })
+    const s = await run(null, [{ text: 'what is my savings rate' }, { text: 'and my 401k' }, { text: 'what should I do with it' }], acct)
+    expect(s[1].messages).toEqual([expect.objectContaining({ text: HANDOFF_TEXT, invite: true })])
+    expect(s[2].messages).toEqual([expect.objectContaining({ text: APP_LINK_TEXT, invite: true })])
+    expect(s[3].messages.some((m) => m.invite)).toBe(false)
+  })
+
+  it('at the picker the two tools stay up, captioned as tasks', async () => {
+    const s = await run(null, [{ text: 'what is a roth ira' }])
+    expect(s[1].chipsLabel).toBe('Or work out with Ribbit:')
+    expect(s[1].chips.map((c) => c.label)).toEqual(['Rent I can afford', 'What an offer is worth'])
   })
 })
 

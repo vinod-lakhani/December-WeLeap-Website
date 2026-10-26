@@ -40,6 +40,8 @@ export interface ChatMessage {
   figureLabel?: string
   /** A second figure set small under the first, for a comparison ("Your range $1,600–$2,000/mo"). */
   compare?: { label: string; value: string }
+  /** The thread's one invite to the app, shown after the answer to a planning question (AskResult.plan). */
+  invite?: boolean
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -98,6 +100,8 @@ export interface ChatState {
   history: { from: 'in' | 'out'; text: string }[]
   /** The open question and its options, so an answer to a side question can return to it unchanged. */
   ui?: { chips: Chip[]; input: Step['input']; ask?: string }
+  /** The app invite has been shown in this thread: once per thread, as in the text thread. */
+  invited?: boolean
 }
 
 export interface Step {
@@ -113,6 +117,8 @@ export interface Step {
    * still takes the answer.
    */
   parked?: string
+  /** A caption over the options, when they are not the answer to the question just asked. */
+  chipsLabel?: string
 }
 
 /** The tool pages' own routes, and Ribbit for typed questions. Injected so the engine is testable. */
@@ -127,7 +133,11 @@ export interface ChatServices {
   ask(input: { flow: Flow; facts: Facts; message: string; step: string; history: ChatState['history'] }): Promise<AskResult | null>
 }
 
-export interface AskResult { kind: 'question' | 'step' | 'account'; reply?: string; value?: string }
+/**
+ * `plan`: the question's honest answer depends on the person's whole picture (what to do with savings, card or
+ * invest). The chat answers it and shows the thread's one invite to the app, as the text thread does.
+ */
+export interface AskResult { kind: 'question' | 'step' | 'account'; reply?: string; value?: string; plan?: boolean }
 
 export const fc = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
 /** A monthly range as every headline shows it: "$1,600–$2,000/mo". */
@@ -136,6 +146,20 @@ const mid50 = (a: number, b: number) => Math.round((a + b) / 2 / 50) * 50
 const SOMEWHERE_ELSE = '__elsewhere__'
 const OUTSIDE_METRO = '__OTHER__'
 const STATE_NAME = (code?: string) => US_STATES_NAMED.find((s) => s.code === code)?.name ?? code ?? ''
+
+// The two tools, named as tasks: after a side question they sit under "Or work out with Ribbit", where a bare
+// "Rent" read as an answer to a question nobody asked.
+const PICKER_CHIPS: Chip[] = [{ label: 'Rent I can afford', value: 'rent' }, { label: 'What an offer is worth', value: 'offer' }]
+
+/**
+ * Prompts to use WeLeap say and do what the text thread's do (golden rule: web and text behave the same). Each
+ * line is the text thread's own (weleap-advisor backend/users/rentpilot.go: planInviteText, handOffText,
+ * appLinkText) with only the channel word changed. The page puts the app-link card under each, as the text
+ * thread sends the link as a card. One invite per thread, shared by a planning question and an account question.
+ */
+export const INVITE_TEXT = "For a plan built on your real numbers, try WeLeap — I'll take it from there."
+export const HANDOFF_TEXT = "Your savings, debts and plan live in the app, not in this chat. Install WeLeap and I'll answer from your real numbers."
+export const APP_LINK_TEXT = 'That one needs your account, which is in the app.'
 
 function cityChips(): Chip[] {
   return [...getAvailableCities().map((c) => ({ label: c, value: c })), { label: 'Somewhere else', value: SOMEWHERE_ELSE }]
@@ -147,7 +171,7 @@ export function start(flow: Flow | null): Step {
   const state: ChatState = { flow, turn: flow === 'rent' ? 'R1' : flow === 'offer' ? 'O1' : 'P0', facts: {}, history: [] }
   if (!flow) {
     return say(state, [{ from: 'ribbit', text: 'What are we working out?', turn: 'P0' }],
-      [{ label: 'Rent', value: 'rent' }, { label: 'A job offer', value: 'offer' }], 'text')
+      PICKER_CHIPS, 'text')
   }
   return flow === 'rent' ? askSalary(state) : askOfferSalary(state)
 }
@@ -810,8 +834,30 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
     return route(state, { text: res.value }, { ...svc, ask: async () => null })
   }
   const events: ChatEvent[] = [{ name: 'ribbit_question_typed', props: { turn: state.turn } }]
-  const msg = res?.reply ?? "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes."
-  // Before a tool is picked there is no plan to go back to: the two choices stay up as they are.
-  const parked = waitingFor && state.turn !== 'P0' ? state.ui?.ask ?? '' : undefined
-  return { state: { ...state, history: [...state.history, { from: 'out' as const, text: msg }].slice(-12) }, messages: [{ from: 'ribbit', text: msg }], chips, input, events, parked }
+  const messages: ChatMessage[] = []
+  let invite = false
+  if (res?.kind === 'account') {
+    // Needs their own accounts: the hand-off the first time (it is the thread's invite), the app link after.
+    invite = !state.invited
+    messages.push({ from: 'ribbit', text: invite ? HANDOFF_TEXT : APP_LINK_TEXT, invite: true, turn: state.turn })
+    if (invite) events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'account' } })
+  } else {
+    messages.push({ from: 'ribbit', text: res?.reply ?? "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." })
+    // A planning question: the answer, then the thread's one invite (mid-flow too; the page offers finishing the
+    // numbers next to it).
+    invite = Boolean(res?.plan) && !state.invited
+    if (invite) {
+      messages.push({ from: 'ribbit', text: INVITE_TEXT, invite: true, turn: state.turn })
+      events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan' } })
+    }
+  }
+  // Before a tool is picked there is no plan to go back to: the two tools stay up, captioned as tasks.
+  const atPicker = state.turn === 'P0'
+  const parked = waitingFor && !atPicker ? state.ui?.ask ?? '' : undefined
+  const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)
+  return {
+    state: { ...state, history, invited: state.invited || invite },
+    messages, chips, input, events, parked,
+    ...(atPicker ? { chipsLabel: 'Or work out with Ribbit:' } : {}),
+  }
 }
