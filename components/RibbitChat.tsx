@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
+import { claimToolCompletion } from '@/lib/tool-funnel'
 import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
 import { markPlanSaved, planSaved, ribbitAppLink, ribbitOpenPlanLink } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
@@ -46,8 +47,9 @@ function load(flow: Flow | null): Saved | null {
     const raw = localStorage.getItem(STORE_KEY)
     if (!raw) return null
     const saved = JSON.parse(raw) as Saved
-    // A thread opened for the other tool does not follow the person to this one.
-    if (flow && saved.state.flow && saved.state.flow !== flow && !saved.state.facts.switchedFrom) return null
+    // An explicit flow (an ad's ?flow=, or its utm_content) opens that flow: a stored thread comes back only when it
+    // is the same flow. A stored picker thread or another tool's thread would cost an ad click an extra turn.
+    if (flow && saved.state.flow !== flow) return null
     return saved.messages?.length ? saved : null
   } catch {
     return null
@@ -70,7 +72,15 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const endRef = useRef<HTMLDivElement>(null)
 
   const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null) => {
-    for (const e of events) track(e.name, { ...e.props, thread_id: id, flow: flow ?? 'picker' })
+    for (const e of events) {
+      track(e.name, { ...e.props, thread_id: id, flow: flow ?? 'picker' })
+      // The chat's first number is the tool page's completed calculation: the same tool_completed event, so the
+      // same Google Ads conversion (lib/google-ads.ts), Meta and GA events, once per tool per tab as on the page
+      // (claimToolCompletion). source tells the chat's apart in PostHog.
+      if (e.name === 'ribbit_win_shown' && flow && claimToolCompletion(flow)) {
+        track('tool_completed', { tool: flow, source: 'ribbit_chat', thread_id: id, turn: e.props.turn })
+      }
+    }
   }, [])
 
   // Restore a thread in progress, or start a new one with an id.
