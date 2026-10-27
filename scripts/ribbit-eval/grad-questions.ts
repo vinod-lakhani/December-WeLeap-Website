@@ -49,7 +49,7 @@ export const GRAD_CASES: Case[] = [
   { id: 'grad-038', area: 'grad', message: 'What is the difference between a secured credit card and a standard rewards credit card?', expect: { kind: 'question', never: NOT_PUNTED } },
   { id: 'grad-039', area: 'grad', message: 'Should I keep my oldest credit card (the one I got as a freshman) open forever, even if I don\'t use it?', expect: { kind: 'question', never: NOT_PUNTED } },
   { id: 'grad-040', area: 'grad', message: 'How do credit card rewards programs (cash back vs. travel points) actually work?', expect: { kind: 'question', never: NOT_PUNTED } },
-  { id: 'grad-041', area: 'grad', message: 'What is the grace period on a credit card, and how do I avoid paying a single penny in interest?', expect: { kind: 'question', says: [/(full|in full|whole)/i], never: NOT_PUNTED } },
+  { id: 'grad-041', area: 'grad', message: 'What is the grace period on a credit card, and how do I avoid paying a single penny in interest?', expect: { kind: 'question', says: [/(full|in full|whole|entire)/i], never: NOT_PUNTED } },
   { id: 'grad-042', area: 'grad', message: 'What is credit utilization, and why should I keep mine under 30% (or 10%)?', expect: { kind: 'question', says: [/30%|thirty percent/i], never: NOT_PUNTED } },
   { id: 'grad-043', area: 'grad', message: 'How do I dispute an error on my credit report?', expect: { kind: 'question', never: NOT_PUNTED } },
   { id: 'grad-044', area: 'grad', message: 'Will applying for an apartment or a new job require a hard credit check?', expect: { kind: 'question', never: NOT_PUNTED } },
