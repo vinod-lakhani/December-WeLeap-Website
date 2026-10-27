@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
 import { usePostHog } from 'posthog-js/react/slim'
+import { getPostHog } from '@/lib/posthog-lazy'
 
 // ── Data ────────────────────────────────────────────────────────────────────
 
@@ -150,7 +151,9 @@ export default function EarlyAccessPage() {
 
   useEffect(() => {
     track('early_access_guide_page_viewed', {}, true)
-    posthog?.capture('early_access_guide_viewed', {
+    // getPostHog(), not the hook's client: the client swaps once the SDK loads and would re-run this, firing twice.
+    const posthog = getPostHog()
+    posthog.capture('early_access_guide_viewed', {
       referrer: document.referrer || 'direct',
       screen_width: window.innerWidth,
     })
@@ -165,7 +168,7 @@ export default function EarlyAccessPage() {
       const obs = new IntersectionObserver(([entry]) => {
         if (entry.isIntersecting && !sectionsSeenRef.current.has(id)) {
           sectionsSeenRef.current.add(id)
-          posthog?.capture('early_access_guide_section_reached', { section: id, total_sections_seen: sectionsSeenRef.current.size })
+          posthog.capture('early_access_guide_section_reached', { section: id, total_sections_seen: sectionsSeenRef.current.size })
         }
       }, { threshold: 0.3 })
       obs.observe(el)
@@ -173,7 +176,7 @@ export default function EarlyAccessPage() {
     })
 
     return () => observers.forEach(o => o.disconnect())
-  }, [posthog])
+  }, [])
 
   return (
     <PageShell>
