@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ribbitPlanParams } from './appLink'
+import { markPlanSaved, planSaved, ribbitPlanParams } from './appLink'
 
 describe('the chat-to-app link contract', () => {
   it('carries the rent plan as the app reads it, and leaves out what was not given', () => {
@@ -30,5 +30,35 @@ describe('the chat-to-app link contract', () => {
     expect(ribbitPlanParams({ mentionedSaving: 1_000 }, null, 'plan_invite', 't')).toEqual({
       src: 'ribbit_chat', why: 'plan_invite', rt: 't', flow: 'general', saving: '1000',
     })
+  })
+})
+
+describe('remembering a tapped Save my plan, for "Open my plan"', () => {
+  const store = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  })
+  afterEach(() => { store.clear(); vi.useRealTimers() })
+
+  it('is unset until a Save tap, then holds the flow', () => {
+    expect(planSaved()).toBeNull()
+    markPlanSaved('rent')
+    expect(planSaved()?.flow).toBe('rent')
+  })
+
+  it('lapses after 90 days', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T12:00:00Z'))
+    markPlanSaved(null)
+    expect(planSaved()?.flow).toBe('general')
+    vi.setSystemTime(new Date('2027-01-25T12:00:00Z'))
+    expect(planSaved()).toBeNull()
+  })
+
+  it('a broken or missing store offers nothing rather than throwing', () => {
+    store.set('weleap.ribbitChat.planSaved.v1', '{not json')
+    expect(planSaved()).toBeNull()
   })
 })

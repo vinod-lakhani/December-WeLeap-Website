@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
-import { ribbitAppLink } from '@/lib/ribbit/appLink'
+import { markPlanSaved, planSaved, ribbitAppLink, ribbitOpenPlanLink } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 
@@ -60,6 +60,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     id: '', messages: first.current.messages, state: first.current.state, chips: first.current.chips, input: first.current.input,
   }))
   const [restored, setRestored] = useState(false)
+  // Read after mount (storage is client-only), so the server HTML and the first render agree.
+  const [saved, setSaved] = useState(false)
+  useEffect(() => setSaved(!!planSaved()), [])
   const [busy, setBusy] = useState(false)
   const [text, setText] = useState('')
   const lastAt = useRef<number>(Date.now())
@@ -129,8 +132,19 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-col">
-      {/* Always there: a thread can need a restart before any reload (it used to show only on a restored one). */}
-      <div className="mb-3 text-right">
+      {/* Always there: a thread can need a restart before any reload (it used to show only on a restored one).
+          "Open my plan" joins it once this browser has tapped a Save my plan link. */}
+      <div className="mb-3 flex items-center justify-end gap-4">
+        {saved && (
+          <a
+            href={ribbitOpenPlanLink()}
+            onClick={() => track('ribbit_open_plan_clicked', { thread_id: thread.id, flow: thread.state.flow ?? 'picker', turn: thread.state.turn })}
+            className="mr-auto inline-flex items-center gap-1.5 rounded-full bg-lime px-3.5 py-1.5 text-[13px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
+          >
+            Open my plan
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+          </a>
+        )}
         <button
           type="button"
           onClick={startOver}
@@ -272,7 +286,10 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
           <div className="flex flex-wrap gap-2">
             <a
               href={ribbitAppLink(facts, flow, m.appAsk.why, threadId)}
-              onClick={() => track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: m.appAsk!.why })}
+              onClick={() => {
+                markPlanSaved(flow)
+                track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: m.appAsk!.why })
+              }}
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >

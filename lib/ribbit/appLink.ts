@@ -69,3 +69,32 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
 export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threadId: string): string {
   return appLinkAt(RIBBIT_APP_URL, '/react/', ribbitPlanParams(f, flow, why, threadId))
 }
+
+/**
+ * Whether this browser tapped a "Save my plan" link, so the chat can offer "Open my plan" when the person comes
+ * back. The chat cannot see the app's account (another site), so the tap is the signal: kept 90 days, cleared by
+ * nothing else. Wrapped in try/catch: storage can be off (private mode), and then the chat just doesn't offer it.
+ */
+const SAVED_KEY = 'weleap.ribbitChat.planSaved.v1'
+const SAVED_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
+
+export function markPlanSaved(flow: Flow | null): void {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify({ t: Date.now(), flow: flow ?? 'general' }))
+  } catch { /* storage off: no "Open my plan" later */ }
+}
+
+export function planSaved(): { t: number; flow: string } | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVED_KEY) ?? 'null') as { t?: number; flow?: string } | null
+    return v?.t && Date.now() - v.t < SAVED_MAX_AGE_MS ? { t: v.t, flow: v.flow ?? 'general' } : null
+  } catch {
+    return null
+  }
+}
+
+/** "Open my plan": the app with no plan in the link, so it opens the account's own (Home shows the saved plan
+ *  until a bank is connected; signed out, the app's sign-in). Attribution rides along as on every CTA. */
+export function ribbitOpenPlanLink(): string {
+  return appLinkAt(RIBBIT_APP_URL, '/react/')
+}
