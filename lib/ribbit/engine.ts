@@ -165,7 +165,8 @@ export interface ChatServices {
    * Ribbit, for a typed message that is not an answer the chat could read: a reply to show, or the answer to the
    * open question it found in the words ("about five grand a month" → "5000"), which the chat then applies.
    */
-  ask(input: { flow: Flow; facts: Facts; message: string; step: string; history: ChatState['history'] }): Promise<AskResult | null>
+  /** thread: the chat's id, for the backend's questions-per-thread cap (the page adds it). */
+  ask(input: { flow: Flow; facts: Facts; message: string; step: string; history: ChatState['history']; thread?: string }): Promise<AskResult | null>
 }
 
 /**

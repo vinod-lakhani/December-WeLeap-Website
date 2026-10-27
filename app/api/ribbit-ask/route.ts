@@ -6,7 +6,8 @@ import { offerPayload, rentPayload } from '@/lib/text-pilot'
 /**
  * POST /api/ribbit-ask — a typed question in the Ribbit chat (/ribbit_chat). Forwards it, with the person's figures
  * in the same shape the text door sends, to the backend's /internal/rentpilot/ask: the same assistant, bundle and
- * rules as the text thread. Nothing is stored. Rate-limited per visitor, ahead of the model call. Needs
+ * rules as the text thread. Nothing is stored. Rate-limited per visitor, ahead of the model call; the backend also
+ * caps questions per thread (the thread id is forwarded) and per day. Needs
  * RENTPILOT_URL (any of its paths; only the origin is used) and RENTPILOT_KEY.
  */
 export const runtime = 'nodejs'
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
         offer: flow === 'offer' ? built?.offer : undefined,
         message,
         step: typeof body.step === 'string' ? body.step.slice(0, 300) : '',
+        thread: typeof body.thread === 'string' ? body.thread.slice(0, 64) : '',
         history,
       }),
       signal: AbortSignal.timeout(25_000),
