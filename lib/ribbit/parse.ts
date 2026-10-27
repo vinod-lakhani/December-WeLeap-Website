@@ -102,9 +102,12 @@ export function stateForPresetCity(city: string): string | undefined {
  * is the number with a %, the payment the number after "pay"/"paying" or before "a month"/"/mo", the balance the
  * largest of the rest. Whatever is missing comes back undefined, for the chat to ask.
  */
-export function parseDebt(text: string): { balance?: number; aprPct?: number; payment?: number } {
+export function parseDebt(text: string): { balance?: number; aprPct?: number; payment?: number; kind?: 'card' | 'loan' } {
   const t = text.toLowerCase().replace(/,/g, '')
-  const out: { balance?: number; aprPct?: number; payment?: number } = {}
+  const out: { balance?: number; aprPct?: number; payment?: number; kind?: 'card' | 'loan' } = {}
+  // What it is, so the app files it as a credit card or a loan.
+  if (/\b(card|credit)\b/.test(t)) out.kind = 'card'
+  else if (/\b(loan|car|auto|student|mortgage|personal)\b/.test(t)) out.kind = 'loan'
   const rate = t.match(/(\d+(?:\.\d+)?)\s*%/)
   if (rate) out.aprPct = parseFloat(rate[1])
   const pay = t.match(/pay(?:ing|s)?\s*(?:about\s*)?\$?(\d+(?:\.\d+)?k?)/) ?? t.match(/\$?(\d+(?:\.\d+)?k?)\s*(?:a|per|\/)\s*(?:month|mo)\b/)

@@ -326,7 +326,7 @@ describe('Where should my money go?', () => {
     expect(said(s[2])).toContain("What's your rent each month?")
     expect(facts(s[2]).takeHomeMonthly).toBeCloseTo(61_000 / 12, 0)
     expect(said(s[3])).toContain('Any card or loan balances?')
-    expect(facts(s[4]).debt).toEqual({ balance: 4000, aprPct: 22, payment: 150 })
+    expect(facts(s[4]).debt).toEqual({ balance: 4000, aprPct: 22, payment: 150, kind: 'card' })
     const order = s[6].messages.find((m) => m.order)!.order!
     expect(order.map((o) => o.key)).toEqual(['match', 'debt', 'emergency', 'retirement'])
     expect(order[0].detail).toMatch(/^Put in 4% of pay, \$283 a month, and your employer adds \$283\./)
@@ -341,7 +341,7 @@ describe('Where should my money go?', () => {
     const s = await run('money', [{ text: '5000' }, { text: '1500' }, { text: 'about 3000 on a card' }, { text: '24' }, { text: '120' }, { chip: 'none' }])
     expect(said(s[3])).toBe("What's its interest rate?")
     expect(said(s[4])).toBe('What do you pay on it a month?')
-    expect(facts(s[5]).debt).toEqual({ balance: 3000, aprPct: 24, payment: 120 })
+    expect(facts(s[5]).debt).toEqual({ balance: 3000, aprPct: 24, payment: 120, kind: 'card' })
     expect(s[6].messages.find((m) => m.order)!.order!.map((o) => o.key)).toEqual(['debt', 'emergency', 'retirement'])
   })
 
@@ -350,5 +350,12 @@ describe('Where should my money go?', () => {
     const s = await run(null, [{ text: 'should I pay off my card or invest?' }, { chip: 'money' }], planAsk)
     expect(s[2].state.flow).toBe('money')
     expect(s[2].state.turn).toBe('M1')
+  })
+
+  it('after an offer turns into rent, the plan card keeps the 401(k) it worked out', async () => {
+    const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'put_in' }, { chip: 'rent' }, { chip: 'yes' }])
+    const f = facts(s[s.length - 1])
+    expect(f.electionMonthlyIn).toBeGreaterThan(0)
+    expect(s[s.length - 1].state.flow).toBe('rent')
   })
 })

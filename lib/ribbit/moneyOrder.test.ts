@@ -66,12 +66,13 @@ describe('the next-dollar order', () => {
 
 describe('reading a debt typed in one line', () => {
   it('balance, rate and payment, in any order', () => {
-    expect(parseDebt('Card, 4000 at 22%, I pay 150')).toEqual({ balance: 4000, aprPct: 22, payment: 150 })
-    expect(parseDebt('$12k student loan 6.8% paying 250 a month')).toEqual({ balance: 12000, aprPct: 6.8, payment: 250 })
-    expect(parseDebt('car loan 18,500 at 7.9%, 410/mo')).toEqual({ balance: 18500, aprPct: 7.9, payment: 410 })
+    expect(parseDebt('Card, 4000 at 22%, I pay 150')).toEqual({ balance: 4000, aprPct: 22, payment: 150, kind: 'card' })
+    expect(parseDebt('$12k student loan 6.8% paying 250 a month')).toEqual({ balance: 12000, aprPct: 6.8, payment: 250, kind: 'loan' })
+    expect(parseDebt('car loan 18,500 at 7.9%, 410/mo')).toEqual({ balance: 18500, aprPct: 7.9, payment: 410, kind: 'loan' })
   })
   it('what is missing stays undefined', () => {
-    expect(parseDebt('about 3000 on a card')).toEqual({ balance: 3000 })
+    expect(parseDebt('about 3000 on a card')).toEqual({ balance: 3000, kind: 'card' })
+    expect(parseDebt('3000 at 19%, paying 100')).toEqual({ balance: 3000, aprPct: 19, payment: 100 })
     expect(parseDebt('24%')).toEqual({ aprPct: 24 })
   })
 })

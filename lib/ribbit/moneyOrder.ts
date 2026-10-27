@@ -23,7 +23,8 @@ export const ESSENTIALS_SHARE = 0.5
 /** The retirement target counting the match, the standard figure the reader quotes. */
 export const RETIREMENT_TARGET_PCT = 15
 
-export interface MoneyDebt { balance: number; aprPct: number; payment: number }
+/** kind: a credit card or a loan, when the person said which (the app files it in the matching place). */
+export interface MoneyDebt { balance: number; aprPct: number; payment: number; kind?: 'card' | 'loan' }
 
 export interface MoneyInputs {
   takeHomeMonthly: number

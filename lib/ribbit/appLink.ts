@@ -29,6 +29,8 @@
  *   worth             the offer's yearly worth on entered terms
  *   saving            a monthly saving amount the person mentioned (general questions)
  *   debt_balance, debt_rate, debt_pay, debt_months   money flow: the biggest debt and the plan for it (payment, months)
+ *   debt_kind         money flow: card | loan, when the person said which
+ *   debt_now          money flow: what they pay on it today (the card's minimum in the app)
  *   ef_goal           money flow: the emergency fund goal (three months of essentials)
  */
 import { appLinkAt } from '@/lib/app-link'
@@ -69,6 +71,8 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     debt_rate: money && f.debt ? String(f.debt.aprPct) : undefined,
     debt_pay: money?.debtPlan ? round(money.debtPlan.payment) : undefined,
     debt_months: money?.debtPlan && Number.isFinite(money.debtPlan.months) ? String(money.debtPlan.months) : undefined,
+    debt_kind: money && f.debt?.kind ? f.debt.kind : undefined,
+    debt_now: money && f.debt ? round(f.debt.payment) : undefined,
     ef_goal: money ? round(money.emergencyGoal) : undefined,
   }
   return Object.fromEntries(Object.entries(p).filter((e): e is [string, string] => e[1] !== undefined && e[1] !== ''))

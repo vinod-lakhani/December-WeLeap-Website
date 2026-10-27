@@ -1088,6 +1088,8 @@ function rentCard(f: Facts): NonNullable<ChatMessage['planCard']> {
     ...(f.purpose === 'cushion' && f.perCheck && f.upfront ? [{ label: 'Rebuilding savings', value: `${fc(f.perCheck)} a paycheck to ${fc(f.upfront.high)}` }] : []),
     ...(f.purpose === 'card' && saving ? [{ label: 'Toward the card', value: `${fc(saving)}/mo` }] : []),
     ...(f.purpose === 'future' && saving ? [{ label: 'Saving for later', value: `${fc(saving)}/mo` }] : []),
+    // After an offer turned into rent (O7), the 401(k) it worked out stays on the card.
+    ...(f.electionMonthlyIn && f.matchUpToPct ? [{ label: `401(k) at ${f.matchUpToPct}%, with the match`, value: `${fc(f.electionMonthlyIn)}/mo in` }] : []),
   ]
   return {
     known,
