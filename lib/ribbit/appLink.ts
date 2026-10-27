@@ -11,7 +11,7 @@
  *
  * Parameters the app reads (all optional except src and why):
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
- *   why               plan_preview | spending_check | plan_invite | account (which ask was tapped)
+ *   why               plan_preview | spending_check | plan_invite | account | benefit (which ask was tapped)
  *   rt                the chat thread id, to stitch the web events to the app
  *   flow              rent | offer | general
  *   salary            yearly salary, dollars (when given)
@@ -34,7 +34,7 @@ import type { Facts, Flow } from './engine'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
 
-export type AppReason = 'plan_preview' | 'spending_check' | 'plan_invite' | 'account'
+export type AppReason = 'plan_preview' | 'spending_check' | 'plan_invite' | 'account' | 'benefit'
 
 const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
 

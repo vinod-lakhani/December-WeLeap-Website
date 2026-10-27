@@ -46,7 +46,8 @@ export interface ChatMessage {
    * thread's facts, lib/ribbit/appLink.ts), small print under it, and for the endings a text link that opens the
    * text sign-up instead ("Not ready to connect?").
    */
-  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean }
+  /** quiet: a small text link instead of the lime button (the benefit line after the one invite). */
+  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean; quiet?: boolean }
   /** The plan as WeLeap would show it: rows the chat knows, and rows only the bank can fill (shown locked). */
   planCard?: { known: { label: string; value: string }[]; locked: string[] }
   /** "Show me the math": the breakdown, rendered as rows under the text. */
@@ -122,6 +123,8 @@ export interface ChatState {
   ui?: { chips: Chip[]; input: Step['input']; ask?: string }
   /** The app invite has been shown in this thread: once per thread, as in the text thread. */
   invited?: boolean
+  /** Benefit lines shown after the invite (MAX_BENEFIT_LINES a thread, as in the text thread). */
+  benefitsShown?: number
 }
 
 export interface Step {
@@ -157,7 +160,12 @@ export interface ChatServices {
  * `plan`: the question's honest answer depends on the person's whole picture (what to do with savings, card or
  * invest). The chat answers it and shows the thread's one invite to the app, as the text thread does.
  */
-export interface AskResult { kind: 'question' | 'step' | 'account'; reply?: string; value?: string; plan?: boolean }
+/** benefit/topic: for a planning question, what WeLeap would add for its topic, in the backend's reviewed words
+ *  (users/rentpilot.go benefitTopics), the same line the text thread sends. */
+export interface AskResult { kind: 'question' | 'step' | 'account'; reply?: string; value?: string; plan?: boolean; benefit?: string; topic?: string }
+
+/** After the one invite, at most this many benefit lines in a thread (the text thread's maxBenefitLines). */
+export const MAX_BENEFIT_LINES = 2
 
 export const fc = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
 /** A monthly range as every headline shows it: "$1,600–$2,000/mo". */
@@ -941,6 +949,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   const events: ChatEvent[] = [{ name: 'ribbit_question_typed', props: { turn: state.turn } }]
   const messages: ChatMessage[] = []
   let invite = false
+  let benefit = false
   if (res?.kind === 'account') {
     // Needs their own accounts: the hand-off the first time (it is the thread's invite), the app link after.
     invite = !state.invited
@@ -969,6 +978,11 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
       // Mid-flow: the line and the button, next to finishing the numbers; the flow's own ending shows the card.
       messages.push({ from: 'ribbit', text: INVITE_TEXT, appAsk: { label: 'Click to get WeLeap', why: 'plan_invite' }, turn: state.turn })
       events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan' } })
+    } else if (res?.plan && state.invited && res.benefit && (state.benefitsShown ?? 0) < MAX_BENEFIT_LINES) {
+      // After the invite: what WeLeap would add for this question's topic, with a small link, never the invite again.
+      benefit = true
+      messages.push({ from: 'ribbit', text: res.benefit, appAsk: { label: 'Get my plan', why: 'benefit', quiet: true }, turn: state.turn })
+      events.push({ name: 'ribbit_benefit_line_shown', props: { turn: state.turn, topic: res.topic ?? '', n: (state.benefitsShown ?? 0) + 1 } })
     }
   }
   // Before a tool is picked there is no plan to go back to: the two tools stay up, captioned as tasks.
@@ -976,7 +990,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   const parked = waitingFor && !atPicker ? state.ui?.ask ?? '' : undefined
   const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)
   return {
-    state: { ...state, history, invited: state.invited || invite },
+    state: { ...state, history, invited: state.invited || invite, benefitsShown: (state.benefitsShown ?? 0) + (benefit ? 1 : 0) },
     messages, chips, input, events, parked,
     ...(atPicker ? { chipsLabel: 'Or work out with Ribbit:' } : {}),
   }
