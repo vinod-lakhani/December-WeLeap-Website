@@ -35,6 +35,14 @@ export const APP_HREF = APP_BASE_URL
  * @returns Absolute URL like `https://weleap.app?utm_source=...&ph_did=...`
  */
 export function appLink(path = "", extraParams?: Record<string, string>): string {
+  return appLinkAt(APP_BASE_URL, path, extraParams)
+}
+
+/**
+ * `appLink` against another app host: the Ribbit chat experiment sends people to dev3 (lib/ribbit/appLink.ts)
+ * while every other CTA keeps the production app. Same attribution, same rules.
+ */
+export function appLinkAt(base: string, path = "", extraParams?: Record<string, string>): string {
   const params = new URLSearchParams()
 
   /**
@@ -93,7 +101,7 @@ export function appLink(path = "", extraParams?: Record<string, string>): string
   }
 
   const qs = params.toString()
-  if (!qs) return `${APP_BASE_URL}${path}`
+  if (!qs) return `${base}${path}`
 
   /**
    * The query string must go BEFORE any fragment, not after it.
@@ -105,6 +113,6 @@ export function appLink(path = "", extraParams?: Record<string, string>): string
    * at the domain and were invisible to the only consumer that matters.
    */
   const hashAt = path.indexOf("#")
-  if (hashAt === -1) return `${APP_BASE_URL}${path}?${qs}`
-  return `${APP_BASE_URL}${path.slice(0, hashAt)}?${qs}${path.slice(hashAt)}`
+  if (hashAt === -1) return `${base}${path}?${qs}`
+  return `${base}${path.slice(0, hashAt)}?${qs}${path.slice(hashAt)}`
 }

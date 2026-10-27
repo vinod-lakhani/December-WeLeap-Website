@@ -42,7 +42,6 @@ interface Bucket {
   hits: number[]
 }
 
-const buckets = new Map<string, Bucket>()
 
 /**
  * Bounded so a stream of distinct IPs cannot grow the map without limit — the
@@ -115,54 +114,56 @@ export function clientKey(headers: Headers): string | null {
  * successful parses would let a caller retry a malformed file indefinitely,
  * and the model call is the expensive part whether or not it returns fields.
  */
-export function checkRateLimit(key: string | null, now: number): RateLimitResult {
-  // Unidentifiable caller: let it through. See clientKey.
-  if (key === null) return { allowed: true }
+/**
+ * A limiter with its own store and limits. The offer parser uses the default one below; another caller (the
+ * Ribbit chat's questions) makes its own, so the two budgets never count each other's requests.
+ */
+export function makeRateLimiter(limits: { hourly: number; daily: number }) {
+  const buckets = new Map<string, Bucket>()
+  return {
+    check(key: string | null, now: number): RateLimitResult {
+      // Unidentifiable caller: let it through. See clientKey.
+      if (key === null) return { allowed: true }
 
-  const bucket = buckets.get(key) ?? { hits: [] }
+      const bucket = buckets.get(key) ?? { hits: [] }
 
-  // Drop anything older than the longest window before counting.
-  bucket.hits = bucket.hits.filter((at) => now - at < DAY_MS)
+      // Drop anything older than the longest window before counting.
+      bucket.hits = bucket.hits.filter((at) => now - at < DAY_MS)
 
-  const inHour = bucket.hits.filter((at) => now - at < HOUR_MS).length
-  const inDay = bucket.hits.length
+      const inHour = bucket.hits.filter((at) => now - at < HOUR_MS).length
+      const inDay = bucket.hits.length
 
-  const denied: RateLimitResult | null =
-    inHour >= HOURLY_LIMIT
-      ? { allowed: false, window: 'hour', retryAfterSeconds: retryAfter(bucket.hits, now, HOUR_MS) }
-      : inDay >= DAILY_LIMIT
-        ? { allowed: false, window: 'day', retryAfterSeconds: retryAfter(bucket.hits, now, DAY_MS) }
-        : null
+      const denied: RateLimitResult | null =
+        inHour >= limits.hourly
+          ? { allowed: false, window: 'hour', retryAfterSeconds: retryAfter(bucket.hits, now, HOUR_MS) }
+          : inDay >= limits.daily
+            ? { allowed: false, window: 'day', retryAfterSeconds: retryAfter(bucket.hits, now, DAY_MS) }
+            : null
 
-  /**
-   * ONLY ACCEPTED REQUESTS ARE RECORDED.
-   *
-   * Denied ones used to be counted too, on the reasoning that hammering the
-   * endpoint while blocked should keep the window sliding forward rather than
-   * resetting it. The effect was that it never stopped sliding. A visitor who
-   * retried every five minutes was measured, from a full bucket, as still
-   * blocked three hours later — while one who waited quietly got back in after
-   * sixty-one minutes. The page tells them to give it an hour, and clicking
-   * upload during that hour restarted the hour.
-   *
-   * There is nothing to protect by counting a denial. The limiter runs ahead
-   * of the model call, so a blocked request costs nothing, and a caller in a
-   * loop is refused every time either way.
-   */
-  if (!denied) {
-    bucket.hits.push(now)
-    buckets.set(key, bucket)
+      if (!denied) {
+        bucket.hits.push(now)
+        buckets.set(key, bucket)
+      }
+
+      if (buckets.size > MAX_TRACKED_IPS) {
+        const oldest = buckets.keys().next()
+        if (!oldest.done) buckets.delete(oldest.value)
+      }
+
+      return denied ?? { allowed: true }
+    },
+    reset() {
+      buckets.clear()
+    },
   }
-
-  if (buckets.size > MAX_TRACKED_IPS) {
-    const oldest = buckets.keys().next()
-    if (!oldest.done) buckets.delete(oldest.value)
-  }
-
-  return denied ?? { allowed: true }
 }
 
-/** Seconds until the oldest hit in the window falls out of it. */
+const offerParseLimiter = makeRateLimiter({ hourly: HOURLY_LIMIT, daily: DAILY_LIMIT })
+
+export function checkRateLimit(key: string | null, now: number): RateLimitResult {
+  return offerParseLimiter.check(key, now)
+}
+
 function retryAfter(hits: number[], now: number, windowMs: number): number {
   const inWindow = hits.filter((at) => now - at < windowMs)
   const oldest = inWindow[0]
@@ -172,5 +173,5 @@ function retryAfter(hits: number[], now: number, windowMs: number): number {
 
 /** Test seam. Never called by the route. */
 export function __resetRateLimits() {
-  buckets.clear()
+  offerParseLimiter.reset()
 }

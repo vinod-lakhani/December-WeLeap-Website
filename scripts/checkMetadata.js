@@ -85,6 +85,10 @@ const DYNAMIC_ROUTES = {
     reason: 'campaign mode reads searchParams',
     invariants: true,
   },
+  '/ribbit_chat': {
+    reason: 'Ribbit chat experiment; reads flow / utm_content from searchParams; robots:noindex',
+    invariants: true,
+  },
   '/rent_text': {
     reason: 'text-pilot paid landing; campaign mode reads searchParams; robots:noindex',
     invariants: true,

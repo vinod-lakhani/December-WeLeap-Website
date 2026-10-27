@@ -32,10 +32,13 @@ export function TextOptIn({
   planData,
   endpoint = '/api/rent-text',
   tool = 'rent',
+  onSubmitted,
 }: {
   planData: object
   endpoint?: string
   tool?: TextPilotTool
+  /** Called when the visitor uses the door (taps the text link, or submits a number), with which one. */
+  onSubmitted?: (method: 'sms_link' | 'phone_form') => void
 }) {
   const copy = TEXT_PILOT_COPY[tool]
   const [phone, setPhone] = useState('')
@@ -93,6 +96,7 @@ export function TextOptIn({
   const tap = () => {
     if (!link) return
     track('text_optin_submitted', { tool, consent_version: copy.sms.consentVersion, placement: 'form', method })
+    onSubmitted?.(method)
     const body = JSON.stringify({ method: 'tap', id: link.id })
     const beaconed = navigator.sendBeacon?.(endpoint, new Blob([body], { type: 'application/json' }))
     if (!beaconed) {
@@ -113,6 +117,7 @@ export function TextOptIn({
     setStatus('sending')
     setMessage('')
     track('text_optin_submitted', { tool, consent_version: copy.consentVersion, placement: 'form', method })
+    onSubmitted?.(method)
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
