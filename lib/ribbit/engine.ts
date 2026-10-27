@@ -177,9 +177,11 @@ const PICKER_CHIPS: Chip[] = [{ label: 'Rent I can afford', value: 'rent' }, { l
  * appLinkText) with only the channel word changed. The page puts the app-link card under each, as the text
  * thread sends the link as a card. One invite per thread, shared by a planning question and an account question.
  */
-export const INVITE_TEXT = "For a plan built on your real numbers, try WeLeap. I'll take it from there."
-export const HANDOFF_TEXT = "Your savings, debts and plan live in the app, not in this chat. Install WeLeap and I'll answer from your real numbers."
-export const APP_LINK_TEXT = 'That one needs your account, which is in the app.'
+// The same words as the text thread (backend users/rentpilot.go planInviteText, handOffText, appLinkText): one
+// Ribbit on both doors. Save and connect, never install: the link opens the plan page, not an app store.
+export const INVITE_TEXT = "Save this plan in WeLeap and connect your bank for one built on your real numbers. I'll take it from there."
+export const HANDOFF_TEXT = "Your savings, debts and plan live in WeLeap, not in this chat. Save your plan there and connect your bank, and I'll answer from your real numbers."
+export const APP_LINK_TEXT = "Your balances and spending aren't in this chat, so that one needs WeLeap."
 
 function cityChips(): Chip[] {
   return [...getAvailableCities().map((c) => ({ label: c, value: c })), { label: 'Somewhere else', value: SOMEWHERE_ELSE }]

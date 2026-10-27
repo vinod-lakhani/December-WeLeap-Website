@@ -48,3 +48,6 @@ Thumbs.db
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# Ribbit reader eval results (local)
+scripts/ribbit-eval/runs/
