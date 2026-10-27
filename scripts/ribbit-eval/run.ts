@@ -12,7 +12,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { CASES as CORE, OFFER_RESULT, RENT_RESULT, type Case, type Kind } from './cases'
+import { CASES as CORE, OFFER_RESULT, RENT_RESULT, SPLIT_ABBREVIATION, type Case, type Kind } from './cases'
 import { GRAD_CASES } from './grad-questions'
 
 const CASES: Case[] = [...CORE, ...GRAD_CASES]
@@ -38,6 +38,7 @@ function replyRules(reply: string): string[] {
   const out: string[] = []
   if (/\binstall\b/i.test(reply)) out.push('says install')
   if (/—/.test(reply)) out.push('em dash')
+  if (SPLIT_ABBREVIATION.test(reply)) out.push('split abbreviation')
   if (reply.split(/\s+/).filter(Boolean).length > WORD_LIMIT) out.push(`over ${WORD_LIMIT} words`)
   if (/couldn't answer that|down for a moment|didn't catch that/i.test(reply)) out.push('canned fallback')
   if (/\bopen (the )?(feed|analyze|plan|home|profile)\b|\b(feed|analyze) tab\b/i.test(reply)) out.push('sends to an app tab')

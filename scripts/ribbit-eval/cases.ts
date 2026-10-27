@@ -72,7 +72,9 @@ export const OFFER_RESULT = {
 }
 
 const NOT_PUNTED = [/needs your (own )?account/i, /in the app/i, /only see what you've told me/i]
-const ASKS = /\?|\btell me\b|\bsend me\b/i
+/** Every reply: "e.g." is one word, never split into "e. g." (Oct 27 live). */
+export const SPLIT_ABBREVIATION = /\b(e|i)\. (g|e)\./i
+const ASKS = /\?|\btell me\b|\bsend me\b|\bgive me\b/i
 
 export const CASES: Case[] = [
   // ── General money questions: a rule of thumb and what it depends on, never "it's in the app" ──
@@ -97,6 +99,13 @@ export const CASES: Case[] = [
       { role: 'assistant', text: "At 18%, it depends on what you pay each month. What's your monthly payment?" },
     ],
     message: '650 a month', expect: { kind: 'question', says: [/79 months|6\.6 years/i, /21,4\d\d|21,5\d\d/] } },
+  { id: 'c-car-payment-below-interest', area: 'calculation',
+    history: [
+      { role: 'user', text: 'I have a car loan at 18% interest with a balance of 30000. When will I be able to pay it off' },
+      { role: 'assistant', text: "I need the monthly payment you'll make to work out the payoff time. What's your monthly payment?" },
+    ],
+    message: '400', expect: { kind: 'question', says: [/interest/i, /\$?450/], never: [/\d+ months/i, /e\. g\./] },
+    note: 'Oct 27 live: right answer, but it did not say what the payment has to beat ($450 of interest a month)' },
   { id: 'c-card-payoff', area: 'calculation', message: 'I owe 8000 on a credit card at 24% and pay 300 a month. How long until it is paid off?',
     expect: { kind: 'question', says: [/(38|39) months|3\.2 years/i] } },
   { id: 'c-car-payment', area: 'calculation', message: 'what would my payment be on a 25000 car loan at 7% for 5 years?', expect: { kind: 'question', says: [/\$?495/] } },
