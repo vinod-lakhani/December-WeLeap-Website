@@ -13,7 +13,7 @@
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
  *   why               plan_preview | spending_check | plan_invite | account | benefit (which ask was tapped)
  *   rt                the chat thread id, to stitch the web events to the app
- *   flow              rent | offer | general
+ *   flow              rent | offer | money | general
  *   salary            yearly salary, dollars (when given)
  *   takehome          monthly take-home, dollars (net of federal, FICA, state and city tax where known)
  *   state, city       two-letter state; the city or metro as the chat named it
@@ -28,9 +28,12 @@
  *   k401_cost         its monthly after-tax cost to take-home
  *   worth             the offer's yearly worth on entered terms
  *   saving            a monthly saving amount the person mentioned (general questions)
+ *   debt_balance, debt_rate, debt_pay, debt_months   money flow: the biggest debt and the plan for it (payment, months)
+ *   ef_goal           money flow: the emergency fund goal (three months of essentials)
  */
 import { appLinkAt } from '@/lib/app-link'
-import type { Facts, Flow } from './engine'
+import { moneyInputs, type Facts, type Flow } from './engine'
+import { moneyOrder } from './moneyOrder'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
 
@@ -40,6 +43,7 @@ const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n)
 
 /** The plan's numbers as link parameters. Absent facts are left out, never guessed. */
 export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string): Record<string, string> {
+  const money = flow === 'money' ? moneyOrder(moneyInputs(f)) : undefined
   const p: Record<string, string | undefined> = {
     src: 'ribbit_chat',
     why,
@@ -61,6 +65,11 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     k401_cost: round(f.electionCost),
     worth: f.match === 'known' ? round(f.value?.totalPackage) : undefined,
     saving: round(f.mentionedSaving),
+    debt_balance: money && f.debt ? round(f.debt.balance) : undefined,
+    debt_rate: money && f.debt ? String(f.debt.aprPct) : undefined,
+    debt_pay: money?.debtPlan ? round(money.debtPlan.payment) : undefined,
+    debt_months: money?.debtPlan && Number.isFinite(money.debtPlan.months) ? String(money.debtPlan.months) : undefined,
+    ef_goal: money ? round(money.emergencyGoal) : undefined,
   }
   return Object.fromEntries(Object.entries(p).filter((e): e is [string, string] => e[1] !== undefined && e[1] !== ''))
 }

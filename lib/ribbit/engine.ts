@@ -1,5 +1,6 @@
 /**
- * The Ribbit chat: the rent and offer tools as a conversation (spec: "Ribbit Chat Tool — Rent and Offer Flows").
+ * The Ribbit chat: the rent and offer tools as a conversation (spec: "Ribbit Chat Tool — Rent and Offer Flows"),
+ * and "Where should my money go?" for a general question (the order itself is lib/ribbit/moneyOrder.ts).
  *
  * A pure state machine. Each reply produces the next Ribbit messages, the chips for the next answer and the
  * analytics to send; the state is plain JSON, so a refresh restores the thread from localStorage. Every figure
@@ -23,12 +24,13 @@ import { federalTax, ficaTax, marginalFederalRate, taxableIncome } from '@/lib/f
 import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type OfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
-import { matchPresetCity, matchState, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
+import { matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
+import { moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
 import type { AppReason } from './appLink'
 
 const metroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>
 
-export type Flow = 'rent' | 'offer'
+export type Flow = 'rent' | 'offer' | 'money'
 export interface Chip { label: string; value: string }
 export interface MathRow { label: string; value: string; strong?: boolean }
 export interface ChatMessage {
@@ -56,6 +58,8 @@ export interface ChatMessage {
   turn?: string
   /** Render the text door (the approved consent and button) under this message. */
   handoff?: Flow
+  /** "Where should my money go?": the next-dollar order, as numbered steps (lib/ribbit/moneyOrder.ts). */
+  order?: MoneyStep[]
 }
 export interface ChatEvent { name: string; props: Record<string, unknown> }
 
@@ -111,6 +115,14 @@ export interface Facts {
   value?: OfferValue
   /** The flow this thread switched from (offer → rent at O7), so the handoff can name both. */
   switchedFrom?: Flow
+  // money ("Where should my money go?"); the rent is `pick`, as in the rent flow
+  /** The biggest debt, read from one line or asked piece by piece. */
+  debt?: MoneyDebt
+  pendingDebt?: Partial<MoneyDebt>
+  /** The person's own 401(k) contribution a month at the matched rate, before the match. */
+  contributionMonthly?: number
+  /** "Work it out with your numbers?" has been offered after a planning question (once per thread). */
+  moneyOffered?: boolean
 }
 
 export interface ChatState {
@@ -177,7 +189,10 @@ const STATE_NAME = (code?: string) => US_STATES_NAMED.find((s) => s.code === cod
 
 // The two tools, named as tasks: after a side question they sit under "Or work out with Ribbit", where a bare
 // "Rent" read as an answer to a question nobody asked.
-const PICKER_CHIPS: Chip[] = [{ label: 'Rent I can afford', value: 'rent' }, { label: 'What an offer is worth', value: 'offer' }]
+const PICKER_CHIPS: Chip[] = [
+  { label: 'Rent I can afford', value: 'rent' }, { label: 'What an offer is worth', value: 'offer' },
+  { label: 'Where should my money go?', value: 'money' },
+]
 
 /**
  * Prompts to use WeLeap say and do what the text thread's do (golden rule: web and text behave the same). Each
@@ -191,6 +206,10 @@ export const INVITE_TEXT = "Save this plan in WeLeap and connect your bank for o
 export const HANDOFF_TEXT = "Your savings, debts and plan live in WeLeap, not in this chat. Save your plan there and connect your bank, and I'll answer from your real numbers."
 export const APP_LINK_TEXT = "Your balances and spending aren't in this chat, so that one needs WeLeap."
 
+/** After a planning question before any tool: the offer to work it out with their numbers. */
+export const MONEY_OFFER_TEXT = 'Want me to work out your order with your numbers? Four quick questions.'
+const MONEY_OFFER_CHIPS: Chip[] = [{ label: 'Yes, work it out', value: 'money' }, { label: 'Not now', value: 'not_now' }]
+
 function cityChips(): Chip[] {
   return [...getAvailableCities().map((c) => ({ label: c, value: c })), { label: 'Somewhere else', value: SOMEWHERE_ELSE }]
 }
@@ -198,12 +217,12 @@ function cityChips(): Chip[] {
 // ── Starting ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export function start(flow: Flow | null): Step {
-  const state: ChatState = { flow, turn: flow === 'rent' ? 'R1' : flow === 'offer' ? 'O1' : 'P0', facts: {}, history: [] }
+  const state: ChatState = { flow, turn: flow === 'rent' ? 'R1' : flow === 'offer' ? 'O1' : flow === 'money' ? 'M1' : 'P0', facts: {}, history: [] }
   if (!flow) {
     return say(state, [{ from: 'ribbit', text: 'What are we working out?', turn: 'P0' }],
       PICKER_CHIPS, 'text')
   }
-  return flow === 'rent' ? askSalary(state) : askOfferSalary(state)
+  return flow === 'rent' ? askSalary(state) : flow === 'offer' ? askOfferSalary(state) : askMoneySalary(state)
 }
 
 function say(state: ChatState, messages: ChatMessage[], chips: Chip[], input: Step['input'], events: ChatEvent[] = []): Step {
@@ -252,9 +271,11 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
 
   switch (state.turn) {
     case 'P0': {
-      const pick = chip ?? (/offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : '')
+      const pick = chip ?? (/where should my money go/i.test(text) ? 'money' : /offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : '')
       if (pick === 'rent') return askSalary({ ...state, flow: 'rent', turn: 'R1' })
       if (pick === 'offer') return askOfferSalary({ ...state, flow: 'offer', turn: 'O1' })
+      if (pick === 'money') return askMoneySalary({ ...state, flow: 'money', turn: 'M1' })
+      if (pick === 'not_now') return say(state, [{ from: 'ribbit', text: 'Sure. Ask me anything, or pick one to work out.' }], PICKER_CHIPS, 'text')
       return question(state, text, svc, 'which tool to use: rent or a job offer')
     }
 
@@ -267,20 +288,11 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       }
       const n = parseMoney(text)
       if (!n) return question(state, text, svc, 'their salary or monthly take-home')
-      const kind = state.turn === 'R1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n)
-      if (kind === 'salary') {
-        f.salary = n
-        f.takeHomeFrom = 'salary'
-        f.takeHomeMonthly = beforeStateTakeHome(n)
-        f.takeHomeBeforeState = true
-      } else {
-        f.takeHomeMonthly = n
-        f.takeHomeFrom = 'typed'
-        f.takeHomeBeforeState = false
-      }
-      f.range = calculateRentRange(f.takeHomeMonthly, 0)
+      takeIncome(f, n, state.turn === 'R1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      const takeHome = f.takeHomeMonthly ?? 0
+      f.range = calculateRentRange(takeHome, 0)
       const basis = f.takeHomeFrom === 'salary'
-        ? `On ${fc(n)} a year, take-home before state tax is about ${fc(f.takeHomeMonthly)} a month.`
+        ? `On ${fc(n)} a year, take-home before state tax is about ${fc(takeHome)} a month.`
         : `On ${fc(n)} a month take-home,`
       const line = f.takeHomeFrom === 'salary' ? `${basis} Rent that fits is ${f.range.formatted}.` : `${basis} rent that fits is ${f.range.formatted}.`
       return say({ ...state, turn: 'R2' }, [
@@ -372,6 +384,66 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       if (!two) return question(state, text, svc, 'the card balance and its interest rate')
       return cardPayoff(state, two[0], two[1])
     }
+    // ── Where should my money go? ─────────────────────────────────────────────────────────────────────────
+    case 'M1':
+    case 'M1_amount': {
+      if (chip === 'salary' || chip === 'take_home') {
+        return say({ ...state, turn: 'M1_amount', facts: { ...f, takeHomeFrom: chip === 'salary' ? 'salary' : 'typed' } },
+          [{ from: 'ribbit', text: chip === 'salary' ? "What's the yearly salary?" : 'How much take-home lands each month?' }], [], 'money')
+      }
+      const n = parseMoney(text)
+      if (!n) return question(state, text, svc, 'their salary or monthly take-home')
+      takeIncome(f, n, state.turn === 'M1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      // A salary needs the state for its take-home; a typed take-home already is one.
+      if (f.takeHomeFrom === 'salary') {
+        return say({ ...state, turn: 'M2' }, [
+          { from: 'ribbit', text: `On ${fc(n)} a year, take-home before state tax is about ${fc(f.takeHomeMonthly ?? 0)} a month. Where do you live?` },
+        ], cityChips(), 'location')
+      }
+      return askMoneyRent(state, '')
+    }
+    case 'M2':
+      return chooseLocation(state, chip, text, svc)
+    case 'M2_state':
+      return chooseState(state, chip, text, svc)
+    case 'M3': {
+      const none = chip === 'none' || /no rent|don'?t pay|live with|free|^0$/i.test(text)
+      const n = none ? 0 : parseMoney(text)
+      if (n === null) return question(state, text, svc, 'their monthly rent')
+      f.pick = n
+      return askMoneyDebt(state)
+    }
+    case 'M4':
+    case 'M4_more': {
+      if (chip === 'none' || /^(none|no|nope|zero|no debt)\b/i.test(text)) { f.debt = undefined; f.pendingDebt = undefined; return askMoneyMatch(state) }
+      const pending = f.pendingDebt ?? {}
+      // Asked for one missing piece, the answer fills that piece only: "120" for the payment is not a new balance.
+      const missing = state.turn === 'M4_more' ? missingDebtPart(pending) : undefined
+      let read: Partial<MoneyDebt> = parseDebt(text)
+      if (missing) {
+        const n = read[missing] ?? parseMoney(text)
+        read = n !== null && n !== undefined ? { [missing]: n } : {}
+      }
+      const d = { ...pending, ...Object.fromEntries(Object.entries(read).filter(([, v]) => v !== undefined)) } as Partial<MoneyDebt>
+      if (!d.balance && !d.aprPct && !d.payment) return question(state, text, svc, 'their biggest card or loan: its balance, rate and monthly payment')
+      const next = missingDebtPart(d)
+      if (next) {
+        f.pendingDebt = d
+        const ask = next === 'balance' ? "What's the balance on it?" : next === 'aprPct' ? "What's its interest rate?" : 'What do you pay on it a month?'
+        return say({ ...state, turn: 'M4_more' }, [{ from: 'ribbit', text: ask }], [], next === 'aprPct' ? 'text' : 'money')
+      }
+      f.debt = d as MoneyDebt
+      f.pendingDebt = undefined
+      return askMoneyMatch(state)
+    }
+    case 'M5':
+    case 'M5_formula':
+    case 'M5_rate':
+      return moneyMatch(state, chip, text, svc)
+    case 'M6':
+      if (chip === 'keep' || /^(y|yes|keep|save)/i.test(text)) return planEnding(state, [])
+      return question(state, text, svc, 'whether to keep this as their plan')
+
     case 'O6': {
       // Past the 401k spending check: on to rent. Asking about rent directly works too.
       if (chip === 'keep' || chip === 'rent' || /keep|go on|continue|rent/i.test(text)) return offerRent(state)
@@ -414,6 +486,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     }
     case 'R8':
     case 'O8':
+    case 'M8':
     case 'done':
       // The ending's "Not ready to connect? Text me each step instead" opens the text sign-up.
       if (chip === 'text') return handoff(state)
@@ -427,6 +500,20 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
 /** Federal income tax and FICA only: the first answer, before anybody has said where. Labelled as such. */
 function beforeStateTakeHome(salary: number): number {
   return Math.round((salary - federalTax(taxableIncome(salary, 0)) - ficaTax(salary)) / 12)
+}
+
+/** A salary (taken before state tax, the location refines it) or a monthly take-home as typed. */
+function takeIncome(f: Facts, n: number, kind: 'salary' | 'take_home'): void {
+  if (kind === 'salary') {
+    f.salary = n
+    f.takeHomeFrom = 'salary'
+    f.takeHomeMonthly = beforeStateTakeHome(n)
+    f.takeHomeBeforeState = true
+  } else {
+    f.takeHomeMonthly = n
+    f.takeHomeFrom = 'typed'
+    f.takeHomeBeforeState = false
+  }
 }
 
 /**
@@ -458,9 +545,11 @@ function placeTaxLine(f: Facts): string {
 
 // ── Location ────────────────────────────────────────────────────────────────────────────────────────────────
 
+const LOCATION_TURN: Record<Flow, string> = { rent: 'R2', offer: 'O2', money: 'M2' }
+
 async function chooseLocation(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
-  const pfx = state.flow === 'offer' ? 'O2' : 'R2'
+  const pfx = LOCATION_TURN[state.flow ?? 'rent']
   if (chip === SOMEWHERE_ELSE || /somewhere else|other/i.test(text)) {
     return say({ ...state, turn: `${pfx}_state` }, [{ from: 'ribbit', text: 'Which state?' }], [], 'location')
   }
@@ -480,11 +569,18 @@ async function chooseLocation(state: ChatState, chip: string | undefined, text: 
 
 async function chooseState(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
-  const pfx = state.flow === 'offer' ? 'O2' : 'R2'
+  const pfx = LOCATION_TURN[state.flow ?? 'rent']
   const st = matchState(chip ?? text)
   if (!st) return question(state, text, svc, 'which US state')
   f.stateCode = st.code
   f.presetCity = undefined
+  if (state.flow === 'money') {
+    // Only the state's tax matters here: no metro, no rents.
+    f.region = undefined
+    f.outsideMetro = true
+    f.place = st.name
+    return afterLocation(state, svc)
+  }
   const options = await svc.metros(st.code)
   f.metroOptions = options
   if (!options.length) {
@@ -520,6 +616,7 @@ async function chooseMetro(state: ChatState, chip: string | undefined, text: str
 async function afterLocation(state: ChatState, svc: ChatServices): Promise<Step> {
   await locate(state, svc)
   if (state.flow === 'offer') return offerAfterLocation(state)
+  if (state.flow === 'money') return askMoneyRent(state, placeTaxLine(state.facts))
   state.facts.range = calculateRentRange(state.facts.takeHomeMonthly ?? 0, state.facts.debtMonthly ?? 0)
   return marketTurn(state, svc)
 }
@@ -682,11 +779,8 @@ function purposeTurn(state: ChatState): Step {
 
 /** Months to clear a balance paying a fixed amount at a card's APR. Infinity when the payment never covers the interest. */
 export function monthsToClear(balance: number, aprPct: number, payment: number): number {
-  const r = aprPct / 100 / 12
-  if (payment <= 0) return Infinity
-  if (r === 0) return Math.ceil(balance / payment)
-  if (payment <= balance * r) return Infinity
-  return Math.ceil(-Math.log(1 - (r * balance) / payment) / Math.log(1 + r))
+  const { months } = payoff(balance, aprPct, payment)
+  return Number.isFinite(months) ? Math.ceil(months) : Infinity
 }
 
 function cardPayoff(state: ChatState, balance: number, apr: number): Step {
@@ -803,19 +897,29 @@ function applyMatch(state: ChatState, rate: number, cap: number): Step {
     [{ label: 'What should I put in', value: 'put_in' }, { label: 'Skip', value: 'skip' }], 'text', [win('O5')])
 }
 
-function offerElection(state: ChatState): Step {
-  const f = state.facts
+/**
+ * The 401k at the matched rate: what the person puts in a month, what goes in with the match, and its after-tax
+ * cost (the contribution escapes federal income tax at their own marginal rate and state tax at their state's
+ * effective rate, as the first-paycheck tool prices it). Stored on the facts for the card and the link.
+ */
+function election(f: Facts): { contribution: number; match: number; cost: number } {
   const salary = f.salary ?? 0
   const cap = f.matchUpToPct ?? 0
   const rate = f.matchRatePct ?? 0
   const contribution = (salary * cap) / 100 / 12
   const match = contribution * (rate / 100)
-  // After-tax cost: the contribution escapes federal income tax at the person's own marginal rate and state tax at
-  // their state's effective rate, as the first-paycheck tool prices it.
   const stateRate = f.tax && salary ? f.tax.stateTaxAnnual / salary : 0
   const cost = contribution * (1 - marginalFederalRate(taxableIncome(salary, (salary * cap) / 100)) - stateRate)
   f.electionMonthlyIn = contribution + match
   f.electionCost = cost
+  f.contributionMonthly = contribution
+  return { contribution, match, cost }
+}
+
+function offerElection(state: ChatState): Step {
+  const f = state.facts
+  const cap = f.matchUpToPct ?? 0
+  const { contribution, match, cost } = election(f)
   const elected: ChatMessage = {
     from: 'ribbit',
     text: `Put in ${cap}%. It costs you about ${fc(cost)} a month of take-home and adds ${fc(contribution + match)} a month to your retirement account with the match. That's the ${cap}% form with HR on day one, then a look at the first stub to confirm it took.`,
@@ -837,6 +941,109 @@ function offerRentMessages(f: Facts): ChatMessage[] {
 function offerRent(state: ChatState, lead?: string, before: ChatMessage[] = []): Step {
   return say({ ...state, turn: 'O7' }, [...before, ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []), ...offerRentMessages(state.facts)],
     [{ label: 'Yes', value: 'yes' }, { label: 'Later', value: 'later' }], 'text')
+}
+
+// ── Where should my money go? turns ──────────────────────────────────────────────────────────────────────────
+
+function askMoneySalary(state: ChatState): Step {
+  return say({ ...state, turn: 'M1' }, [
+    { from: 'ribbit', text: "Let's work out where your money should go, in order. Four quick questions. What's your yearly salary, or your monthly take-home?", turn: 'M1' },
+  ], [{ label: 'Yearly salary', value: 'salary' }, { label: 'Monthly take-home', value: 'take_home' }], 'money')
+}
+
+function askMoneyRent(state: ChatState, lead: string): Step {
+  const f = state.facts
+  return say({ ...state, turn: 'M3' }, [
+    ...(lead ? [{ from: 'ribbit' as const, text: lead, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, figureLabel: 'Take-home', turn: 'M3' }] : []),
+    { from: 'ribbit', text: "What's your rent each month?" },
+  ], [{ label: "I don't pay rent", value: 'none' }], 'money', lead ? [win('M3')] : [])
+}
+
+function askMoneyDebt(state: ChatState): Step {
+  return say({ ...state, turn: 'M4' }, [
+    { from: 'ribbit', text: 'Any card or loan balances? The one with the highest rate is enough: its balance, its rate and what you pay a month.' },
+  ], [{ label: 'No debt', value: 'none' }], 'text')
+}
+
+function missingDebtPart(d: Partial<MoneyDebt>): keyof MoneyDebt | undefined {
+  return d.balance === undefined ? 'balance' : d.aprPct === undefined ? 'aprPct' : d.payment === undefined ? 'payment' : undefined
+}
+
+function askMoneyMatch(state: ChatState): Step {
+  return say({ ...state, turn: 'M5' }, [{ from: 'ribbit', text: 'Last one. Does your job match 401(k) contributions?', turn: 'M5' }], [
+    { label: 'Yes, I know the match', value: 'known' }, { label: 'Yes, not sure how much', value: 'unknown' }, { label: 'No match', value: 'none' },
+  ], 'text')
+}
+
+/** The match, read as the offer flow reads it (parseMatch, a lone % confirmed as dollar for dollar). */
+async function moneyMatch(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  if (state.turn === 'M5') {
+    const v = chip ?? (/^no\b/i.test(text) ? 'none' : /not sure|don'?t know/i.test(text) ? 'unknown' : parseMatch(text) ? 'known' : '')
+    if (v === 'none' || v === 'unknown') { f.match = v; return moneyResult(state) }
+    if (v === 'known' && !parseMatch(text)) {
+      return say({ ...state, turn: 'M5_formula' }, [{ from: 'ribbit', text: "What's the formula? For example, 100% up to 4% of salary." }], [], 'text')
+    }
+    if (!v) return question(state, text, svc, 'whether their job matches 401(k) contributions')
+  }
+  if (state.turn === 'M5_rate') {
+    const m = parseMatch(text)
+    const rate = chip === 'yes' ? 100 : m?.cap ?? null
+    if (!rate) return question(state, text, svc, 'the match rate')
+    return applyMoneyMatch(state, rate, f.pendingMatchCap!)
+  }
+  const m = parseMatch(text)
+  if (!m) return question(state, text, svc, 'the match formula')
+  if (m.rate === undefined) {
+    f.pendingMatchCap = m.cap
+    return say({ ...state, turn: 'M5_rate' }, [{ from: 'ribbit', text: `Is that dollar for dollar up to ${m.cap}% of salary?` }],
+      [{ label: 'Yes', value: 'yes' }, { label: 'No, a different rate', value: 'rate' }], 'text')
+  }
+  return applyMoneyMatch(state, m.rate, m.cap)
+}
+
+function applyMoneyMatch(state: ChatState, rate: number, cap: number): Step {
+  const f = state.facts
+  f.match = 'known'
+  f.matchRatePct = rate
+  f.matchUpToPct = cap
+  if (f.salary) election(f)
+  return moneyResult(state)
+}
+
+export function moneyInputs(f: Facts): MoneyInputs {
+  return {
+    takeHomeMonthly: f.takeHomeMonthly ?? 0, rentMonthly: f.pick ?? 0, debt: f.debt,
+    match: f.match, matchUpToPct: f.matchUpToPct,
+    electionMonthlyIn: f.electionMonthlyIn, electionCost: f.electionCost, contributionMonthly: f.contributionMonthly,
+  }
+}
+
+/** The win: the order, worked out in code, then the offer to keep it as their plan. */
+function moneyResult(state: ChatState): Step {
+  const o = moneyOrder(moneyInputs(state.facts))
+  const share = o.monthlyForSteps > 0 ? [{ from: 'ribbit' as const, text: `These take ${fc(o.monthlyForSteps)} a month of the ${fc(o.leftAfterRent)} you have left after rent.` }] : []
+  return say({ ...state, turn: 'M6' }, [
+    { from: 'ribbit', text: "Here's where your next dollar goes, in order.", order: o.steps, turn: 'M6' },
+    ...share,
+    { from: 'ribbit', text: 'Want me to keep this as your plan?' },
+  ], [{ label: 'Yes, keep it', value: 'keep' }, { label: 'Show me the math', value: '__math__' }], 'text', [win('M6'), { name: 'ribbit_money_order_shown', props: { steps: o.steps.map((s) => s.key).join(',') } }])
+}
+
+function moneyCard(f: Facts): NonNullable<ChatMessage['planCard']> {
+  const o = moneyOrder(moneyInputs(f))
+  const d = f.debt
+  const p = o.debtPlan
+  return {
+    known: [
+      ...(f.takeHomeMonthly ? [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
+      ...(f.pick ? [{ label: 'Rent', value: `${fc(f.pick)}/mo` }] : []),
+      ...(f.match === 'known' && f.electionMonthlyIn && f.matchUpToPct ? [{ label: `401(k) at ${f.matchUpToPct}%, with the match`, value: `${fc(f.electionMonthlyIn)}/mo in` }] : []),
+      ...(d && p ? [{ label: `${d.aprPct}% debt`, value: Number.isFinite(p.months) ? `${fc(p.payment)}/mo, gone in ${p.months} months` : `${fc(p.payment)}/mo` }] : []),
+      { label: 'Emergency fund goal', value: `about ${fc(o.emergencyGoal)}` },
+    ],
+    locked: ['What you actually spend a month', d && p ? `Whether ${fc(p.payment)} to the debt fits` : 'Whether this plan fits your real spending', 'Your real emergency fund goal'],
+  }
 }
 
 // ── Handoff, math, questions ────────────────────────────────────────────────────────────────────────────────
@@ -863,11 +1070,12 @@ function handoff(state: ChatState, lead?: string): Step {
 export const PLAN_PREVIEW_TEXT = "Want to keep this? Here's your plan as WeLeap would show it. The rest fills in when you connect your bank."
 function planEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
   const flow: Flow = state.flow ?? 'rent'
-  const turn = flow === 'offer' ? 'O8' : 'R8'
-  const card = flow === 'offer' ? offerCard(state.facts) : rentCard(state.facts)
+  const turn = flow === 'offer' ? 'O8' : flow === 'money' ? 'M8' : 'R8'
+  const card = flow === 'offer' ? offerCard(state.facts) : flow === 'money' ? moneyCard(state.facts) : rentCard(state.facts)
   return say({ ...state, turn, invited: true }, [...lead, {
     from: 'ribbit', text: PLAN_PREVIEW_TEXT, turn, planCard: card,
-    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: true },
+    // Text threads exist for rent and offers only, so the money flow has no "text me instead".
+    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: flow !== 'money' },
   }], [], 'text', [...events, { name: 'ribbit_plan_preview_shown', props: { turn, known_rows: card.known.length } }])
 }
 
@@ -921,6 +1129,15 @@ function showMath(state: ChatState): Step {
     rows.push({ label: 'State tax', value: 'once you pick a city' })
   }
   rows.push({ label: 'Take-home a month', value: fc(f.takeHomeMonthly ?? 0), strong: true })
+  if (state.flow === 'money') {
+    const o = moneyOrder(moneyInputs(f))
+    rows.push({ label: 'Rent', value: `−${fc(f.pick ?? 0)}` }, { label: 'Left after rent', value: fc(o.leftAfterRent), strong: true })
+    if (f.electionCost && f.matchUpToPct) rows.push({ label: `${f.matchUpToPct}% to the 401(k), after tax`, value: `−${fc(f.electionCost)}` })
+    if (f.debt && o.debtPlan) {
+      rows.push({ label: `${fc(f.debt.balance)} at ${f.debt.aprPct}%, ${fc(o.debtPlan.payment)} a month`, value: `${o.debtPlan.months} months, ${fc(o.debtPlan.interest)} interest` })
+    }
+    rows.push({ label: 'Emergency fund: 3 months of half your take-home', value: fc(o.emergencyGoal) })
+  }
   if (state.flow === 'rent' && f.range) {
     if (f.debtMonthly) rows.push({ label: 'Debt payments a month', value: `−${fc(f.debtMonthly)}` })
     rows.push({ label: 'Rent that fits (28% to 35% of what is left)', value: f.range.formatted, strong: true })
@@ -959,21 +1176,17 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
     messages.push({ from: 'ribbit', text: res?.reply ?? "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." })
     // A planning question: the answer, then the thread's one invite (mid-flow too; the page offers finishing the
     // numbers next to it).
-    invite = Boolean(res?.plan) && !state.invited
-    if (invite && state.turn === 'P0') {
-      // No tool picked, so no numbers yet: the card is built from the question. An amount they mentioned is the
-      // known row; what would answer it properly is locked.
+    invite = Boolean(res?.plan) && !state.invited && state.turn !== 'P0'
+    if (res?.plan && !state.invited && state.turn === 'P0' && !state.facts.moneyOffered) {
+      // No tool picked, so no numbers yet: offer to work it out with theirs ("Where should my money go?"); the
+      // invite comes at that flow's end, with a card full of their numbers.
       const amount = /sav/i.test(text) ? parseMoney(text) : null
       if (amount) state.facts.mentionedSaving = amount
-      messages.push({
-        from: 'ribbit', text: INVITE_TEXT, turn: state.turn,
-        planCard: {
-          known: amount ? [{ label: 'Saving each month', value: fc(amount) }] : [],
-          locked: ['Months your emergency fund covers', 'Your card balances and rates', `Where ${amount ? `your ${fc(amount)}` : 'your money'} should go first`],
-        },
-        appAsk: { label: 'Get my plan and unlock the rest', why: 'plan_invite', note: 'Connecting your bank takes about 2 minutes.' },
-      })
-      events.push({ name: 'ribbit_app_invite_shown', props: { turn: state.turn, reason: 'plan', card: true } })
+      state.facts.moneyOffered = true
+      messages.push({ from: 'ribbit', text: MONEY_OFFER_TEXT, turn: state.turn })
+      events.push({ name: 'ribbit_money_offer_shown', props: { turn: state.turn } })
+      const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)
+      return { state: { ...state, history }, messages, chips: MONEY_OFFER_CHIPS, input, events }
     } else if (invite) {
       // Mid-flow: the line and the button, next to finishing the numbers; the flow's own ending shows the card.
       messages.push({ from: 'ribbit', text: INVITE_TEXT, appAsk: { label: 'Click to get WeLeap', why: 'plan_invite' }, turn: state.turn })

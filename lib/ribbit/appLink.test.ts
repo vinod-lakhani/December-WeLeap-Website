@@ -61,4 +61,17 @@ describe('remembering a tapped Save my plan, for "Open my plan"', () => {
     store.set('weleap.ribbitChat.planSaved.v1', '{not json')
     expect(planSaved()).toBeNull()
   })
+
+  it('the money flow carries its debt plan and emergency fund goal', () => {
+    const p = ribbitPlanParams({
+      salary: 85_000, takeHomeFrom: 'salary', takeHomeMonthly: 5_719, stateCode: 'TX', pick: 1_600,
+      debt: { balance: 4_000, aprPct: 22, payment: 150 }, match: 'known', matchRatePct: 100, matchUpToPct: 4,
+      electionMonthlyIn: 566, electionCost: 221, contributionMonthly: 283,
+    }, 'money', 'plan_preview', 't')
+    expect(p).toEqual(expect.objectContaining({
+      flow: 'money', rent: '1600', takehome: '5719', state: 'TX', match_cap: '4', k401_monthly: '566',
+      debt_balance: '4000', debt_rate: '22', debt_pay: '375', debt_months: '12', ef_goal: '8600',
+    }))
+    expect(ribbitPlanParams({ takeHomeMonthly: 5_000 }, 'rent', 'plan_preview', 't').ef_goal).toBeUndefined()
+  })
 })

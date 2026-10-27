@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_OFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -23,7 +23,7 @@ const svc = (over: Partial<ChatServices> = {}): ChatServices => ({
   ...over,
 })
 
-async function run(flow: 'rent' | 'offer' | null, replies: Array<{ chip?: string; text?: string }>, s: ChatServices = svc()): Promise<Step[]> {
+async function run(flow: 'rent' | 'offer' | 'money' | null, replies: Array<{ chip?: string; text?: string }>, s: ChatServices = svc()): Promise<Step[]> {
   const steps: Step[] = [start(flow)]
   for (const r of replies) steps.push(await reply(steps[steps.length - 1].state, r, s))
   return steps
@@ -146,10 +146,10 @@ describe('rent flow', () => {
     expect(s[4].parked).toBeUndefined()
   })
 
-  it('before a tool is picked, a question leaves the two choices up', async () => {
+  it('before a tool is picked, a question leaves the three choices up', async () => {
     const s = await run(null, [{ text: 'should I put money into a Roth IRA' }])
     expect(s[1].parked).toBeUndefined()
-    expect(s[1].chips.map((c) => c.value)).toEqual(['rent', 'offer'])
+    expect(s[1].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money'])
   })
 
   it('parks the question the turn asked, even when the turn goes on after it', async () => {
@@ -215,33 +215,34 @@ describe('typed answers Ribbit reads', () => {
 describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   const planAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: /what should i do|card or invest/i.test(message) }) })
 
-  it('a planning question before a tool gets the answer and a card built from the question, once per thread', async () => {
-    const s = await run(null, [{ text: 'I am saving $1000 a month, what should I do with it' }, { text: 'should I pay off my card or invest' }], planAsk)
-    expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I am saving $1000 a month, what should I do with it', INVITE_TEXT])
-    const card = s[1].messages[1]
-    expect(card.planCard?.known).toEqual([{ label: 'Saving each month', value: '$1,000' }])
-    expect(card.planCard?.locked).toContain('Where your $1,000 should go first')
-    expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Get my plan and unlock the rest', why: 'plan_invite' }))
-    expect(card.appAsk?.textInstead).toBeFalsy()
+  it('a planning question before a tool gets the answer, then the offer to work it out with their numbers, once', async () => {
+    const s = await run(null, [{ text: 'I am saving $1000 a month, what should I do with it' }, { chip: 'not_now' }, { text: 'should I pay off my card or invest' }], planAsk)
+    expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I am saving $1000 a month, what should I do with it', MONEY_OFFER_TEXT])
+    expect(s[1].chips.map((c) => c.value)).toEqual(['money', 'not_now'])
+    expect(s[1].messages.some((m) => m.appAsk || m.planCard)).toBe(false)
     expect(facts(s[1]).mentionedSaving).toBe(1000)
-    expect(s[2].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
+    // Not now: back to the three choices; a later planning question is just answered.
+    expect(s[2].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money'])
+    expect(s[3].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
   })
 
   it('after the invite, a planning question ends with its benefit line and a small link, at most twice', async () => {
     const line = 'Connected, WeLeap ranks your actual debts by interest rate and shows where extra payments save the most.'
     const benefitAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true, benefit: line, topic: 'debt' }) })
-    const s = await run(null, [{ text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
+    // Mid-flow, so the first planning question gets the thread's invite.
+    const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
     // The first planning question: the invite, never a benefit line.
-    expect(s[1].messages.some((m) => m.text === line)).toBe(false)
+    expect(s[2].messages.some((m) => m.text === line)).toBe(false)
+    expect(s[2].messages.some((m) => m.text === INVITE_TEXT)).toBe(true)
     // The next two: the answer, then the line with a quiet link; no invite again.
-    for (const step of [s[2], s[3]]) {
+    for (const step of [s[3], s[4]]) {
       expect(step.messages.map((m) => m.text)).toEqual([expect.stringMatching(/^answer to:/), line])
       expect(step.messages[1].appAsk).toEqual(expect.objectContaining({ why: 'benefit', quiet: true, label: 'Get my plan' }))
       expect(step.messages.some((m) => m.text === INVITE_TEXT)).toBe(false)
       expect(step.events.some((e) => e.name === 'ribbit_benefit_line_shown')).toBe(true)
     }
     // A third: the answer alone.
-    expect(s[4].messages.map((m) => m.text)).toEqual(['answer to: and the loan'])
+    expect(s[5].messages.map((m) => m.text)).toEqual(['answer to: and the loan'])
   })
 
   it('mid-flow: the line and the button with the question parked; the card waits for the ending', async () => {
@@ -301,10 +302,10 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[8].state.turn).toBe('O8')
   })
 
-  it('at the picker the two tools stay up, captioned as tasks', async () => {
+  it('at the picker the three choices stay up, captioned as tasks', async () => {
     const s = await run(null, [{ text: 'what is a roth ira' }])
     expect(s[1].chipsLabel).toBe('Or work out with Ribbit:')
-    expect(s[1].chips.map((c) => c.label)).toEqual(['Rent I can afford', 'What an offer is worth'])
+    expect(s[1].chips.map((c) => c.label)).toEqual(['Rent I can afford', 'What an offer is worth', 'Where should my money go?'])
   })
 })
 
@@ -312,5 +313,42 @@ describe('card payoff', () => {
   it('clears or says it never will', () => {
     expect(monthsToClear(3_000, 24, 350)).toBe(10)
     expect(monthsToClear(30_000, 24, 350)).toBe(Infinity)
+  })
+})
+
+describe('Where should my money go?', () => {
+  it('four questions, then the order worked out in code, then the plan card full of their numbers', async () => {
+    const s = await run('money', [
+      { text: '85000' }, { text: 'Texas' }, { text: '1600' }, { text: 'Card, 4000 at 22%, I pay 150' },
+      { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'keep' },
+    ])
+    expect(said(s[0])).toContain("yearly salary, or your monthly take-home")
+    expect(said(s[2])).toContain("What's your rent each month?")
+    expect(facts(s[2]).takeHomeMonthly).toBeCloseTo(61_000 / 12, 0)
+    expect(said(s[3])).toContain('Any card or loan balances?')
+    expect(facts(s[4]).debt).toEqual({ balance: 4000, aprPct: 22, payment: 150 })
+    const order = s[6].messages.find((m) => m.order)!.order!
+    expect(order.map((o) => o.key)).toEqual(['match', 'debt', 'emergency', 'retirement'])
+    expect(order[0].detail).toMatch(/^Put in 4% of pay, \$283 a month, and your employer adds \$283\./)
+    expect(s[6].chips.map((c) => c.value)).toEqual(['keep', '__math__'])
+    const card = s[7].messages.find((m) => m.planCard)!
+    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', '401(k) at 4%, with the match', '22% debt', 'Emergency fund goal'])
+    expect(card.appAsk).toEqual(expect.objectContaining({ why: 'plan_preview', textInstead: false }))
+    expect(s[7].state.turn).toBe('M8')
+  })
+
+  it('a debt given in pieces is asked for what is missing, one thing at a time', async () => {
+    const s = await run('money', [{ text: '5000' }, { text: '1500' }, { text: 'about 3000 on a card' }, { text: '24' }, { text: '120' }, { chip: 'none' }])
+    expect(said(s[3])).toBe("What's its interest rate?")
+    expect(said(s[4])).toBe('What do you pay on it a month?')
+    expect(facts(s[5]).debt).toEqual({ balance: 3000, aprPct: 24, payment: 120 })
+    expect(s[6].messages.find((m) => m.order)!.order!.map((o) => o.key)).toEqual(['debt', 'emergency', 'retirement'])
+  })
+
+  it('from the picker, a planning question leads into the flow', async () => {
+    const planAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true }) })
+    const s = await run(null, [{ text: 'should I pay off my card or invest?' }, { chip: 'money' }], planAsk)
+    expect(s[2].state.flow).toBe('money')
+    expect(s[2].state.turn).toBe('M1')
   })
 })
