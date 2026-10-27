@@ -326,7 +326,10 @@ function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
     <section aria-label="Your WeLeap plan preview" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[16px] font-extrabold text-ink">Your WeLeap plan</span>
-        <span className="rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold text-brand-700">From this chat</span>
+        {/* Only when something on the card came from the chat: a question asked before Rent or Offer has no numbers yet. */}
+        {card.known.length > 0 && (
+          <span className="rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold text-brand-700">From this chat</span>
+        )}
       </div>
       {card.known.map((row) => (
         <div key={row.label} className="flex items-baseline justify-between gap-3 border-t border-[#f0efec] py-2.5 text-[14px]">
