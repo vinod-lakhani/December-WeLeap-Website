@@ -35,14 +35,14 @@ export const browserServices: ChatServices = {
       return null
     }
   },
-  async ask({ flow, facts, message, step, history }) {
+  async ask({ flow, facts, message, step, history, thread }) {
     try {
       const planData = flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)
       const res = await fetch('/api/ribbit-ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          flow, planData, message, step,
+          flow, planData, message, step, thread,
           history: history.map((h) => ({ role: h.from === 'in' ? 'user' : 'assistant', text: h.text })),
         }),
       })

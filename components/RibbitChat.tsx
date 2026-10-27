@@ -117,7 +117,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     setThread((t) => ({ ...t, messages: [...t.messages, ...echo], chips: [], parked: undefined, chipsLabel: undefined }))
     setBusy(true)
     const began = Date.now()
-    const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, browserServices)
+    // The thread id goes with each typed question, for the backend's questions-per-thread cap.
+    const services = { ...browserServices, ask: (i: Parameters<typeof browserServices.ask>[0]) => browserServices.ask({ ...i, thread: thread.id }) }
+    const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, services)
     // A short typing state, so the reply reads as answered rather than loaded (under a second).
     const wait = Math.max(0, 450 - (Date.now() - began))
     await new Promise((res) => setTimeout(res, wait))
