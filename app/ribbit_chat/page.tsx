@@ -32,7 +32,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 function readFlow(sp: SearchParams | undefined): { flow: Flow | null; entry: 'flow_param' | 'utm' | 'picker' } {
   const flow = one(sp?.flow)
-  if (flow === 'rent' || flow === 'offer') return { flow, entry: 'flow_param' }
+  if (flow === 'rent' || flow === 'offer' || flow === 'money') return { flow, entry: 'flow_param' }
   const content = one(sp?.utm_content) ?? ''
   if (content.startsWith('rent-')) return { flow: 'rent', entry: 'utm' }
   if (content.startsWith('offer-')) return { flow: 'offer', entry: 'utm' }
@@ -42,6 +42,7 @@ function readFlow(sp: SearchParams | undefined): { flow: Flow | null; entry: 'fl
 const HEADER: Record<Flow | 'picker', string> = {
   rent: 'What rent can I afford?',
   offer: 'What is my job offer really worth?',
+  money: 'Where should my money go?',
   picker: 'Work it out with Ribbit',
 }
 

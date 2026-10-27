@@ -17,7 +17,8 @@ import { browserServices } from '@/lib/ribbit/services'
  */
 
 const STORE_KEY = 'ribbit_chat_thread_v1'
-const TOOL_PAGE: Record<Flow, string> = { rent: '/how-much-rent-can-i-afford', offer: '/what-is-my-job-offer-worth' }
+// The tool page each flow mirrors; "Where should my money go?" has none.
+const TOOL_PAGE: Partial<Record<Flow, string>> = { rent: '/how-much-rent-can-i-afford', offer: '/what-is-my-job-offer-worth' }
 
 interface Saved {
   id: string
@@ -31,7 +32,7 @@ interface Saved {
   chipsLabel?: string
 }
 
-const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers' }
+const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers', money: 'Finish my plan' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
 const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
@@ -168,7 +169,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
           />
         ))}
-        {thread.messages.length === first.current.messages.length && initialFlow && !restored && (
+        {thread.messages.length === first.current.messages.length && initialFlow && TOOL_PAGE[initialFlow] && !restored && (
           <a
             href={TOOL_PAGE[initialFlow]}
             onClick={() => track('ribbit_skipped', { thread_id: thread.id, flow: initialFlow, turn: thread.state.turn })}
@@ -279,6 +280,7 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
           </dl>
         )}
       </div>
+      {m.order && <OrderCard steps={m.order} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
       {m.planCard && <PlanCard card={m.planCard} />}
       {m.appAsk?.quiet && (
@@ -335,6 +337,25 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
 /**
  * The plan as WeLeap would show it: what the chat knows, then the rows only the bank can fill, shown locked.
  */
+/** "Where should my money go?": the order as numbered steps, the paying ones first in solid green (mock-up 10). */
+function OrderCard({ steps }: { steps: NonNullable<ChatMessage['order']> }) {
+  return (
+    <section aria-label="Your next-dollar order" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 py-1.5 shadow-sm">
+      <ol className="flex flex-col">
+        {steps.map((s, i) => (
+          <li key={s.key} className={`flex gap-3 py-3 ${i < steps.length - 1 ? 'border-b border-[#f0efec]' : ''}`}>
+            <span aria-hidden="true" className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold ${i < 2 ? 'bg-[#386641] text-white' : 'bg-[#e5f4e4] text-brand-700'}`}>{i + 1}</span>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[15px] font-extrabold text-ink">{s.title}</span>
+              <span className="text-[14px] leading-snug text-ink-soft">{s.detail}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
   return (
     <section aria-label="Your WeLeap plan preview" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
@@ -379,7 +400,7 @@ function Handoff({ flow, facts, threadId }: { flow: Flow; facts: ChatState['fact
       <TextOptIn
         planData={plan}
         endpoint={flow === 'offer' ? '/api/offer-text' : '/api/rent-text'}
-        tool={flow}
+        tool={flow === 'offer' ? 'offer' : 'rent'}
         onSubmitted={(method) => track('ribbit_handoff_accepted', { thread_id: threadId, flow, method })}
       />
     </div>
