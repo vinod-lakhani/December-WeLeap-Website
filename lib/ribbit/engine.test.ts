@@ -227,6 +227,23 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[2].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
   })
 
+  it('after the invite, a planning question ends with its benefit line and a small link, at most twice', async () => {
+    const line = 'Connected, WeLeap ranks your actual debts by interest rate and shows where extra payments save the most.'
+    const benefitAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true, benefit: line, topic: 'debt' }) })
+    const s = await run(null, [{ text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
+    // The first planning question: the invite, never a benefit line.
+    expect(s[1].messages.some((m) => m.text === line)).toBe(false)
+    // The next two: the answer, then the line with a quiet link; no invite again.
+    for (const step of [s[2], s[3]]) {
+      expect(step.messages.map((m) => m.text)).toEqual([expect.stringMatching(/^answer to:/), line])
+      expect(step.messages[1].appAsk).toEqual(expect.objectContaining({ why: 'benefit', quiet: true, label: 'Get my plan' }))
+      expect(step.messages.some((m) => m.text === INVITE_TEXT)).toBe(false)
+      expect(step.events.some((e) => e.name === 'ribbit_benefit_line_shown')).toBe(true)
+    }
+    // A third: the answer alone.
+    expect(s[4].messages.map((m) => m.text)).toEqual(['answer to: and the loan'])
+  })
+
   it('mid-flow: the line and the button with the question parked; the card waits for the ending', async () => {
     const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
     const invite = s[2].messages.find((m) => m.appAsk)!
