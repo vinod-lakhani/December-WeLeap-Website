@@ -339,8 +339,8 @@ describe('Where should my money go?', () => {
 
   it('a debt given in pieces is asked for what is missing, one thing at a time', async () => {
     const s = await run('money', [{ text: '5000' }, { text: '1500' }, { text: 'about 3000 on a card' }, { text: '24' }, { text: '120' }, { chip: 'none' }])
-    expect(said(s[3])).toBe("What's its interest rate?")
-    expect(said(s[4])).toBe('What do you pay on it a month?')
+    expect(said(s[3])).toBe("What's the interest rate on the card?")
+    expect(said(s[4])).toBe('What do you pay on the card a month?')
     expect(facts(s[5]).debt).toEqual({ balance: 3000, aprPct: 24, payment: 120, kind: 'card' })
     expect(s[6].messages.find((m) => m.order)!.order!.map((o) => o.key)).toEqual(['debt', 'emergency', 'retirement'])
   })
@@ -357,5 +357,18 @@ describe('Where should my money go?', () => {
     const f = facts(s[s.length - 1])
     expect(f.electionMonthlyIn).toBeGreaterThan(0)
     expect(s[s.length - 1].state.flow).toBe('rent')
+  })
+
+  it('"card", the Credit card button, or "yes" with no numbers is an answer: Ribbit asks for the balance, then the rest', async () => {
+    for (const first of [{ text: 'card' }, { chip: 'card' }, { text: 'card balance' }]) {
+      const s = await run('money', [{ chip: 'take_home' }, { text: '8561' }, { text: '2000' }, first, { text: '4200' }, { text: '24%' }, { text: '150' }])
+      expect(said(s[4])).toBe("What's the balance on the card?")
+      expect(said(s[5])).toBe("What's the interest rate on the card?")
+      expect(said(s[6])).toBe('What do you pay on the card a month?')
+      expect(facts(s[7]).debt).toEqual({ kind: 'card', balance: 4200, aprPct: 24, payment: 150 })
+    }
+    const y = await run('money', [{ text: '5000' }, { text: '1500' }, { text: 'yes' }])
+    expect(said(y[3])).toBe("What's the balance on it?")
+    expect(y[3].chips).toEqual([])
   })
 })

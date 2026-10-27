@@ -419,17 +419,20 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       const pending = f.pendingDebt ?? {}
       // Asked for one missing piece, the answer fills that piece only: "120" for the payment is not a new balance.
       const missing = state.turn === 'M4_more' ? missingDebtPart(pending) : undefined
-      let read: Partial<MoneyDebt> = parseDebt(text)
+      let read: Partial<MoneyDebt> = chip === 'card' || chip === 'loan' ? { kind: chip } : parseDebt(text)
       if (missing) {
         const n = read[missing] ?? parseMoney(text)
         read = n !== null && n !== undefined ? { [missing]: n } : {}
       }
       const d = { ...pending, ...Object.fromEntries(Object.entries(read).filter(([, v]) => v !== undefined)) } as Partial<MoneyDebt>
-      if (!d.balance && !d.aprPct && !d.payment) return question(state, text, svc, 'their biggest card or loan: its balance, rate and monthly payment')
+      // "card", "a loan", "yes": a debt with no numbers yet is still an answer; ask for its balance next.
+      const saidYes = !missing && /^(yes|yeah|yep|yup|i do|i have|one)\b/i.test(text)
+      if (!d.balance && !d.aprPct && !d.payment && !d.kind && !saidYes) return question(state, text, svc, 'their biggest card or loan: its balance, rate and monthly payment')
       const next = missingDebtPart(d)
       if (next) {
         f.pendingDebt = d
-        const ask = next === 'balance' ? "What's the balance on it?" : next === 'aprPct' ? "What's its interest rate?" : 'What do you pay on it a month?'
+        const it = d.kind === 'card' ? 'the card' : d.kind === 'loan' ? 'the loan' : 'it'
+        const ask = next === 'balance' ? `What's the balance on ${it}?` : next === 'aprPct' ? `What's the interest rate on ${it}?` : `What do you pay on ${it} a month?`
         return say({ ...state, turn: 'M4_more' }, [{ from: 'ribbit', text: ask }], [], next === 'aprPct' ? 'text' : 'money')
       }
       f.debt = d as MoneyDebt
@@ -962,7 +965,7 @@ function askMoneyRent(state: ChatState, lead: string): Step {
 function askMoneyDebt(state: ChatState): Step {
   return say({ ...state, turn: 'M4' }, [
     { from: 'ribbit', text: 'Any card or loan balances? The one with the highest rate is enough: its balance, its rate and what you pay a month.' },
-  ], [{ label: 'No debt', value: 'none' }], 'text')
+  ], [{ label: 'Credit card', value: 'card' }, { label: 'Loan', value: 'loan' }, { label: 'No debt', value: 'none' }], 'text')
 }
 
 function missingDebtPart(d: Partial<MoneyDebt>): keyof MoneyDebt | undefined {
