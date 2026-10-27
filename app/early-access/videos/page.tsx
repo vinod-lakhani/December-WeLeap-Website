@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { track } from '@/lib/analytics'
 import { usePostHog } from 'posthog-js/react/slim'
+import { getPostHog } from '@/lib/posthog-lazy'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -311,11 +312,12 @@ export default function VideosPage() {
 
   useEffect(() => {
     track('early_access_videos_page_viewed', {}, true)
-    posthog?.capture('early_access_videos_viewed', {
+    // getPostHog(), not the hook's client: the client swaps once the SDK loads and would re-run this, firing twice.
+    getPostHog().capture('early_access_videos_viewed', {
       referrer: document.referrer || 'direct',
       total_videos_available: SERIES.length + LEAP_VIDEOS.length,
     })
-  }, [posthog])
+  }, [])
 
   const filteredVideos = activeCategory === 'all'
     ? VIDEOS
