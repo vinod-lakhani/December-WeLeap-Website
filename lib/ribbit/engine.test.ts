@@ -371,4 +371,10 @@ describe('Where should my money go?', () => {
     expect(said(y[3])).toBe("What's the balance on it?")
     expect(y[3].chips).toEqual([])
   })
+
+  it('with take-home typed (no salary), the card still shows the match as a formula', async () => {
+    const s = await run('money', [{ chip: 'take_home' }, { text: '8561' }, { text: '2000' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 5%' }, { chip: 'keep' }])
+    const card = s[7].messages.find((m) => m.planCard)!.planCard!
+    expect(card.known).toContainEqual({ label: '401(k) match', value: '100% up to 5%' })
+  })
 })

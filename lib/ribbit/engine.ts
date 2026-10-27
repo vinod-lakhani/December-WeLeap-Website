@@ -1042,6 +1042,8 @@ function moneyCard(f: Facts): NonNullable<ChatMessage['planCard']> {
       ...(f.takeHomeMonthly ? [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
       ...(f.pick ? [{ label: 'Rent', value: `${fc(f.pick)}/mo` }] : []),
       ...(f.match === 'known' && f.electionMonthlyIn && f.matchUpToPct ? [{ label: `401(k) at ${f.matchUpToPct}%, with the match`, value: `${fc(f.electionMonthlyIn)}/mo in` }] : []),
+      // Take-home typed, not a salary: no dollars for the match, but the match itself still belongs on the plan.
+      ...(f.match === 'known' && !f.electionMonthlyIn && f.matchUpToPct ? [{ label: '401(k) match', value: `${f.matchRatePct ?? 100}% up to ${f.matchUpToPct}%` }] : []),
       ...(d && p ? [{ label: `${d.aprPct}% debt`, value: Number.isFinite(p.months) ? `${fc(p.payment)}/mo, gone in ${p.months} months` : `${fc(p.payment)}/mo` }] : []),
       { label: 'Emergency fund goal', value: `about ${fc(o.emergencyGoal)}` },
     ],
