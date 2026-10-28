@@ -143,6 +143,25 @@ Identical rules to the 18 Oct spec. Slug `internship`, version `internship_v1`.
   `lib/google-ads.ts`, so `tool_completed` and `tool_cta_clicked` from this
   tool fire the existing actions. The new campaign is Ads-account work.
 
+## 5a. Added 28 Oct 2026 — 401(k) match
+
+v1 assumed interns are not plan-eligible. The Purdue tester's internship had a
+match, so the tool now asks: a collapsed *Does it offer a 401(k) match?* block
+with match rate, cap and contribution. The contribution follows the cap until
+the visitor types their own — the cap is the answer to "how much should I put
+in" for nearly everyone.
+
+- The deferral is pre-tax for federal and state, **not** for FICA, and comes
+  out of take-home. The match applies to wages only, never a stipend or an
+  allowance.
+- One summer of contribution plus match is compounded at 7% for 40 years, the
+  same rate every other WeLeap page uses, and labelled a planning figure.
+- **Vesting and eligibility are stated, not assumed.** Many plans vest the match
+  over years and some make new hires wait; an intern leaving in August can
+  forfeit it. The card says so in every state.
+- `has_401k` on `tool_completed`; `internship_401k_opened` when the block is
+  opened.
+
 ## 6. Out of scope for v1
 
 International cities (the tax and rent data are US-sourced), income-driven

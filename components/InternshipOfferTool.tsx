@@ -33,6 +33,8 @@ import {
   computeInternship,
   emptyInternship,
   UPFRONT_RENT_MONTHS,
+  RETIREMENT_RETURN,
+  RETIREMENT_YEARS,
   type HousingMode,
   type InternshipInputs,
   type InternshipResult,
@@ -253,6 +255,8 @@ function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, 
         )}
       </div>
 
+      <RetirementFields p={p} v={v} onChange={onChange} />
+
       <div>
         <GroupLabel>Anything else</GroupLabel>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -266,6 +270,77 @@ function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, 
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The 401(k), collapsed until asked for.
+ *
+ * Most internships have no plan, so this opens on a question rather than three
+ * empty fields. Some do — the Purdue tester's did, and it was the part of her
+ * feedback with the most to teach: a match is free money only if you put in
+ * enough to get all of it, and the first summer is the cheapest time to start.
+ *
+ * The contribution follows the match cap until somebody types their own,
+ * because the cap is the answer to "how much should I put in" for nearly
+ * everyone: less leaves free money behind, more is your own money with no
+ * extra match. Once they type a contribution it is theirs and stops following.
+ */
+function RetirementFields({
+  p, v, onChange,
+}: {
+  p: string
+  v: InternshipInputs
+  onChange: (patch: Partial<InternshipInputs>, field: string) => void
+}) {
+  const [open, setOpen] = useState(v.matchUpToPct > 0 || v.contributionPct > 0)
+  const ownContribution = useRef(false)
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setOpen(true); track('internship_401k_opened', { tool: 'internship' }) }}
+        className="block min-h-11 w-full rounded-xl border border-dashed border-gray-300 px-4 py-3 text-left transition hover:border-[#386641]"
+      >
+        <span className="block text-[14px] font-bold text-gray-900">Does it offer a 401(k) match?</span>
+        <span className="mt-0.5 block text-[12.5px] text-gray-500">Some internships do. Add it to see what it&apos;s worth.</span>
+      </button>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <GroupLabel>401(k)</GroupLabel>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false)
+            ownContribution.current = false
+            onChange({ matchRatePct: 0, matchUpToPct: 0, contributionPct: 0 }, 'match')
+          }}
+          className="-my-2 inline-flex min-h-11 items-center text-[12.5px] font-semibold text-gray-500 underline underline-offset-2"
+        >
+          Remove
+        </button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-2">
+        <NumField id={`${p}-match-rate`} label="Match rate" value={v.matchRatePct} suffix="%" placeholder="e.g. 100"
+          onChange={(n) => onChange({ matchRatePct: n }, 'match')} />
+        <NumField id={`${p}-match-cap`} label="Up to (% of pay)" value={v.matchUpToPct} suffix="%" placeholder="e.g. 5" decimals
+          onChange={(n) => onChange(ownContribution.current ? { matchUpToPct: n } : { matchUpToPct: n, contributionPct: n }, 'match')} />
+        <NumField id={`${p}-contribution`} label="You put in (% of pay)" value={v.contributionPct} suffix="%" decimals
+          onChange={(n) => { ownContribution.current = true; onChange({ contributionPct: n }, 'contribution') }} />
+      </div>
+      {v.matchUpToPct > 0 && (
+        <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
+          {ownContribution.current
+            ? <>The match stops at {v.matchUpToPct}% of pay. Less than that leaves free money behind; more is your own money, saved with the same tax break and no extra match.</>
+            : <>Set to the match cap, {v.matchUpToPct}% — the least that captures the whole match. Change it if you want to put in more.</>}
+        </p>
+      )}
     </div>
   )
 }
@@ -377,9 +452,10 @@ export function InternshipOfferTool() {
       weeks: a.weeks,
       state_set: !!a.state,
       city_set: !!cityA,
+      has_401k: a.matchUpToPct > 0 || a.contributionPct > 0,
       left_after_housing: Math.round(result.leftAfterHousing),
     })
-  }, [result, engagementCount, enoughInput, changed, a.payShape, a.housing, a.weeks, a.state, cityA])
+  }, [result, engagementCount, enoughInput, changed, a.payShape, a.housing, a.weeks, a.state, a.matchUpToPct, a.contributionPct, cityA])
 
   const startCompare = () => {
     // Seeded with the same term and the same housing answer, because those are
@@ -424,6 +500,9 @@ export function InternshipOfferTool() {
               body={`${fc(result.leftAfterHousing)} is what the term leaves. Left alone it goes into the summer; the app decides where it goes before that happens, and keeps the numbers when the full-time offer arrives.`}
               buttonLabel={result.leftAfterHousing > 0 ? `Show me where my ${fc(result.leftAfterHousing)} should go →` : 'Create my free account →'}
               bullets={[
+                ...(result.employerMatch > 0 || result.matchLeftBehind > 0
+                  ? ['Your match, tracked until every paycheck captures all of it']
+                  : []),
                 'Your pay and your rent, tracked across the term',
                 'A savings plan sized to a term, not a year',
                 'The same numbers, repriced when the full-time offer lands',
@@ -513,6 +592,7 @@ function Headline({ r, housing, className }: { r: InternshipResult; housing: Hou
           : housing === 'provided'
             ? <>, with housing covered</>
             : <>, before rent &mdash; pick a city or put in a monthly figure</>}.
+        {r.deferral + r.employerMatch > 0 && <> Plus {fc(r.deferral + r.employerMatch)} into your 401(k).</>}
         {r.refund > 0 && <> About {fc(r.refund)} more comes back when you file.</>}
       </p>
     </section>
@@ -565,6 +645,10 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
         <Row id="withheld" label="Withheld by payroll" value={`−${fc(r.withheld.total)}`} muted
           note={`Federal ${fc(r.withheld.federal)} · state ${fc(r.withheld.state)} · Social Security and Medicare ${fc(r.withheld.fica)}`}
           explain={<>Payroll assumes each paycheck&apos;s rate continues all year, so this pay is withheld as if you earned {fc(r.annualised)} a year — federal and state tax on that, charged for the weeks you work. Social Security and Medicare are 7.65% of every dollar. Most of the federal and state part comes back when you file; see the green box below.</>} />
+        {r.deferral > 0 && (
+          <Row id="401k" label="Into your 401(k)" value={`−${fc(r.deferral)}`} muted note="Saved, not spent."
+            explain={<>{inputs.contributionPct}% of your pay, moved into the plan before it reaches you. It is taken before income tax, so each dollar costs you less than a dollar of take-home — but Social Security and Medicare still apply to it. The money is yours; it is just not in your checking account.</>} />
+        )}
         <Row id="take_home" label="Lands in your account" value={fc(r.takeHome)} note={`${fc(r.takeHomeMonthly)} a month`}
           explain={<>Everything above minus what payroll withheld: the cash that actually reaches your account during the term. The tax refund arrives later, when you file, so it is not counted here.</>} />
         <Row
@@ -597,6 +681,8 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
         </p>
       </div>
 
+      {(r.deferral > 0 || r.matchLeftBehind > 0) && <RetirementCard r={r} inputs={inputs} />}
+
       {r.upfrontCash > 0 && (
         <p className="mt-4 text-[13.5px] leading-relaxed text-gray-600">
           <strong className="font-bold text-gray-800">Cash you need before the first paycheck: about {fc(r.upfrontCash)}.</strong>{' '}
@@ -617,6 +703,60 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
         full-time offer — and the number that makes $45/hr sound like $93,000. Not what you will earn.
       </p>
     </section>
+  )
+}
+
+/**
+ * What one summer in the plan is worth, stated once and plainly.
+ *
+ * From the tester: "If you invest X% now, 20 years from now it'll be X." The
+ * line uses forty years — a twenty-year-old at sixty — and the same 7% every
+ * other WeLeap page compounds at, so it is a planning figure and labelled one.
+ *
+ * Two caveats are not optional. Plans often make new hires wait before they can
+ * join, and many vest the match over years: an intern who leaves in August can
+ * forfeit all of it. A tool that shows a match as money in hand without saying
+ * so is overstating the offer, which is exactly what this page exists not to do.
+ */
+function RetirementCard({ r, inputs }: { r: InternshipResult; inputs: InternshipInputs }) {
+  const into = r.deferral + r.employerMatch
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3F6B42]">Your 401(k) this term</p>
+      {into > 0 ? (
+        <>
+          <p className="mt-1 text-[14px] leading-relaxed text-gray-800">
+            <strong className="font-bold">{fc(into)} goes in</strong> — {fc(r.deferral)} from you
+            {r.employerMatch > 0 && <>, {fc(r.employerMatch)} from your employer</>}.
+          </p>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-gray-800">
+            Left invested, one summer of that is about <strong className="font-bold">{fc(r.retirementLater)}</strong> in{' '}
+            {RETIREMENT_YEARS} years.
+          </p>
+          <p className="mt-0.5 text-[12px] text-gray-400">
+            At {Math.round(RETIREMENT_RETURN * 100)}% a year, before fees. A planning figure, not a promise.
+          </p>
+        </>
+      ) : null}
+      {r.matchLeftBehind > 0 && (
+        <p className="mt-2.5 rounded-lg bg-amber-50 px-3 py-2 text-[13px] leading-relaxed text-amber-900">
+          <strong className="font-bold">{fc(r.matchLeftBehind)} of match is left behind.</strong> Put in{' '}
+          {inputs.matchUpToPct}% of pay to get all of it — the match is only paid on what you contribute, and it
+          never backfills.
+        </p>
+      )}
+      {r.leftAfterHousing < 0 && r.deferral > 0 && (
+        <p className="mt-2.5 text-[13px] leading-relaxed text-gray-600">
+          At this contribution the term doesn&apos;t cover rent. The match is still worth taking if you can — but
+          not on a credit card.
+        </p>
+      )}
+      <p className="mt-2.5 border-t border-gray-100 pt-2.5 text-[12px] leading-relaxed text-gray-500">
+        Check two things in the plan documents. <strong className="font-semibold text-gray-700">Eligibility:</strong>{' '}
+        some plans make new hires wait before they can join. <strong className="font-semibold text-gray-700">Vesting:</strong>{' '}
+        if the match vests over years, leaving after the summer can mean forfeiting it. What you put in is always yours.
+      </p>
+    </div>
   )
 }
 
@@ -649,9 +789,15 @@ function Comparison({
           ? [{ label: 'One-off allowance', a: a.relocation, b: b.relocation }]
           : []),
         { label: 'Withheld by payroll', a: a.withheld.total, b: b.withheld.total, negative: true },
+        ...(a.deferral > 0 || b.deferral > 0
+          ? [{ label: 'Into your 401(k)', a: a.deferral, b: b.deferral, negative: true }]
+          : []),
         { label: 'Lands in your account', a: a.takeHome, b: b.takeHome },
         { label: 'Rent for the term', a: a.housingCost, b: b.housingCost, negative: true },
         { label: 'Left after housing', a: a.leftAfterHousing, b: b.leftAfterHousing, total: true },
+        ...(a.employerMatch > 0 || b.employerMatch > 0
+          ? [{ label: 'Employer match, into your 401(k)', a: a.employerMatch, b: b.employerMatch, aside: true }]
+          : []),
         { label: 'Tax refund when you file (est.)', a: a.refund, b: b.refund, aside: true },
         { label: 'Cash needed before the first paycheck', a: a.upfrontCash, b: b.upfrontCash, aside: true },
       ]

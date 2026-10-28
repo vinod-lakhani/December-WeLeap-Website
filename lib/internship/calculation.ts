@@ -23,6 +23,13 @@
  *    silently treats $1,500 a month as untaxed is the same error as the one
  *    above, on a different line.
  *
+ * 3. A 401(k) deferral is pre-tax for income tax and NOT for FICA. It lowers
+ *    federal and state withholding and what is owed, leaves Social Security
+ *    and Medicare untouched, and comes out of what lands in the account —
+ *    the money is not lost, it is in the plan. Added 28 Oct 2026, after the
+ *    Purdue career-center tester's internship had a match: the v1 spec
+ *    assumed interns are not plan-eligible, and some are.
+ *
  * Federal brackets, the standard deduction, FICA and the per-state rate are
  * the ones every other calculator on the site reads, so two WeLeap tools cannot
  * quote different tax on the same dollars.
@@ -30,6 +37,7 @@
 
 import { federalTax, ficaTax, stateRate, hasStateRate } from '@/lib/firstPaycheck/calculation'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
+import { K401_EMPLOYEE_CAP } from '@/lib/allocator/constants'
 
 export type PayShape = 'hourly' | 'monthly' | 'lump'
 export type HousingMode = 'provided' | 'stipend' | 'self'
@@ -55,6 +63,17 @@ export interface InternshipInputs {
   rentMonthly: number
   /** One-off relocation or travel allowance. Taxable. */
   relocation: number
+  /**
+   * 401(k). All three zero when the internship has no plan, which is the
+   * default — most do not, and a match nobody was offered is not a row
+   * anyone needs to see.
+   */
+  /** Employer match rate, % of what you put in (100 = dollar for dollar). */
+  matchRatePct: number
+  /** The match stops at this % of pay. */
+  matchUpToPct: number
+  /** What you put in, % of pay. */
+  contributionPct: number
 }
 
 export const DEFAULT_WEEKS = 12
@@ -75,6 +94,15 @@ export const SUPPLEMENTAL_FEDERAL_RATE = 0.22
  * rule of thumb rather than a quote.
  */
 export const UPFRONT_RENT_MONTHS = 2
+
+/**
+ * Growth assumption for the "what one summer is worth later" line: 7% a year,
+ * the same figure the rent tool and the offer tool use, so no two WeLeap pages
+ * quote a different return on the same dollar. Nominal, before fees.
+ */
+export const RETIREMENT_RETURN = 0.07
+/** "Forty years from now" — a twenty-year-old at sixty. */
+export const RETIREMENT_YEARS = 40
 
 export interface TaxLines {
   federal: number
@@ -103,7 +131,7 @@ export interface InternshipResult {
   owed: TaxLines
   /** withheld − owed, floored at zero. Arrives at filing, not during the term. */
   refund: number
-  /** gross − withheld: what lands in the account across the term. */
+  /** gross − withheld − 401(k) deferral: what lands in the account across the term. */
   takeHome: number
   takeHomeMonthly: number
   /** rent × months, or zero when the employer provides housing. */
@@ -114,6 +142,17 @@ export interface InternshipResult {
   upfrontCash: number
   /** Whether the state's rate is in the table, as opposed to a national blend. */
   stateNamed: boolean
+  /** What you put into the 401(k) over the term. Comes out of take-home. */
+  deferral: number
+  /** What the employer adds on top. Not cash, and may not vest. */
+  employerMatch: number
+  /**
+   * The match you would get by contributing up to the cap, less the match
+   * you are getting. Zero once you contribute at or above the cap.
+   */
+  matchLeftBehind: number
+  /** deferral + match, compounded at RETIREMENT_RETURN for RETIREMENT_YEARS. */
+  retirementLater: number
 }
 
 function lines(federal: number, state: number, fica: number): TaxLines {
@@ -151,9 +190,19 @@ export function computeInternship(i: InternshipInputs): InternshipResult | null 
   const annualised = (wages / i.weeks) * 52
   const annualisedRegular = (regularGross / i.weeks) * 52
 
+  // 401(k): deferred from pay (wages, not stipends or allowances), matched up to the cap.
+  const contributionPct = Math.max(0, i.contributionPct)
+  const deferral = Math.min(wages * (contributionPct / 100), K401_EMPLOYEE_CAP)
+  const matchablePct = Math.min(contributionPct, Math.max(0, i.matchUpToPct))
+  const employerMatch = wages * (matchablePct / 100) * (Math.max(0, i.matchRatePct) / 100)
+  const fullMatch = wages * (Math.max(0, i.matchUpToPct) / 100) * (Math.max(0, i.matchRatePct) / 100)
+  const matchLeftBehind = Math.max(0, fullMatch - employerMatch)
+  const annualisedDeferral = (deferral / i.weeks) * 52
+
   // What payroll takes: the regular paycheck annualised, the allowance flat.
+  // A deferral lowers income tax withholding, never FICA.
   const share = i.weeks / 52
-  const taxableAnnualised = Math.max(0, annualisedRegular - STANDARD_DEDUCTION_2026_SINGLE)
+  const taxableAnnualised = Math.max(0, annualisedRegular - annualisedDeferral - STANDARD_DEDUCTION_2026_SINGLE)
   const withheld = lines(
     federalTax(taxableAnnualised) * share + relocation * SUPPLEMENTAL_FEDERAL_RATE,
     taxableAnnualised * rate * share + relocation * rate,
@@ -161,11 +210,12 @@ export function computeInternship(i: InternshipInputs): InternshipResult | null 
   )
 
   // What is owed, treating the term as the whole year's income.
-  const taxableActual = Math.max(0, gross - STANDARD_DEDUCTION_2026_SINGLE)
+  const taxableActual = Math.max(0, gross - deferral - STANDARD_DEDUCTION_2026_SINGLE)
   const owed = lines(federalTax(taxableActual), taxableActual * rate, ficaTax(gross))
 
   const refund = Math.max(0, withheld.total - owed.total)
-  const takeHome = gross - withheld.total
+  // The deferral leaves the paycheck for the plan, so it does not land.
+  const takeHome = gross - withheld.total - deferral
   const rent = i.housing === 'provided' ? 0 : Math.max(0, i.rentMonthly)
   const housingCost = rent * months
 
@@ -185,6 +235,10 @@ export function computeInternship(i: InternshipInputs): InternshipResult | null 
     leftAfterHousing: takeHome - housingCost,
     upfrontCash: rent * UPFRONT_RENT_MONTHS,
     stateNamed: hasStateRate(i.state),
+    deferral,
+    employerMatch,
+    matchLeftBehind,
+    retirementLater: (deferral + employerMatch) * Math.pow(1 + RETIREMENT_RETURN, RETIREMENT_YEARS),
   }
 }
 
@@ -203,5 +257,8 @@ export function emptyInternship(): InternshipInputs {
     housingStipendMonthly: 0,
     rentMonthly: 0,
     relocation: 0,
+    matchRatePct: 0,
+    matchUpToPct: 0,
+    contributionPct: 0,
   }
 }

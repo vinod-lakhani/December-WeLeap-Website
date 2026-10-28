@@ -66,6 +66,10 @@ const STEPS: readonly MethodStep[] = [
     d: 'Once a city is chosen, the rent field is filled with the median rent in that metro from Zillow’s observed rent index. That is the price of a twelve-month lease. There is no reliable data source for summer sublets, which can be cheaper or dearer, so the figure is labelled rather than adjusted by a made-up factor, and the field takes whatever you actually know. The cash you need before the first paycheck — a deposit and the first month, usually due two to three weeks before any pay lands — is shown as a rule of thumb.',
   },
   {
+    t: 'A 401(k), if there is one, is counted where the money goes',
+    d: 'Most internships have no retirement plan, so the page asks rather than assumes. Where there is one, what you put in comes out of your pay before income tax — so it lowers federal and state withholding, though not Social Security and Medicare — and it leaves your take-home for the plan. The employer match is added on top, but only on what you contribute up to the cap, which is why the contribution is set to the cap unless you change it. One summer of both is compounded at 7% a year for forty years as a planning figure. The page also says what it cannot see: whether interns can join from the first paycheck, and whether the match vests before you leave.',
+  },
+  {
     t: 'The headline is what is left, not what is earned',
     d: 'Pay, minus what payroll takes, minus rent for the term. That is the figure that decides how the summer feels, and it is the one on which two offers most often swap places: a higher hourly rate in a more expensive city can leave less. The annualised equivalent is shown last and small, as a comparison aid against a full-time offer — it is the number recruiters use to make $45 an hour sound like $93,000, and it is not what you will earn.',
   },
@@ -124,7 +128,7 @@ export default function InternshipOfferWorthPage() {
 
       <MethodSteps
         heading="How these numbers are worked out"
-        intro="Six rules, all published. Two of them are the reason this is its own page rather than a mode of the job-offer tool."
+        intro="Seven rules, all published. Two of them are the reason this is its own page rather than a mode of the job-offer tool."
         summary={
           <>
             An internship has none of the parts a full-time package is priced on — no match, no equity, no bonus
