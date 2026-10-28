@@ -196,6 +196,20 @@ export const ARTICLES: readonly Article[] = [
     category: 'Emergency Planning',
     icon: 'DollarSign',
   },
+  {
+    href: '/resources/negotiate-your-offer',
+    title: "Your first offer isn't the last number. Here's how to ask for more.",
+    excerpt:
+      'Most people never ask. What to ask for, how to ask without risking the offer, and why a few thousand at the start is worth far more than it looks.',
+    description:
+      'A first offer is an opening number. What to ask for, how to ask without risking the offer, and why a few thousand at the start is worth far more than it looks.',
+    datePublished: '2026-10-28',
+    author: 'Vinod Lakhani',
+    readMinutes: 5,
+    image: '/images/negotiate-offer.jpg',
+    category: 'Career',
+    icon: 'TrendingUp',
+  },
 ]
 
 export const FEATURED_ARTICLE = ARTICLES.find((a) => a.featured)!

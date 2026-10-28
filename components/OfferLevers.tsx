@@ -9,6 +9,8 @@
  * this is the only part that tells them what to do about it.
  */
 
+import Link from 'next/link'
+
 import { track } from '@/lib/analytics'
 import type { Cadence, Lever } from '@/lib/offer/levers'
 
@@ -30,6 +32,23 @@ export function OfferLevers({ levers, fromLetter }: { levers: Lever[]; fromLette
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white px-5 py-6 md:px-6">
+      {/* The permission, before the arithmetic. This card always priced each
+          ask, and the Purdue career-center tester read it as a calculation,
+          not as encouragement: "a lot of early career professionals make the
+          mistake of settling for what they're given and not even trying to
+          negotiate." So it says the thing first, and links the how-to. */}
+      <p className="mb-3 rounded-lg bg-[#F3F7F3] px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gray-800">
+        <strong className="font-bold">If this is the first number they gave you, it isn&apos;t the last.</strong>{' '}
+        Asking, politely, is a normal part of accepting an offer — and a higher starting base is carried into every
+        raise after it.{' '}
+        <Link
+          href="/resources/negotiate-your-offer"
+          onClick={() => track('offer_negotiation_guide_clicked', { tool: 'offer' })}
+          className="whitespace-nowrap font-semibold text-[#386641] underline underline-offset-2"
+        >
+          How to ask →
+        </Link>
+      </p>
       <h3 className="text-lg font-extrabold leading-tight tracking-[-0.015em] text-gray-900">
         Before you counter, know which ask moves the number
       </h3>
