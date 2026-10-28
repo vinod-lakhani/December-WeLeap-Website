@@ -201,6 +201,10 @@ export const TOOL_FAQS: Record<string, readonly FaqItem[]> = {
       a: 'Almost always, yes. FICA is charged at 7.65% on every dollar of wages from the first one, with no deduction and no refund, and it applies to interns at ordinary employers. The one exception is a student working for the school they are enrolled at, which has its own rule. On $12,000 for a term that is about $920 you will not see again, which is why take-home for an internship is lower than people expect even when the income tax on it is close to zero.',
     },
     {
+      q: 'Should I contribute to a 401(k) during an internship?',
+      a: 'If the internship offers a match and you can join during the term, usually yes — up to the match cap, and no further unless you have money to spare. At $30 an hour for twelve weeks, putting in 5% of pay is $720; a dollar-for-dollar match up to 5% adds another $720. Because the contribution is taken before income tax, what lands in your account drops by less than the $720 you put in — about $634 in Texas. Left invested at 7% a year, that one summer is roughly $21,500 forty years later. Two things to check first: some plans make new hires wait before they can join, and many vest the match over years, so leaving after the summer can mean forfeiting it. What you put in yourself is always yours.',
+    },
+    {
       q: 'How many weeks is a typical internship or co-op?',
       a: 'A summer internship is usually ten to twelve weeks; a co-op is commonly a full academic term, around sixteen weeks, sometimes longer. The length matters more than it looks because rent is charged by the month while pay is earned by the week, so a sixteen-week term carries roughly 3.7 months of rent against twelve weeks\' worth of 2.8. Put the actual number of weeks in your offer letter rather than a guess.',
     },

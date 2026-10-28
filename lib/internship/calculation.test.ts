@@ -147,3 +147,73 @@ describe('computeInternship: the term', () => {
     expect(sixteen.annualised).toBe(twelve.annualised)
   })
 })
+
+describe('computeInternship: 401(k)', () => {
+  const withPlan = (over: Partial<InternshipInputs> = {}) =>
+    base({ hourlyRate: 30, matchRatePct: 100, matchUpToPct: 5, contributionPct: 5, ...over })
+
+  it('changes nothing when there is no plan', () => {
+    const r = computeInternship(base())!
+    expect(r.deferral).toBe(0)
+    expect(r.employerMatch).toBe(0)
+    expect(r.matchLeftBehind).toBe(0)
+    expect(r.retirementLater).toBe(0)
+  })
+
+  it('defers from pay and matches up to the cap', () => {
+    const r = computeInternship(withPlan())!
+    // $30 × 40 × 12 = $14,400; 5% of it.
+    expect(r.deferral).toBeCloseTo(720, 6)
+    expect(r.employerMatch).toBeCloseTo(720, 6)
+    expect(r.matchLeftBehind).toBe(0)
+  })
+
+  it('reports the match left behind by contributing under the cap', () => {
+    const r = computeInternship(withPlan({ contributionPct: 2 }))!
+    expect(r.employerMatch).toBeCloseTo(14_400 * 0.02, 6)
+    expect(r.matchLeftBehind).toBeCloseTo(14_400 * 0.03, 6)
+  })
+
+  it('stops matching at the cap, however much you put in', () => {
+    const r = computeInternship(withPlan({ contributionPct: 15 }))!
+    expect(r.deferral).toBeCloseTo(14_400 * 0.15, 6)
+    expect(r.employerMatch).toBeCloseTo(14_400 * 0.05, 6)
+  })
+
+  it('applies a partial match rate', () => {
+    const r = computeInternship(withPlan({ matchRatePct: 50, matchUpToPct: 6, contributionPct: 6 }))!
+    expect(r.employerMatch).toBeCloseTo(14_400 * 0.06 * 0.5, 6)
+  })
+
+  it('matches pay only, never a stipend or an allowance', () => {
+    const plain = computeInternship(withPlan())!
+    const extras = computeInternship(withPlan({ housing: 'stipend', housingStipendMonthly: 1_500, relocation: 2_000 }))!
+    expect(extras.deferral).toBeCloseTo(plain.deferral, 6)
+    expect(extras.employerMatch).toBeCloseTo(plain.employerMatch, 6)
+  })
+
+  it('lowers income tax but not FICA, and comes out of what lands', () => {
+    const none = computeInternship(base({ hourlyRate: 30, state: 'CA' }))!
+    const plan = computeInternship(withPlan({ state: 'CA' }))!
+    expect(plan.withheld.fica).toBeCloseTo(none.withheld.fica, 6)
+    expect(plan.withheld.federal).toBeLessThan(none.withheld.federal)
+    expect(plan.withheld.state).toBeLessThan(none.withheld.state)
+    // Lands less, but by less than the deferral — the tax saving is the difference.
+    const drop = none.takeHome - plan.takeHome
+    expect(drop).toBeLessThan(plan.deferral)
+    expect(drop).toBeGreaterThan(0)
+    expect(plan.takeHome).toBeCloseTo(plan.gross - plan.withheld.total - plan.deferral, 6)
+  })
+
+  it('keeps the refund honest with a deferral — owed never exceeds withheld', () => {
+    for (const contributionPct of [0, 3, 6, 15]) {
+      const r = computeInternship(withPlan({ contributionPct, state: 'NY' }))!
+      expect(r.withheld.total + 1e-6).toBeGreaterThanOrEqual(r.owed.total)
+    }
+  })
+
+  it('compounds one summer of contributions and match at 7% for 40 years', () => {
+    const r = computeInternship(withPlan())!
+    expect(r.retirementLater).toBeCloseTo(1_440 * Math.pow(1.07, 40), 4)
+  })
+})
