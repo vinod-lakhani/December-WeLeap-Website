@@ -42,6 +42,7 @@ import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
 import { OfferCompare } from '@/components/OfferCompare';
 import { ExplainRow } from '@/components/ExplainRow';
+import { publishOfferFigures } from '@/lib/offer/liveFigures';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
@@ -705,6 +706,42 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
   const campaignDemo = campaign && !typed.salary && !fromLetter.salary;
   const shownInputs = campaignDemo ? offerInputs : enteredInputs;
   const shown = campaignDemo ? calc : calcEntered;
+
+  /**
+   * Hand the figures the result card shows to the "7 numbers in your offer"
+   * chips below the tool (components/OfferNumberChips), so hovering Equity
+   * shows this visitor's equity, not just what equity means. Never on a
+   * campaign landing's example, and cleared on unmount.
+   */
+  useEffect(() => {
+    if (!shown || campaignDemo) {
+      publishOfferFigures(null);
+      return;
+    }
+    publishOfferFigures({
+      salary: shownInputs.salary,
+      takeHomeMonthly: shown.takeHomeMonthly,
+      bonusPct: shownInputs.bonusPct,
+      annualBonus: shown.annualBonus,
+      bonusEntered: entered.has('bonusPct'),
+      matchRatePct: shownInputs.matchRatePct,
+      matchUpToPct: shownInputs.matchUpToPct,
+      annual401kMatch: shown.annual401kMatch,
+      matchEntered: entered.has('matchRatePct') || entered.has('matchUpToPct'),
+      annualHsa: shown.annualHsa,
+      annualHealthcare: shown.annualHealthcare,
+      benefitsEntered: entered.has('hsaMonthly') || entered.has('healthcarePremium'),
+      rsuAnnual: shownInputs.rsuAnnual,
+      annualEspp: shown.annualEspp,
+      equityEntered: entered.has('rsuAnnual') || shown.annualEspp > 0,
+      ptoDays: shownInputs.ptoDays,
+      ptoValue: shown.ptoValue,
+      ptoEntered: entered.has('ptoDays'),
+      rentMonthly: shownInputs.rentMonthly,
+      rentPct: shown.rentPct,
+    });
+  }, [shown, shownInputs, entered, campaignDemo]);
+  useEffect(() => () => publishOfferFigures(null), []);
   const packageParts = useMemo(
     () => (calcEntered ? enteredPackageParts(calcEntered, enteredInputs) : []),
     [calcEntered, enteredInputs],
