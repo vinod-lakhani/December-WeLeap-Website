@@ -22,9 +22,10 @@
  * mounts once. See components/OfferCompare.tsx for why that rule exists.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AppCta } from '@/components/AppCta'
+import { ExplainRow } from '@/components/ExplainRow'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { track } from '@/lib/analytics'
@@ -231,7 +232,7 @@ function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, 
         {v.housing !== 'provided' && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {v.housing === 'stipend' && (
-              <NumField id={`${p}-housing-stipend`} label="Housing stipend a month" value={v.housingStipendMonthly} prefix="$" placeholder="e.g. 1,500"
+              <NumField id={`${p}-housing-stipend`} label="Housing stipend a month (taxed as wages)" value={v.housingStipendMonthly} prefix="$" placeholder="e.g. 1,500"
                 onChange={(n) => onChange({ housingStipendMonthly: n }, 'housing_stipend')} />
             )}
             <NumField id={`${p}-rent`} label="Rent a month" value={v.rentMonthly} prefix="$" placeholder={city ? 'market rate' : 'e.g. 1,500'}
@@ -246,7 +247,8 @@ function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, 
         )}
         {v.housing === 'stipend' && (
           <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
-            A cash stipend is wages. It is taxed here like the rest of your pay.
+            A cash stipend is wages and is taxed here like the rest of your pay. Paid as one lump sum rather than
+            monthly? Put it in the one-off allowance below instead.
           </p>
         )}
       </div>
@@ -254,12 +256,13 @@ function InternshipFields({ idPrefix: p, value: v, city, metros, loadingMetros, 
       <div>
         <GroupLabel>Anything else</GroupLabel>
         <div className="grid gap-3 sm:grid-cols-2">
-          <NumField id={`${p}-relocation`} label="Relocation or travel allowance" value={v.relocation} prefix="$" placeholder="0"
+          <NumField id={`${p}-relocation`} label="One-off allowance: relocation, travel or a housing lump sum" value={v.relocation} prefix="$" placeholder="0"
             onChange={(n) => onChange({ relocation: n }, 'relocation')} />
         </div>
         {v.relocation > 0 && (
           <p className="mt-2 text-[12.5px] leading-relaxed text-gray-500">
-            Taxable since 2018. Withheld at the flat 22% federal rate for a one-off payment.
+            Taxed as wages — a relocation or housing lump sum has been taxable since 2018. Withheld at the flat 22%
+            federal rate for a one-off payment.
           </p>
         )}
       </div>
@@ -516,15 +519,27 @@ function Headline({ r, housing, className }: { r: InternshipResult; housing: Hou
   )
 }
 
-function Row({ label, value, muted, note }: { label: string; value: string; muted?: boolean; note?: string }) {
+function Row({
+  id, label, value, muted, note, explain,
+}: {
+  id: string
+  label: string
+  value: string
+  muted?: boolean
+  note?: string
+  explain: React.ReactNode
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-gray-100 py-2.5">
-      <div>
-        <p className={cn('text-[14px]', muted ? 'text-gray-500' : 'text-gray-700')}>{label}</p>
-        {note && <p className="mt-0.5 text-[12px] leading-snug text-gray-400">{note}</p>}
-      </div>
-      <p className={cn('shrink-0 text-[14.5px] font-bold tabular-nums', muted ? 'text-gray-500' : 'text-gray-900')}>{value}</p>
-    </div>
+    <ExplainRow
+      tool="internship"
+      row={id}
+      className="border-b border-gray-100 py-2.5"
+      labelClassName={cn('text-[14px]', muted ? 'text-gray-500' : 'text-gray-700')}
+      label={label}
+      note={note && <p className="text-[12px] leading-snug text-gray-400">{note}</p>}
+      value={<p className={cn('text-[14.5px] font-bold tabular-nums', muted ? 'text-gray-500' : 'text-gray-900')}>{value}</p>}
+      explain={explain}
+    />
   )
 }
 
@@ -533,19 +548,35 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
     <section className={cn('rounded-2xl border border-gray-200 bg-white p-5 md:p-6', className)}>
       <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Where it goes</h3>
       <div className="mt-2">
-        <Row label="Pay for the term" value={fc(r.wages)} />
-        {r.housingStipend > 0 && <Row label="Housing stipend, for the term" value={fc(r.housingStipend)} note="Taxable — it is wages." />}
-        {r.relocation > 0 && <Row label="Relocation allowance" value={fc(r.relocation)} note="Taxable since 2018." />}
-        <Row label="Withheld by payroll" value={`−${fc(r.withheld.total)}`} muted
-          note={`Federal ${fc(r.withheld.federal)} · state ${fc(r.withheld.state)} · Social Security and Medicare ${fc(r.withheld.fica)}`} />
-        <Row label="Lands in your account" value={fc(r.takeHome)} note={`${fc(r.takeHomeMonthly)} a month`} />
+        <Row id="pay" label="Pay for the term" value={fc(r.wages)}
+          explain={inputs.payShape === 'hourly'
+            ? <>Your rate × hours a week × {inputs.weeks} weeks, with any overtime at 1.5×. This is the figure in the offer, before anything comes out.</>
+            : inputs.payShape === 'monthly'
+              ? <>The monthly stipend × the months the term covers: {inputs.weeks} weeks × 12 ÷ 52 = {r.months.toFixed(1)} months.</>
+              : <>The single payment for the term, as the offer states it.</>} />
+        {r.housingStipend > 0 && (
+          <Row id="housing_stipend" label="Housing stipend, for the term" value={fc(r.housingStipend)} note="Taxed as wages."
+            explain={<>The monthly stipend × {r.months.toFixed(1)} months. Paid to you in cash, so it is income: taxed and withheld exactly like your pay, which surprises most people the first time.</>} />
+        )}
+        {r.relocation > 0 && (
+          <Row id="one_off" label="One-off allowance" value={fc(r.relocation)} note="Taxed as wages."
+            explain={<>Relocation, travel or a housing lump sum, paid once. Taxable income since 2018. Payroll withholds federal tax on a one-off payment at a flat 22% rather than as though you earned it every week.</>} />
+        )}
+        <Row id="withheld" label="Withheld by payroll" value={`−${fc(r.withheld.total)}`} muted
+          note={`Federal ${fc(r.withheld.federal)} · state ${fc(r.withheld.state)} · Social Security and Medicare ${fc(r.withheld.fica)}`}
+          explain={<>Payroll assumes each paycheck&apos;s rate continues all year, so this pay is withheld as if you earned {fc(r.annualised)} a year — federal and state tax on that, charged for the weeks you work. Social Security and Medicare are 7.65% of every dollar. Most of the federal and state part comes back when you file; see the green box below.</>} />
+        <Row id="take_home" label="Lands in your account" value={fc(r.takeHome)} note={`${fc(r.takeHomeMonthly)} a month`}
+          explain={<>Everything above minus what payroll withheld: the cash that actually reaches your account during the term. The tax refund arrives later, when you file, so it is not counted here.</>} />
         <Row
+          id="rent"
           label="Rent for the term"
           value={r.housingCost > 0 ? `−${fc(r.housingCost)}` : inputs.housing === 'provided' ? 'covered' : '—'}
           muted
           note={r.housingCost > 0 || inputs.housing === 'provided' ? undefined : 'Pick a city or put in a monthly rent.'}
+          explain={<>Monthly rent × the months the term covers ({inputs.weeks} weeks × 12 ÷ 52 = {r.months.toFixed(1)}). When you pick a city it is prefilled with the market rate for a year lease there; a summer sublet or furnished place can cost more or less, so put in what you actually know.</>}
         />
-        <Row label="Left after housing" value={fc(r.leftAfterHousing)} />
+        <Row id="left" label="Left after housing" value={fc(r.leftAfterHousing)}
+          explain={<>What lands in your account minus rent for the term. This is the number that decides whether the summer works — and the one on which two offers most often swap places, because a higher rate in a pricier city can leave less.</>} />
       </div>
 
       {/* The refund, as a number. Payroll withholds as if the rate continued
@@ -568,9 +599,10 @@ function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: Inte
 
       {r.upfrontCash > 0 && (
         <p className="mt-4 text-[13.5px] leading-relaxed text-gray-600">
-          <strong className="font-bold text-gray-800">Before the first paycheck:</strong> about {fc(r.upfrontCash)} —
-          a deposit and the first month, due before any pay lands, usually two to three weeks in. Rule of thumb:
-          deposit ≈ {UPFRONT_RENT_MONTHS - 1} month&apos;s rent.
+          <strong className="font-bold text-gray-800">Cash you need before the first paycheck: about {fc(r.upfrontCash)}.</strong>{' '}
+          A deposit and the first month&apos;s rent are usually due before any pay lands, and the first paycheck
+          tends to arrive two to three weeks in — so this is what you need saved, or covered, to move there without
+          going into debt. Rule of thumb: deposit ≈ {UPFRONT_RENT_MONTHS - 1} month&apos;s rent.
         </p>
       )}
 
@@ -606,7 +638,7 @@ function Comparison({
    * two lines that sit below the total there (the refund, the up-front cash)
    * sit below it here too, muted, rather than being folded into the sum.
    */
-  type Line = { label: string; a: number; b: number; negative?: boolean; total?: boolean; muted?: boolean }
+  type Line = { label: string; a: number; b: number; negative?: boolean; total?: boolean; aside?: boolean }
   const rows: Line[] = b
     ? [
         { label: 'Pay for the term', a: a.wages, b: b.wages },
@@ -614,14 +646,14 @@ function Comparison({
           ? [{ label: 'Housing stipend, for the term', a: a.housingStipend, b: b.housingStipend }]
           : []),
         ...(a.relocation > 0 || b.relocation > 0
-          ? [{ label: 'Relocation allowance', a: a.relocation, b: b.relocation }]
+          ? [{ label: 'One-off allowance', a: a.relocation, b: b.relocation }]
           : []),
         { label: 'Withheld by payroll', a: a.withheld.total, b: b.withheld.total, negative: true },
         { label: 'Lands in your account', a: a.takeHome, b: b.takeHome },
         { label: 'Rent for the term', a: a.housingCost, b: b.housingCost, negative: true },
         { label: 'Left after housing', a: a.leftAfterHousing, b: b.leftAfterHousing, total: true },
-        { label: 'Comes back at filing', a: a.refund, b: b.refund, muted: true },
-        { label: 'Needed up front', a: a.upfrontCash, b: b.upfrontCash, negative: true, muted: true },
+        { label: 'Tax refund when you file (est.)', a: a.refund, b: b.refund, aside: true },
+        { label: 'Cash needed before the first paycheck', a: a.upfrontCash, b: b.upfrontCash, aside: true },
       ]
     : []
   const winner = b ? (a.leftAfterHousing === b.leftAfterHousing ? null : a.leftAfterHousing > b.leftAfterHousing ? 'a' : 'b') : null
@@ -661,12 +693,30 @@ function Comparison({
                     </tr>
                   )
                 }
+                /**
+                 * The two rows after the total were greyed out, and the first
+                 * tester asked what "filing" meant, what "Needed up front" was
+                 * and why both were grey — three misses on two lines. They are
+                 * real numbers to plan around, not faded ones, so they get
+                 * their names spelled out and a divider that says why they sit
+                 * outside the total.
+                 */
+                const firstAside = row.aside && !rows[rows.indexOf(row) - 1]?.aside
                 return (
-                  <tr key={row.label} className="border-b border-gray-100">
-                    <td className={cn('px-2 py-2.5 text-left text-[13.5px]', row.muted ? 'text-gray-400' : 'text-gray-600')}>{row.label}</td>
-                    <td className={cn(cell, row.muted ? 'text-gray-400' : 'text-gray-500')}>{show(row.a)}</td>
-                    <td className={cn(cell, row.muted ? 'text-gray-400' : 'text-gray-900')}>{show(row.b)}</td>
-                  </tr>
+                  <Fragment key={row.label}>
+                    {firstAside && (
+                      <tr>
+                        <td colSpan={3} className="px-2 pb-1.5 pt-4 text-left text-[11.5px] font-bold uppercase tracking-wide text-gray-500">
+                          Not in the total — plan for these
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="border-b border-gray-100">
+                      <td className="px-2 py-2.5 text-left text-[13.5px] text-gray-600">{row.label}</td>
+                      <td className={cn(cell, 'text-gray-500')}>{show(row.a)}</td>
+                      <td className={cn(cell, 'text-gray-900')}>{show(row.b)}</td>
+                    </tr>
+                  </Fragment>
                 )
               })}
             </tbody>

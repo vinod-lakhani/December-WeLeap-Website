@@ -41,6 +41,7 @@ import { EXAMPLE } from '@/lib/offer/example';
 import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
 import { OfferCompare } from '@/components/OfferCompare';
+import { ExplainRow } from '@/components/ExplainRow';
 import { OfferLetterUpload, type DocKind } from '@/components/OfferLetterUpload';
 import { trackDocFieldEdited, trackDocConfirmed, type DocClass } from '@/lib/offer-parse/doc-analytics';
 import type { ParsedOffer } from '@/lib/offer-parse/fields';
@@ -1955,30 +1956,58 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
           {/* Package card */}
           <div className="bg-[#1a2e1a] rounded-2xl px-6 py-5">
             <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest mb-4">Your full package</div>
+            {/* Each label opens a one-paragraph explanation of its number —
+                tap, not hover, because most visitors are on a phone. From the
+                Purdue career-center tester: "if I clicked on the Equity box…
+                it would tell me more about how equity is factored in." */}
             {[
-              { label: 'Base salary', value: salary },
-              { label: `Bonus target (${shownInputs.bonusPct}%)`, value: shown.annualBonus, show: shownInputs.bonusPct > 0 },
-              { label: `401k match`, value: shown.annual401kMatch, show: shownInputs.matchUpToPct > 0 },
-              { label: 'Employer HSA', value: shown.annualHsa, show: shownInputs.hsaMonthly > 0 },
-              { label: 'Healthcare premium', value: shown.annualHealthcare, show: shownInputs.healthcarePremium > 0 },
-              { label: 'RSUs (annual vesting)', value: shownInputs.rsuAnnual, show: shownInputs.rsuAnnual > 0 },
-              { label: 'ESPP discount', value: shown.annualEspp, show: shownInputs.showEspp && shown.annualEspp > 0 },
-              { label: `PTO (+${shownInputs.ptoDays - MARKET_PTO_DAYS} days)`, value: shown.ptoValue, show: shown.ptoValue > 0 },
+              { id: 'base', label: 'Base salary', value: salary,
+                explain: <>The salary in the letter, before tax. It is usually 70% to 90% of what an offer is worth, which is why the rows below exist. Take-home after federal, state and FICA is worked out separately, further down.</> },
+              { id: 'bonus', label: `Bonus target (${shownInputs.bonusPct}%)`, value: shown.annualBonus, show: shownInputs.bonusPct > 0,
+                explain: <>Salary × the {shownInputs.bonusPct}% target. A target, not a promise: most bonuses depend on how the company and you perform, so this assumes it pays out in full. Taxed as income when it is paid.</> },
+              { id: 'match', label: `401k match`, value: shown.annual401kMatch, show: shownInputs.matchUpToPct > 0,
+                explain: <>Employer money you get only if you contribute. Up to {shownInputs.matchUpToPct}% of salary, matched at {shownInputs.matchRatePct}% — so this assumes you put in at least {shownInputs.matchUpToPct}%. Contribute less and you leave the difference behind; the match never backfills.</> },
+              { id: 'hsa', label: 'Employer HSA', value: shown.annualHsa, show: shownInputs.hsaMonthly > 0,
+                explain: <>What the employer puts into your health savings account: the monthly figure × 12. It comes with a high-deductible health plan, is yours to keep if you leave, and is not taxed going in or coming out for medical costs.</> },
+              { id: 'premium', label: 'Healthcare premium', value: shown.annualHealthcare, show: shownInputs.healthcarePremium > 0,
+                explain: <>What comes out of your paycheck for health insurance, × 12. A cost, so it reduces the package — two offers with the same salary can differ by thousands here.</> },
+              { id: 'equity', label: 'RSUs (annual vesting)', value: shownInputs.rsuAnnual, show: shownInputs.rsuAnnual > 0,
+                explain: <>The equity that vests in a year, at the value the letter states. Counted at face value: on the day it vests the shares can be worth more or less, and the value is taxed as income then. If the grant vests over four years, this is one year of it.</> },
+              { id: 'espp', label: 'ESPP discount', value: shown.annualEspp, show: shownInputs.showEspp && shown.annualEspp > 0,
+                explain: <>Only the discount counts, not the shares: salary × the {shownInputs.esppContrib}% you contribute × the {shownInputs.esppDiscount}% discount. That is the money you make by buying company stock below market, if you sell when you can.</> },
+              { id: 'pto', label: `PTO (+${shownInputs.ptoDays - MARKET_PTO_DAYS} days)`, value: shown.ptoValue, show: shown.ptoValue > 0,
+                explain: <>Days off above the {MARKET_PTO_DAYS}-day norm, valued at a day of your pay — salary ÷ 260 working days. Paid time off is pay for days you do not work, so extra days are worth real money.</> },
               // The two terms most offers have and most visitors have not typed: named, not guessed.
-              { label: 'Bonus target', value: 0, show: !campaignDemo && !entered.has('bonusPct'), missing: true },
-              { label: '401k match', value: 0, show: !campaignDemo && !entered.has('matchRatePct') && !entered.has('matchUpToPct'), missing: true },
-            ].filter(r => r.show !== false).map((row, i, arr) => (
-              <div key={i} className={`flex justify-between items-baseline py-1.5 ${i < arr.length - 1 ? 'border-b border-white/5' : ''}`}>
-                <span className={`text-sm ${row.missing ? 'text-white/30' : i === 0 ? 'text-white/90' : 'text-white/50'}`}>{row.label}</span>
-                {row.missing ? (
-                  <span className="text-xs italic text-white/30">not entered yet</span>
-                ) : (
-                  <span className={`text-sm font-bold ${row.value < 0 ? 'text-red-400' : i === 0 ? 'text-white/90' : 'text-[#A7C957]'}`}>
-                    {row.value < 0 ? `−${fc(row.value)}` : fc(row.value)}
-                  </span>
-                )}
-              </div>
-            ))}
+              { id: 'bonus_missing', label: 'Bonus target', value: 0, show: !campaignDemo && !entered.has('bonusPct'), missing: true },
+              { id: 'match_missing', label: '401k match', value: 0, show: !campaignDemo && !entered.has('matchRatePct') && !entered.has('matchUpToPct'), missing: true },
+            ].filter(r => r.show !== false).map((row, i, arr) => {
+              const border = i < arr.length - 1 ? 'border-b border-white/5' : ''
+              if (row.missing || !row.explain) {
+                return (
+                  <div key={row.id} className={`flex justify-between items-baseline py-1.5 ${border}`}>
+                    <span className="text-sm text-white/30">{row.label}</span>
+                    <span className="text-xs italic text-white/30">not entered yet</span>
+                  </div>
+                )
+              }
+              return (
+                <ExplainRow
+                  key={row.id}
+                  tool="offer"
+                  row={row.id}
+                  tone="dark"
+                  className={`py-1.5 ${border}`}
+                  labelClassName={`text-sm ${i === 0 ? 'text-white/90' : 'text-white/50'}`}
+                  label={row.label}
+                  value={
+                    <span className={`text-sm font-bold ${row.value < 0 ? 'text-red-400' : i === 0 ? 'text-white/90' : 'text-[#A7C957]'}`}>
+                      {row.value < 0 ? `−${fc(row.value)}` : fc(row.value)}
+                    </span>
+                  }
+                  explain={row.explain}
+                />
+              )
+            })}
             <div className="border-t border-white/20 mt-3 pt-3 flex justify-between items-baseline">
               <span className="text-sm font-bold text-white">Total package</span>
               <span className="text-2xl font-black text-[#A7C957]">{fc(shown.totalPackage)}</span>
