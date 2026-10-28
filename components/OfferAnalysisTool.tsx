@@ -1251,9 +1251,14 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
           last 60 days, so the claim is dropped rather than shipped
           knowingly wrong. */}
       <div className="mt-5">
+        {/* `h-auto whitespace-normal` because the shared Button forces
+            `nowrap` and a fixed height: at 375px this label needs 297px in a
+            277px button and was cut off at both ends — the main conversion
+            button on the most-used tool, unreadable on a phone. It wraps to a
+            second line there instead. */}
         <Button
           onClick={() => handleSignUp('button')}
-          className="w-full bg-[#386641] py-3.5 text-[15px] font-bold text-white hover:bg-[#2d5235]"
+          className="h-auto w-full whitespace-normal bg-[#386641] py-3.5 text-[15px] font-bold leading-snug text-white hover:bg-[#2d5235]"
         >
           Save my numbers and see what to do first →
         </Button>
