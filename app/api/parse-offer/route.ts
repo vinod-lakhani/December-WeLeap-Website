@@ -15,6 +15,15 @@ import {
   WORK_STATE_DESCRIPTION,
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
+import {
+  INTERNSHIP_FIELDS,
+  INTERNSHIP_FIELD_KEYS,
+  INTERNSHIP_PERKS,
+  INTERNSHIP_PERKS_DESCRIPTION,
+  validateInternship,
+  mergeInternshipInputs,
+  type ParsedInternship,
+} from '@/lib/offer-parse/internship'
 import { quoteIsGrounded } from '@/lib/offer-parse/grounding'
 import { assessPaystubText } from '@/lib/offer-parse/text-quality'
 import { checkRateLimit, clientKey, clientKeySource } from '@/lib/offer-parse/rate-limit'
@@ -86,7 +95,7 @@ function sniff(buf: Uint8Array) {
   return MAGIC.find((m) => m.bytes.every((b, i) => buf[i] === b)) ?? null
 }
 
-export type DocKind = 'offer' | 'benefits' | 'paystub'
+export type DocKind = 'offer' | 'benefits' | 'paystub' | 'internship'
 
 /** The schema is generated from the field table so the two cannot drift. */
 function buildTool(kind: DocKind): Anthropic.Tool {
@@ -163,6 +172,61 @@ function buildTool(kind: DocKind): Anthropic.Tool {
         },
         additionalProperties: false,
       } as Anthropic.Tool['input_schema'],
+      strict: true,
+    }
+  }
+
+  /**
+   * An internship letter has its own table — see lib/offer-parse/internship.ts.
+   * Same field shape (value, confidence, verbatim quote) so the same checks
+   * apply; the perk list is a closed enum rather than free text.
+   */
+  if (kind === 'internship') {
+    for (const key of INTERNSHIP_FIELD_KEYS) {
+      const spec = INTERNSHIP_FIELDS[key]
+      properties[key] = {
+        type: 'object',
+        description: `${spec.describe} Expected range: ${spec.min} to ${spec.max}.`,
+        properties: {
+          value: { type: 'number' },
+          confidence: { type: 'number' },
+          quote: {
+            type: 'string',
+            description: 'The exact sentence or line from the document this value was read from. Copy it verbatim.',
+          },
+        },
+        required: ['value', 'confidence', 'quote'],
+        additionalProperties: false,
+      }
+    }
+    properties.workStateCode = {
+      type: 'object',
+      description: WORK_STATE_DESCRIPTION,
+      properties: {
+        value: { type: 'string', enum: [...US_STATES] },
+        confidence: { type: 'number' },
+        quote: { type: 'string' },
+      },
+      required: ['value', 'confidence', 'quote'],
+      additionalProperties: false,
+    }
+    properties.otherPerks = {
+      type: 'array',
+      description: INTERNSHIP_PERKS_DESCRIPTION,
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: Object.keys(INTERNSHIP_PERKS) },
+          quote: { type: 'string', description: 'The exact line the benefit is stated in. Copy it verbatim.' },
+        },
+        required: ['kind', 'quote'],
+        additionalProperties: false,
+      },
+    }
+    return {
+      name: 'record_offer_terms',
+      description: 'Record the terms found in this internship offer letter. Omit any field the document does not state.',
+      input_schema: { type: 'object', properties, additionalProperties: false } as Anthropic.Tool['input_schema'],
       strict: true,
     }
   }
@@ -311,6 +375,38 @@ const PAYSTUB_SYSTEM = [
   '  number or bank detail, including inside a row label.',
 ].join('\n')
 
+/**
+ * An internship letter states its pay in one of three shapes and its term in
+ * dates more often than in weeks. The rules below are the ones that keep the
+ * shapes apart: a housing stipend is not pay, and a lump sum for housing is not
+ * the term's pay either.
+ */
+const INTERNSHIP_SYSTEM = [
+  'You read US internship and co-op offer letters and record the terms in them.',
+  '',
+  'Call the record_offer_terms tool exactly once with everything you find.',
+  '',
+  'Rules, in order of importance:',
+  '1. Omit any field the document does not actually state. Never infer a typical',
+  '   value — a missing field costs the reader nothing; a guessed one gives them a',
+  '   wrong number they have no reason to doubt.',
+  '2. Every field you return needs a verbatim quote from the document.',
+  '3. Pay comes in ONE shape: an hourly rate, a monthly amount, or one total for the',
+  '   term. Record the shape the letter uses. Housing and relocation money is never',
+  '   pay — it goes in the housing or relocation fields.',
+  '4. For the term, prefer what the letter states: a length in weeks, or a start and',
+  '   end date. Record dates as eight-digit YYYYMMDD numbers. Do not work out the',
+  '   number of weeks from dates yourself.',
+  '5. A housing amount paid every month is housingStipendMonthly; one paid once is',
+  '   housingLumpSum. If the employer provides housing itself, set housingProvided.',
+  '6. List other benefits (meals, a wellness stipend, a return-offer bonus) in',
+  '   otherPerks, one per benefit, choosing the closest category.',
+  '7. Record only the fields in the schema. Do not report names, addresses,',
+  '   identifiers or any other personal detail anywhere, including in quotes.',
+  '8. If the document is not an internship or co-op offer, call the tool with no',
+  '   fields set.',
+].join('\n')
+
 export async function POST(request: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     // Same shape as every other failure: the client shows the form and the user
@@ -364,7 +460,7 @@ export async function POST(request: NextRequest) {
     // misclassification here would read the right numbers off the wrong
     // document, which validation cannot catch.
     const requested = form.get('kind')
-    kind = requested === 'benefits' || requested === 'paystub' ? requested : 'offer'
+    kind = requested === 'benefits' || requested === 'paystub' || requested === 'internship' ? requested : 'offer'
   } catch {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   }
@@ -513,7 +609,13 @@ export async function POST(request: NextRequest) {
        */
       ...(kind === 'paystub' ? {} : { output_config: { effort: 'low' as const } }),
       system:
-        kind === 'paystub' ? PAYSTUB_SYSTEM : kind === 'benefits' ? BENEFITS_SYSTEM : OFFER_SYSTEM,
+        kind === 'paystub'
+          ? PAYSTUB_SYSTEM
+          : kind === 'benefits'
+            ? BENEFITS_SYSTEM
+            : kind === 'internship'
+              ? INTERNSHIP_SYSTEM
+              : OFFER_SYSTEM,
       tools: [buildTool(kind)],
       messages: [{ role: 'user', content: content! }],
     })
@@ -557,7 +659,9 @@ export async function POST(request: NextRequest) {
     const { parsed, rejected } =
       kind === 'paystub'
         ? validatePaystub(mergePaystubInputs(inputs))
-        : validateExtraction(mergeToolInputs(inputs))
+        : kind === 'internship'
+          ? validateInternship(mergeInternshipInputs(inputs))
+          : validateExtraction(mergeToolInputs(inputs))
 
     /**
      * Drop anything whose quote is not in the document.
@@ -574,8 +678,19 @@ export async function POST(request: NextRequest) {
      * provenance, and validatePaystub already sweeps those. Running this loop
      * over it would read `.quote` off a number and drop every field.
      */
+    if (path === 'text' && kind === 'internship') {
+      // The perk list is an array of {kind, quote}; ground each one and keep the rest.
+      const withPerks = parsed as ParsedInternship
+      if (withPerks.otherPerks) {
+        const kept = withPerks.otherPerks.filter((perk) => quoteIsGrounded(perk.quote, sourceText))
+        ungrounded += withPerks.otherPerks.length - kept.length
+        if (kept.length > 0) withPerks.otherPerks = kept
+        else delete withPerks.otherPerks
+      }
+    }
     if (path === 'text' && kind !== 'paystub') {
       for (const [key, field] of Object.entries(parsed as Record<string, { quote: string }>)) {
+        if (key === 'otherPerks') continue
         if (field && !quoteIsGrounded(field.quote, sourceText)) {
           // The key, never the quote: this line has to be safe to read in a
           // production log, and the quote is document content.

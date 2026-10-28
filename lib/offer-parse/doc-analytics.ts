@@ -12,7 +12,7 @@ import { getPostHog } from '@/lib/posthog-lazy'
  */
 
 /** Matches the `doc_class` on every event in this funnel. */
-export type DocClass = 'offer_letter' | 'benefits_guide' | 'paystub'
+export type DocClass = 'offer_letter' | 'benefits_guide' | 'paystub' | 'internship_offer'
 
 /**
  * The eval signal that keeps working after launch.
