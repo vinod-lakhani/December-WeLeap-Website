@@ -63,7 +63,7 @@ export function MethodSteps({
   steps: readonly MethodStep[]
 }) {
   return (
-    <Section variant="white" className="bg-white">
+    <Section id="method" variant="white" className="scroll-mt-20 bg-white">
       <Container>
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-4 text-balance text-center text-[clamp(1.6rem,2.6vw,2.1rem)] font-extrabold leading-tight tracking-[-0.025em] text-ink">
