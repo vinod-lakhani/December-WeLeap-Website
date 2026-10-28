@@ -23,7 +23,7 @@ export const MARKET_PTO_DAYS = 15
 const ANNUAL_RETURN = 0.07
 
 /** Working days in a year, for valuing a day of PTO against salary. */
-const WORKING_DAYS = 260
+export const WORKING_DAYS = 260
 
 /**
  * Tax while /api/tax has not answered, or cannot be asked because no state
