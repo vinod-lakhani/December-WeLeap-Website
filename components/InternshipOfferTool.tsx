@@ -26,6 +26,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 
 import { AppCta } from '@/components/AppCta'
 import { ExplainRow } from '@/components/ExplainRow'
+import { InternshipLetterUpload } from '@/components/InternshipLetterUpload'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { track } from '@/lib/analytics'
@@ -40,6 +41,8 @@ import {
   type InternshipResult,
   type PayShape,
 } from '@/lib/internship/calculation'
+import { inputsFromLetter } from '@/lib/internship/fromLetter'
+import { INTERNSHIP_PERKS, type InternshipPerk, type ParsedInternship } from '@/lib/offer-parse/internship'
 import { nextRunIndex } from '@/lib/run-index'
 import { US_STATES_NAMED } from '@/lib/states'
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
@@ -297,6 +300,11 @@ function RetirementFields({
   const [open, setOpen] = useState(v.matchUpToPct > 0 || v.contributionPct > 0)
   const ownContribution = useRef(false)
 
+  // An uploaded letter can fill the match after this mounted closed.
+  useEffect(() => {
+    if (v.matchRatePct > 0 || v.matchUpToPct > 0) setOpen(true)
+  }, [v.matchRatePct, v.matchUpToPct])
+
   if (!open) {
     return (
       <button
@@ -417,6 +425,28 @@ export function InternshipOfferTool() {
     track('tool_form_start', { tool: TOOL, page: PAGE })
   }, [])
 
+  /** Benefits the letter states that these numbers do not price. */
+  const [perksA, setPerksA] = useState<InternshipPerk[]>([])
+
+  /**
+   * An upload is input, and the highest-intent kind: it counts toward
+   * completion as every field it set, plus `upload_document`, the same way
+   * the first-paycheck tool treats a parsed document.
+   */
+  const onLetterA = useCallback((parsed: ParsedInternship) => {
+    const { patch, fields } = inputsFromLetter(parsed)
+    setA((prev) => ({ ...prev, ...patch }))
+    if (patch.state !== undefined) setCityA('')
+    setPerksA((parsed.otherPerks ?? []).map((x) => x.kind))
+    setChanged((prev) => new Set([...prev, ...fields, 'upload_document']))
+    setEngagementCount((n) => n + 1)
+    if (!engaged.current) {
+      engaged.current = true
+      track('tool_engaged', { tool: TOOL, first_field: 'upload_document' })
+      track('tool_form_start', { tool: TOOL, page: PAGE })
+    }
+  }, [])
+
   const onCityA = useCallback((city: string) => {
     setCityA(city)
     if (city) setChanged((prev) => (prev.has('city') ? prev : new Set(prev).add('city')))
@@ -444,7 +474,7 @@ export function InternshipOfferTool() {
     track('tool_completed', {
       tool: 'internship',
       run_index: nextRunIndex(TOOL),
-      trigger: 'field_change',
+      trigger: changed.has('upload_document') ? 'upload' : 'field_change',
       fields_changed: engagementCount,
       inputs_supplied: [...changed].sort(),
       pay_shape: a.payShape,
@@ -475,6 +505,7 @@ export function InternshipOfferTool() {
     <div className="mx-auto w-full max-w-[600px]">
       {/* ── The offer ──────────────────────────────────────────────────── */}
       <section className="rounded-2xl border-2 border-[#386641] bg-white p-5 md:p-6">
+        <InternshipLetterUpload onParsed={onLetterA} />
         <InternshipFields
           idPrefix="intern"
           value={a}
@@ -511,7 +542,7 @@ export function InternshipOfferTool() {
             />
           </div>
 
-          <Breakdown r={result} inputs={a} className="mt-4" />
+          <Breakdown r={result} inputs={a} perks={perksA} className="mt-4" />
 
           {/* ── The second internship ─────────────────────────────────── */}
           <div className={cn('mt-4', b && 'lg:-mx-[84px] lg:w-[768px]')}>
@@ -533,6 +564,13 @@ export function InternshipOfferTool() {
                   <p className="mb-5 text-[14px] leading-relaxed text-gray-600">
                     Same term and housing answer as above to start with. Change whatever this one does differently.
                   </p>
+                  <InternshipLetterUpload
+                    onParsed={(parsed) => {
+                      const { patch } = inputsFromLetter(parsed)
+                      setB((prev) => (prev ? { ...prev, ...patch } : prev))
+                      if (patch.state !== undefined) setCityB('')
+                    }}
+                  />
                   <InternshipFields
                     idPrefix="intern-b"
                     value={b}
@@ -623,10 +661,26 @@ function Row({
   )
 }
 
-function Breakdown({ r, inputs, className }: { r: InternshipResult; inputs: InternshipInputs; className?: string }) {
+function Breakdown({
+  r, inputs, perks, className,
+}: {
+  r: InternshipResult
+  inputs: InternshipInputs
+  perks: InternshipPerk[]
+  className?: string
+}) {
   return (
     <section className={cn('rounded-2xl border border-gray-200 bg-white p-5 md:p-6', className)}>
       <h3 className="text-lg font-extrabold tracking-[-0.015em] text-gray-900">Where it goes</h3>
+      {/* "Did we miss anything?" — the tester's phrase. What the letter offers
+          that these numbers do not price, so it is not forgotten when two
+          offers are weighed. */}
+      {perks.length > 0 && (
+        <p className="mt-2 rounded-lg bg-[#F3F7F3] px-3 py-2 text-[13px] leading-relaxed text-gray-700">
+          <strong className="font-semibold">Also in your letter, not priced here:</strong>{' '}
+          {perks.map((k) => INTERNSHIP_PERKS[k]).join('; ')}. Worth weighing when you compare offers.
+        </p>
+      )}
       <div className="mt-2">
         <Row id="pay" label="Pay for the term" value={fc(r.wages)}
           explain={inputs.payShape === 'hourly'

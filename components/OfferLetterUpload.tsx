@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 import type { ParsedOffer } from '@/lib/offer-parse/fields'
 
 /** Kept just under the 4 MB the route accepts, so the check fails here first. */
-const MAX_BYTES = 4 * 1024 * 1024
+export const MAX_BYTES = 4 * 1024 * 1024
 
 /**
  * A backstop above the server's own deadline, not a duplicate of it.
@@ -31,12 +31,12 @@ const MAX_BYTES = 4 * 1024 * 1024
  * happens — a connection that stalls rather than closes — because without it
  * `fetch` waits forever and the button reads "Reading…" until the tab is shut.
  */
-const REQUEST_TIMEOUT_MS = 70_000
+export const REQUEST_TIMEOUT_MS = 70_000
 
-const ACCEPT = 'application/pdf,image/png,image/jpeg'
+export const ACCEPT = 'application/pdf,image/png,image/jpeg'
 
 /** How long to wait for a picker to take the page out of the foreground. */
-const PICKER_GRACE_MS = 2500
+export const PICKER_GRACE_MS = 2500
 
 /**
  * One message per failure, written for someone holding a document rather than
