@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { OfferAnalysisTool } from '@/components/OfferAnalysisTool'
+import { OfferNumberChips } from '@/components/OfferNumberChips'
 import { CAMPAIGN_ROBOTS, isCampaign } from '@/lib/campaign'
 import { PageShell, Section, Container, SiteFooter } from '@/components/layout'
 import { MethodSteps, Caveat, ToolFaq, type MethodStep } from '@/components/ToolExplainer'
@@ -204,24 +205,7 @@ export default function OfferAnalysisPage({
       <Section variant="white">
         <Container maxWidth="narrow">
           <h2 className="text-lg font-bold text-gray-900 text-center mb-6">The 7 numbers in your offer</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
-            {[
-              { n: '1', label: 'Base salary' },
-              { n: '2', label: 'Bonus target' },
-              { n: '3', label: '401k match' },
-              { n: '4', label: 'HSA & benefits' },
-              { n: '5', label: 'Equity' },
-              { n: '6', label: 'Time off' },
-              { n: '7', label: 'Housing cost' },
-            ].map(item => (
-              <div key={item.n} className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 px-3 py-2.5">
-                <div className="w-6 h-6 rounded-full bg-[#386641] text-white text-xs font-bold flex items-center justify-center shrink-0">
-                  {item.n}
-                </div>
-                <span className="text-sm font-semibold text-gray-700">{item.label}</span>
-              </div>
-            ))}
-          </div>
+          <OfferNumberChips />
         </Container>
       </Section>
 
