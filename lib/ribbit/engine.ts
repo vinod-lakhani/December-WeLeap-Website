@@ -218,6 +218,8 @@ export const MONEY_OFFER_TEXT = 'Want me to work out your order with your number
 export const MONEY_REOFFER_TEXT = 'Want me to check that against your pay? Same four quick questions.'
 /** A purchase being planned ("can I afford a car?", "is now a good time to buy?"): offered the money flow like a plan question. */
 const AFFORD_QUESTION = /\b(can i afford|afford (a|an|to)|good time to buy|should i (buy|get) (a|an)\b)/i
+const YES = /^\s*(yes|yeah|yep|yup|sure|ok(ay)?|y|please|let'?s do it|do it|go ahead|sounds good)\b[\s.!]*(please)?[\s.!]*$/i
+const NO = /^\s*(no|nope|nah|not now|no thanks|later)\b[\s.!]*$/i
 const MONEY_OFFER_CHIPS: Chip[] = [{ label: 'Yes, work it out', value: 'money' }, { label: 'Not now', value: 'not_now' }]
 
 function cityChips(): Chip[] {
@@ -281,7 +283,11 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
 
   switch (state.turn) {
     case 'P0': {
-      const pick = chip ?? (/where should my money go/i.test(text) ? 'money' : /offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : '')
+      // With the money offer on screen, a typed "yes" is "Yes, work it out" and a typed "no" is "Not now"; sent to
+      // Ribbit as a question, a bare "yes" got a stray answer or, twice in three tries, none at all.
+      const offerOpen = Boolean(f.moneyOffered && !f.moneyDeclined && state.ui?.chips?.some((c) => c.value === 'money'))
+      const typedPick = offerOpen && YES.test(text) ? 'money' : offerOpen && NO.test(text) ? 'not_now' : ''
+      const pick = chip ?? (typedPick || (/where should my money go/i.test(text) ? 'money' : /offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : ''))
       if (pick === 'rent') return askSalary({ ...state, flow: 'rent', turn: 'R1' })
       if (pick === 'offer') return askOfferSalary({ ...state, flow: 'offer', turn: 'O1' })
       if (pick === 'money') return askMoneySalary({ ...state, flow: 'money', turn: 'M1' })
