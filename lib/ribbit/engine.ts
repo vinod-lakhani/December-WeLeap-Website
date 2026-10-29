@@ -123,6 +123,8 @@ export interface Facts {
   contributionMonthly?: number
   /** "Work it out with your numbers?" has been offered after a planning question (once per thread). */
   moneyOffered?: boolean
+  /** The question that led to "Where should my money go?" ("is now a good time to buy a car?"): answered at the order. */
+  moneyQuestion?: string
 }
 
 export interface ChatState {
@@ -984,7 +986,7 @@ async function moneyMatch(state: ChatState, chip: string | undefined, text: stri
   const f = state.facts
   if (state.turn === 'M5') {
     const v = chip ?? (/^no\b/i.test(text) ? 'none' : /not sure|don'?t know/i.test(text) ? 'unknown' : parseMatch(text) ? 'known' : '')
-    if (v === 'none' || v === 'unknown') { f.match = v; return moneyResult(state) }
+    if (v === 'none' || v === 'unknown') { f.match = v; return moneyResult(state, svc) }
     if (v === 'known' && !parseMatch(text)) {
       return say({ ...state, turn: 'M5_formula' }, [{ from: 'ribbit', text: "What's the formula? For example, 100% up to 4% of salary." }], [], 'text')
     }
@@ -994,7 +996,7 @@ async function moneyMatch(state: ChatState, chip: string | undefined, text: stri
     const m = parseMatch(text)
     const rate = chip === 'yes' ? 100 : m?.cap ?? null
     if (!rate) return question(state, text, svc, 'the match rate')
-    return applyMoneyMatch(state, rate, f.pendingMatchCap!)
+    return applyMoneyMatch(state, rate, f.pendingMatchCap!, svc)
   }
   const m = parseMatch(text)
   if (!m) return question(state, text, svc, 'the match formula')
@@ -1003,16 +1005,16 @@ async function moneyMatch(state: ChatState, chip: string | undefined, text: stri
     return say({ ...state, turn: 'M5_rate' }, [{ from: 'ribbit', text: `Is that dollar for dollar up to ${m.cap}% of salary?` }],
       [{ label: 'Yes', value: 'yes' }, { label: 'No, a different rate', value: 'rate' }], 'text')
   }
-  return applyMoneyMatch(state, m.rate, m.cap)
+  return applyMoneyMatch(state, m.rate, m.cap, svc)
 }
 
-function applyMoneyMatch(state: ChatState, rate: number, cap: number): Step {
+function applyMoneyMatch(state: ChatState, rate: number, cap: number, svc: ChatServices): Promise<Step> {
   const f = state.facts
   f.match = 'known'
   f.matchRatePct = rate
   f.matchUpToPct = cap
   if (f.salary) election(f)
-  return moneyResult(state)
+  return moneyResult(state, svc)
 }
 
 export function moneyInputs(f: Facts): MoneyInputs {
@@ -1023,13 +1025,24 @@ export function moneyInputs(f: Facts): MoneyInputs {
   }
 }
 
-/** The win: the order, worked out in code, then the offer to keep it as their plan. */
-function moneyResult(state: ChatState): Step {
-  const o = moneyOrder(moneyInputs(state.facts))
+/**
+ * The win: the order, worked out in code; then, when a question led here ("is now a good time to buy a car?"), the
+ * reader answers it again with these numbers (the money bundle); then the offer to keep it as their plan.
+ */
+async function moneyResult(state: ChatState, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  const o = moneyOrder(moneyInputs(f))
   const share = o.monthlyForSteps > 0 ? [{ from: 'ribbit' as const, text: `These take ${fc(o.monthlyForSteps)} a month of the ${fc(o.leftAfterRent)} you have left after rent.` }] : []
+  const back: ChatMessage[] = []
+  if (f.moneyQuestion) {
+    const res = await svc.ask({ flow: 'money', facts: f, message: f.moneyQuestion, step: '', history: state.history })
+    if (res?.kind === 'question' && res.reply) back.push({ from: 'ribbit', text: `Back to your question: ${res.reply}`, turn: 'M6' })
+    f.moneyQuestion = undefined
+  }
   return say({ ...state, turn: 'M6' }, [
     { from: 'ribbit', text: "Here's where your next dollar goes, in order.", order: o.steps, turn: 'M6' },
     ...share,
+    ...back,
     { from: 'ribbit', text: 'Want me to keep this as your plan?' },
   ], [{ label: 'Yes, keep it', value: 'keep' }, { label: 'Show me the math', value: '__math__' }], 'text', [win('M6'), { name: 'ribbit_money_order_shown', props: { steps: o.steps.map((s) => s.key).join(',') } }])
 }
@@ -1191,6 +1204,7 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
       const amount = /sav/i.test(text) ? parseMoney(text) : null
       if (amount) state.facts.mentionedSaving = amount
       state.facts.moneyOffered = true
+      state.facts.moneyQuestion = text.slice(0, 300)
       messages.push({ from: 'ribbit', text: MONEY_OFFER_TEXT, turn: state.turn })
       events.push({ name: 'ribbit_money_offer_shown', props: { turn: state.turn } })
       const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)

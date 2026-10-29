@@ -4,7 +4,7 @@
  * have rental prices for…", "My answers are down for a moment") rather than with a guess.
  */
 import type { AskResult, ChatServices } from './engine'
-import { offerPlanData, rentPlanData } from './payload'
+import { moneyAskData, offerPlanData, rentPlanData } from './payload'
 
 async function json<T>(res: Response): Promise<T | null> {
   return res.ok ? ((await res.json().catch(() => null)) as T | null) : null
@@ -37,12 +37,13 @@ export const browserServices: ChatServices = {
   },
   async ask({ flow, facts, message, step, history, thread }) {
     try {
-      const planData = flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)
+      const planData = flow === 'offer' ? offerPlanData(facts) : flow === 'money' ? null : rentPlanData(facts)
+      const money = flow === 'money' ? moneyAskData(facts) : undefined
       const res = await fetch('/api/ribbit-ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          flow, planData, message, step, thread,
+          flow, planData, money, message, step, thread,
           history: history.map((h) => ({ role: h.from === 'in' ? 'user' : 'assistant', text: h.text })),
         }),
       })
