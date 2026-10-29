@@ -332,7 +332,9 @@ describe('Where should my money go?', () => {
     const texts = result.messages.map((m) => m.text)
     // After the order, the car question again, answered by the reader with the four answers in hand.
     const order = texts.indexOf("Here's where your next dollar goes, in order.")
-    const back = texts.indexOf('Back to your question: answer to: I want to buy a car, is now a good time?')
+    // For someone who has already done the steps before retirement (the flow never asks what they have saved); the
+    // order covers everyone else.
+    const back = texts.findIndex((t) => /^Back to your question\. If you've already got your full 401\(k\) match and about \$[\d,]+ set aside: answer to: I want to buy a car, is now a good time\? If not, start with the order above\.$/.test(t ?? ''))
     expect(order).toBeGreaterThanOrEqual(0)
     expect(back).toBeGreaterThan(order)
     expect(back).toBeLessThan(texts.indexOf('Want me to keep this as your plan?'))
