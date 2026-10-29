@@ -24,7 +24,7 @@ import { federalTax, ficaTax, marginalFederalRate, taxableIncome } from '@/lib/f
 import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type OfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
-import { matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
+import { splitCityState, matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
 import { moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
 import type { AppReason } from './appLink'
 
@@ -167,6 +167,8 @@ export interface ChatServices {
   tax(salaryAnnual: number, stateCode: string): Promise<(TaxResult & { taxSource?: string }) | null>
   metros(stateCode: string): Promise<{ label: string; value: string }[]>
   medianRent(stateName: string, regionName: string): Promise<number | null>
+  /** Metros for a typed city, narrowed by a typed state (/api/zori?find=). Optional: without it, presets and states only. */
+  findMetros?(city: string, stateCode?: string): Promise<{ label: string; value: string; stateCode: string }[]>
   /**
    * Ribbit, for a typed message that is not an answer the chat could read: a reply to show, or the answer to the
    * open question it found in the words ("about five grand a month" → "5000"), which the chat then applies.
@@ -582,9 +584,35 @@ async function chooseLocation(state: ChatState, chip: string | undefined, text: 
     f.place = f.region?.regionName.split(',')[0] ?? preset
     return afterLocation(state, svc)
   }
+  // A typed city, anywhere the rent data has a metro ("Dallas", "Charlotte NC", "Houston, Texas"): one match is
+  // the answer, several ("Portland") are the options. Before, only the presets and state names were read.
+  const { city, stateCode } = splitCityState(text)
+  if (city && svc.findMetros) {
+    const hits = await svc.findMetros(city, stateCode)
+    if (hits.length === 1) return metroChosen(state, hits[0].value, hits[0].stateCode, svc)
+    if (hits.length > 1) {
+      f.metroOptions = hits.map((h) => ({ label: h.label, value: h.value }))
+      f.stateCode = undefined
+      return say({ ...state, turn: `${pfx}_metro` }, [{ from: 'ribbit', text: 'Which one?' }], [
+        ...hits.map((h) => ({ label: h.label, value: h.value })),
+        { label: 'Somewhere else', value: SOMEWHERE_ELSE },
+      ], 'location')
+    }
+  }
   const st = matchState(text)
   if (st) return chooseState({ ...state, turn: `${pfx}_state` }, undefined, st.code, svc)
   return question(state, text, svc, 'which city the job or the rent is in')
+}
+
+/** A metro picked or typed: its state prices the tax, its region the rents. */
+async function metroChosen(state: ChatState, region: string, stateCode: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  f.stateCode = stateCode
+  f.presetCity = undefined
+  f.region = { stateName: stateCode, regionName: region }
+  f.outsideMetro = false
+  f.place = region.split(',')[0]
+  return afterLocation(state, svc)
 }
 
 async function chooseState(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
@@ -624,13 +652,14 @@ async function chooseMetro(state: ChatState, chip: string | undefined, text: str
     f.place = STATE_NAME(f.stateCode)
     return afterLocation(state, svc)
   }
+  if (chip === SOMEWHERE_ELSE) {
+    return say({ ...state, turn: `${LOCATION_TURN[state.flow ?? 'rent']}_state` }, [{ from: 'ribbit', text: 'Which state?' }], [], 'location')
+  }
   const t = (chip ?? text).toLowerCase()
   const hit = options.find((o) => o.value.toLowerCase() === t) ?? options.find((o) => o.label.toLowerCase().includes(t) && t.length >= 3)
-  if (!hit) return question(state, text, svc, `which area of ${STATE_NAME(f.stateCode)}`)
-  f.region = { stateName: f.stateCode ?? '', regionName: hit.value }
-  f.outsideMetro = false
-  f.place = hit.label.split(',')[0]
-  return afterLocation(state, svc)
+  if (!hit) return question(state, text, svc, f.stateCode ? `which area of ${STATE_NAME(f.stateCode)}` : 'which of those places')
+  // From "Which one?" across states ("Portland, OR" or "Portland, ME") the state is the option's own.
+  return metroChosen(state, hit.value, f.stateCode ?? hit.value.match(/, ([A-Z]{2})$/)?.[1] ?? '', svc)
 }
 
 async function afterLocation(state: ChatState, svc: ChatServices): Promise<Step> {

@@ -30,6 +30,8 @@ export interface Conversation {
   mustFinish?: boolean
   /** Checked on the last turn. */
   end?: Expect
+  /** Each must match something Ribbit said at some point in the conversation. */
+  ever?: RegExp[]
   note?: string
 }
 
@@ -100,6 +102,12 @@ export const CONVERSATIONS: Conversation[] = [
   { id: 'offer-taps', flow: 'offer', persona: SEATTLE, mustFinish: true, says: [] },
   { id: 'money-with-card-debt', flow: 'money', persona: CHI_TYPES, mustFinish: true, says: [], end: { says: [/24%|card/i] } },
   { id: 'money-side-question', flow: 'money', persona: MAYA, mustFinish: true, says: [{ at: 'M3', text: 'what counts as rent if I live with my parents?' }] },
+  // ── Typed cities (Oct 29: only the six presets and state names were read; 7 of 14 paid rent chats stuck) ──
+  { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/In Dallas, take-home/] },
+  { id: 'rent-typed-city-state', flow: 'rent', persona: { ...MAYA, city: 'Denver, CO', state: 'CO' }, mustFinish: true, says: [], ever: [/In Denver, take-home/] },
+  { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/] },
+  { id: 'rent-portland-which-one', flow: 'rent', persona: { ...MAYA, city: 'Portland', state: 'OR' }, mustFinish: true, says: [], ever: [/Which one\?/, /In Portland, take-home/] },
+  { id: 'money-typed-phoenix', flow: 'money', persona: { ...MAYA, city: 'Phoenix', state: 'AZ', style: 'types' }, mustFinish: true, says: [] },
   // ── Typed picks ───────────────────────────────────────────────────────────────────────────────────────────
   { id: 'typed-where-money', persona: MAYA, mustFinish: true, says: [{ text: 'where should my money go?' }] },
   { id: 'typed-rent', persona: BOSTON_GRAD, mustFinish: true, says: [{ text: 'how much rent can I afford' }] },

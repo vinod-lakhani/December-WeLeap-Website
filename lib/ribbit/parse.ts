@@ -92,6 +92,24 @@ export function matchState(text: string): { code: string; name: string } | null 
   return US_STATES_NAMED.find((s) => norm(s.name) === t) ?? US_STATES_NAMED.find((s) => t.includes(norm(s.name))) ?? null
 }
 
+/**
+ * A typed place split into its city and, when one was given, its state: "Dallas, TX", "charlotte nc", "Houston
+ * Texas", "Dallas". A text that is only a state ("Texas", "TX") has no city.
+ */
+export function splitCityState(text: string): { city: string; stateCode?: string } {
+  const t = text.trim().replace(/\s+/g, ' ').replace(/[.]+$/, '')
+  if (matchState(t) && (norm(t).length <= 2 || US_STATES_NAMED.some((s) => norm(s.name) === norm(t)))) return { city: '' }
+  const code = t.match(/^(.+?)[,\s]+([A-Za-z]{2})$/)
+  if (code) {
+    const st = US_STATES_NAMED.find((s) => s.code === code[2].toUpperCase())
+    if (st) return { city: code[1].trim(), stateCode: st.code }
+  }
+  const named = [...US_STATES_NAMED].sort((a, b) => b.name.length - a.name.length)
+    .find((s) => norm(t).endsWith(` ${norm(s.name)}`) && norm(t).length > norm(s.name).length + 2)
+  if (named) return { city: t.slice(0, t.length - named.name.length).replace(/[,\s]+$/, ''), stateCode: named.code }
+  return { city: t }
+}
+
 /** The state code for a preset city, so a typed "Austin" can be priced like a tapped one. */
 export function stateForPresetCity(city: string): string | undefined {
   return getStateCodeForCity(city)

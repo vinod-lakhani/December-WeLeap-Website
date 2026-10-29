@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadZoriData, getMetroOptionsForState, getMedianRentForRegion } from '@/lib/zori';
+import { findMetros, loadZoriData, getMetroOptionsForState, getMedianRentForRegion } from '@/lib/zori';
 
 /**
  * GET /api/zori/metros?state=TX
@@ -9,8 +9,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const stateName = searchParams.get('state');
   const regionName = searchParams.get('region');
-  
+  const find = searchParams.get('find');
+
   try {
+    if (find) {
+      // GET /api/zori?find=Dallas[&st=TX]: metros for a typed city (the chat's city question).
+      const st = searchParams.get('st') ?? undefined;
+      return NextResponse.json({ matches: await findMetros(find.slice(0, 80), st && /^[A-Z]{2}$/.test(st) ? st : undefined) });
+    }
+
     if (stateName && !regionName) {
       // Get metro options for state
       const options = await getMetroOptionsForState(stateName);

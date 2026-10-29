@@ -240,3 +240,35 @@ export async function getRegionNameBySlug(slug: string): Promise<string | null> 
   }
   return null;
 }
+
+export interface MetroMatch { label: string; value: string; stateCode: string }
+
+/**
+ * Metros for a typed city ("Dallas", "charlotte", "Dallas Fort Worth"), narrowed to a state when one was typed.
+ * Exact city first; else a typed name that starts with a metro's city ("dallas fort worth"); else a metro city that
+ * starts with what was typed (4+ letters). The chat's city question knew only its six presets and state names, so
+ * a typed "Dallas" went to Ribbit as a question: 7 of 14 paid rent chats (Oct 28-29) got stuck there.
+ */
+export async function findMetros(city: string, stateCode?: string, limit = 6): Promise<MetroMatch[]> {
+  const data = await loadZoriData();
+  const want = normalizeKey(city);
+  if (want.length < 3) return [];
+  const rows: MetroMatch[] = [];
+  const seen = new Set<string>();
+  for (const [st, metros] of data.metrosByState.entries()) {
+    if (stateCode && st !== stateCode) continue;
+    for (const m of metros) {
+      if (seen.has(m.regionName)) continue;
+      seen.add(m.regionName);
+      // "Washington, DC" is listed under DC and VA: its own suffix is the state to price it in.
+      const suffix = m.regionName.match(/, ([A-Z]{2})$/)?.[1];
+      rows.push({ label: m.regionName, value: m.regionName, stateCode: suffix && data.byRegionState.has(`${normalizeKey(m.regionName)}|${suffix}`) ? suffix : st });
+    }
+  }
+  const cityOf = (r: MetroMatch) => normalizeKey(r.value.split(',')[0]);
+  const exact = rows.filter((r) => cityOf(r) === want);
+  if (exact.length) return exact.slice(0, limit);
+  const longer = rows.filter((r) => want.startsWith(`${cityOf(r)} `));
+  if (longer.length) return longer.slice(0, limit);
+  return want.length >= 4 ? rows.filter((r) => cityOf(r).startsWith(want)).slice(0, limit) : [];
+}
