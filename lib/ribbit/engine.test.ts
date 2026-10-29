@@ -134,6 +134,38 @@ describe('rent flow', () => {
     expect(facts(p[3]).region).toEqual({ stateName: 'OR', regionName: 'Portland, OR' })
   })
 
+  it('a town the rent data has no metro for: its state, then the closest area or the range on its own; a second miss carries on', async () => {
+    const town = svc({
+      metros: async (st) => (st === 'TX' ? [{ label: 'Kerrville, TX', value: 'Kerrville, TX' }, { label: 'San Antonio, TX', value: 'San Antonio, TX' }] : []),
+      findMetros: async (city, st) => (city.toLowerCase() === 'san antonio' && (!st || st === 'TX') ? [{ label: 'San Antonio, TX', value: 'San Antonio, TX', stateCode: 'TX' }] : []),
+    })
+    const s = await run('rent', [{ text: '80000' }, { text: 'la vernia' }, { text: 'TX' }], town)
+    expect(s[2].messages.map((m) => m.text)).toEqual(['Which state is La Vernia in?'])
+    expect(s[3].messages[0].text).toMatch(/^I don't have rent prices for La Vernia\./)
+    // The biggest metros first, then the way out.
+    expect(s[3].chips.map((c) => c.label)).toEqual(['San Antonio, TX', 'Kerrville, TX', 'Use my range on its own'])
+    // Typing the nearest city picks it.
+    const typed = await run('rent', [{ text: '80000' }, { text: 'la vernia' }, { text: 'TX' }, { text: 'San Antonio' }], town)
+    expect(facts(typed[4]).region).toEqual({ stateName: 'TX', regionName: 'San Antonio, TX' })
+    // Two misses: on with the range, named after the town.
+    const two = await run('rent', [{ text: '80000' }, { text: 'la vernia' }, { text: 'TX' }, { text: 'Floresville' }, { text: 'Poth' }], town)
+    expect(two[4].messages.map((m) => m.text)).toEqual([expect.stringMatching(/^I don't have rent prices for Floresville\. Pick or type the closest area/)])
+    expect(facts(two[5]).outsideMetro).toBe(true)
+    expect(facts(two[5]).place).toBe('Poth')
+    expect(two[5].messages.map((m) => m.text).join(' ')).toMatch(/I don't have rental prices for Poth, so your range stands on its own/)
+  })
+
+  it('a town with its state goes straight to that state\'s areas; remarks and questions at "Which city?" still go to Ribbit', async () => {
+    const town = svc({ metros: async (st) => (st === 'VA' ? [{ label: 'Washington, DC', value: 'Washington, DC' }] : []), findMetros: async () => [] })
+    const s = await run('rent', [{ text: '80000' }, { text: 'Ashburn VA' }], town)
+    expect(s[2].state.turn).toBe('R2_metro')
+    expect(s[2].messages[0].text).toMatch(/^I don't have rent prices for Ashburn\./)
+    for (const said of ['card or invest', 'not sure', 'how much is utilities']) {
+      const r = await run('rent', [{ text: '80000' }, { text: said }], town)
+      expect(r[2].messages[0].text).toBe(`answer to: ${said}`)
+    }
+  })
+
   it('the rent answer carries the thread\'s one invite, "Save my plan", and the next question right after it', async () => {
     const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }])
     const msgs = s[2].messages

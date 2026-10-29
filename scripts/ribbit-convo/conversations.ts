@@ -113,6 +113,14 @@ export const CONVERSATIONS: Conversation[] = [
   { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/] },
   { id: 'rent-portland-which-one', flow: 'rent', persona: { ...MAYA, city: 'Portland', state: 'OR' }, mustFinish: true, says: [], ever: [/Which one\?/, /In Portland, take-home/] },
   { id: 'money-typed-phoenix', flow: 'money', persona: { ...MAYA, city: 'Phoenix', state: 'AZ', style: 'types' }, mustFinish: true, says: [] },
+  // ── Towns the rent data has no metro for (Oct 29: a paid visitor from Ashburn, VA typed at "Which area?" 8 times) ──
+  { id: 'rent-town-ashburn', flow: 'rent', persona: { ...MAYA, city: 'Ashburn', state: 'VA', style: 'types' }, mustFinish: true, says: [],
+    ever: [/Which state is Ashburn in\?/, /I don't have rent prices for Ashburn/, RENT_INVITE] },
+  { id: 'rent-town-two-misses', flow: 'rent', persona: { ...MAYA, city: 'La Vernia', state: 'TX', style: 'types' }, mustFinish: true,
+    says: [{ at: 'R2_metro', text: 'Floresville' }, { at: 'R2_metro', text: 'Poth' }],
+    ever: [/Pick or type the closest area/, /I don't have rental prices for Poth, so your range stands on its own/] },
+  { id: 'rent-town-range-on-its-own', flow: 'rent', persona: { ...MAYA, city: 'Willmar MN', state: 'MN' }, mustFinish: true,
+    says: [{ at: 'R2_metro', chip: '__OTHER__' }], ever: [/I don't have rental prices for Willmar/] },
   // ── Typed picks ───────────────────────────────────────────────────────────────────────────────────────────
   { id: 'typed-where-money', persona: MAYA, mustFinish: true, says: [{ text: 'where should my money go?' }] },
   { id: 'typed-rent', persona: BOSTON_GRAD, mustFinish: true, says: [{ text: 'how much rent can I afford' }], ever: [RENT_INVITE] },
