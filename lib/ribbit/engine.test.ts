@@ -337,6 +337,20 @@ describe('Where should my money go?', () => {
     expect(asks.at(-1)).toEqual({ flow: 'money', message: 'I want to see if I can afford to buy a car 20K, 14% APR, 5 years is that a lot?' })
   })
 
+  it('with the offer on screen, a typed "yes" starts the money flow and a typed "no" is "Not now"', async () => {
+    const asks: string[] = []
+    const ask = svc({ ask: async ({ message }) => { asks.push(message); return { kind: 'question' as const, reply: `answer to: ${message}`, plan: false } } })
+    const y = await run(null, [{ text: 'can I afford a car?' }, { text: 'yes' }], ask)
+    expect(y[2].state.turn).toBe('M1')
+    expect(asks).toEqual(['can I afford a car?'])
+    const n = await run(null, [{ text: 'can I afford a car?' }, { text: 'no thanks' }, { text: '20K, 14% APR, 5 years' }], ask)
+    expect(n[2].state.facts.moneyDeclined).toBe(true)
+    expect(n[3].messages.map((m) => m.text)).toEqual(['answer to: 20K, 14% APR, 5 years'])
+    // Without an offer on screen, "yes" is still a question for Ribbit.
+    const bare = await run(null, [{ text: 'yes' }], ask)
+    expect(bare[1].state.turn).toBe('P0')
+  })
+
   it('"Not now" ends the money offer for the thread', async () => {
     const ask = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: false }) })
     const s = await run(null, [{ text: 'can I afford a car?' }, { chip: 'not_now' }, { text: '20K, 14% APR, 5 years' }], ask)

@@ -20,8 +20,8 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.startsWith('/api/')) {
     const req = new Request(`http://localhost${url}`, { ...init, headers: { ...(init?.headers as Record<string, string>), 'x-forwarded-for': visitor } })
     if (url.startsWith('/api/ribbit-ask')) return askRoute(req)
-    if (url.startsWith('/api/tax')) return taxRoute(req)
-    if (url.startsWith('/api/zori')) return zoriRoute(req)
+    if (url.startsWith('/api/tax')) return taxRoute(req as unknown as Parameters<typeof taxRoute>[0])
+    if (url.startsWith('/api/zori')) return zoriRoute(req as unknown as Parameters<typeof zoriRoute>[0])
     throw new Error(`no route for ${url}`)
   }
   return realFetch(input, init)

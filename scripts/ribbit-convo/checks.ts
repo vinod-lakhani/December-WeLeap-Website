@@ -13,6 +13,8 @@ export interface Expect {
   never?: RegExp[]
   /** These chip values must be offered after this turn. */
   chips?: string[]
+  /** The chat is on this turn afterwards (a flow started, say). */
+  turn?: string
 }
 
 const FALLBACK = /answers are down|couldn't answer that from your|lot of questions for one sitting/i
@@ -45,6 +47,7 @@ export function checkTurn(prev: Step, _answer: { chip?: string; text?: string },
   }
   for (const re of expect?.says ?? []) if (!re.test(said)) fail('missing', `${re} not in: "${said.slice(0, 200)}"`)
   for (const re of expect?.never ?? []) if (re.test(said)) fail('unwanted', `${re} in: "${said.slice(0, 200)}"`)
+  if (expect?.turn && next.state.turn !== expect.turn) fail('wrong-turn', `on ${next.state.turn}, expected ${expect.turn}`)
   for (const c of expect?.chips ?? []) {
     if (!next.chips.some((x) => x.value === c)) fail('no-follow-up', `chip "${c}" not offered; chips: ${next.chips.map((x) => x.value).join(', ') || 'none'}`)
   }

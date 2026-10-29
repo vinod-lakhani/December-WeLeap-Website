@@ -61,8 +61,13 @@ export const CONVERSATIONS: Conversation[] = [
       { text: 'I want to see if I can afford to buy a car' },
       { text: 'actually I want to know how much payment I can afford' },
       { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465] } },
-      { text: 'yes' },
+      // With "Yes, work it out" on screen, a typed yes takes it (sent to the reader, it failed 2 runs in 3).
+      { text: 'yes', expect: { turn: 'M1' } },
     ],
+  },
+  {
+    id: 'offer-typed-no', persona: MAYA,
+    says: [{ text: 'can I afford a car?', expect: { chips: ['money'] } }, { text: 'no thanks' }, { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465] } }],
   },
   {
     id: 'oct27-car-good-time', persona: SF, mustFinish: true,
