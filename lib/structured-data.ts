@@ -6,9 +6,9 @@
  * registered — the same reason the sitemap reads from the registry.
  *
  * Scope is deliberately narrow. Organization and WebSite site-wide,
- * WebApplication and BreadcrumbList on the calculators, BlogPosting on the
- * articles, and FAQPage only where real question-and-answer content is
- * rendered.
+ * WebApplication and BreadcrumbList on the calculators, ItemList and
+ * BreadcrumbList on the /tools hub, BlogPosting on the articles, and FAQPage
+ * only where real question-and-answer content is rendered.
  *
  * FAQPage used to be declined outright here, on the grounds that Google
  * requires it to describe content actually visible on the page. That rule has
@@ -123,6 +123,67 @@ export function breadcrumbSchema(tool: FreeTool) {
       { '@type': 'ListItem', position: 2, name: 'Free money tools', item: `${SITE_URL}/tools` },
       { '@type': 'ListItem', position: 3, name: tool.name, item: `${SITE_URL}${tool.href}` },
     ],
+  }
+}
+
+/**
+ * BreadcrumbList for /tools, the hub the ten leaf trails all point at.
+ *
+ * Every calculator emitted a three-level trail ending at its own URL while the
+ * page in the middle of all ten of them emitted nothing, so the hierarchy was
+ * only ever asserted from below. Two items rather than three because /tools IS
+ * the second level — the list stops at the current page, as it does on a leaf.
+ *
+ * Rendered alongside a visible trail in app/tools/page.tsx, for the same reason
+ * `breadcrumbSchema` is only ever emitted by `ToolBreadcrumb`: the markup and
+ * the page have to describe the same path.
+ */
+export function toolsBreadcrumbSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    '@id': `${SITE_URL}/tools#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Free money tools', item: `${SITE_URL}/tools` },
+    ],
+  }
+}
+
+/**
+ * ItemList for the /tools grid.
+ *
+ * ItemList and NOT WebApplication, deliberately. A hub is a list of things, not
+ * one of the things — and `scripts/checkMetadata.js` identifies a calculator by
+ * the presence of WebApplication and then demands the full FAQ set, so claiming
+ * the type here would mean either a red build or seven invented questions on a
+ * page that asks none.
+ *
+ * Derived from FREE_TOOLS, like the sitemap and every other schema in this
+ * file, so the list cannot describe a different set of tools from the cards the
+ * page renders. `description` is `blurb` because that is the sentence printed
+ * on the card; `name` is `name` because that is the card's heading.
+ *
+ * `itemListOrder` is ascending because the order is real: FREE_TOOLS is a life
+ * sequence, the grid renders it in that order, and the line above the grid
+ * tells the reader so.
+ */
+export function toolsItemListSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    '@id': `${SITE_URL}/tools#tools`,
+    name: 'Free money tools',
+    url: `${SITE_URL}/tools`,
+    numberOfItems: FREE_TOOLS.length,
+    itemListOrder: 'https://schema.org/ItemListOrderAscending',
+    itemListElement: FREE_TOOLS.map((tool, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: tool.name,
+      url: `${SITE_URL}${tool.href}`,
+      description: tool.blurb,
+    })),
   }
 }
 

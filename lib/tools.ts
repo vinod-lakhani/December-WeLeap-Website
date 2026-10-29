@@ -324,3 +324,13 @@ export const TOOL_COUNT_WORD =
   ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'][
     TOOL_COUNT
   ] ?? String(TOOL_COUNT)
+
+/**
+ * The same word, capitalised for the start of a sentence.
+ *
+ * Three surfaces were each doing `charAt(0).toUpperCase() + slice(1)` inline —
+ * /tools, /resources and now the /tools social card. Derived once here for the
+ * same reason the count itself is: the thing that goes stale is the copy nobody
+ * remembers is a copy.
+ */
+export const TOOL_COUNT_WORD_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
