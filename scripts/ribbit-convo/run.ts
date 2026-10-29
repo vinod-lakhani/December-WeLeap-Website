@@ -8,6 +8,11 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { CONVERSATIONS } from './conversations'
 import type { Played } from './driver'
 
+// The routes' own logging ("[Tax API] … using fallback") is noise here.
+const quiet = (fn: (...a: unknown[]) => void) => (...a: unknown[]) => { if (!/^\[(Tax|ZORI) API\]/.test(String(a[0]))) fn(...a) }
+console.log = quiet(console.log.bind(console))
+console.warn = quiet(console.warn.bind(console))
+
 async function main() {
   const label = process.argv[2] ?? 'run'
   if (process.env.OFFLINE === '1') {
@@ -47,6 +52,7 @@ async function main() {
       for (const f of p.failures) console.log(`  run ${i + 1} [${f.rule}] at ${f.turn}: ${f.detail}`)
     }
     const p = r.runs.find((x) => x.failures.length)!
+    for (const a of p.asks.slice(-2)) console.log(`    reader (${a.flow}) "${a.message.slice(0, 60)}" -> ${a.kind}: ${a.reply.slice(0, 100)}`)
     for (const l of p.lines.slice(-8)) console.log(`    ${l.from === 'person' ? '>' : ' '} ${l.text.slice(0, 160)}${l.chips ? `   [${l.chips.join(' | ')}]` : ''}`)
     console.log('')
   }

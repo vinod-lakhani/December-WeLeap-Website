@@ -38,6 +38,10 @@ export function checkTurn(prev: Step, _answer: { chip?: string; text?: string },
     if (FALLBACK.test(said)) fail('fallback', said.slice(0, 160))
     if (PROMISE.test(said)) fail('promise', said.match(PROMISE)![0])
     if (ASK_WORDS.test(said)) fail('asks-for-words', said.slice(0, 160))
+    for (const m of next.messages.filter((x) => x.from === 'ribbit')) {
+      const t = m.text.replace(/(^|\s)[0-9a-zA-Z]\)/g, '$1')
+      if ((t.match(/\(/g) ?? []).length !== (t.match(/\)/g) ?? []).length) fail('cut-off', m.text.slice(-80))
+    }
     const last = next.messages.filter((m) => m.from === 'ribbit').at(-1)?.text.trim() ?? ''
     if (!ENDS.has(next.state.turn) && next.chips.length === 0 && !last.endsWith('?') && next.input === 'text') {
       fail('dead-end', `no options and no question after: "${last.slice(0, 120)}"`)

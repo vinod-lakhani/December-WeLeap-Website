@@ -215,9 +215,10 @@ export const APP_LINK_TEXT = "Your balances and spending aren't in this chat, so
 
 /** After a planning question before any tool: the offer to work it out with their numbers. */
 export const MONEY_OFFER_TEXT = 'Want me to work out your order with your numbers? Four quick questions.'
+export const MONEY_BACK_FAILED_TEXT = "I couldn't get back to your question just now. Ask it again here and I'll answer it with these numbers."
 export const MONEY_REOFFER_TEXT = 'Want me to check that against your pay? Same four quick questions.'
 /** A purchase being planned ("can I afford a car?", "is now a good time to buy?"): offered the money flow like a plan question. */
-const AFFORD_QUESTION = /\b(can i afford|afford (a|an|to)|good time to buy|should i (buy|get) (a|an)\b)/i
+const AFFORD_QUESTION = /\b(can i afford|afford (a|an|to)|good time to (buy|get)|is (now|it|this) a good time|should i (buy|get) (a|an)\b|i want to buy|thinking (of|about) buying|planning (to buy|on buying)|sav(e|ing) (up )?for (a |an |my )?(house|home|car|wedding|down payment)|down payment)/i
 const YES = /^\s*(yes|yeah|yep|yup|sure|ok(ay)?|y|please|let'?s do it|do it|go ahead|sounds good)\b[\s.!]*(please)?[\s.!]*$/i
 const NO = /^\s*(no|nope|nah|not now|no thanks|later)\b[\s.!]*$/i
 const MONEY_OFFER_CHIPS: Chip[] = [{ label: 'Yes, work it out', value: 'money' }, { label: 'Not now', value: 'not_now' }]
@@ -1052,6 +1053,9 @@ async function moneyResult(state: ChatState, svc: ChatServices): Promise<Step> {
     if (res?.kind === 'question' && res.reply) {
       const done = moneyDoneBefore(o)
       back.push({ from: 'ribbit', text: done ? `Back to your question. If you've already got ${done}: ${res.reply} If not, start with the order above.` : `Back to your question: ${res.reply}`, turn: 'M6' })
+    } else {
+      // No answer came back: say so, rather than leave the question they came with unanswered without a word.
+      back.push({ from: 'ribbit', text: MONEY_BACK_FAILED_TEXT, turn: 'M6' })
     }
     f.moneyQuestion = undefined
   }
