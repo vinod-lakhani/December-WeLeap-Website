@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RENT_ANSWER_INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
@@ -132,6 +132,25 @@ describe('rent flow', () => {
     const p = await run('rent', [{ text: '80000' }, { text: 'Portland' }, { chip: 'Portland, OR' }], s2)
     expect(p[2].chips.map((c) => c.value)).toEqual(['Portland, ME', 'Portland, OR', 'somewhere_else'].map((v) => (v === 'somewhere_else' ? p[2].chips[2].value : v)))
     expect(facts(p[3]).region).toEqual({ stateName: 'OR', regionName: 'Portland, OR' })
+  })
+
+  it('the rent answer carries the thread\'s one invite, "Save my plan", and the next question right after it', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }])
+    const msgs = s[2].messages
+    const i = msgs.findIndex((m) => m.text === RENT_ANSWER_INVITE_TEXT)
+    expect(i).toBeGreaterThan(0)
+    expect(msgs[i].appAsk).toEqual({ label: 'Save my plan', why: 'rent_answer' })
+    // Carrying on is answering the next question: no extra tap.
+    expect(msgs.at(-1)!.text).toMatch(/\?$/)
+    expect(s[2].chips.length).toBeGreaterThan(0)
+    expect(s[2].events).toContainEqual({ name: 'ribbit_app_invite_shown', props: { turn: 'R3', reason: 'rent_answer' } })
+    expect(s[2].state.invited).toBe(true)
+  })
+
+  it('once invited on the rent answer, a planning question later gets no second invite', async () => {
+    const ask = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true }) })
+    const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }, { text: 'should I invest or pay off my card first?' }], ask)
+    expect(s[3].messages.map((m) => m.text)).not.toContain(INVITE_TEXT)
   })
 
   it('NYC charges city tax, as the rent page does for its preset', async () => {

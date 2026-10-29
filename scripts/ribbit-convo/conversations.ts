@@ -45,6 +45,8 @@ const SEATTLE: Persona = { salary: 120000, city: 'Seattle', state: 'WA', rent: 2
 const OFFER = ['money', 'not_now']
 const LOAN_465 = /\$?46[56]\b/
 const BACK = /Back to your question/
+// The rent answer's invite (decided Oct 29): every rent conversation must show it.
+const RENT_INVITE = /Save this range as your plan in WeLeap/
 
 export const CONVERSATIONS: Conversation[] = [
   // ── Real threads ──────────────────────────────────────────────────────────────────────────────────────────
@@ -97,18 +99,21 @@ export const CONVERSATIONS: Conversation[] = [
   { id: 'account-savings', persona: MAYA, says: [{ text: 'how much do I have in savings?' }] },
   { id: 'bare-yes', persona: MAYA, says: [{ text: 'yes' }] },
   // ── The three flows, start to finish ──────────────────────────────────────────────────────────────────────
-  { id: 'rent-taps', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, says: [] },
-  { id: 'rent-types-with-side-question', flow: 'rent', persona: { ...BOSTON_GRAD, style: 'types' }, mustFinish: true, says: [{ at: 'R4', text: 'is 1500 too much for Boston?' }] },
+  { id: 'rent-taps', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, says: [], ever: [RENT_INVITE] },
+  { id: 'rent-types-with-side-question', flow: 'rent', persona: { ...BOSTON_GRAD, style: 'types' }, mustFinish: true, says: [{ at: 'R4', text: 'is 1500 too much for Boston?' }], ever: [RENT_INVITE] },
+  { id: 'rent-austin-in-reach', flow: 'rent', persona: { ...MAYA, salary: 120000 }, mustFinish: true, says: [], ever: [RENT_INVITE], note: 'rentals inside the range: the invite rides on the debt question' },
+  { id: 'rent-planning-question-after-invite', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, ever: [RENT_INVITE],
+    says: [{ at: 'R3_debt', text: 'should I pay off my card or invest?', expect: { never: [/Click to get WeLeap|Get WeLeap/i] } }] },
   { id: 'offer-taps', flow: 'offer', persona: SEATTLE, mustFinish: true, says: [] },
   { id: 'money-with-card-debt', flow: 'money', persona: CHI_TYPES, mustFinish: true, says: [], end: { says: [/24%|card/i] } },
   { id: 'money-side-question', flow: 'money', persona: MAYA, mustFinish: true, says: [{ at: 'M3', text: 'what counts as rent if I live with my parents?' }] },
   // ── Typed cities (Oct 29: only the six presets and state names were read; 7 of 14 paid rent chats stuck) ──
-  { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/In Dallas, take-home/] },
+  { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/In Dallas, take-home/, RENT_INVITE] },
   { id: 'rent-typed-city-state', flow: 'rent', persona: { ...MAYA, city: 'Denver, CO', state: 'CO' }, mustFinish: true, says: [], ever: [/In Denver, take-home/] },
   { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/] },
   { id: 'rent-portland-which-one', flow: 'rent', persona: { ...MAYA, city: 'Portland', state: 'OR' }, mustFinish: true, says: [], ever: [/Which one\?/, /In Portland, take-home/] },
   { id: 'money-typed-phoenix', flow: 'money', persona: { ...MAYA, city: 'Phoenix', state: 'AZ', style: 'types' }, mustFinish: true, says: [] },
   // ── Typed picks ───────────────────────────────────────────────────────────────────────────────────────────
   { id: 'typed-where-money', persona: MAYA, mustFinish: true, says: [{ text: 'where should my money go?' }] },
-  { id: 'typed-rent', persona: BOSTON_GRAD, mustFinish: true, says: [{ text: 'how much rent can I afford' }] },
+  { id: 'typed-rent', persona: BOSTON_GRAD, mustFinish: true, says: [{ text: 'how much rent can I afford' }], ever: [RENT_INVITE] },
 ]
