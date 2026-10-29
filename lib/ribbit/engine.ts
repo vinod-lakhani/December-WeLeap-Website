@@ -125,6 +125,10 @@ export interface Facts {
   moneyOffered?: boolean
   /** The question that led to "Where should my money go?" ("is now a good time to buy a car?"): answered at the order. */
   moneyQuestion?: string
+  /** A typed town the rent data has no metro for ("Ashburn", "La Vernia"): named back, priced by its state. */
+  typedTown?: string
+  /** Typed answers to "Which area?" that matched none: the second moves on with the range alone. */
+  metroMisses?: number
   /** "Not now" to the money offer: it is not offered again in this thread. */
   moneyDeclined?: boolean
   /** The offer was made again after they kept going without it (once). */
@@ -599,9 +603,54 @@ async function chooseLocation(state: ChatState, chip: string | undefined, text: 
       ], 'location')
     }
   }
+  // A town with its state that is no metro ("Ashburn VA"): the state's areas, the town named.
+  if (city && stateCode && looksLikePlace(city)) {
+    f.typedTown = townName(city)
+    return chooseState({ ...state, turn: `${pfx}_state` }, undefined, stateCode, svc)
+  }
   const st = matchState(text)
   if (st) return chooseState({ ...state, turn: `${pfx}_state` }, undefined, st.code, svc)
+  // A town the rent data doesn't know ("La Vernia"): ask its state rather than hand it to Ribbit, which left paid
+  // visitors in small towns and suburbs typing at "Which city?" (Oct 28-29). A real question still goes to Ribbit.
+  if (city && looksLikePlace(city)) {
+    f.typedTown = townName(city)
+    return say({ ...state, turn: `${pfx}_state` }, [{ from: 'ribbit', text: `Which state is ${f.typedTown} in?` }], [], 'location')
+  }
   return question(state, text, svc, 'which city the job or the rent is in')
+}
+
+/**
+ * A typed place name rather than a question or a remark: letters only, up to four words, and none of the words people
+ * type at the city question that are not places ("card or invest", "not sure", "how much is utilities").
+ */
+const NOT_A_PLACE = /\b(card|cards|invest\w*|debt\w*|loan\w*|sav\w*|rent\w*|pay\w*|salary|budget|money|401k|ira|roth|tax\w*|credit|afford\w*|utilit\w*|first|or|and|my|me|i|you|yes|no|ok|okay|thanks|help|sure|idk|dunno|what|how|why|when|which|who|should|can|could|would|is|are|do|does|will|much|live|move\w*|city|town|area)\b/i
+function looksLikePlace(text: string): boolean {
+  const t = text.trim()
+  return /^[A-Za-z][A-Za-z .'-]{1,40}$/.test(t) && t.split(/\s+/).length <= 4 && !NOT_A_PLACE.test(t)
+}
+
+/** A typed town as it is named back: "la vernia" → "La Vernia"; typed capitals are kept. */
+function townName(city: string): string {
+  const t = city.trim().replace(/\s+/g, ' ')
+  return t === t.toLowerCase() ? t.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : t
+}
+
+/**
+ * The 50 largest US metros by population, by their rent-data city: a state's areas list them first. The rent data
+ * comes in rent order, so Texas's first eight left out Houston, San Antonio and Austin.
+ */
+const LARGEST_METROS = new Set(['New York', 'Los Angeles', 'Chicago', 'Dallas', 'Houston', 'Washington', 'Philadelphia', 'Miami', 'Atlanta', 'Boston', 'Phoenix', 'San Francisco', 'Riverside', 'Detroit', 'Seattle', 'Minneapolis', 'San Diego', 'Tampa', 'Denver', 'Baltimore', 'St. Louis', 'Orlando', 'Charlotte', 'San Antonio', 'Portland', 'Sacramento', 'Pittsburgh', 'Austin', 'Las Vegas', 'Cincinnati', 'Kansas City', 'Columbus', 'Indianapolis', 'Cleveland', 'San Jose', 'Nashville', 'Virginia Beach', 'Providence', 'Jacksonville', 'Milwaukee', 'Raleigh', 'Oklahoma City', 'Memphis', 'Richmond', 'Louisville', 'New Orleans', 'Salt Lake City', 'Hartford', 'Buffalo', 'Birmingham'])
+function largestFirst(options: { label: string; value: string }[]): { label: string; value: string }[] {
+  const big = (o: { value: string }) => LARGEST_METROS.has(o.value.split(',')[0].trim())
+  return [...options.filter(big), ...options.filter((o) => !big(o))]
+}
+
+/** The area options for a state, with the town's own way out when it was typed. */
+function areaChips(f: Facts): Chip[] {
+  return [
+    ...largestFirst(f.metroOptions ?? []).slice(0, 8).map((o) => ({ label: o.label, value: o.value })),
+    { label: f.typedTown ? 'Use my range on its own' : 'Outside a metro', value: OUTSIDE_METRO },
+  ]
 }
 
 /** A metro picked or typed: its state prices the tax, its region the rents. */
@@ -626,30 +675,33 @@ async function chooseState(state: ChatState, chip: string | undefined, text: str
     // Only the state's tax matters here: no metro, no rents.
     f.region = undefined
     f.outsideMetro = true
-    f.place = st.name
+    f.place = f.typedTown ?? st.name
     return afterLocation(state, svc)
+  }
+  // "Which state is La Vernia in?" answered: the town may still be a metro there.
+  if (f.typedTown && svc.findMetros) {
+    const hits = await svc.findMetros(f.typedTown, st.code)
+    if (hits.length === 1) return metroChosen(state, hits[0].value, hits[0].stateCode, svc)
   }
   const options = await svc.metros(st.code)
-  f.metroOptions = options
-  if (!options.length) {
+  f.metroOptions = options.filter((o) => o.value !== OUTSIDE_METRO)
+  if (!f.metroOptions.length) {
     f.outsideMetro = true
     f.region = undefined
-    f.place = st.name
+    f.place = f.typedTown ?? st.name
     return afterLocation(state, svc)
   }
-  return say({ ...state, turn: `${pfx}_metro` }, [{ from: 'ribbit', text: `Which area of ${st.name}?` }], [
-    ...options.slice(0, 8).map((o) => ({ label: o.label, value: o.value })),
-    { label: 'Outside a metro', value: OUTSIDE_METRO },
-  ], 'location')
+  const ask = f.typedTown ? `I don't have rent prices for ${f.typedTown}. Which of these is it closest to, or type the nearest city?` : `Which area of ${st.name}?`
+  return say({ ...state, turn: `${pfx}_metro` }, [{ from: 'ribbit', text: ask }], areaChips(f), 'location')
 }
 
 async function chooseMetro(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
   const options = f.metroOptions ?? []
-  if (chip === OUTSIDE_METRO || /outside|rural|none/i.test(text)) {
+  if (chip === OUTSIDE_METRO || /outside|rural|none|on its own/i.test(text)) {
     f.outsideMetro = true
     f.region = undefined
-    f.place = STATE_NAME(f.stateCode)
+    f.place = f.typedTown ?? STATE_NAME(f.stateCode)
     return afterLocation(state, svc)
   }
   if (chip === SOMEWHERE_ELSE) {
@@ -657,6 +709,27 @@ async function chooseMetro(state: ChatState, chip: string | undefined, text: str
   }
   const t = (chip ?? text).toLowerCase()
   const hit = options.find((o) => o.value.toLowerCase() === t) ?? options.find((o) => o.label.toLowerCase().includes(t) && t.length >= 3)
+  if (!hit && !chip) {
+    // A typed place in the rent data ("Dallas TX" against "Dallas, TX") is that metro.
+    const { city } = splitCityState(text)
+    if (city && svc.findMetros) {
+      const hits = await svc.findMetros(city, f.stateCode)
+      if (hits.length === 1) return metroChosen(state, hits[0].value, hits[0].stateCode, svc)
+    }
+    // A town the data doesn't know (Oct 29: "Which area of Virginia?" answered eight times, all sent to Ribbit):
+    // say so once with the way out, then carry on with the range alone. A real question still goes to Ribbit.
+    if (city && looksLikePlace(city)) {
+      f.typedTown = townName(city)
+      if (!f.metroMisses) {
+        f.metroMisses = 1
+        return say({ ...state }, [{ from: 'ribbit', text: `I don't have rent prices for ${f.typedTown}. Pick or type the closest area, or use your range on its own.` }], areaChips(f), 'location')
+      }
+      f.outsideMetro = true
+      f.region = undefined
+      f.place = f.typedTown
+      return afterLocation(state, svc)
+    }
+  }
   if (!hit) return question(state, text, svc, f.stateCode ? `which area of ${STATE_NAME(f.stateCode)}` : 'which of those places')
   // From "Which one?" across states ("Portland, OR" or "Portland, ME") the state is the option's own.
   return metroChosen(state, hit.value, f.stateCode ?? hit.value.match(/, ([A-Z]{2})$/)?.[1] ?? '', svc)
@@ -713,7 +786,7 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
   // The city answer is where the thread's invite comes, so it gets the headline card in every version.
   const fitsCard = { figure: span(range.low, range.high), figureLabel: 'Rent that fits' }
   if (!market) {
-    const none = f.outsideMetro ? `I don't have rental prices outside a metro, so your range stands on its own.` : `I don't have rental prices for ${f.place}, so your range stands on its own.`
+    const none = f.outsideMetro && !f.typedTown ? `I don't have rental prices outside a metro, so your range stands on its own.` : `I don't have rental prices for ${f.place}, so your range stands on its own.`
     return askDebt(state, [taxLine, none].filter(Boolean).join(' '), 'R3', invite, fitsCard)
   }
   const verdict = marketRentVerdict(range.high, market.low, market.high)
