@@ -11,13 +11,14 @@
  *
  * Parameters the app reads (all optional except src and why):
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
- *   why               plan_preview | spending_check | plan_invite | account | benefit (which ask was tapped)
+ *   why               plan_preview | spending_check | plan_invite | account | benefit | rent_answer (which ask was tapped)
  *   rt                the chat thread id, to stitch the web events to the app
  *   flow              rent | offer | money | general
  *   salary            yearly salary, dollars (when given)
  *   takehome          monthly take-home, dollars (net of federal, FICA, state and city tax where known)
  *   state, city       two-letter state; the city or metro as the chat named it
  *   rent              the monthly rent the person picked
+ *   rent_low, rent_high   the rent range the chat worked out (the plan when no rent is picked yet)
  *   debt              monthly debt payments
  *   start             working | this_month | next_month | YYYY-MM-DD
  *   upfront           the cash-before-keys target (the top of the upfront range)
@@ -39,7 +40,7 @@ import { moneyOrder } from './moneyOrder'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
 
-export type AppReason = 'plan_preview' | 'spending_check' | 'plan_invite' | 'account' | 'benefit'
+export type AppReason = 'plan_preview' | 'spending_check' | 'plan_invite' | 'account' | 'benefit' | 'rent_answer'
 
 const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
 
@@ -56,6 +57,8 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     state: f.stateCode,
     city: f.place,
     rent: round(f.pick),
+    rent_low: flow === 'rent' ? round(f.range?.low) : undefined,
+    rent_high: flow === 'rent' ? round(f.range?.high) : undefined,
     debt: f.debtMonthly ? round(f.debtMonthly) : undefined,
     start: f.start === 'date' ? f.startDate : f.start,
     upfront: round(f.upfront?.high),

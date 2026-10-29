@@ -26,6 +26,13 @@ describe('the chat-to-app link contract', () => {
     expect(ribbitPlanParams({ match: 'unknown', matchUpToPct: 4 }, 'offer', 'plan_preview', 't').match_cap).toBeUndefined()
   })
 
+  it('the rent range goes with a rent link, so a plan saved before any pick still has it', () => {
+    const p = ribbitPlanParams({ takeHomeFrom: 'salary', salary: 63_000, takeHomeMonthly: 4_205, stateCode: 'MA', place: 'Boston', range: { low: 1_175, high: 1_475, formatted: '$1,175–$1,475' } }, 'rent', 'rent_answer', 't')
+    expect(p).toEqual(expect.objectContaining({ why: 'rent_answer', rent_low: '1175', rent_high: '1475' }))
+    expect(p.rent).toBeUndefined()
+    expect(ribbitPlanParams({ range: { low: 1_175, high: 1_475, formatted: '' } }, 'offer', 'plan_preview', 't').rent_low).toBeUndefined()
+  })
+
   it('a general question carries only the amount mentioned', () => {
     expect(ribbitPlanParams({ mentionedSaving: 1_000 }, null, 'plan_invite', 't')).toEqual({
       src: 'ribbit_chat', why: 'plan_invite', rt: 't', flow: 'general', saving: '1000',

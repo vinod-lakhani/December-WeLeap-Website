@@ -701,30 +701,47 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
     if (hud) market = { low: hud.low, high: hud.high, median: Math.round((hud.low + hud.high) / 2), tier: 'HUD', source: 'hud' }
   }
   f.market = market
+  const invite = rentAnswerInvite(state)
   const taxLine = f.takeHomeFrom === 'salary' && f.tax ? `${placeTaxLine(f)} Rent that fits is ${range.formatted}.` : ''
   if (!market) {
     const none = f.outsideMetro ? `I don't have rental prices outside a metro, so your range stands on its own.` : `I don't have rental prices for ${f.place}, so your range stands on its own.`
-    return askDebt(state, [taxLine, none].filter(Boolean).join(' '), taxLine ? 'R3' : undefined)
+    return askDebt(state, [taxLine, none].filter(Boolean).join(' '), taxLine ? 'R3' : undefined, invite)
   }
   const verdict = marketRentVerdict(range.high, market.low, market.high)
   const band = `Rentals in ${f.place} run ${fc(market.low)} to ${fc(market.high)}`
   if (verdict === 'in_reach') {
-    return askDebt(state, [taxLine, `${band}, inside your range.`].filter(Boolean).join(' '), 'R3')
+    return askDebt(state, [taxLine, `${band}, inside your range.`].filter(Boolean).join(' '), 'R3', invite)
   }
   const where = verdict === 'out_of_reach' ? 'above your range' : 'and only the low end fits your range'
   // Sallie Mae survey reported by Realtor.com (Jul 21, 2025): in the first two years after school, 8% rent solo
   // and 8% rent with roommates — about half of recent grads who rent.
-  return say({ ...state, turn: 'R3_roommate' }, [
+  return say({ ...state, turn: 'R3_roommate', invited: state.invited || Boolean(invite) }, [
     { from: 'ribbit', text: [taxLine, `${band}, ${where}. Among recent grads who rent, about half share with roommates.`].filter(Boolean).join(' '), figure: span(market.low, market.high), figureLabel: `${f.place} rentals`, compare: { label: 'Rent that fits', value: span(range.low, range.high) }, turn: 'R3' },
+    ...(invite ? [invite.message] : []),
     { from: 'ribbit', text: 'Roommate?' },
-  ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure yet', value: 'not_sure' }], 'text', [win('R3')])
+  ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure yet', value: 'not_sure' }], 'text', [win('R3'), ...(invite ? [invite.event] : [])])
 }
 
-function askDebt(state: ChatState, lead: string, winTurn?: string): Step {
-  return say({ ...state, turn: 'R3_debt' }, [
+function askDebt(state: ChatState, lead: string, winTurn?: string, invite?: RentInvite): Step {
+  return say({ ...state, turn: 'R3_debt', invited: state.invited || Boolean(invite) }, [
     ...(lead ? [{ from: 'ribbit' as const, text: lead, turn: winTurn }] : []),
+    ...(invite ? [invite.message] : []),
     { from: 'ribbit', text: 'Any monthly debt payments, like a car, student loans or card minimums? They come off the range.' },
-  ], [{ label: 'None', value: 'none' }, { label: 'Yes', value: 'yes' }], 'money', winTurn ? [win(winTurn)] : [])
+  ], [{ label: 'None', value: 'none' }, { label: 'Yes', value: 'yes' }], 'money', [...(winTurn ? [win(winTurn)] : []), ...(invite ? [invite.event] : [])])
+}
+
+/**
+ * The thread's one invite, right on the rent answer (decided Oct 29): in the paid chat of Oct 28, 14 of 18 saw the
+ * range and 12 left within a minute, before any ask. The next question follows it, so carrying on costs no tap.
+ */
+export const RENT_ANSWER_INVITE_TEXT = 'Save this range as your plan in WeLeap and check it against your real spending.'
+type RentInvite = { message: ChatMessage; event: ChatEvent }
+function rentAnswerInvite(state: ChatState): RentInvite | undefined {
+  if (state.flow !== 'rent' || state.invited) return undefined
+  return {
+    message: { from: 'ribbit', text: RENT_ANSWER_INVITE_TEXT, appAsk: { label: 'Save my plan', why: 'rent_answer' }, turn: 'R3' },
+    event: { name: 'ribbit_app_invite_shown', props: { turn: 'R3', reason: 'rent_answer' } },
+  }
 }
 
 function applyDebt(state: ChatState, debt: number): Step {
