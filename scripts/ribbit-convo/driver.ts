@@ -58,7 +58,7 @@ function personaAnswer(p: Persona, s: Step): Answer | null {
     return c ? { chip: c } : { text: p.city }
   }
   if (/_state$/.test(t)) return { text: p.state }
-  if (/_metro$/.test(t)) return { chip: pickChip(s, new RegExp(p.city, 'i')) ?? s.chips[0]?.value, text: undefined }
+  if (/_metro$/.test(t)) return { chip: pickChip(s, new RegExp(`^${p.city}, ${p.state}$`, 'i'), new RegExp(p.city, 'i')) ?? s.chips[0]?.value, text: undefined }
   if (t === 'M3') return { text: String(p.rent) }
   if (t === 'R3_roommate') return { chip: pickChip(s, p.roommate ? /yes|roommate/i : /no|solo|alone|just me/i) ?? s.chips[0]?.value }
   if (t === 'R3_debt' || t === 'M4' || t === 'M4_more') {
@@ -127,5 +127,7 @@ export async function play(convo: Conversation, run = 1): Promise<Played> {
   if (convo.mustFinish && !ENDS.has(step.state.turn)) failures.push({ rule: 'unfinished', turn: step.state.turn, detail: `stopped at ${step.state.turn} after ${n} replies` })
   if (script.length) failures.push({ rule: 'script-unused', turn: step.state.turn, detail: `never reached: ${script.map((x) => x.at ?? 'now').join(', ')}` })
   if (convo.end) failures.push(...checkTurn(step, {}, step, convo.end, 'end'))
+  const said = lines.filter((l) => l.from === 'ribbit').map((l) => l.text).join(' ')
+  for (const re of convo.ever ?? []) if (!re.test(said)) failures.push({ rule: 'never-said', turn: 'conversation', detail: `${re} never said` })
   return { id: convo.id, lines, failures, finished, steps: n, asks }
 }

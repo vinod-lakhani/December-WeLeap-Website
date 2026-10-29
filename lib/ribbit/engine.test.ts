@@ -6,7 +6,7 @@ import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
 import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
-import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
+import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
  * Parity, the spec's rule: the chat takes what the pages take and gives the figures the pages give. The services
@@ -32,6 +32,16 @@ const said = (step: Step) => step.messages.map((m) => m.text).join(' ')
 const facts = (step: Step): ChatState['facts'] => step.state.facts
 
 describe('parse', () => {
+  it('splits a typed place into city and state', () => {
+    expect(splitCityState('Dallas, TX')).toEqual({ city: 'Dallas', stateCode: 'TX' })
+    expect(splitCityState('charlotte nc')).toEqual({ city: 'charlotte', stateCode: 'NC' })
+    expect(splitCityState('Houston Texas')).toEqual({ city: 'Houston', stateCode: 'TX' })
+    expect(splitCityState('Dallas')).toEqual({ city: 'Dallas' })
+    expect(splitCityState('Texas')).toEqual({ city: '' })
+    expect(splitCityState('TX')).toEqual({ city: '' })
+    expect(splitCityState('New Mexico')).toEqual({ city: '' })
+  })
+
   it('reads money the way people type it', () => {
     expect(parseMoney('$62,000')).toBe(62_000)
     expect(parseMoney('around 5k')).toBe(5_000)
@@ -107,6 +117,21 @@ describe('rent flow', () => {
     expect(market.compare?.label).toBe('Rent that fits')
     expect(market.figure).toMatch(/^\$[\d,]+–\$[\d,]+\/mo$/)
     expect(market.compare?.value).toMatch(/^\$[\d,]+–\$[\d,]+\/mo$/)
+  })
+
+  it('a typed city anywhere in the rent data is read as the place; a name in two states gets "Which one?"', async () => {
+    const metros = { 'Dallas|': [{ label: 'Dallas, TX', value: 'Dallas, TX', stateCode: 'TX' }], 'Dallas|TX': [{ label: 'Dallas, TX', value: 'Dallas, TX', stateCode: 'TX' }],
+      'Portland|': [{ label: 'Portland, ME', value: 'Portland, ME', stateCode: 'ME' }, { label: 'Portland, OR', value: 'Portland, OR', stateCode: 'OR' }] } as Record<string, { label: string; value: string; stateCode: string }[]>
+    const s2 = svc({ findMetros: async (city, st) => metros[`${city}|${st ?? ''}`] ?? [] })
+    for (const typed of ['Dallas', 'Dallas, TX']) {
+      const s = await run('rent', [{ text: '80000' }, { text: typed }], s2)
+      expect(facts(s[2]).region).toEqual({ stateName: 'TX', regionName: 'Dallas, TX' })
+      expect(facts(s[2]).stateCode).toBe('TX')
+      expect(s[2].state.turn).not.toBe('R2')
+    }
+    const p = await run('rent', [{ text: '80000' }, { text: 'Portland' }, { chip: 'Portland, OR' }], s2)
+    expect(p[2].chips.map((c) => c.value)).toEqual(['Portland, ME', 'Portland, OR', 'somewhere_else'].map((v) => (v === 'somewhere_else' ? p[2].chips[2].value : v)))
+    expect(facts(p[3]).region).toEqual({ stateName: 'OR', regionName: 'Portland, OR' })
   })
 
   it('NYC charges city tax, as the rent page does for its preset', async () => {

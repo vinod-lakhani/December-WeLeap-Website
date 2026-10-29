@@ -35,6 +35,15 @@ export const browserServices: ChatServices = {
       return null
     }
   },
+  async findMetros(city, stateCode) {
+    try {
+      const q = `find=${encodeURIComponent(city)}${stateCode ? `&st=${stateCode}` : ''}`
+      const d = await json<{ matches?: { label: string; value: string; stateCode: string }[] }>(await fetch(`/api/zori?${q}`))
+      return Array.isArray(d?.matches) ? d!.matches! : []
+    } catch {
+      return []
+    }
+  },
   async ask({ flow, facts, message, step, history, thread }) {
     try {
       const planData = flow === 'offer' ? offerPlanData(facts) : flow === 'money' ? null : rentPlanData(facts)
