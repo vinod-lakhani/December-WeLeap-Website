@@ -125,6 +125,10 @@ export interface Facts {
   moneyOffered?: boolean
   /** The question that led to "Where should my money go?" ("is now a good time to buy a car?"): answered at the order. */
   moneyQuestion?: string
+  /** "Not now" to the money offer: it is not offered again in this thread. */
+  moneyDeclined?: boolean
+  /** The offer was made again after they kept going without it (once). */
+  moneyReoffered?: boolean
 }
 
 export interface ChatState {
@@ -211,6 +215,9 @@ export const APP_LINK_TEXT = "Your balances and spending aren't in this chat, so
 
 /** After a planning question before any tool: the offer to work it out with their numbers. */
 export const MONEY_OFFER_TEXT = 'Want me to work out your order with your numbers? Four quick questions.'
+export const MONEY_REOFFER_TEXT = 'Want me to check that against your pay? Same four quick questions.'
+/** A purchase being planned ("can I afford a car?", "is now a good time to buy?"): offered the money flow like a plan question. */
+const AFFORD_QUESTION = /\b(can i afford|afford (a|an|to)|good time to buy|should i (buy|get) (a|an)\b)/i
 const MONEY_OFFER_CHIPS: Chip[] = [{ label: 'Yes, work it out', value: 'money' }, { label: 'Not now', value: 'not_now' }]
 
 function cityChips(): Chip[] {
@@ -278,7 +285,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       if (pick === 'rent') return askSalary({ ...state, flow: 'rent', turn: 'R1' })
       if (pick === 'offer') return askOfferSalary({ ...state, flow: 'offer', turn: 'O1' })
       if (pick === 'money') return askMoneySalary({ ...state, flow: 'money', turn: 'M1' })
-      if (pick === 'not_now') return say(state, [{ from: 'ribbit', text: 'Sure. Ask me anything, or pick one to work out.' }], PICKER_CHIPS, 'text')
+      if (pick === 'not_now') return say({ ...state, facts: { ...f, moneyDeclined: true } }, [{ from: 'ribbit', text: 'Sure. Ask me anything, or pick one to work out.' }], PICKER_CHIPS, 'text')
       return question(state, text, svc, 'which tool to use: rent or a job offer')
     }
 
@@ -1212,7 +1219,10 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
     // A planning question: the answer, then the thread's one invite (mid-flow too; the page offers finishing the
     // numbers next to it).
     invite = Boolean(res?.plan) && !state.invited && state.turn !== 'P0'
-    if (res?.plan && !state.invited && state.turn === 'P0' && !state.facts.moneyOffered) {
+    // "Can I afford a car?" plans a purchase: the reader often reads it as a general question, so the page counts it.
+    const planning = Boolean(res?.plan) || AFFORD_QUESTION.test(text)
+    const f = state.facts
+    if (planning && !state.invited && state.turn === 'P0' && !f.moneyOffered) {
       // No tool picked, so no numbers yet: offer to work it out with theirs ("Where should my money go?"); the
       // invite comes at that flow's end, with a card full of their numbers.
       const amount = /sav/i.test(text) ? parseMoney(text) : null
@@ -1221,6 +1231,17 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
       state.facts.moneyQuestion = text.slice(0, 300)
       messages.push({ from: 'ribbit', text: MONEY_OFFER_TEXT, turn: state.turn })
       events.push({ name: 'ribbit_money_offer_shown', props: { turn: state.turn } })
+      const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)
+      return { state: { ...state, history }, messages, chips: MONEY_OFFER_CHIPS, input, events }
+    } else if (state.turn === 'P0' && f.moneyOffered && !f.moneyDeclined && !state.invited && f.moneyQuestion) {
+      // The offer is still open and they kept going ("20K, 14% APR, 5 years"): the question now carries these words
+      // too, so the order's "back to your question" answers it with their pay; the offer again, once, in words.
+      if (!f.moneyQuestion.includes(text)) f.moneyQuestion = `${f.moneyQuestion} ${text}`.slice(0, 300)
+      if (!f.moneyReoffered) {
+        f.moneyReoffered = true
+        messages.push({ from: 'ribbit', text: MONEY_REOFFER_TEXT, turn: state.turn })
+        events.push({ name: 'ribbit_money_offer_shown', props: { turn: state.turn, again: true } })
+      }
       const history = [...state.history, ...messages.map((m) => ({ from: 'out' as const, text: m.text }))].slice(-12)
       return { state: { ...state, history }, messages, chips: MONEY_OFFER_CHIPS, input, events }
     } else if (invite) {
