@@ -109,6 +109,26 @@ export const CASES: Case[] = [
   { id: 'c-card-payoff', area: 'calculation', message: 'I owe 8000 on a credit card at 24% and pay 300 a month. How long until it is paid off?',
     expect: { kind: 'question', says: [/(38|39) months|3\.2 years/i] } },
   { id: 'c-car-payment', area: 'calculation', message: 'what would my payment be on a 25000 car loan at 7% for 5 years?', expect: { kind: 'question', says: [/\$?495/] } },
+  // Oct 28 web chat: "20K" (capital K) kept the loan tool from running; the reader offered three times, asked for the
+  // numbers "using words only", and claimed it had run the math. 20,000 at 14% over 60 months is about $465 a month.
+  { id: 'c-car-20k-caps', area: 'calculation', message: '20K, 14% APR, 5 years',
+    history: [
+      { role: 'user', text: 'I want to see if I can afford to buy a car' },
+      { role: 'assistant', text: 'To check a car purchase, we need three numbers: the car price (or loan balance), the loan APR, and the monthly payment you could afford.' },
+      { role: 'user', text: 'actually I want to know how much payment I can afford' },
+      { role: 'assistant', text: "Tell me the car price (or loan balance), the APR, and how many years you'd like the loan to run." },
+    ],
+    expect: { kind: 'question', says: [/\$?46[56]/], never: [/say yes/i, /in words/i, /if you want (the )?exact/i] } },
+  { id: 'c-car-yes-after-offer', area: 'calculation', message: 'YES',
+    history: [
+      { role: 'user', text: 'actually I want to know how much payment I can afford' },
+      { role: 'assistant', text: "Tell me the car price (or loan balance), the APR, and how many years you'd like the loan to run." },
+      { role: 'user', text: '20K, 14% APR, 5 years' },
+      { role: 'assistant', text: 'I can run the calculation now if you want the exact numbers.' },
+    ],
+    expect: { kind: 'question', says: [/\$?46[56]/], never: [/say yes/i, /in words/i] } },
+  { id: 'g-car-afford', area: 'general', message: 'how much car payment can I afford?',
+    expect: { kind: 'question', says: [/take-home|income|pay\b/i], never: [/say yes/i] } },
   { id: 'c-never-pays-off', area: 'calculation', message: 'I pay 100 a month on a 10000 card at 24%. When will it be paid off?',
     expect: { kind: 'question', says: [/interest|never|cover/i], never: [/\d+ months/i] } },
 
