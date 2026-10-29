@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RENT_ANSWER_INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RENT_ANSWER_INVITE_NOTE, RENT_ANSWER_INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
@@ -139,12 +139,29 @@ describe('rent flow', () => {
     const msgs = s[2].messages
     const i = msgs.findIndex((m) => m.text === RENT_ANSWER_INVITE_TEXT)
     expect(i).toBeGreaterThan(0)
-    expect(msgs[i].appAsk).toEqual({ label: 'Save my plan', why: 'rent_answer' })
+    expect(msgs[i].appAsk).toEqual({ label: 'Save my plan', why: 'rent_answer', note: RENT_ANSWER_INVITE_NOTE })
     // Carrying on is answering the next question: no extra tap.
     expect(msgs.at(-1)!.text).toMatch(/\?$/)
     expect(s[2].chips.length).toBeGreaterThan(0)
     expect(s[2].events).toContainEqual({ name: 'ribbit_app_invite_shown', props: { turn: 'R3', reason: 'rent_answer' } })
     expect(s[2].state.invited).toBe(true)
+  })
+
+  it('the city answer has the headline card in every version, and says the range stays when no tax changes it', async () => {
+    for (const city of ['Austin', 'NYC']) {
+      const s = await run('rent', [{ text: '80000' }, { chip: city }])
+      const card = s[2].messages.find((m) => m.figure)!
+      expect(card.figureLabel).toMatch(/rentals$/)
+      expect(card.compare?.label).toBe('Rent that fits')
+    }
+    // Texas: no state or city tax, so no second "take-home is about…" and no repeated range sentence.
+    const tx = await run('rent', [{ text: '80000' }, { chip: 'Austin' }])
+    const said = tx[2].messages.map((m) => m.text).join(' ')
+    expect(said).toMatch(/^Texas has no state income tax, so your range stays the same\./)
+    expect(said).not.toMatch(/take-home is about/)
+    // New York: city tax changes it, so the full line stays.
+    const ny = await run('rent', [{ text: '80000' }, { chip: 'NYC' }])
+    expect(ny[2].messages.map((m) => m.text).join(' ')).toMatch(/take-home is about/)
   })
 
   it('once invited on the rent answer, a planning question later gets no second invite', async () => {

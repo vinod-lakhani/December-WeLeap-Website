@@ -108,7 +108,7 @@ export const CONVERSATIONS: Conversation[] = [
   { id: 'money-with-card-debt', flow: 'money', persona: CHI_TYPES, mustFinish: true, says: [], end: { says: [/24%|card/i] } },
   { id: 'money-side-question', flow: 'money', persona: MAYA, mustFinish: true, says: [{ at: 'M3', text: 'what counts as rent if I live with my parents?' }] },
   // ── Typed cities (Oct 29: only the six presets and state names were read; 7 of 14 paid rent chats stuck) ──
-  { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/In Dallas, take-home/, RENT_INVITE] },
+  { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/Texas has no state income tax, so your range stays the same/, /Rentals in Dallas run/, RENT_INVITE] },
   { id: 'rent-typed-city-state', flow: 'rent', persona: { ...MAYA, city: 'Denver, CO', state: 'CO' }, mustFinish: true, says: [], ever: [/In Denver, take-home/] },
   { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/] },
   { id: 'rent-portland-which-one', flow: 'rent', persona: { ...MAYA, city: 'Portland', state: 'OR' }, mustFinish: true, says: [], ever: [/Which one\?/, /In Portland, take-home/] },
