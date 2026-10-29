@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_OFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -317,6 +317,33 @@ describe('card payoff', () => {
 })
 
 describe('Where should my money go?', () => {
+  it('"can I afford a car?" gets the offer; loan numbers typed instead fold into the question and get it once more', async () => {
+    const asks: Array<{ flow: string; message: string }> = []
+    const ask = svc({ ask: async ({ flow, message }) => {
+      asks.push({ flow, message })
+      return { kind: 'question' as const, reply: `answer to: ${message}`, plan: false }
+    } })
+    const s = await run(null, [
+      { text: 'I want to see if I can afford to buy a car' }, { text: '20K, 14% APR, 5 years' }, { text: 'is that a lot?' },
+      { chip: 'money' }, { text: '85000' }, { text: 'Texas' }, { text: '1600' }, { chip: 'none' }, { chip: 'unknown' },
+    ], ask)
+    // The reader called it a general question; the page still offers to work it out with their numbers.
+    expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I want to see if I can afford to buy a car', MONEY_OFFER_TEXT])
+    expect(s[2].messages.map((m) => m.text)).toEqual(['answer to: 20K, 14% APR, 5 years', MONEY_REOFFER_TEXT])
+    expect(s[2].chips.map((c) => c.value)).toEqual(['money', 'not_now'])
+    // Once in words; the chips stay.
+    expect(s[3].messages.map((m) => m.text)).toEqual(['answer to: is that a lot?'])
+    expect(s[3].chips.map((c) => c.value)).toEqual(['money', 'not_now'])
+    expect(asks.at(-1)).toEqual({ flow: 'money', message: 'I want to see if I can afford to buy a car 20K, 14% APR, 5 years is that a lot?' })
+  })
+
+  it('"Not now" ends the money offer for the thread', async () => {
+    const ask = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: false }) })
+    const s = await run(null, [{ text: 'can I afford a car?' }, { chip: 'not_now' }, { text: '20K, 14% APR, 5 years' }], ask)
+    expect(s[3].messages.map((m) => m.text)).toEqual(['answer to: 20K, 14% APR, 5 years'])
+    expect(s[3].chipsLabel).toBe('Or work out with Ribbit:')
+  })
+
   it('a question that led here (buying a car) is answered at the order, with the money numbers', async () => {
     const asks: Array<{ flow: string; message: string; money: boolean }> = []
     const carAsk = svc({ ask: async ({ flow, message, facts: f }) => {
