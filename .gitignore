@@ -51,3 +51,4 @@ yarn.lock
 
 # Ribbit reader eval results (local)
 scripts/ribbit-eval/runs/
+scripts/ribbit-convo/runs/
