@@ -1036,7 +1036,10 @@ async function moneyResult(state: ChatState, svc: ChatServices): Promise<Step> {
   const back: ChatMessage[] = []
   if (f.moneyQuestion) {
     const res = await svc.ask({ flow: 'money', facts: f, message: f.moneyQuestion, step: '', history: state.history })
-    if (res?.kind === 'question' && res.reply) back.push({ from: 'ribbit', text: `Back to your question: ${res.reply}`, turn: 'M6' })
+    if (res?.kind === 'question' && res.reply) {
+      const done = moneyDoneBefore(o)
+      back.push({ from: 'ribbit', text: done ? `Back to your question. If you've already got ${done}: ${res.reply} If not, start with the order above.` : `Back to your question: ${res.reply}`, turn: 'M6' })
+    }
     f.moneyQuestion = undefined
   }
   return say({ ...state, turn: 'M6' }, [
@@ -1045,6 +1048,17 @@ async function moneyResult(state: ChatState, svc: ChatServices): Promise<Step> {
     ...back,
     { from: 'ribbit', text: 'Want me to keep this as your plan?' },
   ], [{ label: 'Yes, keep it', value: 'keep' }, { label: 'Show me the math', value: '__math__' }], 'text', [win('M6'), { name: 'ribbit_money_order_shown', props: { steps: o.steps.map((s) => s.key).join(',') } }])
+}
+
+/**
+ * The order's steps before raising retirement, as things a person may already have done ("your full 401(k) match and
+ * about $7,700 set aside"). The flow never asks what they have saved, so the answer to their question is given for
+ * that case and the order covers the other; the reader is told to answer as if these are done.
+ */
+function moneyDoneBefore(o: ReturnType<typeof moneyOrder>): string {
+  const done = o.steps.flatMap((st) =>
+    st.key === 'match' ? ['your full 401(k) match'] : st.key === 'debt' ? ['the high-interest debt paid off'] : st.key === 'emergency' ? [`about ${fc(o.emergencyGoal)} set aside`] : [])
+  return done.length > 1 ? `${done.slice(0, -1).join(', ')} and ${done[done.length - 1]}` : done[0] ?? ''
 }
 
 function moneyCard(f: Facts): NonNullable<ChatMessage['planCard']> {
