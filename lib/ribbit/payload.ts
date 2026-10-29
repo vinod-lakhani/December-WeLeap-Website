@@ -7,7 +7,8 @@ import { calculateBudgetBreakdown, calculateUpfrontCash, rentFirstMove } from '@
 import { computeOfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { computeLevers } from '@/lib/offer/levers'
 import { offerTextPayload } from '@/lib/offer/textPayload'
-import { offerInputs, type Facts } from './engine'
+import { moneyInputs, offerInputs, type Facts } from './engine'
+import { moneyOrder } from './moneyOrder'
 
 export const CHAT_SOURCE = 'ribbit_chat'
 
@@ -117,3 +118,27 @@ export function offerPlanData(f: Facts): Record<string, unknown> | null {
   const figures = { ...((payload.figures as Record<string, unknown>) ?? {}), takeHomeBasis: takeHomeBasis(f) }
   return { ...payload, figures, source: CHAT_SOURCE }
 }
+
+/**
+ * What a typed question in "Where should my money go?" sends the reader: the four answers and the order worked out
+ * from them (moneyOrder, code, never the model), so it can answer "is now a good time to buy a car?" with their
+ * numbers. The backend turns it into the money figures bundle (MoneyBundle).
+ */
+export function moneyAskData(f: Facts): Record<string, unknown> | undefined {
+  if (!f.takeHomeMonthly) return undefined
+  const o = moneyOrder(moneyInputs(f))
+  return {
+    takeHomeMonthly: Math.round(f.takeHomeMonthly),
+    rentMonthly: Math.round(f.pick ?? 0),
+    leftAfterRent: Math.round(o.leftAfterRent),
+    debt: f.debt ? { balance: f.debt.balance, aprPct: f.debt.aprPct, payment: f.debt.payment, kind: f.debt.kind ?? '' } : null,
+    debtPlan: o.debtPlan ? { payment: o.debtPlan.payment, months: Number.isFinite(o.debtPlan.months) ? o.debtPlan.months : 0 } : null,
+    match: f.match ?? '',
+    matchRatePct: f.matchRatePct ?? 0,
+    matchUpToPct: f.matchUpToPct ?? 0,
+    emergencyGoal: o.emergencyGoal,
+    monthlyForSteps: Math.round(o.monthlyForSteps),
+    steps: o.steps.map((st) => `${st.title}: ${st.detail}`),
+  }
+}
+

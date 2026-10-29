@@ -317,6 +317,30 @@ describe('card payoff', () => {
 })
 
 describe('Where should my money go?', () => {
+  it('a question that led here (buying a car) is answered at the order, with the money numbers', async () => {
+    const asks: Array<{ flow: string; message: string; money: boolean }> = []
+    const carAsk = svc({ ask: async ({ flow, message, facts: f }) => {
+      asks.push({ flow, message, money: Boolean(f.takeHomeMonthly) })
+      return { kind: 'question' as const, reply: `answer to: ${message}`, plan: /car/i.test(message) }
+    } })
+    const s = await run(null, [
+      { text: 'I want to buy a car, is now a good time?' }, { chip: 'money' },
+      { text: '85000' }, { text: 'Texas' }, { text: '1600' }, { chip: 'none' }, { chip: 'unknown' },
+    ], carAsk)
+    expect(s[1].messages.map((m) => m.text)).toEqual(['answer to: I want to buy a car, is now a good time?', MONEY_OFFER_TEXT])
+    const result = s[s.length - 1]
+    const texts = result.messages.map((m) => m.text)
+    // After the order, the car question again, answered by the reader with the four answers in hand.
+    const order = texts.indexOf("Here's where your next dollar goes, in order.")
+    const back = texts.indexOf('Back to your question: answer to: I want to buy a car, is now a good time?')
+    expect(order).toBeGreaterThanOrEqual(0)
+    expect(back).toBeGreaterThan(order)
+    expect(back).toBeLessThan(texts.indexOf('Want me to keep this as your plan?'))
+    expect(asks.at(-1)).toEqual({ flow: 'money', message: 'I want to buy a car, is now a good time?', money: true })
+    // Once: a later step does not answer it again.
+    expect(facts(result).moneyQuestion).toBeUndefined()
+  })
+
   it('four questions, then the order worked out in code, then the plan card full of their numbers', async () => {
     const s = await run('money', [
       { text: '85000' }, { text: 'Texas' }, { text: '1600' }, { text: 'Card, 4000 at 22%, I pay 150' },

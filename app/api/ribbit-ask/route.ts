@@ -35,11 +35,11 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'bad request' }, { status: 400 })
   }
-  const flow = body.flow === 'offer' ? 'offer' : 'rent'
+  const flow = body.flow === 'offer' ? 'offer' : body.flow === 'money' ? 'money' : 'rent'
   const message = typeof body.message === 'string' ? body.message.trim().slice(0, 1000) : ''
   if (!message) return NextResponse.json({ error: 'message required' }, { status: 400 })
   const plan = body.planData && typeof body.planData === 'object' ? (body.planData as Record<string, unknown>) : null
-  const built = plan ? (flow === 'offer' ? offerPayload(plan) : rentPayload(plan)) : null
+  const built = plan && flow !== 'money' ? (flow === 'offer' ? offerPayload(plan) : rentPayload(plan)) : null
   const history = Array.isArray(body.history)
     ? body.history
         .filter((h): h is { role: string; text: string } => !!h && typeof h === 'object' && typeof (h as { text?: unknown }).text === 'string')
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         tool: flow,
         result: flow === 'rent' ? built?.result : undefined,
         offer: flow === 'offer' ? built?.offer : undefined,
+        money: flow === 'money' ? moneyFromBody(body.money) : undefined,
         message,
         step: typeof body.step === 'string' ? body.step.slice(0, 300) : '',
         thread: typeof body.thread === 'string' ? body.thread.slice(0, 64) : '',
@@ -68,3 +69,22 @@ export async function POST(req: Request) {
     return NextResponse.json(FALLBACK, { status: 502 })
   }
 }
+
+/** The money payload, bounded: numbers stay numbers, strings and the step list are trimmed. */
+function moneyFromBody(raw: unknown): Record<string, unknown> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const m = raw as Record<string, unknown>
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1e9, Math.min(1e9, v)) : 0)
+  const obj = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, unknown>) : null)
+  const debt = obj(m.debt)
+  const plan = obj(m.debtPlan)
+  return {
+    takeHomeMonthly: n(m.takeHomeMonthly), rentMonthly: n(m.rentMonthly), leftAfterRent: n(m.leftAfterRent),
+    debt: debt ? { balance: n(debt.balance), aprPct: n(debt.aprPct), payment: n(debt.payment), kind: String(debt.kind ?? '').slice(0, 10) } : null,
+    debtPlan: plan ? { payment: n(plan.payment), months: n(plan.months) } : null,
+    match: String(m.match ?? '').slice(0, 10), matchRatePct: n(m.matchRatePct), matchUpToPct: n(m.matchUpToPct),
+    emergencyGoal: n(m.emergencyGoal), monthlyForSteps: n(m.monthlyForSteps),
+    steps: Array.isArray(m.steps) ? m.steps.filter((x): x is string => typeof x === 'string').slice(0, 6).map((x) => x.slice(0, 300)) : [],
+  }
+}
+
