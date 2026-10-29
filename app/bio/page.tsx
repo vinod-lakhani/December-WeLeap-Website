@@ -61,8 +61,24 @@ export default function BioPage({
       <div className="mx-auto w-full max-w-[460px] sm:max-w-[520px]">
         {/* Mark and wordmark, nothing else. Fixed intrinsic size so the column
             below cannot shift when the image decodes. Larger on desktop, where
-            a 30px logo above a half-width column looks like a placeholder. */}
-        <header className="mb-4 flex justify-center sm:mb-6">
+            a 30px logo above a half-width column looks like a placeholder.
+
+            THE WORDMARK IS THE H1, and that is the whole fix for a page that
+            served zero of them. Every other page's heading is a sentence, but
+            this one has no room for one: the measurements above are a hard
+            constraint — the featured and app cards clear a 560px fold — and
+            there is deliberately no copy between the logo and the cards. An
+            h1 wrapping the wordmark costs no pixels, is the accessible name
+            "WeLeap" via the image alt, and is honestly what the page is: the
+            index of WeLeap's links. A visually-hidden sentence would have been
+            text added for a crawler rather than a reader, which is not a trade
+            this site makes.
+
+            It had gone unnoticed because /bio reads searchParams, so it
+            prerenders no HTML and the postbuild h1 check had nothing to read.
+            It is now declared `invariants: true` in scripts/checkMetadata.js,
+            which verifies it over HTTP instead of skipping it. */}
+        <h1 className="mb-4 flex justify-center sm:mb-6">
           <Image
             src="/images/weleap-logo.png"
             alt="WeLeap"
@@ -72,7 +88,7 @@ export default function BioPage({
             priority
             className="h-[30px] w-auto sm:h-[42px]"
           />
-        </header>
+        </h1>
 
         <BioLinks cards={cards} />
 

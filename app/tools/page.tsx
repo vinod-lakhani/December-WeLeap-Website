@@ -1,17 +1,21 @@
 import type { Metadata } from "next"
-import { DEFAULT_OG_IMAGE } from '@/lib/og-image'
+import Link from "next/link"
 import { PageShell, Section, Container, SiteFooter } from "@/components/layout"
 import { EarlyAccessDialog } from "@/components/early-access-dialog"
 import { Button } from "@/components/ui/button"
-import { FREE_TOOLS, TOOL_COUNT_WORD } from "@/lib/tools"
+import { FREE_TOOLS, TOOL_COUNT_WORD, TOOL_COUNT_WORD_CAP as COUNT_CAP } from "@/lib/tools"
 import { CategoryComparison } from "@/components/CategoryComparison"
 import { ToolCard } from "@/components/ToolCard"
+import { JsonLd } from "@/components/JsonLd"
+import { RelatedReading, type RelatedArticle } from "@/components/RelatedReading"
+import { toolsBreadcrumbSchema, toolsItemListSchema } from "@/lib/structured-data"
 
-// The word form of TOOL_COUNT, capitalised for the start of a sentence. It
-// deliberately does not name the current number: the last comment here spelled
-// it out, and went stale the next time a tool shipped — which is the exact
-// failure the derived count was added to end.
-const COUNT_CAP = TOOL_COUNT_WORD.charAt(0).toUpperCase() + TOOL_COUNT_WORD.slice(1)
+// COUNT_CAP is the word form of TOOL_COUNT, capitalised for the start of a
+// sentence. It deliberately does not name the current number: the last comment
+// here spelled it out, and went stale the next time a tool shipped — which is
+// the exact failure the derived count was added to end. It moved into
+// lib/tools.ts when the social card needed the same string, because a second
+// inline copy is how the first one went stale.
 
 export const metadata: Metadata = {
   title: "Free money tools",
@@ -25,29 +29,110 @@ export const metadata: Metadata = {
     title: "Free money tools | WeLeap",
     description: `${COUNT_CAP} free calculators that answer a real money question in under a minute. No account, no email wall.`,
     url: "/tools",
-    images: [DEFAULT_OG_IMAGE],
+    // No `images`. This segment has its own `opengraph-image.tsx` now, and a
+    // same-segment file wins over the sitewide default — naming DEFAULT_OG_IMAGE
+    // here would override it and put the generic card back, which is the defect
+    // that file was added to fix. See lib/og-image.ts for why most routes DO
+    // have to name it.
   },
 }
+
+/**
+ * Home / Free money tools — the visible trail, and the BreadcrumbList that
+ * describes it, from one place.
+ *
+ * Local to this file rather than a shared component because there is exactly
+ * one hub. `ToolBreadcrumb` is the three-level version the ten leaves render,
+ * and it takes a tool; this is the two-level version where the leaf IS /tools.
+ */
+function HubBreadcrumb() {
+  return (
+    <>
+      <JsonLd data={toolsBreadcrumbSchema()} />
+      <nav aria-label="Breadcrumb" className="mb-5">
+        <ol className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13.5px] text-faint">
+          <li>
+            <Link href="/" className="hover:text-brand-700 hover:underline underline-offset-2">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <span aria-current="page" className="text-subtle">
+              Free money tools
+            </span>
+          </li>
+        </ol>
+      </nav>
+    </>
+  )
+}
+
+/**
+ * Articles worth reading for somebody browsing the index rather than using one
+ * calculator.
+ *
+ * The ten leaf pages each link the one or two articles that bear on their own
+ * question. This page is read by someone who has not picked a tool yet, so the
+ * pairings here are the ones about how to run money at all — which is the
+ * actual reason a person is scanning a grid of calculators instead of opening
+ * one. Nothing tool-specific, because that is what the cards above already are.
+ *
+ * It also gives /resources its first real inbound path from a page Google
+ * fetches often — see components/RelatedReading.tsx. That is a side effect and
+ * not the selection criterion; an article nobody would read from here would
+ * still not belong here.
+ */
+const RELATED_READING: readonly RelatedArticle[] = [
+  {
+    href: '/resources/traditional-tools-fail',
+    why: 'Why every tool above answers one question and stops, instead of being a budget. This is the argument the whole set is built on.',
+  },
+  {
+    href: '/resources/awareness-to-action',
+    why: 'A calculator hands you a number. This is about the harder part — what has to change once you have it.',
+  },
+  {
+    href: '/resources/income-allocation',
+    why: 'If you are not sure which tool you need, start here: where a paycheck should go, and in what order.',
+  },
+]
 
 
 export default function ToolsPage() {
   return (
     <PageShell className="bg-canvas">
+      {/* ItemList rather than WebApplication: this page is the list, not one of
+          the things in it. See lib/structured-data.ts — both blocks are derived
+          from FREE_TOOLS, so they describe exactly the cards rendered below. */}
+      <JsonLd data={toolsItemListSchema()} />
+
       {/* pb trimmed from the shared hero's pb-16 md:pb-20 to roughly pay for
           the ordering line below, so adding it does not push the second row of
           cards under the fold. There was ~160px between the hero copy and the
-          grid; it can spare this. */}
-      <Section variant="canvas" isHero className="pb-10 text-center md:pb-12">
+          grid; it can spare this. The breadcrumb and subhead added since are
+          paid for out of the same budget — hence pb-8, and the chip's margin
+          coming in a step. */}
+      <Section variant="canvas" isHero className="pb-8 text-center md:pb-10">
         <Container maxWidth="narrow">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[13.5px] font-semibold text-brand-700">
+          <HubBreadcrumb />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[13.5px] font-semibold text-brand-700">
             Free · No account · No email wall
           </div>
+          {/* The h1 says what the page is; the tagline is the subhead under it.
+              It was the other way round, which left the single most important
+              heading on the second-highest-priority URL in the sitemap sharing
+              not one word with its own <title> — on a hub whose entire job is
+              to rank for people looking for free money calculators. The tagline
+              is the better sentence and it is still here, one line lower. */}
           <h1 className="text-balance text-[clamp(2.2rem,4vw,3.4rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-ink">
-            Answer one money question in under a minute.
+            {COUNT_CAP} free money calculators
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-subtle">
-            {COUNT_CAP} calculators, built for decisions you're actually facing. Nothing to sign up for — use them, get your
-            number, leave.
+          <p className="mx-auto mt-4 max-w-2xl text-balance text-[clamp(1.15rem,2vw,1.5rem)] font-bold leading-snug tracking-[-0.02em] text-ink">
+            Answer one money question in under a minute.
+          </p>
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-subtle">
+            Built for decisions you're actually facing. Nothing to sign up for — use them, get your number, leave.
           </p>
         </Container>
       </Section>
@@ -128,6 +213,8 @@ export default function ToolsPage() {
           </p>
         </Container>
       </Section>
+
+      <RelatedReading from="tools_page" items={RELATED_READING} />
 
       <SiteFooter />
     </PageShell>

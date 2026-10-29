@@ -38,8 +38,16 @@
  * So the set of routes is now taken from Next's own manifest rather than from
  * whatever happened to land on disk, and any page route without prerendered
  * output must be declared below with a reason. An undeclared one fails the
- * build. A declaration that stops being true also fails, so the list cannot
- * quietly rot into a list of excuses.
+ * build. A declaration that stops being true also fails, and a declaration with
+ * no usable reason fails, so the list cannot quietly rot into a list of
+ * excuses.
+ *
+ * BEING DECLARED IS NOT THE SAME AS BEING CHECKED, which is the hole the list
+ * had left in it. `invariants: false` is the only setting that skips a page
+ * without a word, and /bio is what that costs: declared, waved through on
+ * "it is noindex", and serving zero <h1> for months until somebody read the
+ * HTML by hand. It is `invariants: true` now. noindex alone does not earn the
+ * exemption — a page has to have nothing to check.
  *
  * A calculator is identified by emitting `WebApplication` schema rather than by
  * a route list, so a tool added tomorrow is covered without touching this file.
@@ -69,8 +77,15 @@ const EXEMPT_PRERENDERED = new Set(['_not-found.html'])
  * dynamic for campaign mode; they rank and they are shared, so exempting them
  * outright would be how the next regression ships.
  *
- * `invariants: false` is for routes where the checks genuinely do not apply:
- * noindex, not shared, no h1 by design.
+ * `invariants: false` is for routes where the checks genuinely do not apply —
+ * and the bar is high, because it is the only setting that skips a page
+ * silently. /get is a device-sniffing redirect with no heading by design, and
+ * /s/[tool]/[claim] is a path pattern rather than a URL, so there is nothing to
+ * fetch. "noindex" on its own is NOT a reason: /bio was waved through on that
+ * basis and served zero <h1> for months.
+ *
+ * `reason` is mandatory and is asserted below. An entry without one is the
+ * same hole with a lid on it.
  */
 const DYNAMIC_ROUTES = {
   '/what-is-my-job-offer-worth': {
@@ -102,8 +117,9 @@ const DYNAMIC_ROUTES = {
     invariants: false,
   },
   '/bio': {
-    reason: 'reads searchParams for src/utm; robots:noindex',
-    invariants: false,
+    reason:
+      'link-in-bio page; reads searchParams for src/utm. noindex, but it is the page every social profile points at, so the card and the heading still have to be right — it shipped with zero h1 for exactly as long as it was declared invariants:false',
+    invariants: true,
   },
   '/s/[tool]/[claim]': {
     reason: 'parameterised share route, rendered per claim; robots:noindex',
@@ -241,7 +257,17 @@ async function main() {
   }
 
   // A declaration that is no longer true is how the list rots into excuses.
-  for (const route of Object.keys(DYNAMIC_ROUTES)) {
+  for (const [route, d] of Object.entries(DYNAMIC_ROUTES)) {
+    // An exemption whose reason is blank explains nothing and reviews as
+    // "already agreed". Cheap to assert, and the only thing standing between
+    // this list and a list of route names.
+    if (typeof d.reason !== 'string' || d.reason.trim().length < 20) {
+      failures.push(
+        `${route}\n    is declared in DYNAMIC_ROUTES with no usable \`reason\`.\n` +
+        `    Say why this route cannot prerender, in a sentence the next person can\n` +
+        `    check. An exemption nobody can evaluate is not an exemption.`
+      )
+    }
     if (prerendered.has(route)) {
       failures.push(
         `${route}\n    is declared in DYNAMIC_ROUTES but now prerenders fine.\n` +

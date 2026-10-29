@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { ImageResponse } from 'next/og'
 import { toolByHref } from '@/lib/structured-data'
+import { TOOL_COUNT_WORD_CAP } from '@/lib/tools'
 import { OG_CONTENT_TYPE, OG_SIZE } from '@/lib/og-image'
 
 /**
@@ -248,6 +249,29 @@ export function toolOgImage(href: string) {
     footnote: 'Free · No account · No email wall',
   })
 }
+
+/**
+ * The /tools hub's own card.
+ *
+ * It needs its own copy rather than `toolOgImage`, because /tools is not a
+ * member of FREE_TOOLS — there is no `name` or `question` to read. Until this
+ * existed the hub shared the sitewide default while all ten of its leaves had
+ * a card naming the question they answer, so the one page built to rank for
+ * tool queries was the one that previewed as the generic product pitch.
+ *
+ * The count is derived for the same reason it is on the page itself: a card
+ * reading "Seven free calculators" above a grid of ten is a worse preview than
+ * no card.
+ */
+export function toolsHubOgImage() {
+  return render({
+    eyebrow: 'Free money tools',
+    headline: `${TOOL_COUNT_WORD_CAP} free calculators, one question each.`,
+    footnote: 'Free · No account · No email wall',
+  })
+}
+
+export const toolsHubOgAlt = `WeLeap — ${TOOL_COUNT_WORD_CAP} free money calculators, one question each.`
 
 /**
  * A shared claim's card.
