@@ -39,6 +39,8 @@ const CHI_TYPES: Persona = { salary: 80000, city: 'Chicago', state: 'IL', rent: 
 const BOSTON_GRAD: Persona = { salary: 63000, city: 'Boston', state: 'MA', rent: 1350, roommate: true, match: 'none' }
 const SEATTLE: Persona = { salary: 120000, city: 'Seattle', state: 'WA', rent: 2400, match: '100% up to 4%' }
 
+// The money offer itself ("Yes, work it out | Not now"): the picker's "Where should my money go?" is also 'money'.
+const OFFER = ['money', 'not_now']
 const LOAN_465 = /\$?46[56]\b/
 const BACK = /Back to your question/
 
@@ -48,8 +50,8 @@ export const CONVERSATIONS: Conversation[] = [
     id: 'oct28-car-afford-then-numbers', persona: MAYA, mustFinish: true,
     note: 'Oct 28: a correct $465 answer, then the picker and nothing to check it against their pay.',
     says: [
-      { text: 'I want to see if I can afford to buy a car', expect: { chips: ['money'] } },
-      { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465], chips: ['money'] } },
+      { text: 'I want to see if I can afford to buy a car', expect: { chips: OFFER } },
+      { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465], chips: OFFER } },
       { chip: 'money' },
     ],
     end: { says: [BACK, LOAN_465] },
@@ -67,24 +69,24 @@ export const CONVERSATIONS: Conversation[] = [
   },
   {
     id: 'offer-typed-no', persona: MAYA,
-    says: [{ text: 'can I afford a car?', expect: { chips: ['money'] } }, { text: 'no thanks' }, { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465] } }],
+    says: [{ text: 'can I afford a car?', expect: { chips: OFFER } }, { text: 'no thanks' }, { text: '20K, 14% APR, 5 years', expect: { says: [LOAN_465] } }],
   },
   {
     id: 'oct27-car-good-time', persona: SF, mustFinish: true,
     note: 'Oct 27: the money flow never came back to the car; then "Not yet" for someone who may have savings.',
-    says: [{ text: 'I want to buy a car, is now a good time?', expect: { chips: ['money'] } }, { chip: 'money' }],
+    says: [{ text: 'I want to buy a car, is now a good time?', expect: { chips: OFFER } }, { chip: 'money' }],
     end: { says: [/Back to your question\. If you've already got/] },
   },
   // ── Planning questions at the picker: answered, then offered the order with their numbers ──────────────────
   {
     id: 'wedding-typed-all-the-way', persona: CHI_TYPES, mustFinish: true,
-    says: [{ text: 'Can I afford a $30k wedding next year?', expect: { chips: ['money'] } }, { chip: 'money' }],
+    says: [{ text: 'Can I afford a $30k wedding next year?', expect: { chips: OFFER } }, { chip: 'money' }],
     end: { says: [BACK] },
   },
-  { id: 'house-down-payment', persona: MAYA, says: [{ text: 'Should I start saving for a house down payment?', expect: { chips: ['money'] } }] },
-  { id: 'saving-1000', persona: MAYA, says: [{ text: 'I am saving $1000 a month, what should I do with it', expect: { chips: ['money'] } }] },
-  { id: 'card-or-invest', persona: MAYA, says: [{ text: 'Should I pay off my credit card or invest?', expect: { chips: ['money'] } }] },
-  { id: 'car-payment-afford', persona: MAYA, says: [{ text: 'how much car payment can I afford?', expect: { chips: ['money'] } }] },
+  { id: 'house-down-payment', persona: MAYA, says: [{ text: 'Should I start saving for a house down payment?', expect: { chips: OFFER } }] },
+  { id: 'saving-1000', persona: MAYA, says: [{ text: 'I am saving $1000 a month, what should I do with it', expect: { chips: OFFER } }] },
+  { id: 'card-or-invest', persona: MAYA, says: [{ text: 'Should I pay off my credit card or invest?', expect: { chips: OFFER } }] },
+  { id: 'car-payment-afford', persona: MAYA, says: [{ text: 'how much car payment can I afford?', expect: { chips: OFFER } }] },
   // ── Calculations at the picker ────────────────────────────────────────────────────────────────────────────
   { id: 'card-payoff', persona: MAYA, says: [{ text: 'I owe 8000 on a credit card at 24% and pay 300 a month. How long until it is paid off?', expect: { says: [/3[89] months|3\.2 years/] } }] },
   { id: 'car-loan-payment', persona: MAYA, says: [{ text: 'what would my payment be on a 25000 car loan at 7% for 5 years?', expect: { says: [/\$?495/] } }] },

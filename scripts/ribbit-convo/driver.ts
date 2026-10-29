@@ -28,7 +28,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 }) as typeof fetch
 
 export interface Line { from: 'person' | 'ribbit'; text: string; turn: string; chips?: string[] }
-export interface Played { id: string; lines: Line[]; failures: Failure[]; finished: boolean; steps: number }
+export interface Played { id: string; lines: Line[]; failures: Failure[]; finished: boolean; steps: number; asks: Array<{ flow: string; message: string; kind: string; reply: string }> }
 
 type Answer = { chip?: string; text?: string }
 
@@ -81,7 +81,16 @@ function personaAnswer(p: Persona, s: Step): Answer | null {
 
 export async function play(convo: Conversation, run = 1): Promise<Played> {
   visitor = `${convo.id}-${run}-${Date.now()}`
-  const svc = { ...browserServices, ask: (input: Parameters<typeof browserServices.ask>[0]) => browserServices.ask({ ...input, thread: visitor }) }
+  // Every reader call, with what came back, so a dropped or odd answer can be traced to the reading.
+  const asks: Played['asks'] = []
+  const svc = {
+    ...browserServices,
+    ask: async (input: Parameters<typeof browserServices.ask>[0]) => {
+      const res = await browserServices.ask({ ...input, thread: visitor })
+      asks.push({ flow: input.flow ?? '', message: input.message, kind: res?.kind ?? 'null', reply: (res?.reply ?? '').slice(0, 200) })
+      return res
+    },
+  }
   const lines: Line[] = []
   const failures: Failure[] = []
   let step = start(convo.flow ?? null)
@@ -118,5 +127,5 @@ export async function play(convo: Conversation, run = 1): Promise<Played> {
   if (convo.mustFinish && !ENDS.has(step.state.turn)) failures.push({ rule: 'unfinished', turn: step.state.turn, detail: `stopped at ${step.state.turn} after ${n} replies` })
   if (script.length) failures.push({ rule: 'script-unused', turn: step.state.turn, detail: `never reached: ${script.map((x) => x.at ?? 'now').join(', ')}` })
   if (convo.end) failures.push(...checkTurn(step, {}, step, convo.end, 'end'))
-  return { id: convo.id, lines, failures, finished, steps: n }
+  return { id: convo.id, lines, failures, finished, steps: n, asks }
 }

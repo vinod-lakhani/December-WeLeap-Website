@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome } from './parse'
 
 /**
@@ -349,6 +349,21 @@ describe('Where should my money go?', () => {
     // Without an offer on screen, "yes" is still a question for Ribbit.
     const bare = await run(null, [{ text: 'yes' }], ask)
     expect(bare[1].state.turn).toBe('P0')
+  })
+
+  it('the question that led to the order gets a line even when no answer comes back', async () => {
+    const ask = svc({ ask: async ({ flow, message }) => (flow === 'money' ? null : { kind: 'question' as const, reply: `answer to: ${message}`, plan: true }) })
+    const s = await run(null, [{ text: 'is now a good time to buy a car?' }, { chip: 'money' }, { text: '85000' }, { text: 'Texas' }, { text: '1600' }, { chip: 'none' }, { chip: 'unknown' }], ask)
+    const texts = s[s.length - 1].messages.map((m) => m.text)
+    expect(texts).toContain(MONEY_BACK_FAILED_TEXT)
+  })
+
+  it('"is now a good time?" and "I want to buy" questions get the offer even when Ribbit calls them general', async () => {
+    const ask = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: false }) })
+    for (const q of ['I want to buy a car, is now a good time?', 'thinking about buying a house', 'can I afford a $30k wedding?', 'Should I start saving for a house down payment?']) {
+      const s = await run(null, [{ text: q }], ask)
+      expect(s[1].chips.map((c) => c.value)).toEqual(['money', 'not_now'])
+    }
   })
 
   it('"Not now" ends the money offer for the thread', async () => {
