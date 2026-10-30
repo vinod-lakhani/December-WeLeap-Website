@@ -94,6 +94,8 @@ export interface Facts {
   mentionedSaving?: number
   /** The spending check has been offered in this thread (once per thread). */
   spendingCheckShown?: boolean
+  /** The spending check offered on the first rent range (R2); the pick moment (R4) still offers it once. */
+  rangeSpendingCheckShown?: boolean
   range?: RentRange
   market?: { low: number; high: number; median: number; tier: string; source: 'zori' | 'hud' } | null
   pick?: number
@@ -318,10 +320,13 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         ? `On ${fc(n)} a year, take-home before state tax is about ${fc(takeHome)} a month.`
         : `On ${fc(n)} a month take-home,`
       const line = f.takeHomeFrom === 'salary' ? `${basis} Rent that fits is ${f.range.formatted}.` : `${basis} rent that fits is ${f.range.formatted}.`
-      return say({ ...state, turn: 'R2' }, [
+      f.rangeSpendingCheckShown = true
+      // The thread's first app offer, as the city-answer invite was: later turns don't invite again.
+      return say({ ...state, turn: 'R2', invited: true }, [
         { from: 'ribbit', text: line, figure: span(f.range.low, f.range.high), figureLabel: 'Rent that fits', turn: 'R2' },
+        spendingCheck(RANGE_SPENDING_CHECK_TEXT, RANGE_SPENDING_CHECK_NOTE),
         { from: 'ribbit', text: 'Which city?' },
-      ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('R2')])
+      ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('R2'), { name: 'ribbit_spending_check_shown', props: { turn: 'R2' } }])
     }
     case 'R2':
     case 'O2':
@@ -774,7 +779,6 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
     if (hud) market = { low: hud.low, high: hud.high, median: Math.round((hud.low + hud.high) / 2), tier: 'HUD', source: 'hud' }
   }
   f.market = market
-  const invite = rentAnswerInvite(state)
   // With no state or city tax the take-home, and so the range, is the one just shown: say so in a line rather than
   // repeat both figures (Dallas: "$5,719" and "$1,600–$2,000" twice in a row).
   const unchanged = f.tax && f.tax.stateTaxAnnual <= 0 && !(f.tax.localTaxAnnual > 0)
@@ -783,51 +787,43 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
       ? `${STATE_NAME(f.stateCode)} has no state income tax, so your range stays the same.`
       : `${placeTaxLine(f)} Rent that fits is ${range.formatted}.`
     : ''
-  // The city answer is where the thread's invite comes, so it gets the headline card in every version.
+  // The city answer gets the headline card in every version.
   const fitsCard = { figure: span(range.low, range.high), figureLabel: 'Rent that fits' }
   if (!market) {
     const none = f.outsideMetro && !f.typedTown ? `I don't have rental prices outside a metro, so your range stands on its own.` : `I don't have rental prices for ${f.place}, so your range stands on its own.`
-    return askDebt(state, [taxLine, none].filter(Boolean).join(' '), 'R3', invite, fitsCard)
+    return askDebt(state, [taxLine, none].filter(Boolean).join(' '), 'R3', fitsCard)
   }
   const verdict = marketRentVerdict(range.high, market.low, market.high)
   const band = `Rentals in ${f.place} run ${fc(market.low)} to ${fc(market.high)}`
   const marketCard = { figure: span(market.low, market.high), figureLabel: `${f.place} rentals`, compare: { label: 'Rent that fits', value: span(range.low, range.high) } }
   if (verdict === 'in_reach') {
-    return askDebt(state, [taxLine, `${band}, inside your range.`].filter(Boolean).join(' '), 'R3', invite, marketCard)
+    return askDebt(state, [taxLine, `${band}, inside your range.`].filter(Boolean).join(' '), 'R3', marketCard)
   }
   const where = verdict === 'out_of_reach' ? 'above your range' : 'and only the low end fits your range'
   // Sallie Mae survey reported by Realtor.com (Jul 21, 2025): in the first two years after school, 8% rent solo
   // and 8% rent with roommates — about half of recent grads who rent.
-  return say({ ...state, turn: 'R3_roommate', invited: state.invited || Boolean(invite) }, [
+  return say({ ...state, turn: 'R3_roommate' }, [
     { from: 'ribbit', text: [taxLine, `${band}, ${where}. Among recent grads who rent, about half share with roommates.`].filter(Boolean).join(' '), ...marketCard, turn: 'R3' },
-    ...(invite ? [invite.message] : []),
     { from: 'ribbit', text: 'Roommate?' },
-  ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure yet', value: 'not_sure' }], 'text', [win('R3'), ...(invite ? [invite.event] : [])])
+  ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure yet', value: 'not_sure' }], 'text', [win('R3')])
 }
 
-function askDebt(state: ChatState, lead: string, winTurn?: string, invite?: RentInvite, card?: Pick<ChatMessage, 'figure' | 'figureLabel' | 'compare'>): Step {
-  return say({ ...state, turn: 'R3_debt', invited: state.invited || Boolean(invite) }, [
+function askDebt(state: ChatState, lead: string, winTurn?: string, card?: Pick<ChatMessage, 'figure' | 'figureLabel' | 'compare'>): Step {
+  return say({ ...state, turn: 'R3_debt' }, [
     ...(lead ? [{ from: 'ribbit' as const, text: lead, turn: winTurn, ...card }] : []),
-    ...(invite ? [invite.message] : []),
     { from: 'ribbit', text: 'Any monthly debt payments, like a car, student loans or card minimums? They come off the range.' },
-  ], [{ label: 'None', value: 'none' }, { label: 'Yes', value: 'yes' }], 'money', [...(winTurn ? [win(winTurn)] : []), ...(invite ? [invite.event] : [])])
+  ], [{ label: 'None', value: 'none' }, { label: 'Yes', value: 'yes' }], 'money', [...(winTurn ? [win(winTurn)] : [])])
 }
 
 /**
- * The thread's one invite, right on the rent answer (decided Oct 29): in the paid chat of Oct 28, 14 of 18 saw the
- * range and 12 left within a minute, before any ask. The next question follows it, so carrying on costs no tap.
+ * The app offer on the first rent range (decided Oct 30): after the Oct 29 deploy, 4 of 6 rent chats left at this
+ * range, and the 2 who reached the spending check at the pick both tapped it, while the "Save my plan" invite on the
+ * city answer got none. "Which city?" still follows, so narrowing it down costs no tap.
  */
-export const RENT_ANSWER_INVITE_TEXT = 'Save this range as your plan in WeLeap and check it against your real spending.'
-/** Under the button: the first time WeLeap is named in the thread. */
-export const RENT_ANSWER_INVITE_NOTE = 'Free, takes a minute.'
-type RentInvite = { message: ChatMessage; event: ChatEvent }
-function rentAnswerInvite(state: ChatState): RentInvite | undefined {
-  if (state.flow !== 'rent' || state.invited) return undefined
-  return {
-    message: { from: 'ribbit', text: RENT_ANSWER_INVITE_TEXT, appAsk: { label: 'Save my plan', why: 'rent_answer', note: RENT_ANSWER_INVITE_NOTE }, turn: 'R3' },
-    event: { name: 'ribbit_app_invite_shown', props: { turn: 'R3', reason: 'rent_answer' } },
-  }
-}
+export const RANGE_SPENDING_CHECK_TEXT =
+  "That range assumes the rest of your spending fits, and that's the one part I can't see. Want to check it against what you actually spend?"
+/** Under the button: no bank in the first ask (Oct 29 call, "check it against real spending"). */
+export const RANGE_SPENDING_CHECK_NOTE = "Free in WeLeap. See last month's spending next to this range."
 
 function applyDebt(state: ChatState, debt: number): Step {
   const f = state.facts
