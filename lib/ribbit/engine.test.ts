@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RENT_ANSWER_INVITE_NOTE, RENT_ANSWER_INVITE_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
@@ -166,17 +166,19 @@ describe('rent flow', () => {
     }
   })
 
-  it('the rent answer carries the thread\'s one invite, "Save my plan", and the next question right after it', async () => {
+  it('the first rent range carries the spending check, then "Which city?" with its chips; the city answer has no invite', async () => {
     const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }])
-    const msgs = s[2].messages
-    const i = msgs.findIndex((m) => m.text === RENT_ANSWER_INVITE_TEXT)
-    expect(i).toBeGreaterThan(0)
-    expect(msgs[i].appAsk).toEqual({ label: 'Save my plan', why: 'rent_answer', note: RENT_ANSWER_INVITE_NOTE })
-    // Carrying on is answering the next question: no extra tap.
-    expect(msgs.at(-1)!.text).toMatch(/\?$/)
-    expect(s[2].chips.length).toBeGreaterThan(0)
-    expect(s[2].events).toContainEqual({ name: 'ribbit_app_invite_shown', props: { turn: 'R3', reason: 'rent_answer' } })
-    expect(s[2].state.invited).toBe(true)
+    const msgs = s[1].messages
+    expect(msgs.map((m) => m.text)).toEqual([expect.stringMatching(/Rent that fits is/), RANGE_SPENDING_CHECK_TEXT, 'Which city?'])
+    expect(msgs[1].appAsk).toEqual({ label: 'Check it against my real spending', why: 'spending_check', note: RANGE_SPENDING_CHECK_NOTE })
+    expect(msgs[1].appAsk?.note).not.toMatch(/bank/i)
+    // Narrowing it down is still one tap.
+    expect(s[1].chips.length).toBeGreaterThan(0)
+    expect(s[1].events).toContainEqual({ name: 'ribbit_spending_check_shown', props: { turn: 'R2' } })
+    expect(s[1].state.invited).toBe(true)
+    // The city answer: the range for that city and the next question, no app ask.
+    expect(s[2].messages.some((m) => m.appAsk)).toBe(false)
+    expect(s[2].events.some((e) => e.name === 'ribbit_app_invite_shown')).toBe(false)
   })
 
   it('the city answer has the headline card in every version, and says the range stays when no tax changes it', async () => {
@@ -196,7 +198,7 @@ describe('rent flow', () => {
     expect(ny[2].messages.map((m) => m.text).join(' ')).toMatch(/take-home is about/)
   })
 
-  it('once invited on the rent answer, a planning question later gets no second invite', async () => {
+  it('once offered on the first range, a planning question later gets no second invite', async () => {
     const ask = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true }) })
     const s = await run('rent', [{ text: '80000' }, { chip: 'NYC' }, { text: 'should I invest or pay off my card first?' }], ask)
     expect(s[3].messages.map((m) => m.text)).not.toContain(INVITE_TEXT)
@@ -322,8 +324,8 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   it('after the invite, a planning question ends with its benefit line and a small link, at most twice', async () => {
     const line = 'Connected, WeLeap ranks your actual debts by interest rate and shows where extra payments save the most.'
     const benefitAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true, benefit: line, topic: 'debt' }) })
-    // Mid-flow, so the first planning question gets the thread's invite.
-    const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
+    // Mid-flow in the offer chat (no offer on its first range), so the first planning question gets the thread's invite.
+    const s = await run('offer', [{ text: '80000' }, { text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
     // The first planning question: the invite, never a benefit line.
     expect(s[2].messages.some((m) => m.text === line)).toBe(false)
     expect(s[2].messages.some((m) => m.text === INVITE_TEXT)).toBe(true)
@@ -339,11 +341,17 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   })
 
   it('mid-flow: the line and the button with the question parked; the card waits for the ending', async () => {
-    const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
+    const s = await run('offer', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
     const invite = s[2].messages.find((m) => m.appAsk)!
     expect(invite.appAsk?.why).toBe('plan_invite')
     expect(invite.planCard).toBeUndefined()
-    expect(s[2].parked).toBe('Which city?')
+    expect(s[2].parked).toBeTruthy()
+  })
+
+  it('rent: after the offer on the range, a planning question at "Which city?" is answered, with no second invite', async () => {
+    const s = await run('rent', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
+    expect(s[2].messages.some((m) => m.appAsk?.why === 'plan_invite')).toBe(false)
+    expect(s[2].messages.some((m) => m.text === INVITE_TEXT)).toBe(false)
   })
 
   it('an account question gets the hand-off first (the one invite), then the app link', async () => {

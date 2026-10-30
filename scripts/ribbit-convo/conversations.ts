@@ -45,8 +45,9 @@ const SEATTLE: Persona = { salary: 120000, city: 'Seattle', state: 'WA', rent: 2
 const OFFER = ['money', 'not_now']
 const LOAN_465 = /\$?46[56]\b/
 const BACK = /Back to your question/
-// The rent answer's invite (decided Oct 29): every rent conversation must show it.
-const RENT_INVITE = /Save this range as your plan in WeLeap/
+// The app offer on the first rent range (decided Oct 30; was the city answer's "Save my plan", Oct 29): every rent
+// conversation must show it.
+const RENT_INVITE = /That range assumes the rest of your spending fits/
 
 export const CONVERSATIONS: Conversation[] = [
   // ── Real threads ──────────────────────────────────────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ export const CONVERSATIONS: Conversation[] = [
   // ── The three flows, start to finish ──────────────────────────────────────────────────────────────────────
   { id: 'rent-taps', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, says: [], ever: [RENT_INVITE] },
   { id: 'rent-types-with-side-question', flow: 'rent', persona: { ...BOSTON_GRAD, style: 'types' }, mustFinish: true, says: [{ at: 'R4', text: 'is 1500 too much for Boston?' }], ever: [RENT_INVITE] },
-  { id: 'rent-austin-in-reach', flow: 'rent', persona: { ...MAYA, salary: 120000 }, mustFinish: true, says: [], ever: [RENT_INVITE], note: 'rentals inside the range: the invite rides on the debt question' },
+  { id: 'rent-austin-in-reach', flow: 'rent', persona: { ...MAYA, salary: 120000 }, mustFinish: true, says: [], ever: [RENT_INVITE], note: 'rentals inside the range; the offer came with the first range' },
   { id: 'rent-planning-question-after-invite', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, ever: [RENT_INVITE],
     says: [{ at: 'R3_debt', text: 'should I pay off my card or invest?', expect: { never: [/Click to get WeLeap|Get WeLeap/i] } }] },
   { id: 'offer-taps', flow: 'offer', persona: SEATTLE, mustFinish: true, says: [] },
