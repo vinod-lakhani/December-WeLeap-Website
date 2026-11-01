@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
@@ -389,6 +389,29 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[10].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
+  it("offer: the take-home in the job's city carries the spending check, then the extras question with its chips", async () => {
+    const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }])
+    const msgs = s[2].messages
+    expect(msgs.map((m) => m.text)).toEqual([expect.stringMatching(/take-home/), TAKEHOME_SPENDING_CHECK_TEXT, 'Anything on top of the salary?'])
+    expect(msgs[1].appAsk).toEqual({ label: 'Check it against my real spending', why: 'spending_check', note: TAKEHOME_SPENDING_CHECK_NOTE })
+    expect(msgs[1].appAsk?.note).not.toMatch(/bank/i)
+    expect(s[2].chips.map((c) => c.value)).toContain('none')
+    expect(s[2].events).toContainEqual({ name: 'ribbit_spending_check_shown', props: { turn: 'O3' } })
+    expect(s[2].state.invited).toBe(true)
+  })
+
+  it('offer: No match or Skip after the take-home check goes on to rent with no second ask', async () => {
+    for (const steps of [
+      [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'none' }],
+      [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'skip' }],
+    ]) {
+      const s = await run('offer', steps)
+      const appAsks = s.flatMap((x) => x.messages).filter((m) => m.appAsk)
+      expect(appAsks.map((m) => m.appAsk?.why)).toEqual(['spending_check'])
+      expect(said(s[s.length - 1])).toContain('Want to work that out properly?')
+    }
+  })
+
   it('offer: the spending check after the 401k, then rent, and Later ends on the offer card', async () => {
     const s = await run('offer', [
       { text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'put_in' }, { chip: 'keep' }, { chip: 'later' },
@@ -396,6 +419,7 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     const check = s[6].messages.find((m) => m.appAsk)!
     expect(check.appAsk?.why).toBe('spending_check')
     expect(check.text).toContain('Want to check before you tell HR?')
+    expect(check.appAsk?.note).toMatch(/^Free in WeLeap\. See last month's spending next to \$[\d,]+ take-home, before and after the 4%\.$/)
     expect(said(s[7])).toContain('Want to work that out properly?')
     const card = s[8].messages.find((m) => m.planCard)!
     expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home in Austin', 'Offer worth, with the match', '401(k) at 4%', 'What the 4% costs you'])

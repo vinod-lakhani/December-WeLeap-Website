@@ -94,7 +94,8 @@ export interface Facts {
   mentionedSaving?: number
   /** The spending check has been offered in this thread (once per thread). */
   spendingCheckShown?: boolean
-  /** The spending check offered on the first rent range (R2); the pick moment (R4) still offers it once. */
+  /** The spending check offered on the first answer: the rent range (R2) or the offer's take-home (O3). The later
+   * moment (the rent pick at R4, the 401k at O6) still offers it once. */
   rangeSpendingCheckShown?: boolean
   range?: RentRange
   market?: { low: number; high: number; median: number; tier: string; source: 'zori' | 'hud' } | null
@@ -950,13 +951,25 @@ const EXTRA_CHIPS: Chip[] = [
   { label: 'Signing bonus', value: 'signing' }, { label: 'Annual bonus', value: 'bonus' }, { label: 'Equity', value: 'equity' },
 ]
 
+/**
+ * The offer's first answer carries the app offer, as the first rent range does (Oct 30): the take-home in the job's
+ * city is the one figure every offer thread reaches, while the 401k check at O6 needs a known match and a tap.
+ */
+export const TAKEHOME_SPENDING_CHECK_TEXT =
+  "Whether that's enough depends on what you spend, and that's the one part I can't see. Want to check it against what you actually spend?"
+export const TAKEHOME_SPENDING_CHECK_NOTE = "Free in WeLeap. See last month's spending next to this take-home."
+
 function offerAfterLocation(state: ChatState): Step {
   const f = state.facts
   const line = placeTaxLine(f) || `In ${f.place}, take-home before any 401k is about ${fc(f.takeHomeMonthly ?? 0)} a month.`
-  return say({ ...state, turn: 'O3' }, [
+  const first = !f.rangeSpendingCheckShown
+  f.rangeSpendingCheckShown = true
+  return say({ ...state, turn: 'O3', invited: true }, [
     { from: 'ribbit', text: f.tax ? `${line} That's before any 401k.` : line, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, figureLabel: 'Take-home', turn: 'O3' },
+    ...(first ? [spendingCheck(TAKEHOME_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE)] : []),
     { from: 'ribbit', text: 'Anything on top of the salary?' },
-  ], [...EXTRA_CHIPS, { label: 'Just salary', value: 'none' }, { label: 'Show me the math', value: '__math__' }], 'text', [win('O3')])
+  ], [...EXTRA_CHIPS, { label: 'Just salary', value: 'none' }, { label: 'Show me the math', value: '__math__' }], 'text',
+  [win('O3'), ...(first ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'O3' } }] : [])])
 }
 
 async function offerExtras(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
@@ -1076,7 +1089,7 @@ function offerElection(state: ChatState): Step {
   f.spendingCheckShown = true
   return say({ ...state, turn: 'O6' }, [elected, spendingCheck(
     `That ${fc(cost)} is fine if your spending leaves room for it, and your spending is the one thing I can't see. Want to check before you tell HR?`,
-    `Connect your bank in WeLeap, about 2 minutes. You'll see last month's spending next to ${fc(f.takeHomeMonthly ?? 0)} take-home, before and after the ${cap}%.`,
+    `Free in WeLeap. See last month's spending next to ${fc(f.takeHomeMonthly ?? 0)} take-home, before and after the ${cap}%.`,
   )], [...KEEP_GOING, { label: "What's a good rent on this", value: 'rent' }], 'text', [win('O6'), { name: 'ribbit_spending_check_shown', props: { turn: 'O6' } }])
 }
 

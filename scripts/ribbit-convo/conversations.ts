@@ -48,6 +48,8 @@ const BACK = /Back to your question/
 // The app offer on the first rent range (decided Oct 30; was the city answer's "Save my plan", Oct 29): every rent
 // conversation must show it.
 const RENT_INVITE = /That range assumes the rest of your spending fits/
+// The same offer on the offer's first answer, the take-home in the job's city (Nov 1, before the offer ads).
+const OFFER_INVITE = /Whether that's enough depends on what you spend/
 
 export const CONVERSATIONS: Conversation[] = [
   // ── Real threads ──────────────────────────────────────────────────────────────────────────────────────────
@@ -105,13 +107,17 @@ export const CONVERSATIONS: Conversation[] = [
   { id: 'rent-austin-in-reach', flow: 'rent', persona: { ...MAYA, salary: 120000 }, mustFinish: true, says: [], ever: [RENT_INVITE], note: 'rentals inside the range; the offer came with the first range' },
   { id: 'rent-planning-question-after-invite', flow: 'rent', persona: BOSTON_GRAD, mustFinish: true, ever: [RENT_INVITE],
     says: [{ at: 'R3_debt', text: 'should I pay off my card or invest?', expect: { never: [/Click to get WeLeap|Get WeLeap/i] } }] },
-  { id: 'offer-taps', flow: 'offer', persona: SEATTLE, mustFinish: true, says: [] },
+  { id: 'offer-taps', flow: 'offer', persona: SEATTLE, mustFinish: true, says: [], ever: [OFFER_INVITE] },
+  { id: 'offer-types-no-match', flow: 'offer', persona: { ...BOSTON_GRAD, style: 'types' }, mustFinish: true, says: [], ever: [OFFER_INVITE] },
+  { id: 'offer-planning-question-after-invite', flow: 'offer', persona: SEATTLE, mustFinish: true, ever: [OFFER_INVITE],
+    says: [{ at: 'O4', text: 'should I pick roth or traditional 401k?', expect: { never: [/Click to get WeLeap|Get WeLeap/i] } }] },
   { id: 'money-with-card-debt', flow: 'money', persona: CHI_TYPES, mustFinish: true, says: [], end: { says: [/24%|card/i] } },
   { id: 'money-side-question', flow: 'money', persona: MAYA, mustFinish: true, says: [{ at: 'M3', text: 'what counts as rent if I live with my parents?' }] },
   // ── Typed cities (Oct 29: only the six presets and state names were read; 7 of 14 paid rent chats stuck) ──
   { id: 'rent-typed-dallas', flow: 'rent', persona: { ...MAYA, city: 'Dallas', state: 'TX', style: 'types' }, mustFinish: true, says: [], ever: [/Texas has no state income tax, so your range stays the same/, /Rentals in Dallas run/, RENT_INVITE] },
   { id: 'rent-typed-city-state', flow: 'rent', persona: { ...MAYA, city: 'Denver, CO', state: 'CO' }, mustFinish: true, says: [], ever: [/In Denver, take-home/] },
-  { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/] },
+  { id: 'offer-typed-charlotte-nc', flow: 'offer', persona: { ...SEATTLE, city: 'Charlotte NC', state: 'NC' }, mustFinish: true, says: [], ever: [/Charlotte/, OFFER_INVITE] },
+  { id: 'offer-town-ashburn', flow: 'offer', persona: { ...SEATTLE, city: 'Ashburn', state: 'VA', style: 'types' }, mustFinish: true, says: [], ever: [OFFER_INVITE] },
   { id: 'rent-portland-which-one', flow: 'rent', persona: { ...MAYA, city: 'Portland', state: 'OR' }, mustFinish: true, says: [], ever: [/Which one\?/, /In Portland, take-home/] },
   { id: 'money-typed-phoenix', flow: 'money', persona: { ...MAYA, city: 'Phoenix', state: 'AZ', style: 'types' }, mustFinish: true, says: [] },
   // ── Towns the rent data has no metro for (Oct 29: a paid visitor from Ashburn, VA typed at "Which area?" 8 times) ──
