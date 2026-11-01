@@ -21,8 +21,16 @@
  * "intended to install" — the two are very different populations and only one
  * of them is worth paying for. Both now fire on the tap.
  *
- * Desktop is unchanged: a QR to scan, the store badges, and a link to the web
- * app. There is no store to send a computer to.
+ * Desktop: a QR to scan, the store badges, and a link to the web app. There is
+ * no store to send a computer to.
+ *
+ * THE PRODUCT TOUR (31 Oct 2026). A 30-second silent clip of the app sits
+ * under the store button on phones — in the slot the per-ad proof screenshot
+ * used to hold — with a second store button after it, because the clip ends
+ * on the install ask and anybody who watched to the end is looking at the
+ * bottom of the page, not the top. On desktop it sits beside the QR code. The
+ * button stays above the 560 px fold of an in-app browser on every phone
+ * layout; that rule is older than the video and is not traded for it.
  */
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -42,6 +50,7 @@ import { pitchFor } from '@/lib/get-pitch';
 import { fbq } from '@/lib/meta-pixel';
 import { getUtmParams, parseUtm } from '@/lib/utm-storage';
 
+import { ProductTourVideo } from './ProductTourVideo';
 import { StoreBadges } from './StoreBadges';
 
 export type GetDevice = 'ios' | 'android' | 'desktop';
@@ -136,7 +145,12 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
    * be paying for our own friction — the same mistake the old redirect made in
    * the other direction.
    */
-  const onStoreTap = (store: typeof storeName, href: string) => {
+  /**
+   * `position` says which of the two phone buttons it was: the one under the
+   * headline, or the one under the video. Added beside the existing
+   * properties, never in place of one — saved insights read those.
+   */
+  const onStoreTap = (store: typeof storeName, href: string, position: 'top' | 'after_video' = 'top') => {
     const eventId = newEventId();
 
     /**
@@ -162,6 +176,7 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
       store_url: href,
       event_id: eventId,
       trigger: 'tap',
+      position,
     }).catch(() => {});
   };
 
@@ -206,71 +221,105 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
         </a>
         <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start.</p>
 
-        {/* The evidence for the sentence above the button.
-            Below the CTA, not above it: at 390x560 — an in-app browser with its
-            chrome — the button has to stay above the fold, and this still
-            lands inside it. Intrinsic size is passed so the box is reserved
-            and the button never moves while the image loads. */}
-        <Image
-          src={pitch.proof.src}
-          alt={pitch.proof.alt}
-          width={pitch.proof.width}
-          height={pitch.proof.height}
-          sizes="(max-width: 460px) 100vw, 420px"
-          priority
-          className="mt-7 h-auto w-full rounded-xl"
-        />
+        {/* The product tour, where the proof screenshot was.
+            Below the button, never above it: at 390x560 — an in-app browser
+            with its chrome — the button has to stay above the fold, and the
+            top of the clip still lands inside it, which is enough for it to
+            start playing (see ProductTourVideo). Sized by aspect ratio so the
+            box is reserved and nothing below it moves while it loads. */}
+        <div className="mt-7 flex flex-col items-center gap-2.5">
+          <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#386641]">See it in 30 seconds</p>
+          <ProductTourVideo
+            placement="get_phone"
+            className="w-[260px] rounded-[28px] shadow-[0_12px_32px_rgba(16,32,26,0.18)]"
+          />
+        </div>
+
+        {/* The clip ends on the install ask. Whoever watched it is at the
+            bottom of the page, so the same anchor, same href, sits here too. */}
+        <a
+          href={storeHref}
+          onClick={() => onStoreTap(storeName, storeHref, 'after_video')}
+          className="mt-6 block w-full rounded-xl bg-[#386641] px-6 py-4 text-center text-[17px] font-bold text-white shadow-card active:bg-[#2d5235]"
+        >
+          {device === 'ios' ? 'Download on the App Store' : 'Get it on Google Play'}
+        </a>
+        <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start.</p>
       </main>
     );
   }
 
   /* ── Desktop, and Android while Play is not live ─────────────────────── */
+  const desktopCopy = (
+    <div className={androidWaiting ? 'flex flex-col items-center gap-2' : 'flex flex-col items-center gap-2.5 md:items-start'}>
+      <h1 className={androidWaiting ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-[28px] font-extrabold leading-tight tracking-tight text-ink md:text-[34px]'}>
+        {androidWaiting ? 'WeLeap for Android is coming soon' : 'Get the mobile app'}
+      </h1>
+      <p className="max-w-sm text-[15px] leading-relaxed text-subtle md:max-w-[420px] md:text-[16px]">
+        {androidWaiting
+          ? 'The Android app is in Google Play review. Use WeLeap on the web for now — same account, same plan — and it will carry straight over to the app.'
+          : 'Every week WeLeap names one money move, with the dollar amount, ready to approve. Scan the code with your phone’s camera to download it.'}
+      </p>
+    </div>
+  );
+
+  const webLink = (
+    <a
+      href={webHref}
+      className={
+        androidWaiting
+          ? 'inline-flex items-center justify-center rounded-xl bg-brand-700 px-6 py-3.5 text-[15px] font-bold text-white hover:bg-brand-800'
+          : 'text-sm font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800'
+      }
+    >
+      {androidWaiting ? 'Open WeLeap on the web' : 'Or open WeLeap on the web →'}
+    </a>
+  );
+
+  // Dormant since Play went live (2 Oct): no store to point at, so no tour.
+  if (androidWaiting) {
+    return (
+      <main className="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-6 text-center">
+        {desktopCopy}
+        {webLink}
+      </main>
+    );
+  }
+
+  /**
+   * Two columns from `md` up: the tour in a phone frame, the scan-and-badges
+   * beside it. Below `md` — a narrow desktop window — they stack, tour last,
+   * so the QR code is what a cramped window shows first.
+   */
   return (
-    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-6 text-center">
-      <div className="flex flex-col items-center gap-2">
-        <h1 className="text-2xl font-extrabold tracking-tight text-ink">
-          {androidWaiting ? 'WeLeap for Android is coming soon' : 'Get the mobile app'}
-        </h1>
-        <p className="max-w-sm text-[15px] leading-relaxed text-subtle">
-          {androidWaiting
-            ? 'The Android app is in Google Play review. Use WeLeap on the web for now — same account, same plan — and it will carry straight over to the app.'
-            : 'Scan the code with your phone’s camera to download WeLeap.'}
-        </p>
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-10 px-6 py-12 text-center md:flex-row md:gap-20 md:text-left">
+      <div className="order-2 rounded-[44px] bg-ink p-3 shadow-[0_24px_60px_rgba(16,32,26,0.22)] md:order-none">
+        <ProductTourVideo placement="get_desktop" className="w-[260px] rounded-[34px] md:w-[330px]" />
       </div>
 
-      {!androidWaiting && (
-        <div className="rounded-2xl border border-hairline bg-white p-4 shadow-sm">
-          <Image
-            src="/badges/qr-get-app.png"
-            alt="Scan to download the WeLeap app"
-            width={200}
-            height={200}
-            className="h-44 w-44"
-            unoptimized
-            priority
+      <div className="flex flex-col items-center gap-6 md:items-start">
+        {desktopCopy}
+        <div className="flex flex-col items-center gap-5 md:flex-row">
+          <div className="rounded-2xl border border-hairline bg-white p-3.5 shadow-sm">
+            <Image
+              src="/badges/qr-get-app.png"
+              alt="Scan to download the WeLeap app"
+              width={200}
+              height={200}
+              className="h-40 w-40"
+              unoptimized
+              priority
+            />
+          </div>
+          <StoreBadges
+            placement="get_page"
+            className="flex-col items-center justify-center md:items-start"
+            hrefs={hrefs}
+            onStoreClick={onStoreTap}
           />
         </div>
-      )}
-
-      {!androidWaiting && (
-        <StoreBadges
-          placement="get_page"
-          className="justify-center"
-          hrefs={hrefs}
-          onStoreClick={onStoreTap}
-        />
-      )}
-
-      <a
-        href={webHref}
-        className={
-          androidWaiting
-            ? 'inline-flex items-center justify-center rounded-xl bg-brand-700 px-6 py-3.5 text-[15px] font-bold text-white hover:bg-brand-800'
-            : 'text-sm font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-800'
-        }
-      >
-        {androidWaiting ? 'Open WeLeap on the web' : 'Or open WeLeap on the web →'}
-      </a>
+        {webLink}
+      </div>
     </main>
   );
 }

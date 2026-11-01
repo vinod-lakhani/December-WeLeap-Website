@@ -8,10 +8,13 @@
  * move" — with nothing under it, and left. The page asked for an install on
  * trust alone.
  *
- * So each pitch carries a real product screen. Not decoration: the screenshots
- * are the evidence for the sentence above them, and every one of them names a
- * dollar amount, which the copy cannot do before it knows anything about the
- * person.
+ * So each pitch used to carry a real product screen — a still screenshot under
+ * the button as the evidence for the sentence above it. Since 31 Oct 2026 the
+ * evidence is the 30-second product tour instead (components/ProductTourVideo),
+ * the same clip for every pitch: it shows the 401(k) leap, the paycheck split
+ * and the debt and savings moves in one place, and it moves. What still varies
+ * by ad is the promise — headline and sub-line — which is the part an ad
+ * actually sets up.
  *
  * Matching is on keywords in the ad's own slugs rather than a table of ad ids,
  * because ad ids churn every time a creative is duplicated and a stale table
@@ -21,18 +24,9 @@
  */
 import type { StoreUtm } from '@/lib/stores'
 
-export type GetProof = {
-  src: string
-  alt: string
-  /** Intrinsic size, so next/image reserves the box and nothing shifts. */
-  width: number
-  height: number
-}
-
 export type GetPitch = {
   headline: string
   sub: string
-  proof: GetProof
 }
 
 /**
@@ -43,55 +37,24 @@ export type GetPitch = {
  */
 export const MAX_HEADLINE = 34
 
-const WEEKLY_FOCUS: GetProof = {
-  src: '/images/product/weekly-focus.jpg',
-  alt: "WeLeap's weekly focus card: capture your full 401(k) match by moving your deferral to 6% of gross pay, worth $750 a month.",
-  width: 1400,
-  height: 529,
-}
-
-const DEBT_PAYOFF: GetProof = {
-  src: '/images/product/debt-payoff-leap.jpg',
-  alt: "WeLeap's weekly focus card: put $150 a month toward $8,500 of high-APR debt and clear it 19.8 years sooner, saving $11,219 of interest.",
-  width: 1400,
-  height: 529,
-}
-
-const SAVINGS_PATH: GetProof = {
-  src: '/images/product/savings-path.jpg',
-  alt: "WeLeap's savings path card: an emergency fund 22 months away, $5,000 saved of a $27,772 target.",
-  width: 1400,
-  height: 529,
-}
-
-/**
- * The fallback, and what the great majority of traffic sees. The sub-head is
- * deliberately a description of the card underneath it rather than a claim
- * about the product, so the two corroborate each other instead of the page
- * asserting something twice.
- */
 export const DEFAULT_PITCH: GetPitch = {
   headline: 'The one money move to make next.',
   sub: 'Every week WeLeap names one move, with the dollar amount, ready to approve.',
-  proof: WEEKLY_FOCUS,
 }
 
 const DEBT_PITCH: GetPitch = {
   headline: 'Your debt has a faster exit.',
   sub: 'WeLeap sets the payoff order and shows what it saves you in interest.',
-  proof: DEBT_PAYOFF,
 }
 
 const SAVINGS_PITCH: GetPitch = {
   headline: 'Know when your fund is full.',
   sub: 'WeLeap sets the target, tracks the gap and names the move each week.',
-  proof: SAVINGS_PATH,
 }
 
 const MATCH_PITCH: GetPitch = {
   headline: 'The free money you’re missing.',
   sub: 'WeLeap finds your unclaimed employer match and what to change to get it.',
-  proof: WEEKLY_FOCUS,
 }
 
 /**
