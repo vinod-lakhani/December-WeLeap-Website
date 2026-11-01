@@ -367,6 +367,8 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     const check = s[5].messages.find((m) => m.appAsk)!
     expect(check.appAsk).toEqual(expect.objectContaining({ label: 'Check it against my real spending', why: 'spending_check' }))
     expect(check.text).toContain(`Before you sign at $${facts(s[5]).pick!.toLocaleString('en-US')}`)
+    expect(check.appAsk?.note).toBe(`Free in WeLeap. See last month's spending next to $${facts(s[5]).pick!.toLocaleString('en-US')} rent, and what's left.`)
+    expect(check.appAsk?.note).not.toMatch(/bank/i)
     expect(s[5].chips.map((c) => c.value)).toEqual(['keep'])
     expect(s[5].events.some((e) => e.name === 'ribbit_spending_check_shown')).toBe(true)
     expect(facts(s[6]).start).toBe('next_month')

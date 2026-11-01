@@ -378,7 +378,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         f.spendingCheckShown = true
         return say({ ...state, turn: 'R4b' }, [won, spendingCheck(
           `Before you sign at ${fc(pick)}: this range assumes the rest of your spending fits. That's the one thing I can't see. Want to check it against what you actually spend?`,
-          `Connect your bank in WeLeap, about 2 minutes. You'll see what you spent last month next to ${fc(pick)}, and what's left.`,
+          `Free in WeLeap. See last month's spending next to ${fc(pick)} rent, and what's left.`,
         )], KEEP_GOING, 'text', [win('R5'), { name: 'ribbit_spending_check_shown', props: { turn: 'R4' } }])
       }
       return askStart(state, [won], [win('R5')])
