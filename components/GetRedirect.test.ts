@@ -158,3 +158,24 @@ describe('an untagged visit — somebody typing weleap.ai/get', () => {
     expect(src).toMatch(/content_name: appStoreCampaignToken\(appleUtm\)/)
   })
 })
+
+describe('the product tour on phones', () => {
+  const phone = (() => {
+    const s = readFileSync(join(process.cwd(), 'components/GetRedirect.tsx'), 'utf8')
+    const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    return code.slice(code.indexOf('if (isPhone && !androidWaiting)'), code.indexOf('const desktopCopy'))
+  })()
+
+  it('keeps the store button above the video', () => {
+    // The button is what has to clear the in-app fold. The tour goes under it.
+    expect(phone.indexOf('href={storeHref}')).toBeGreaterThan(-1)
+    expect(phone.indexOf('href={storeHref}')).toBeLessThan(phone.indexOf('<ProductTourVideo'))
+  })
+
+  it('repeats the same real anchor after the video, and says which one was tapped', () => {
+    const anchors = phone.match(/<a\s+href=\{storeHref\}/g) ?? []
+    expect(anchors).toHaveLength(2)
+    expect(phone).toMatch(/onClick=\{\(\) => onStoreTap\(storeName, storeHref, 'after_video'\)\}/)
+    expect(phone.indexOf("'after_video'")).toBeGreaterThan(phone.indexOf('<ProductTourVideo'))
+  })
+})
