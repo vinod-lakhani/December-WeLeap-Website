@@ -301,6 +301,18 @@ const TEXT_OPTIN_EVENTS = new Set(['text_optin_shown', 'text_optin_submitted', '
  */
 const EVENT_ID_EVENTS = new Set(['tool_completed', 'tool_cta_clicked'])
 
+/**
+ * Taps that hand the visitor to another app, sent to PostHog the moment they happen.
+ *
+ * PostHog batches events and sends them every few seconds. A tap on an sms: link
+ * or a store link opens Messages or the store straight away, the browser parks
+ * the page, and the batch holding the tap can go with it. On Nov 2 a chat
+ * visitor tapped "Text me" and the text arrived at dev3, but PostHog only ever
+ * saw the door being shown. A beacon is the transport browsers keep alive past
+ * that point, so these skip the batch and go by beacon.
+ */
+const SEND_NOW_EVENTS = new Set(['text_optin_submitted', 'store_link_clicked', 'ribbit_app_link_clicked'])
+
 /** Meta custom events, keyed by the PostHog event that triggers them. */
 const META_CUSTOM_EVENTS: Record<string, string> = {
   tool_completed: 'ToolCompleted',
@@ -386,7 +398,11 @@ export async function track(eventName: string, params?: Record<string, any>, wai
   // Before the SDK finishes loading this queues rather than drops, so events
   // fired during hydration still arrive. See lib/posthog-lazy.ts.
   try {
-    getPostHog().capture(eventName, params || {});
+    getPostHog().capture(
+      eventName,
+      params || {},
+      SEND_NOW_EVENTS.has(eventName) ? { send_instantly: true, transport: 'sendBeacon' } : undefined,
+    );
   } catch (error) {
     if (DEBUG_ANALYTICS) {
       console.error('[Analytics] Error tracking to PostHog:', eventName, error);
