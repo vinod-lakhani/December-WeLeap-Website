@@ -24,7 +24,7 @@ import { federalTax, ficaTax, marginalFederalRate, taxableIncome } from '@/lib/f
 import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type OfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
-import { splitCityState, matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, salaryOrTakeHome } from './parse'
+import { DEFAULT_HOURS, splitCityState, matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
 import { moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
 import type { AppReason } from './appLink'
 
@@ -94,8 +94,8 @@ export interface Facts {
   mentionedSaving?: number
   /** The spending check has been offered in this thread (once per thread). */
   spendingCheckShown?: boolean
-  /** The spending check offered on the first answer: the rent range (R2) or the offer's take-home (O3). The later
-   * moment (the rent pick at R4, the 401k at O6) still offers it once. */
+  /** The spending check offered on the first answer: the rent range (R2). The later moment (the rent pick at R4,
+   * the 401k at O6) still offers it once. */
   rangeSpendingCheckShown?: boolean
   range?: RentRange
   market?: { low: number; high: number; median: number; tier: string; source: 'zori' | 'hud' } | null
@@ -106,6 +106,15 @@ export interface Facts {
   purpose?: 'cushion' | 'card' | 'future'
   roommate?: 'yes' | 'no' | 'not_sure'
   // offer
+  /** The offer's base pay as given: a yearly salary, or an hourly rate at hoursPerWeek (salary is then rate × hours × 52). */
+  payBasis?: 'salary' | 'hourly'
+  hourlyRate?: number
+  hoursPerWeek?: number
+  /** A bare 10 to 999 at O1: $95 an hour or $95,000 a year, asked rather than guessed. */
+  pendingPay?: number
+  /** The other offer being weighed (O3_compare): its base pay a year and its take-home a month in the same place. */
+  compareSalary?: number
+  compareTakeHome?: number
   bonusPct?: number
   signingBonus?: number
   rsuAnnual?: number
@@ -483,21 +492,15 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     }
 
     // ── Offer ─────────────────────────────────────────────────────────────────────────────────────────────
-    case 'O1': {
-      const n = parseMoney(text)
-      if (!n || n < 1_000) return question(state, text, svc, 'the base salary in the offer')
-      f.salary = n
-      f.takeHomeFrom = 'salary'
-      f.takeHomeMonthly = beforeStateTakeHome(n)
-      f.takeHomeBeforeState = true
-      return say({ ...state, turn: 'O2' }, [
-        { from: 'ribbit', text: `On ${fc(n)}, take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`, figure: `${fc(f.takeHomeMonthly)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
-        { from: 'ribbit', text: 'Which city is the job in?' },
-      ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
-    }
+    case 'O1':
+    case 'O1_amount':
+    case 'O1_basis':
+      return offerPay(state, chip, text, svc)
     case 'O3':
     case 'O3_amount':
       return offerExtras(state, chip, text, svc)
+    case 'O3_compare':
+      return offerCompare(state, text, svc)
     case 'O4':
     case 'O4_formula':
     case 'O4_rate':
@@ -943,8 +946,59 @@ function cardPayoff(state: ChatState, balance: number, apr: number): Step {
 
 // ── Offer turns ─────────────────────────────────────────────────────────────────────────────────────────────
 
+// Hourly as well as yearly, as the rent question offers its two (Nov 3): a paid visitor typed "19.50", which read
+// as $20 a year and went to Ribbit as a question.
+const PAY_CHIPS: Chip[] = [{ label: 'Yearly salary', value: 'salary' }, { label: 'Hourly', value: 'hourly' }]
+
 function askOfferSalary(state: ChatState): Step {
-  return say({ ...state, turn: 'O1' }, [{ from: 'ribbit', text: "Congrats on the offer. What's the base salary?", turn: 'O1' }], [], 'money')
+  return say({ ...state, turn: 'O1' }, [
+    { from: 'ribbit', text: "Congrats on the offer. What's the base pay? A yearly salary or an hourly rate both work.", turn: 'O1' },
+  ], PAY_CHIPS, 'money')
+}
+
+/** "$19.50" with its cents, "$22" without. */
+const fcc = (n: number) => (Number.isInteger(n) ? fc(n) : `$${n.toFixed(2)}`)
+/** The pay as the chat says it back: "$19.50 an hour, 40 hours a week" or "$85,000". */
+const payLine = (f: Facts) => (f.payBasis === 'hourly' && f.hourlyRate ? `${fcc(f.hourlyRate)} an hour, ${f.hoursPerWeek} hours a week` : fc(f.salary ?? 0))
+
+async function offerPay(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  if (state.turn !== 'O1_basis' && (chip === 'salary' || chip === 'hourly')) {
+    f.payBasis = chip
+    return say({ ...state, turn: 'O1_amount' }, [{
+      from: 'ribbit',
+      text: chip === 'salary' ? "What's the yearly base salary?" : `What's the hourly rate? Add the hours if it isn't ${DEFAULT_HOURS} a week, like "$19.50, 30 hours".`,
+    }], [], 'money')
+  }
+  let pay: Pay | null
+  if (state.turn === 'O1_basis' && f.pendingPay) {
+    const n = f.pendingPay
+    const pick = chip ?? (/hour|hr\b/i.test(text) ? 'hourly' : /year|annual|salary|\bk\b|thousand|grand/i.test(text) ? 'salary' : '')
+    pay = pick === 'hourly' ? readPay(String(n), 'hourly') : pick === 'salary' ? { kind: 'salary', annual: n * 1_000 } : readPay(text)
+  } else {
+    pay = readPay(text, state.turn === 'O1_amount' ? f.payBasis : undefined)
+  }
+  if (!pay || (pay.kind === 'salary' && pay.annual < 1_000)) return question(state, text, svc, 'the base pay in the offer, yearly or hourly')
+  if (pay.kind === 'unsure') {
+    f.pendingPay = pay.n
+    return say({ ...state, turn: 'O1_basis' }, [{ from: 'ribbit', text: `Is that ${fc(pay.n)} an hour, or ${fc(pay.n * 1_000)} a year?` }],
+      [{ label: `${fc(pay.n)} an hour`, value: 'hourly' }, { label: `${fc(pay.n * 1_000)} a year`, value: 'salary' }], 'money')
+  }
+  f.pendingPay = undefined
+  f.payBasis = pay.kind
+  f.hourlyRate = pay.kind === 'hourly' ? pay.rate : undefined
+  f.hoursPerWeek = pay.kind === 'hourly' ? pay.hours : undefined
+  f.salary = pay.annual
+  f.takeHomeFrom = 'salary'
+  f.takeHomeMonthly = beforeStateTakeHome(pay.annual)
+  f.takeHomeBeforeState = true
+  const lead = pay.kind === 'hourly'
+    ? `At ${payLine(f)}, that's about ${fc(pay.annual)} a year. Take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`
+    : `On ${fc(pay.annual)}, take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`
+  return say({ ...state, turn: 'O2' }, [
+    { from: 'ribbit', text: lead, figure: `${fc(f.takeHomeMonthly)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
+    { from: 'ribbit', text: 'Which city is the job in?' },
+  ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
 }
 
 const EXTRA_CHIPS: Chip[] = [
@@ -952,24 +1006,52 @@ const EXTRA_CHIPS: Chip[] = [
 ]
 
 /**
- * The offer's first answer carries the app offer, as the first rent range does (Oct 30): the take-home in the job's
- * city is the one figure every offer thread reaches, while the 401k check at O6 needs a known match and a tap.
+ * The take-home in the job's city, then the offer's next question. Comparing a second offer leads (Nov 3): the one
+ * paid visitor who reached this turn skipped the spending check offered here and compared a second offer by hand.
+ * The spending check waits for the 401k decision (O6) and the plan's ending.
  */
-export const TAKEHOME_SPENDING_CHECK_TEXT =
-  "Whether that's enough depends on what you spend, and that's the one part I can't see. Want to check it against what you actually spend?"
-export const TAKEHOME_SPENDING_CHECK_NOTE = "Free in WeLeap. See last month's spending next to this take-home."
+const COMPARE_CHIP: Chip = { label: 'Compare another offer', value: 'compare' }
+const COMPARE = /\b(compare|another offer|other offer|second offer|two offers|both offers|competing offer)\b/i
+const extrasQuestion = (f: Facts) => `Anything on top of the ${f.payBasis === 'hourly' ? 'pay' : 'salary'}?`
+const extrasChips = (f: Facts): Chip[] => [
+  ...(f.compareSalary ? [] : [COMPARE_CHIP]), ...EXTRA_CHIPS,
+  { label: f.payBasis === 'hourly' ? 'Just the pay' : 'Just salary', value: 'none' }, { label: 'Show me the math', value: '__math__' },
+]
 
 function offerAfterLocation(state: ChatState): Step {
   const f = state.facts
   const line = placeTaxLine(f) || `In ${f.place}, take-home before any 401k is about ${fc(f.takeHomeMonthly ?? 0)} a month.`
-  const first = !f.rangeSpendingCheckShown
-  f.rangeSpendingCheckShown = true
-  return say({ ...state, turn: 'O3', invited: true }, [
+  return say({ ...state, turn: 'O3' }, [
     { from: 'ribbit', text: f.tax ? `${line} That's before any 401k.` : line, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, figureLabel: 'Take-home', turn: 'O3' },
-    ...(first ? [spendingCheck(TAKEHOME_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE)] : []),
-    { from: 'ribbit', text: 'Anything on top of the salary?' },
-  ], [...EXTRA_CHIPS, { label: 'Just salary', value: 'none' }, { label: 'Show me the math', value: '__math__' }], 'text',
-  [win('O3'), ...(first ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'O3' } }] : [])])
+    { from: 'ribbit', text: `Weighing another offer? I can put the two side by side. Otherwise, ${extrasQuestion(f).toLowerCase()}` },
+  ], extrasChips(f), 'text', [win('O3')])
+}
+
+/** The other offer's base pay, priced in the same place with the same taxes, next to this one's take-home. */
+async function offerCompare(state: ChatState, text: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  const pay = readPay(text, f.payBasis)
+  if (!pay || pay.kind === 'unsure' || pay.annual < 1_000) return question(state, text, svc, "the other offer's base pay, yearly or hourly")
+  const other = pay.annual
+  const tax = f.stateCode ? await svc.tax(other, f.stateCode) : null
+  const local = tax && f.region ? localTaxAnnual(f.region.regionName, Math.max(0, other - STANDARD_DEDUCTION_2026_SINGLE)) : 0
+  const takeHome = tax ? Math.max(0, tax.netIncomeAnnual - local) / 12 : beforeStateTakeHome(other)
+  f.compareSalary = other
+  f.compareTakeHome = takeHome
+  const diff = takeHome - (f.takeHomeMonthly ?? 0)
+  const said = pay.kind === 'hourly' ? `${fcc(pay.rate)} an hour, ${pay.hours} hours a week` : fc(other)
+  const where = f.place ? ` in ${f.place}` : ''
+  // The year is twelve of the month as shown, so the two figures multiply out.
+  const gap = Math.round(Math.abs(diff))
+  const verdict = gap < 10 ? 'about the same as this one.' : `${fc(gap)} a month ${diff > 0 ? 'more' : 'less'} than this one, ${fc(gap * 12)} a year.`
+  return say({ ...state, turn: 'O3' }, [
+    {
+      from: 'ribbit',
+      text: `At ${said}, the other offer takes home about ${fc(takeHome)} a month${where}: ${verdict} That's base pay only. A bonus, equity or a 401k match can change which one comes out ahead.`,
+      figure: `${fc(takeHome)}/mo`, figureLabel: 'The other offer, take-home', turn: 'O3_compare',
+    },
+    { from: 'ribbit', text: `Back to this offer. ${extrasQuestion(f)}` },
+  ], extrasChips(f), 'text', [win('O3_compare'), { name: 'ribbit_offer_compared', props: { turn: 'O3', other_more: diff > 0 } }])
 }
 
 async function offerExtras(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
@@ -986,6 +1068,14 @@ async function offerExtras(state: ChatState, chip: string | undefined, text: str
     const left = EXTRA_CHIPS.filter((c) => !f.extrasAsked!.includes(c.value))
     return say({ ...state, turn: 'O3' }, [{ from: 'ribbit', text: 'Got it. Anything else on top?' }], [...left, { label: "That's all", value: 'none' }], 'text')
   }
+  if (!f.compareSalary && (chip === 'compare' || (!chip && COMPARE.test(text)))) {
+    // "I have another offer for $22/hr": the pay is already there.
+    const typed = chip ? null : readPay(text, f.payBasis)
+    if (typed && typed.kind !== 'unsure' && typed.annual >= 1_000) return offerCompare({ ...state, turn: 'O3_compare' }, text, svc)
+    return say({ ...state, turn: 'O3_compare' }, [{
+      from: 'ribbit', text: `What's the other offer's base pay, yearly or hourly?${f.place ? ` I'll price it in ${f.place} too.` : ''}`,
+    }], [], 'money')
+  }
   const pick = chip ?? (/sign/i.test(text) ? 'signing' : /bonus/i.test(text) ? 'bonus' : /equity|rsu|stock/i.test(text) ? 'equity' : /just|no|none|that'?s all/i.test(text) ? 'none' : '')
   if (pick === 'none') return askMatch(state)
   if (pick === 'signing' || pick === 'bonus' || pick === 'equity') {
@@ -993,7 +1083,7 @@ async function offerExtras(state: ChatState, chip: string | undefined, text: str
     const q = pick === 'signing' ? 'How much is the signing bonus?' : pick === 'bonus' ? 'What is the annual bonus target? A percent of salary or a dollar amount.' : 'About how much equity vests a year, in dollars?'
     return say({ ...state, turn: 'O3_amount' }, [{ from: 'ribbit', text: q }], [], 'money')
   }
-  return question(state, text, svc, 'anything on top of the salary: signing bonus, annual bonus or equity')
+  return question(state, text, svc, 'anything on top of the base pay: signing bonus, annual bonus or equity, or another offer to compare')
 }
 
 function askMatch(state: ChatState): Step {
@@ -1291,6 +1381,7 @@ function offerCard(f: Facts): NonNullable<ChatMessage['planCard']> {
   const cap = f.matchUpToPct
   const known = [
     ...(f.takeHomeMonthly ? [{ label: f.place ? `Take-home in ${f.place}` : 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
+    ...(f.compareTakeHome ? [{ label: 'The other offer, take-home', value: `${fc(f.compareTakeHome)}/mo` }] : []),
     ...(f.match === 'known' && f.value ? [{ label: 'Offer worth, with the match', value: `${fc(f.value.totalPackage)}/yr` }] : []),
     ...(f.electionMonthlyIn && cap ? [{ label: `401(k) at ${cap}%`, value: `${fc(f.electionMonthlyIn)}/mo in` }] : []),
     ...(f.electionCost && cap ? [{ label: `What the ${cap}% costs you`, value: `${fc(f.electionCost)}/mo` }] : []),
@@ -1309,7 +1400,7 @@ function offerCard(f: Facts): NonNullable<ChatMessage['planCard']> {
 function showMath(state: ChatState): Step {
   const f = state.facts
   const rows: MathRow[] = []
-  if (f.salary) rows.push({ label: 'Salary', value: fc(f.salary) })
+  if (f.salary) rows.push({ label: f.payBasis === 'hourly' && f.hourlyRate ? `${payLine(f)}, 52 weeks` : 'Salary', value: fc(f.salary) })
   if (f.tax) {
     rows.push({ label: 'Federal income tax', value: `−${fc(f.tax.federalTaxAnnual)}` })
     if (f.tax.stateTaxAnnual > 0) rows.push({ label: 'State income tax', value: `−${fc(f.tax.stateTaxAnnual)}` })

@@ -63,6 +63,47 @@ export function salaryOrTakeHome(n: number): 'salary' | 'take_home' {
   return n >= 20_000 ? 'salary' : 'take_home'
 }
 
+/** Base pay as the offer's first question reads it (lib/ribbit/engine.ts O1). */
+export type Pay =
+  | { kind: 'salary'; annual: number }
+  | { kind: 'hourly'; rate: number; hours: number; annual: number }
+  | { kind: 'unsure'; n: number }
+
+const HOUR_MARK = /(\/\s*h(ou)?r\b|(?<=\d)\s*h(ou)?r\b|\bper\s+h(ou)?r\b|\ban?\s+h(ou)?r\b|\bhourly\b|\bp\/?h\b)/i
+const HOURS_A_WEEK = /(\d{1,2})\s*(?:hours|hrs)\b(?:\s*(?:a|per|\/|each)\s*(?:week|wk))?|(\d{1,2})\s*(?:hour|hr|h)\s*(?:a|per|\/)\s*(?:week|wk)\b/i
+/** A full-time week, as the offer page assumes when nobody says otherwise. */
+export const DEFAULT_HOURS = 40
+
+/**
+ * A base pay typed at the offer's first question: a yearly salary, or an hourly rate with its hours a week
+ * ("19.50", "$22/hr", "18 an hour, 30 hours a week"). The rate keeps its cents: parseMoney rounded "19.50" to 20,
+ * and the chat sent it to Ribbit as a question. `basis` is the tapped option, Yearly or Hourly. With no option
+ * tapped, a rate in cents under $200 or one marked per hour is hourly; a bare 10 to 999 could be either ($95 an hour
+ * or $95k a year), so it comes back unsure and the chat asks which, rather than guess.
+ */
+export function readPay(text: string, basis?: 'salary' | 'hourly'): Pay | null {
+  const lower = text.toLowerCase().replace(/,/g, '')
+  const hoursMatch = lower.match(HOURS_A_WEEK)
+  const hoursTyped = hoursMatch ? Number(hoursMatch[1] ?? hoursMatch[2]) : null
+  const hours = hoursTyped && hoursTyped >= 1 && hoursTyped <= 80 ? hoursTyped : DEFAULT_HOURS
+  const rest = (hoursMatch ? lower.replace(hoursMatch[0], ' ') : lower).replace(/(\d)([a-z])/g, '$1 $2')
+  const m = rest.match(/(\d+(?:\.\d+)?)\s*(k|thousand|grand|m|million)?\b/)
+  if (m?.[2]) {
+    const annual = parseMoney(rest)
+    return annual ? { kind: 'salary', annual } : null
+  }
+  const n = m ? parseFloat(m[1]) : wordsToNumber(rest)
+  if (!n || !Number.isFinite(n) || n <= 0) return null
+  const cents = Boolean(m && /\.\d/.test(m[1]))
+  const hourly = HOUR_MARK.test(rest) || (basis === 'hourly' && n < 1_000) || (!basis && cents && n < 200)
+  if (hourly) {
+    if (n < 1) return null
+    return { kind: 'hourly', rate: Math.round(n * 100) / 100, hours, annual: Math.round(n * hours * 52) }
+  }
+  if (n >= 1_000) return { kind: 'salary', annual: Math.round(n) }
+  return n >= 10 ? { kind: 'unsure', n: Math.round(n) } : null
+}
+
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim()
 
 /** One of the rent page's preset cities, matched loosely ("austin", "Austin, TX", "nyc"). Null if none. */

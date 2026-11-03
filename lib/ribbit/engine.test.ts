@@ -5,8 +5,8 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
-import { matchPresetCity, matchState, parseMatch, parseMoney, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { matchPresetCity, matchState, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
  * Parity, the spec's rule: the chat takes what the pages take and gives the figures the pages give. The services
@@ -54,6 +54,23 @@ describe('parse', () => {
     expect(parseMoney('85 grand')).toBe(85_000)
     expect(salaryOrTakeHome(62_000)).toBe('salary')
     expect(salaryOrTakeHome(5_200)).toBe('take_home')
+  })
+
+  it('reads base pay, yearly or hourly, and asks when a bare number could be either', () => {
+    expect(readPay('19.50')).toEqual({ kind: 'hourly', rate: 19.5, hours: 40, annual: 40_560 })
+    expect(readPay('$22/hr')).toMatchObject({ kind: 'hourly', rate: 22, annual: 45_760 })
+    expect(readPay('22hr')).toMatchObject({ kind: 'hourly', rate: 22 })
+    expect(readPay('18 an hour, 30 hours a week')).toEqual({ kind: 'hourly', rate: 18, hours: 30, annual: 28_080 })
+    expect(readPay('30 hrs/wk at $18.25')).toMatchObject({ kind: 'hourly', rate: 18.25, hours: 30 })
+    expect(readPay('twenty an hour')).toMatchObject({ kind: 'hourly', rate: 20 })
+    expect(readPay('$85,000')).toEqual({ kind: 'salary', annual: 85_000 })
+    expect(readPay('120k')).toEqual({ kind: 'salary', annual: 120_000 })
+    expect(readPay('95')).toEqual({ kind: 'unsure', n: 95 })
+    expect(readPay('95', 'salary')).toEqual({ kind: 'unsure', n: 95 })
+    expect(readPay('95', 'hourly')).toMatchObject({ kind: 'hourly', rate: 95 })
+    expect(readPay('60000', 'hourly')).toEqual({ kind: 'salary', annual: 60_000 })
+    expect(readPay('5')).toBeNull()
+    expect(readPay('not sure yet')).toBeNull()
   })
 
   it('matches the rent page cities and any state', () => {
@@ -291,6 +308,65 @@ describe('offer flow', () => {
     expect(facts(s[4]).matchRatePct).toBeUndefined()
   })
 
+  it('the first question offers Yearly and Hourly, as the rent question offers its two', async () => {
+    const s = await run('offer', [{ chip: 'hourly' }, { text: '$19.50, 30 hours' }])
+    expect(said(s[0])).toBe("Congrats on the offer. What's the base pay? A yearly salary or an hourly rate both work.")
+    expect(s[0].chips).toEqual([{ label: 'Yearly salary', value: 'salary' }, { label: 'Hourly', value: 'hourly' }])
+    expect(said(s[1])).toContain("What's the hourly rate?")
+    expect(facts(s[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 30, salary: 30_420 })
+    expect(said(s[2])).toContain("At $19.50 an hour, 30 hours a week, that's about $30,420 a year.")
+    expect(s[2].state.turn).toBe('O2')
+  })
+
+  it('a typed "19.50" is an hourly rate, not $20 a year sent to Ribbit', async () => {
+    let asked = 0
+    const s = await run('offer', [{ text: '19.50' }, { chip: 'Austin' }], svc({ ask: async () => { asked++; return null } }))
+    expect(asked).toBe(0)
+    expect(facts(s[1])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 40, salary: 40_560 })
+    expect(said(s[2])).toContain('Anything on top of the pay?'.toLowerCase())
+    expect(s[2].chips.map((c) => c.label)).toContain('Just the pay')
+    const math = await reply(s[2].state, { chip: '__math__' }, svc())
+    expect(math.messages[0].math?.[0]).toEqual({ label: '$19.50 an hour, 40 hours a week, 52 weeks', value: '$40,560' })
+  })
+
+  it('a bare "95" is asked, an hour or a year, rather than guessed', async () => {
+    const s = await run('offer', [{ text: '95' }])
+    expect(said(s[1])).toBe('Is that $95 an hour, or $95,000 a year?')
+    expect(s[1].chips.map((c) => c.value)).toEqual(['hourly', 'salary'])
+    const year = await reply(s[1].state, { chip: 'salary' }, svc())
+    expect(facts(year)).toMatchObject({ payBasis: 'salary', salary: 95_000 })
+    const hour = await reply(s[1].state, { text: 'an hour' }, svc())
+    expect(facts(hour)).toMatchObject({ payBasis: 'hourly', hourlyRate: 95, salary: 197_600 })
+    const typed = await reply(s[1].state, { text: '$95,000' }, svc())
+    expect(facts(typed).salary).toBe(95_000)
+  })
+
+  it('compare another offer: priced in the same place, the difference a month and a year, then back to this offer', async () => {
+    const tax = async (salary: number) => ({ ...TAX, netIncomeAnnual: salary * 0.8 })
+    const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }, { chip: 'compare' }, { text: '95k' }, { chip: 'none' }, { chip: 'none' }, { chip: 'later' }], svc({ tax }))
+    expect(said(s[3])).toBe("What's the other offer's base pay, yearly or hourly? I'll price it in Austin too.")
+    const thisOne = (85_000 * 0.8) / 12
+    const other = (95_000 * 0.8) / 12
+    expect(said(s[4])).toContain(`At $95,000, the other offer takes home about $${Math.round(other).toLocaleString('en-US')} a month in Austin`)
+    expect(said(s[4])).toContain(`$${Math.round(other - thisOne).toLocaleString('en-US')} a month more than this one`)
+    expect(said(s[4])).toContain('Back to this offer. Anything on top of the salary?')
+    expect(s[4].chips.map((c) => c.value)).not.toContain('compare')
+    expect(s[4].events).toContainEqual({ name: 'ribbit_offer_compared', props: { turn: 'O3', other_more: true } })
+    expect(facts(s[4]).takeHomeMonthly).toBeCloseTo(thisOne)
+    const card = s[7].messages.find((m) => m.planCard)!
+    expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home in Austin', 'The other offer, take-home'])
+  })
+
+  it('a typed "I have another offer" at the extras question opens the compare, and takes a pay typed with it', async () => {
+    const tax = async (salary: number) => ({ ...TAX, netIncomeAnnual: salary * 0.8 })
+    const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }, { text: 'I have another offer' }, { text: '$22/hr' }], svc({ tax }))
+    expect(s[3].state.turn).toBe('O3_compare')
+    expect(said(s[4])).toContain('At $22 an hour, 40 hours a week, the other offer takes home')
+    expect(said(s[4])).toContain('a month less than this one')
+    const once = await run('offer', [{ text: '85000' }, { chip: 'Austin' }, { text: 'I have another offer for $22/hr' }])
+    expect(facts(once[3]).compareSalary).toBe(45_760)
+  })
+
   it('offer to rent carries take-home and city, and asks nothing twice', async () => {
     const s = await run('offer', [{ text: '75000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'none' }, { chip: 'yes' }])
     expect(s[5].state.flow).toBe('rent')
@@ -391,26 +467,28 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[10].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
-  it("offer: the take-home in the job's city carries the spending check, then the extras question with its chips", async () => {
+  it("offer: the take-home in the job's city leads with comparing another offer, then the extras question; no spending check yet", async () => {
     const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }])
     const msgs = s[2].messages
-    expect(msgs.map((m) => m.text)).toEqual([expect.stringMatching(/take-home/), TAKEHOME_SPENDING_CHECK_TEXT, 'Anything on top of the salary?'])
-    expect(msgs[1].appAsk).toEqual({ label: 'Check it against my real spending', why: 'spending_check', note: TAKEHOME_SPENDING_CHECK_NOTE })
-    expect(msgs[1].appAsk?.note).not.toMatch(/bank/i)
-    expect(s[2].chips.map((c) => c.value)).toContain('none')
-    expect(s[2].events).toContainEqual({ name: 'ribbit_spending_check_shown', props: { turn: 'O3' } })
-    expect(s[2].state.invited).toBe(true)
+    expect(msgs.map((m) => m.text)).toEqual([
+      expect.stringMatching(/take-home/), 'Weighing another offer? I can put the two side by side. Otherwise, anything on top of the salary?',
+    ])
+    expect(msgs.some((m) => m.appAsk)).toBe(false)
+    expect(s[2].chips.map((c) => c.value)).toEqual(['compare', 'signing', 'bonus', 'equity', 'none', '__math__'])
+    expect(s[2].events.map((e) => e.name)).not.toContain('ribbit_spending_check_shown')
+    expect(s[2].state.invited).toBeFalsy()
   })
 
-  it('offer: No match or Skip after the take-home check goes on to rent with no second ask', async () => {
+  it('offer: No match or Skip goes on to rent with no spending check; the ending carries the one app ask', async () => {
     for (const steps of [
       [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'none' }],
       [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'skip' }],
     ]) {
       const s = await run('offer', steps)
-      const appAsks = s.flatMap((x) => x.messages).filter((m) => m.appAsk)
-      expect(appAsks.map((m) => m.appAsk?.why)).toEqual(['spending_check'])
+      expect(s.flatMap((x) => x.messages).filter((m) => m.appAsk)).toEqual([])
       expect(said(s[s.length - 1])).toContain('Want to work that out properly?')
+      const end = await reply(s[s.length - 1].state, { chip: 'later' }, svc())
+      expect(end.messages.filter((m) => m.appAsk).map((m) => m.appAsk?.why)).toEqual(['plan_preview'])
     }
   })
 
