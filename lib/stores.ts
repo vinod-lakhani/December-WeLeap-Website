@@ -105,11 +105,34 @@ export function appStoreCampaignToken(utm: StoreUtm): string {
   return sanitizeToken(parts.filter(Boolean).join('_')) || 'launch';
 }
 
-export function appStoreUrl(utm: StoreUtm, pt: string = APPLE_PROVIDER_TOKEN): string {
+/**
+ * Custom product pages in App Store Connect (Distribution > Custom Product
+ * Pages). A `ppid` on the store link shows that page's screenshots, video and
+ * promotional text instead of the default listing, and Apple reports its views
+ * and downloads separately.
+ *
+ * "Meta paycheck" (3 Nov 2026): paycheck-first screenshots with captions and
+ * the 19-second preview, built to match the Meta L3 "where your paycheck goes"
+ * ad. Meta visitors to the default listing were viewing and not downloading
+ * (Nov 2: 4 App Referrer views, 0 downloads). Until Apple approves a page, a
+ * link carrying its ppid simply shows the default listing, so this is safe to
+ * ship ahead of approval.
+ */
+export const PRODUCT_PAGES = {
+  metaPaycheck: 'df7f34a1-7955-431b-9354-eac1b36ec89b',
+} as const;
+
+/** Which custom product page a visit should see, or '' for the default listing. */
+export function productPageFor(utm: StoreUtm): string {
+  return cleanUtm(utm).utm_source === 'meta' ? PRODUCT_PAGES.metaPaycheck : '';
+}
+
+export function appStoreUrl(utm: StoreUtm, pt: string = APPLE_PROVIDER_TOKEN, ppid: string = ''): string {
   const q = new URLSearchParams();
   if (pt) q.set('pt', pt);
   q.set('ct', appStoreCampaignToken(utm));
   q.set('mt', '8');
+  if (ppid) q.set('ppid', ppid);
   return `${APP_STORE_CAMPAIGN_URL}?${q.toString()}`;
 }
 

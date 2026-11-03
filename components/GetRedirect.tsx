@@ -43,6 +43,7 @@ import {
   appStoreUrl,
   cleanUtm,
   playStoreUrl,
+  productPageFor,
   type StoreUtm,
 } from '@/lib/stores';
 import { appLink } from '@/lib/app-link';
@@ -122,7 +123,9 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
    * there was no campaign and our own analytics can represent that.
    */
   const appleUtm: StoreUtm = hasAnyUtm(utm) ? utm : { utm_campaign: 'direct' };
-  const hrefs = { appStore: appStoreUrl(appleUtm), googlePlay: playStoreUrl(utm) };
+  // Meta traffic sees the "Meta paycheck" custom product page (see PRODUCT_PAGES).
+  const productPage = productPageFor(utm);
+  const hrefs = { appStore: appStoreUrl(appleUtm, undefined, productPage), googlePlay: playStoreUrl(utm) };
   const androidWaiting = device === 'android' && !playLive;
   const isPhone = device === 'ios' || device === 'android';
 
@@ -177,6 +180,8 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
       event_id: eventId,
       trigger: 'tap',
       position,
+      // Custom product page id on the App Store link, or 'none' for the default listing.
+      product_page: store === 'app_store' && productPage ? productPage : 'none',
     }).catch(() => {});
   };
 

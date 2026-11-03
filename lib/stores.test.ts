@@ -5,7 +5,9 @@ import {
   appStoreCampaignToken,
   appStoreUrl,
   cleanUtm,
+  PRODUCT_PAGES,
   playStoreUrl,
+  productPageFor,
   sanitizeToken,
 } from './stores'
 
@@ -95,5 +97,26 @@ describe('playStoreUrl', () => {
   it('defaults medium to smartlink only when none given', () => {
     expect(new URL(playStoreUrl({ utm_source: 'vinod' })).searchParams.get('utm_medium')).toBe('smartlink')
     expect(new URL(playStoreUrl({})).searchParams.get('utm_medium')).toBe('smartlink')
+  })
+})
+
+describe('custom product pages', () => {
+  it('sends Meta traffic to the Meta paycheck page', () => {
+    expect(productPageFor({ utm_source: 'meta', utm_campaign: 'get_l3' })).toBe(PRODUCT_PAGES.metaPaycheck)
+    expect(productPageFor({ utm_source: 'Meta' })).toBe(PRODUCT_PAGES.metaPaycheck)
+  })
+
+  it('leaves every other source on the default listing', () => {
+    expect(productPageFor({ utm_source: 'google' })).toBe('')
+    expect(productPageFor({ utm_campaign: 'direct' })).toBe('')
+    expect(productPageFor({})).toBe('')
+  })
+
+  it('adds ppid to the App Store link only when given one', () => {
+    const withPage = new URL(appStoreUrl(ad, 'PT123', PRODUCT_PAGES.metaPaycheck))
+    expect(withPage.searchParams.get('ppid')).toBe(PRODUCT_PAGES.metaPaycheck)
+    expect(withPage.searchParams.get('ct')).toBe(appStoreCampaignToken(ad))
+    expect(withPage.searchParams.get('pt')).toBe('PT123')
+    expect(new URL(appStoreUrl(ad, 'PT123')).searchParams.has('ppid')).toBe(false)
   })
 })

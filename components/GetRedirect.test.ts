@@ -135,7 +135,7 @@ describe('an untagged visit — somebody typing weleap.ai/get', () => {
      * cannot be told apart. This page gets its own word.
      */
     expect(src).toMatch(/const appleUtm: StoreUtm = hasAnyUtm\(utm\) \? utm : \{ utm_campaign: 'direct' \}/)
-    expect(src).toMatch(/appStoreUrl\(appleUtm\)/)
+    expect(src).toMatch(/appStoreUrl\(appleUtm[,)]/)
   })
 
   it('leaves Play alone, which already has an organic bucket', () => {
