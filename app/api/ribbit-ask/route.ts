@@ -17,6 +17,18 @@ const limiter = makeRateLimiter({ hourly: 40, daily: 150 })
 // figures comes back from the backend with its own reason).
 const FALLBACK = { kind: 'question', reply: "My answers are down for a moment, so I couldn't get to that one. Send it again in a few minutes." }
 
+/**
+ * Each time the chat shows FALLBACK, one line in the server log saying why (Nov 3: a paid visitor's "19.50" got it and
+ * nothing said whether the env, the backend or the timeout was to blame). Never the message or the figures.
+ */
+function logFailure(reason: 'no_env' | 'status' | 'timeout' | 'fetch_error', detail: { flow?: string; step?: unknown; thread?: unknown; status?: number; ms?: number; error?: string }) {
+  console.error(JSON.stringify({
+    at: 'ribbit-ask', reason, flow: detail.flow, status: detail.status, ms: detail.ms, error: detail.error,
+    step: typeof detail.step === 'string' ? detail.step.slice(0, 120) : undefined,
+    thread: typeof detail.thread === 'string' ? detail.thread.slice(0, 64) : undefined,
+  }))
+}
+
 export async function POST(req: Request) {
   const limit = limiter.check(clientKey(req.headers), Date.now())
   if (!limit.allowed) {
@@ -27,7 +39,10 @@ export async function POST(req: Request) {
   }
   const base = process.env.RENTPILOT_URL
   const key = process.env.RENTPILOT_KEY
-  if (!base || !key) return NextResponse.json(FALLBACK, { status: 503 })
+  if (!base || !key) {
+    logFailure('no_env', { error: !base && !key ? 'RENTPILOT_URL and RENTPILOT_KEY unset' : !base ? 'RENTPILOT_URL unset' : 'RENTPILOT_KEY unset' })
+    return NextResponse.json(FALLBACK, { status: 503 })
+  }
 
   let body: Record<string, unknown>
   try {
@@ -47,6 +62,7 @@ export async function POST(req: Request) {
         .map((h) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', text: h.text.slice(0, 600) }))
     : []
 
+  const started = Date.now()
   try {
     const res = await fetch(new URL('/internal/rentpilot/ask', base), {
       method: 'POST',
@@ -63,9 +79,16 @@ export async function POST(req: Request) {
       }),
       signal: AbortSignal.timeout(25_000),
     })
-    if (!res.ok) return NextResponse.json(FALLBACK, { status: 502 })
+    if (!res.ok) {
+      logFailure('status', { flow, step: body.step, thread: body.thread, status: res.status, ms: Date.now() - started })
+      return NextResponse.json(FALLBACK, { status: 502 })
+    }
     return NextResponse.json(await res.json())
-  } catch {
+  } catch (err) {
+    const timeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')
+    logFailure(timeout ? 'timeout' : 'fetch_error', {
+      flow, step: body.step, thread: body.thread, ms: Date.now() - started, error: err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 200) : 'unknown',
+    })
     return NextResponse.json(FALLBACK, { status: 502 })
   }
 }
