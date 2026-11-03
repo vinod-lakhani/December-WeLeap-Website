@@ -5,7 +5,12 @@ This document describes all analytics events tracked in the December-WeLeap-Webs
 ## How It Works
 
 - **Utility:** `lib/analytics.ts` provides a single `track(eventName, params?, waitForGtagLoading?)` function.
-- **Destinations:** Events are sent to both **Google Analytics 4 (GA4)** and **Vercel Analytics**.
+- **Destinations:** Events are sent to **PostHog**, **Google Analytics 4 (GA4)** and **Vercel Analytics**.
+- **Ad conversions:** a subset of events also fire as paid-channel conversions, each decided in one file so a tool whose completion goes missing is a bug in that file and not in one of the ten components that emit it:
+  - Google Ads: `lib/google-ads.ts` (`ADS_CONVERSIONS`)
+  - Meta: `lib/analytics.ts` (`META_CUSTOM_EVENTS`, plus `Lead` on the /get store tap in `GetRedirect.tsx`)
+  - ChatGPT Ads (OpenAI): `lib/openai-pixel.ts` (`OPENAI_CONVERSIONS`). `tool_completed` is `contents_viewed` with the tool name as content id; `tool_cta_clicked`, `store_link_clicked`, `ribbit_app_link_clicked` and `text_optin_submitted` are `lead_created`. Pixel `RCAcWYZUkBMCyUtKWH8SQ5`, production host only, no consent gate yet.
+  - All three carry the ad click ID through to weleap.app via `lib/utm-storage.ts` (`gclid`/`gbraid`/`wbraid`, `oppref`).
 - **Privacy:** Only non-PII parameters (bucketed values, IDs, counts) are sent. No raw salary, email, or exact location.
 
 ---

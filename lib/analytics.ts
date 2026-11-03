@@ -210,6 +210,7 @@ import { fbq } from '@/lib/meta-pixel'
 // matter how the provider loads it. See lib/posthog-lazy.ts.
 import { getPostHog } from '@/lib/posthog-lazy';
 import { fireAdsConversion } from './google-ads';
+import { fireOpenAIConversion } from './openai-pixel';
 
 // Enable debug mode via environment variable
 const DEBUG_ANALYTICS = process.env.NEXT_PUBLIC_DEBUG_ANALYTICS === 'true';
@@ -369,6 +370,13 @@ export async function track(eventName: string, params?: Record<string, any>, wai
    * the production host.
    */
   fireAdsConversion(eventName);
+
+  /**
+   * The ChatGPT Ads twin. Same placement, same reasoning. lib/openai-pixel.ts
+   * decides which events count, no-ops off the production host, and carries
+   * the Meta `event_id` through for later server-side dedupe.
+   */
+  fireOpenAIConversion(eventName, params);
 
   // Debug logging when enabled
   if (DEBUG_ANALYTICS || (typeof window !== 'undefined' && (window as any).DEBUG_ANALYTICS)) {
