@@ -94,6 +94,27 @@ describe('parse', () => {
 })
 
 describe('rent flow', () => {
+  it('an hourly rate at "salary or take-home" is pay, not a $20 take-home; a bare small number is asked about', async () => {
+    let asked = 0
+    const s = await run('rent', [{ text: '19.50' }], svc({ ask: async () => { asked++; return null } }))
+    expect(asked).toBe(0)
+    expect(facts(s[1])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 40, salary: 40_560, takeHomeFrom: 'salary' })
+    expect(said(s[1])).toMatch(/^At \$19\.50 an hour, 40 hours a week, that's about \$40,560 a year, and take-home before state tax is about \$[\d,]+ a month\. Rent that fits is/)
+    const tapped = await run('rent', [{ chip: 'take_home' }, { text: '$22/hr' }])
+    expect(facts(tapped[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 22, salary: 45_760 })
+    const bare = await run('rent', [{ text: '25' }])
+    expect(said(bare[1])).toBe('Is that $25 an hour, or $25,000 a year?')
+    const hour = await reply(bare[1].state, { chip: 'hourly' }, svc())
+    expect(facts(hour)).toMatchObject({ payBasis: 'hourly', salary: 52_000 })
+    expect(hour.state.turn).toBe('R2')
+    const typedAgain = await reply(bare[1].state, { text: '$62,000' }, svc())
+    expect(facts(typedAgain)).toMatchObject({ salary: 62_000, takeHomeFrom: 'salary' })
+    // Unchanged: a take-home by size, a salary by size, and a take-home after Monthly take-home.
+    expect(facts((await run('rent', [{ text: '4,200' }]))[1])).toMatchObject({ takeHomeMonthly: 4_200, takeHomeFrom: 'typed' })
+    expect(facts((await run('rent', [{ text: '62k' }]))[1]).payBasis).toBeUndefined()
+    expect(facts((await run('rent', [{ chip: 'take_home' }, { text: '150' }]))[2])).toMatchObject({ takeHomeMonthly: 150, takeHomeFrom: 'typed' })
+  })
+
   it('the purpose question says where the money comes from, and typed answers land on the right option', async () => {
     const base = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { chip: 'next_month' }]
     const s = await run('rent', base)
@@ -522,6 +543,17 @@ describe('card payoff', () => {
 })
 
 describe('Where should my money go?', () => {
+  it('an hourly rate at the first question is pay, said back as the year it comes to', async () => {
+    const s = await run('money', [{ text: '$18 an hour, 30 hours a week' }])
+    expect(facts(s[1])).toMatchObject({ payBasis: 'hourly', hourlyRate: 18, hoursPerWeek: 30, salary: 28_080 })
+    expect(said(s[1])).toMatch(/^At \$18 an hour, 30 hours a week, that's about \$28,080 a year, and take-home before state tax is about \$[\d,]+ a month\. Where do you live\?$/)
+    const bare = await run('money', [{ chip: 'salary' }, { text: '95' }])
+    expect(said(bare[2])).toBe('Is that $95 an hour, or $95,000 a year?')
+    const year = await reply(bare[2].state, { text: 'a year' }, svc())
+    expect(facts(year)).toMatchObject({ payBasis: 'salary', salary: 95_000 })
+    expect(year.state.turn).toBe('M2')
+  })
+
   it('"can I afford a car?" gets the offer; loan numbers typed instead fold into the question and get it once more', async () => {
     const asks: Array<{ flow: string; message: string }> = []
     const ask = svc({ ask: async ({ flow, message }) => {

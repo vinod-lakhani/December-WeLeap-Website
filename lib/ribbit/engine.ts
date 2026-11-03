@@ -105,13 +105,14 @@ export interface Facts {
   upfront?: { low: number; high: number }
   purpose?: 'cushion' | 'card' | 'future'
   roommate?: 'yes' | 'no' | 'not_sure'
-  // offer
-  /** The offer's base pay as given: a yearly salary, or an hourly rate at hoursPerWeek (salary is then rate × hours × 52). */
+  /** The first answer's pay as given, in any flow: a yearly salary, or an hourly rate at hoursPerWeek (salary is then
+   * rate × hours × 52). */
   payBasis?: 'salary' | 'hourly'
   hourlyRate?: number
   hoursPerWeek?: number
-  /** A bare 10 to 999 at O1: $95 an hour or $95,000 a year, asked rather than guessed. */
+  /** A bare number at the first question that could be an hourly rate or a yearly salary ($95 or $95,000): asked. */
   pendingPay?: number
+  // offer
   /** The other offer being weighed (O3_compare): its base pay a year and its take-home a month in the same place. */
   compareSalary?: number
   compareTakeHome?: number
@@ -316,19 +317,25 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
 
     // ── Rent ──────────────────────────────────────────────────────────────────────────────────────────────
     case 'R1':
-    case 'R1_amount': {
-      if (chip === 'salary' || chip === 'take_home') {
+    case 'R1_amount':
+    case 'R1_basis': {
+      if (state.turn !== 'R1_basis' && (chip === 'salary' || chip === 'take_home')) {
         return say({ ...state, turn: 'R1_amount', facts: { ...f, takeHomeFrom: chip === 'salary' ? 'salary' : 'typed' } },
           [{ from: 'ribbit', text: chip === 'salary' ? "What's the yearly salary?" : 'How much take-home lands each month?' }], [], 'money')
       }
-      const n = parseMoney(text)
-      if (!n) return question(state, text, svc, 'their salary or monthly take-home')
-      takeIncome(f, n, state.turn === 'R1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      const pay = hourlyAtIncome(state, chip, text)
+      if (pay?.kind === 'unsure') return askHourOrYear(state, pay.n, 'R1_basis')
+      if (pay) takePay(f, pay)
+      else {
+        const n = parseMoney(text)
+        if (!n) return question(state, text, svc, 'their salary or monthly take-home')
+        takeIncome(f, n, state.turn === 'R1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      }
       const takeHome = f.takeHomeMonthly ?? 0
       f.range = calculateRentRange(takeHome, 0)
       const basis = f.takeHomeFrom === 'salary'
-        ? `On ${fc(n)} a year, take-home before state tax is about ${fc(takeHome)} a month.`
-        : `On ${fc(n)} a month take-home,`
+        ? `${incomeLead(f)} take-home before state tax is about ${fc(takeHome)} a month.`
+        : `On ${fc(takeHome)} a month take-home,`
       const line = f.takeHomeFrom === 'salary' ? `${basis} Rent that fits is ${f.range.formatted}.` : `${basis} rent that fits is ${f.range.formatted}.`
       f.rangeSpendingCheckShown = true
       // The thread's first app offer, as the city-answer invite was: later turns don't invite again.
@@ -424,18 +431,24 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     }
     // ── Where should my money go? ─────────────────────────────────────────────────────────────────────────
     case 'M1':
-    case 'M1_amount': {
-      if (chip === 'salary' || chip === 'take_home') {
+    case 'M1_amount':
+    case 'M1_basis': {
+      if (state.turn !== 'M1_basis' && (chip === 'salary' || chip === 'take_home')) {
         return say({ ...state, turn: 'M1_amount', facts: { ...f, takeHomeFrom: chip === 'salary' ? 'salary' : 'typed' } },
           [{ from: 'ribbit', text: chip === 'salary' ? "What's the yearly salary?" : 'How much take-home lands each month?' }], [], 'money')
       }
-      const n = parseMoney(text)
-      if (!n) return question(state, text, svc, 'their salary or monthly take-home')
-      takeIncome(f, n, state.turn === 'M1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      const pay = hourlyAtIncome(state, chip, text)
+      if (pay?.kind === 'unsure') return askHourOrYear(state, pay.n, 'M1_basis')
+      if (pay) takePay(f, pay)
+      else {
+        const n = parseMoney(text)
+        if (!n) return question(state, text, svc, 'their salary or monthly take-home')
+        takeIncome(f, n, state.turn === 'M1_amount' ? (f.takeHomeFrom === 'typed' ? 'take_home' : 'salary') : salaryOrTakeHome(n))
+      }
       // A salary needs the state for its take-home; a typed take-home already is one.
       if (f.takeHomeFrom === 'salary') {
         return say({ ...state, turn: 'M2' }, [
-          { from: 'ribbit', text: `On ${fc(n)} a year, take-home before state tax is about ${fc(f.takeHomeMonthly ?? 0)} a month. Where do you live?` },
+          { from: 'ribbit', text: `${incomeLead(f)} take-home before state tax is about ${fc(f.takeHomeMonthly ?? 0)} a month. Where do you live?` },
         ], cityChips(), 'location')
       }
       return askMoneyRent(state, '')
@@ -538,6 +551,52 @@ function beforeStateTakeHome(salary: number): number {
 }
 
 /** A salary (taken before state tax, the location refines it) or a monthly take-home as typed. */
+/** A base pay as the take-home is worked from: a salary, or an hourly rate as the year it comes to. */
+function takePay(f: Facts, pay: Exclude<Pay, { kind: 'unsure' }>): void {
+  f.pendingPay = undefined
+  f.payBasis = pay.kind
+  f.hourlyRate = pay.kind === 'hourly' ? pay.rate : undefined
+  f.hoursPerWeek = pay.kind === 'hourly' ? pay.hours : undefined
+  takeIncome(f, pay.annual, 'salary')
+}
+
+/** "$95 an hour, or $95,000 a year?": a bare number that could be either is asked about, not guessed. */
+function askHourOrYear(state: ChatState, n: number, turn: string): Step {
+  state.facts.pendingPay = n
+  return say({ ...state, turn }, [{ from: 'ribbit', text: `Is that ${fc(n)} an hour, or ${fc(n * 1_000)} a year?` }],
+    [{ label: `${fc(n)} an hour`, value: 'hourly' }, { label: `${fc(n * 1_000)} a year`, value: 'salary' }], 'money')
+}
+
+/** The answer to askHourOrYear, tapped or typed. Null when it is neither: the text is then read as a new answer. */
+function hourOrYear(f: Facts, chip: string | undefined, text: string): Exclude<Pay, { kind: 'unsure' }> | null {
+  const n = f.pendingPay
+  if (!n) return null
+  const pick = chip ?? (/hour|hr\b/i.test(text) ? 'hourly' : /year|annual|salary|\bk\b|thousand|grand/i.test(text) ? 'salary' : '')
+  const hourly = pick === 'hourly' ? readPay(String(n), 'hourly') : null
+  return hourly?.kind === 'hourly' ? hourly : pick === 'salary' ? { kind: 'salary', annual: n * 1_000 } : null
+}
+
+/**
+ * Rent's and money's first question, a yearly salary or a monthly take-home: an hourly rate typed there ("19.50",
+ * "$22/hr") is pay, the year it comes to, where "19.50" read as $20 a month of take-home. A bare 10 to 199 with no
+ * option tapped (or 10 to 999 after Yearly salary) is asked about, an hour or a year. Null: the number is read as
+ * before, by size or by the tapped option.
+ */
+function hourlyAtIncome(state: ChatState, chip: string | undefined, text: string): Pay | null {
+  const f = state.facts
+  const answered = state.turn.endsWith('_basis') ? hourOrYear(f, chip, text) : null
+  if (answered) return answered
+  const tapped = state.turn.endsWith('_amount') ? f.takeHomeFrom : undefined
+  const pay = readPay(text, tapped === 'salary' ? 'salary' : undefined)
+  if (pay?.kind === 'hourly') return pay
+  if (pay?.kind === 'unsure' && tapped !== 'typed' && (tapped === 'salary' || pay.n < 200)) return pay
+  return null
+}
+
+/** The first answer said back: "At $19.50 an hour, 40 hours a week, that's about $40,560 a year, and" or "On $85,000 a year,". */
+const incomeLead = (f: Facts) =>
+  f.payBasis === 'hourly' && f.hourlyRate ? `At ${payLine(f)}, that's about ${fc(f.salary ?? 0)} a year, and` : `On ${fc(f.salary ?? 0)} a year,`
+
 function takeIncome(f: Facts, n: number, kind: 'salary' | 'take_home'): void {
   if (kind === 'salary') {
     f.salary = n
@@ -970,33 +1029,16 @@ async function offerPay(state: ChatState, chip: string | undefined, text: string
       text: chip === 'salary' ? "What's the yearly base salary?" : `What's the hourly rate? Add the hours if it isn't ${DEFAULT_HOURS} a week, like "$19.50, 30 hours".`,
     }], [], 'money')
   }
-  let pay: Pay | null
-  if (state.turn === 'O1_basis' && f.pendingPay) {
-    const n = f.pendingPay
-    const pick = chip ?? (/hour|hr\b/i.test(text) ? 'hourly' : /year|annual|salary|\bk\b|thousand|grand/i.test(text) ? 'salary' : '')
-    pay = pick === 'hourly' ? readPay(String(n), 'hourly') : pick === 'salary' ? { kind: 'salary', annual: n * 1_000 } : readPay(text)
-  } else {
-    pay = readPay(text, state.turn === 'O1_amount' ? f.payBasis : undefined)
-  }
+  const pay = (state.turn === 'O1_basis' ? hourOrYear(f, chip, text) : null) ?? readPay(text, state.turn === 'O1_amount' ? f.payBasis : undefined)
   if (!pay || (pay.kind === 'salary' && pay.annual < 1_000)) return question(state, text, svc, 'the base pay in the offer, yearly or hourly')
-  if (pay.kind === 'unsure') {
-    f.pendingPay = pay.n
-    return say({ ...state, turn: 'O1_basis' }, [{ from: 'ribbit', text: `Is that ${fc(pay.n)} an hour, or ${fc(pay.n * 1_000)} a year?` }],
-      [{ label: `${fc(pay.n)} an hour`, value: 'hourly' }, { label: `${fc(pay.n * 1_000)} a year`, value: 'salary' }], 'money')
-  }
-  f.pendingPay = undefined
-  f.payBasis = pay.kind
-  f.hourlyRate = pay.kind === 'hourly' ? pay.rate : undefined
-  f.hoursPerWeek = pay.kind === 'hourly' ? pay.hours : undefined
-  f.salary = pay.annual
-  f.takeHomeFrom = 'salary'
-  f.takeHomeMonthly = beforeStateTakeHome(pay.annual)
-  f.takeHomeBeforeState = true
+  if (pay.kind === 'unsure') return askHourOrYear(state, pay.n, 'O1_basis')
+  takePay(f, pay)
+  const takeHome = f.takeHomeMonthly ?? 0
   const lead = pay.kind === 'hourly'
-    ? `At ${payLine(f)}, that's about ${fc(pay.annual)} a year. Take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`
-    : `On ${fc(pay.annual)}, take-home before state tax and any 401k is about ${fc(f.takeHomeMonthly)} a month.`
+    ? `At ${payLine(f)}, that's about ${fc(pay.annual)} a year. Take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
+    : `On ${fc(pay.annual)}, take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
   return say({ ...state, turn: 'O2' }, [
-    { from: 'ribbit', text: lead, figure: `${fc(f.takeHomeMonthly)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
+    { from: 'ribbit', text: lead, figure: `${fc(takeHome)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
     { from: 'ribbit', text: 'Which city is the job in?' },
   ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
 }
