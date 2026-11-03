@@ -59,10 +59,15 @@ const UTM_FIRST_STORAGE_KEY = "wle_utm_first"
  * gbraid and wbraid are the iOS/web variants Google sends when gclid is
  * unavailable under ATT, so all three are carried or the iOS half of a
  * campaign goes unattributed.
+ *
+ * oppref is the ChatGPT Ads click ID (OpenAI Ads Manager). The browser pixel
+ * reads it off the landing URL itself for same-domain conversions; it is
+ * carried here so a later server-side signup conversion on weleap.app can
+ * be matched to the ChatGPT click the same way a Google one is to gclid.
  */
 const CLICK_ID_STORAGE_KEY = "wle_click_ids"
 
-const CLICK_ID_KEYS = ["gclid", "gbraid", "wbraid"] as const
+const CLICK_ID_KEYS = ["gclid", "gbraid", "wbraid", "oppref"] as const
 
 export type ClickIdSet = Partial<Record<(typeof CLICK_ID_KEYS)[number], string>>
 

@@ -5,6 +5,7 @@ import { CookieConsent } from '@/components/cookie-consent'
 import { GoogleAdsTag } from '@/components/google-ads'
 import { ConditionalGoogleAnalytics } from '@/components/google-analytics'
 import { MetaPixel } from '@/components/meta-pixel'
+import { OpenAIPixel } from '@/components/openai-pixel'
 import { UtmCapture } from '@/components/utm-capture'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { PostHogPageView } from '@/components/posthog-pageview'
@@ -103,6 +104,7 @@ export default function RootLayout({
           <Analytics />
           <CookieConsent />
           <MetaPixel />
+          <OpenAIPixel />
           <ConditionalGoogleAnalytics />
           <GoogleAdsTag />
         </PostHogProvider>
