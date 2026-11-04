@@ -10,7 +10,8 @@
  *
  * So each pitch used to carry a real product screen — a still screenshot under
  * the button as the evidence for the sentence above it. Since 31 Oct 2026 the
- * evidence is the 30-second product tour instead (components/ProductTourVideo),
+ * evidence is a product video instead (components/ProductTourVideo; on phones the
+ * 9-second paycheck loop since 3 Nov),
  * the same clip for every pitch: it shows the 401(k) leap, the paycheck split
  * and the debt and savings moves in one place, and it moves. What still varies
  * by ad is the promise — headline and sub-line — which is the part an ad
@@ -52,6 +53,17 @@ const SAVINGS_PITCH: GetPitch = {
   sub: 'WeLeap sets the target, tracks the gap and names the move each week.',
 }
 
+/**
+ * The paycheck ad (Meta L3, "where your paycheck goes"), the best performer on
+ * /get at 31% of phone visitors tapping. Until 3 Nov 2026 it got the default
+ * pitch, so the ad, this page and the "Meta paycheck" App Store page told
+ * three different stories. Same headline as the first App Store screenshot.
+ */
+const PAYCHECK_PITCH: GetPitch = {
+  headline: 'See where every paycheck goes.',
+  sub: 'WeLeap splits each paycheck into needs, wants and savings, then names the one move that matters most.',
+}
+
 const MATCH_PITCH: GetPitch = {
   headline: 'The free money you’re missing.',
   sub: 'WeLeap finds your unclaimed employer match and what to change to get it.',
@@ -66,6 +78,11 @@ const THEMES: ReadonlyArray<{ match: RegExp; pitch: GetPitch }> = [
   { match: /debt|payoff|apr|card/, pitch: DEBT_PITCH },
   { match: /emergency|saving|savings|cushion/, pitch: SAVINGS_PITCH },
   { match: /401|match|retire/, pitch: MATCH_PITCH },
+  // `get_l3` is the live campaign carrying the paycheck creative; its slugs
+  // name no theme, so it is listed by name. New paycheck creatives should put
+  // "paycheck" in utm_content and need no edit here. The old lookalike tag
+  // (lal1 / L3) is deliberately not matched: that campaign has ended.
+  { match: /paycheck|\bget_l3\b/, pitch: PAYCHECK_PITCH },
 ]
 
 /**
@@ -92,4 +109,5 @@ export const ALL_PITCHES: ReadonlyArray<GetPitch> = [
   DEBT_PITCH,
   SAVINGS_PITCH,
   MATCH_PITCH,
+  PAYCHECK_PITCH,
 ]

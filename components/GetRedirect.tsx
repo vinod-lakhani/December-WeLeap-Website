@@ -224,18 +224,21 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
         >
           {device === 'ios' ? 'Download on the App Store' : 'Get it on Google Play'}
         </a>
-        <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start.</p>
+        <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start. Connecting a bank is optional.</p>
 
-        {/* The product tour, where the proof screenshot was.
+        {/* Proof under the button. Since 3 Nov 2026 the 9-second paycheck loop,
+            not the 30-second tour: almost nobody watched the tour past a
+            quarter. Before that, a still screenshot.
             Below the button, never above it: at 390x560 — an in-app browser
             with its chrome — the button has to stay above the fold, and the
             top of the clip still lands inside it, which is enough for it to
             start playing (see ProductTourVideo). Sized by aspect ratio so the
             box is reserved and nothing below it moves while it loads. */}
         <div className="mt-7 flex flex-col items-center gap-2.5">
-          <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#386641]">See it in 30 seconds</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#386641]">Your paycheck, split</p>
           <ProductTourVideo
             placement="get_phone"
+            clip="paycheck"
             className="w-[260px] rounded-[28px] shadow-[0_12px_32px_rgba(16,32,26,0.18)]"
           />
         </div>
@@ -249,7 +252,7 @@ export function GetRedirect({ initialDevice, initialUtm }: GetRedirectProps) {
         >
           {device === 'ios' ? 'Download on the App Store' : 'Get it on Google Play'}
         </a>
-        <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start.</p>
+        <p className="mt-2.5 text-center text-[13.5px] text-faint">Free to start. Connecting a bank is optional.</p>
       </main>
     );
   }
