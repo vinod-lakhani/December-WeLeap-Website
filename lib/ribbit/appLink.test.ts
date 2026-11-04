@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { markPlanSaved, planSaved, ribbitPlanParams } from './appLink'
+import { STORE_ASK, appDestination, markPlanSaved, planSaved, ribbitPlanParams, ribbitStoreLink } from './appLink'
 
 describe('the chat-to-app link contract', () => {
   it('carries the rent plan as the app reads it, and leaves out what was not given', () => {
@@ -80,5 +80,38 @@ describe('remembering a tapped Save my plan, for "Open my plan"', () => {
       debt_balance: '4000', debt_rate: '22', debt_pay: '375', debt_months: '12', ef_goal: '8600', debt_kind: 'card', debt_now: '150',
     }))
     expect(ribbitPlanParams({ takeHomeMonthly: 5_000 }, 'rent', 'plan_preview', 't').ef_goal).toBeUndefined()
+  })
+})
+
+describe('phones go to the store (Nov 4)', () => {
+  it('sends iPhone to the App Store, Android to Play, everything else to the web app', () => {
+    expect(appDestination('ios')).toBe('app_store')
+    expect(appDestination('android')).toBe('google_play')
+    expect(appDestination(null)).toBe('web')
+  })
+
+  it('App Store: campaign token is the flow alone, with the Meta paycheck product page', () => {
+    const u = new URL(ribbitStoreLink('rent', 'app_store'))
+    expect(u.hostname).toBe('apps.apple.com')
+    expect(u.searchParams.get('ct')).toBe('ribbit_rent')
+    expect(u.searchParams.get('pt')).toBeTruthy()
+    expect(u.searchParams.get('ppid')).toBe('df7f34a1-7955-431b-9354-eac1b36ec89b')
+    expect(new URL(ribbitStoreLink('offer', 'app_store')).searchParams.get('ct')).toBe('ribbit_offer')
+    expect(new URL(ribbitStoreLink(null, 'app_store')).searchParams.get('ct')).toBe('ribbit_general')
+  })
+
+  it('Google Play: the tags ride on the listing URL and in the Install Referrer', () => {
+    const u = new URL(ribbitStoreLink('offer', 'google_play'))
+    expect(u.searchParams.get('id')).toBe('ai.weleap.app')
+    expect(u.searchParams.get('utm_source')).toBe('ribbit_chat')
+    expect(u.searchParams.get('utm_campaign')).toBe('ribbit_offer')
+    const referrer = new URLSearchParams(u.searchParams.get('referrer') ?? '')
+    expect(referrer.get('utm_source')).toBe('ribbit_chat')
+    expect(referrer.get('utm_campaign')).toBe('ribbit_offer')
+  })
+
+  it('promises the app, not the plan, in plain words', () => {
+    const words = `${STORE_ASK.label} ${STORE_ASK.note}`
+    expect(words).not.toMatch(/\u2014|Leap|Ribbit|plan/i)
   })
 })

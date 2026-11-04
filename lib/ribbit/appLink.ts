@@ -35,6 +35,7 @@
  *   ef_goal           money flow: the emergency fund goal (three months of essentials)
  */
 import { appLinkAt } from '@/lib/app-link'
+import { APPLE_PROVIDER_TOKEN, PRODUCT_PAGES, appStoreUrl, playStoreUrl } from '@/lib/stores'
 import { moneyInputs, type Facts, type Flow } from './engine'
 import { moneyOrder } from './moneyOrder'
 
@@ -84,6 +85,35 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
 /** The full link into the app, with attribution. Client-side (attribution reads storage and PostHog). */
 export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threadId: string): string {
   return appLinkAt(RIBBIT_APP_URL, '/react/', ribbitPlanParams(f, flow, why, threadId))
+}
+
+/**
+ * Phones go to the store instead of the web app (decided Nov 4 2026, a deliberate reversal of the Oct 26 "install
+ * is never the ask"): since Nov 1, 15 people reached the web sign-in from the chat and none signed up, while iPhone
+ * installs sign up at about 41%. The plan does not carry over through an install yet, so on phones every ask says
+ * the app, not the plan. Desktop keeps the web app and the plan link above.
+ *
+ * Campaign = ribbit_<flow> (ribbit_rent, ribbit_offer, ribbit_money, ribbit_general for the picker): the App Store
+ * `ct` alone, so the token reads exactly that, and utm_source=ribbit_chat on Play, which the app reads from the
+ * Install Referrer into app_installed. The App Store link shows the "Meta paycheck" product page by name, not by
+ * productPageFor's Meta rule: it has the preview video and screenshots, the default listing has neither.
+ */
+export type AppDestination = 'app_store' | 'google_play' | 'web'
+
+export const STORE_ASK = {
+  label: 'Check this against your real spending in the free app',
+  note: 'Free on iPhone and Android. Takes about 3 minutes to set up.',
+} as const
+
+export function appDestination(platform: 'ios' | 'android' | null): AppDestination {
+  return platform === 'ios' ? 'app_store' : platform === 'android' ? 'google_play' : 'web'
+}
+
+export function ribbitStoreLink(flow: Flow | null, destination: Exclude<AppDestination, 'web'>): string {
+  const campaign = `ribbit_${flow ?? 'general'}`
+  return destination === 'app_store'
+    ? appStoreUrl({ utm_campaign: campaign }, APPLE_PROVIDER_TOKEN, PRODUCT_PAGES.metaPaycheck)
+    : playStoreUrl({ utm_source: 'ribbit_chat', utm_campaign: campaign })
 }
 
 /**
