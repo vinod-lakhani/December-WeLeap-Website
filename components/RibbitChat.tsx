@@ -6,9 +6,10 @@ import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
 import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
-import { markPlanSaved, planSaved, ribbitAppLink, ribbitOpenPlanLink } from '@/lib/ribbit/appLink'
+import { STORE_ASK, appDestination, markPlanSaved, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
+import { phonePlatform } from '@/lib/text-pilot'
 
 /**
  * The Ribbit chat on /ribbit_chat (spec: "Ribbit Chat Tool — Rent and Offer Flows"). The thread is the page: one
@@ -66,6 +67,10 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   // Read after mount (storage is client-only), so the server HTML and the first render agree.
   const [saved, setSaved] = useState(false)
   useEffect(() => setSaved(!!planSaved()), [])
+  // Phones get the store, everything else the web app (lib/ribbit/appLink.ts). Read after mount: the server render
+  // has no user agent, so the first paint is the web link and a phone swaps it before anyone can tap.
+  const [destination, setDestination] = useState<AppDestination>('web')
+  useEffect(() => setDestination(appDestination(phonePlatform(navigator.userAgent, navigator.maxTouchPoints))), [])
   const [busy, setBusy] = useState(false)
   const [text, setText] = useState('')
   const lastAt = useRef<number>(Date.now())
@@ -176,6 +181,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             facts={thread.state.facts}
             threadId={thread.id}
             flow={thread.state.flow}
+            destination={destination}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
             onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
@@ -255,8 +261,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
-  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; onFinish?: () => void; onTextInstead?: () => void
+function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead }: {
+  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; destination: AppDestination
+  onFinish?: () => void; onTextInstead?: () => void
 }) {
   if (m.from === 'you') {
     return (
@@ -264,6 +271,14 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
         {m.text}
       </div>
     )
+  }
+  // On a phone the ask is the app, not the plan (it does not carry over an install yet), so its words change too.
+  // Only the web link saves the plan, so only it turns on "Open my plan".
+  const ask = m.appAsk && (destination === 'web' ? m.appAsk : { ...m.appAsk, ...STORE_ASK })
+  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
+  const onAskTap = () => {
+    if (destination === 'web') markPlanSaved(flow)
+    track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination })
   }
   return (
     <div className="max-w-[92%] self-start">
@@ -295,33 +310,27 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
       {m.order && <OrderCard steps={m.order} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
       {m.planCard && <PlanCard card={m.planCard} />}
-      {m.appAsk?.quiet && (
+      {ask?.quiet && (
         // The benefit line's link: small, under the line, so it reads as information rather than a second pitch.
         <a
-          href={ribbitAppLink(facts, flow, m.appAsk.why, threadId)}
-          onClick={() => {
-            markPlanSaved(flow)
-            track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: m.appAsk!.why })
-          }}
+          href={askHref}
+          onClick={onAskTap}
           className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
         >
-          {m.appAsk.label}
+          {ask.label}
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
         </a>
       )}
-      {m.appAsk && !m.appAsk.quiet && (
+      {ask && !ask.quiet && (
         <div className="mt-2.5 flex flex-col items-start gap-2">
           <div className="flex flex-wrap gap-2">
             <a
-              href={ribbitAppLink(facts, flow, m.appAsk.why, threadId)}
-              onClick={() => {
-                markPlanSaved(flow)
-                track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: m.appAsk!.why })
-              }}
+              href={askHref}
+              onClick={onAskTap}
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
-              {m.appAsk.label}
+              {ask.label}
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
             </a>
             {onFinish && flow && (
@@ -339,7 +348,7 @@ function Bubble({ m, facts, threadId, flow, onFinish, onTextInstead }: {
               Not ready to connect? Text me each step instead
             </button>
           )}
-          {m.appAsk.note && <p className="text-[13px] leading-snug text-subtle">{m.appAsk.note}</p>}
+          {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
         </div>
       )}
     </div>
