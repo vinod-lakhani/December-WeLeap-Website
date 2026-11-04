@@ -250,8 +250,10 @@ export interface BioCard {
 export function bioCards(utm: BioUtm, featuredSlug: string = BIO_FEATURED_TOOL): BioCard[] {
   const appCard: BioCard = {
     href: bioHref('/get', 'app', utm),
-    title: 'Get WeLeap',
-    subtitle: 'Free to start. iOS and Android.',
+    // Says what you get, not the brand. Organic visitors (not ad-assisted)
+    // tapped 3 times in 20 visits when this read "Get WeLeap" (Oct 2026).
+    title: 'See where your paycheck goes',
+    subtitle: 'The WeLeap app. Free to start, iOS and Android.',
     slot: 'app',
     tool: null,
     content: 'app',

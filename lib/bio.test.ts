@@ -161,8 +161,8 @@ describe('the column', () => {
   it('sends the app card to /get with no store badges to decide anything', () => {
     const app = cards.find((c) => c.slot === 'app')!
     expect(app.href.startsWith('/get?')).toBe(true)
-    expect(app.title).toBe('Get WeLeap')
-    expect(app.subtitle).toBe('Free to start. iOS and Android.')
+    expect(app.title).toBe('See where your paycheck goes')
+    expect(app.subtitle).toBe('The WeLeap app. Free to start, iOS and Android.')
   })
 
   it('stays on weleap.ai — never the app domain, which 404s', () => {
