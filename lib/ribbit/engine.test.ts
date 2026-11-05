@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
 import { matchPresetCity, matchState, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
@@ -333,9 +333,17 @@ describe('offer flow', () => {
     const s = await run('offer', [{ chip: 'hourly' }, { text: '$19.50, 30 hours' }])
     expect(said(s[0])).toBe("Congrats on the offer. What's the base pay? A yearly salary or an hourly rate both work.")
     expect(s[0].chips).toEqual([{ label: 'Yearly salary', value: 'salary' }, { label: 'Hourly', value: 'hourly' }])
-    expect(said(s[1])).toContain("What's the hourly rate?")
+    expect(said(s[1])).toBe("What's the hourly rate? I'll count 40 hours a week.")
+    expect(said(s[1])).not.toMatch(/[,$]/)
     expect(facts(s[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 30, salary: 30_420 })
     expect(said(s[2])).toContain("At $19.50 an hour, 30 hours a week, that's about $30,420 a year.")
+    expect(s[2].state.turn).toBe('O2')
+  })
+
+  it('after Hourly, the rate alone (all a phone number pad can type) is read at 40 hours a week', async () => {
+    const s = await run('offer', [{ chip: 'hourly' }, { text: '19.50' }])
+    expect(facts(s[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 40, salary: 40_560 })
+    expect(said(s[2])).toContain("At $19.50 an hour, 40 hours a week, that's about $40,560 a year.")
     expect(s[2].state.turn).toBe('O2')
   })
 
@@ -421,8 +429,8 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   it('after the invite, a planning question ends with its benefit line and a small link, at most twice', async () => {
     const line = 'Connected, WeLeap ranks your actual debts by interest rate and shows where extra payments save the most.'
     const benefitAsk = svc({ ask: async ({ message }) => ({ kind: 'question' as const, reply: `answer to: ${message}`, plan: true, benefit: line, topic: 'debt' }) })
-    // Mid-flow in the offer chat (no offer on its first range), so the first planning question gets the thread's invite.
-    const s = await run('offer', [{ text: '80000' }, { text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
+    // Mid-flow in the money chat (no offer on its first answer), so the first planning question gets the thread's invite.
+    const s = await run('money', [{ text: '80000' }, { text: 'what should I do with my savings' }, { text: 'card or invest' }, { text: 'which debt first' }, { text: 'and the loan' }], benefitAsk)
     // The first planning question: the invite, never a benefit line.
     expect(s[2].messages.some((m) => m.text === line)).toBe(false)
     expect(s[2].messages.some((m) => m.text === INVITE_TEXT)).toBe(true)
@@ -438,7 +446,7 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   })
 
   it('mid-flow: the line and the button with the question parked; the card waits for the ending', async () => {
-    const s = await run('offer', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
+    const s = await run('money', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
     const invite = s[2].messages.find((m) => m.appAsk)!
     expect(invite.appAsk?.why).toBe('plan_invite')
     expect(invite.planCard).toBeUndefined()
@@ -488,7 +496,23 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[10].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
-  it("offer: the take-home in the job's city leads with comparing another offer, then the extras question; no spending check yet", async () => {
+  it('offer: the first take-home carries the spending check before "Which city is the job in?", as the first rent range does', async () => {
+    const s = await run('offer', [{ text: '85000' }])
+    const msgs = s[1].messages
+    expect(msgs.map((m) => m.text)).toEqual([expect.stringMatching(/take-home before state tax/), TAKEHOME_SPENDING_CHECK_TEXT, 'Which city is the job in?'])
+    expect(msgs[1].appAsk).toEqual({ label: 'Check it against my real spending', why: 'spending_check', note: TAKEHOME_SPENDING_CHECK_NOTE })
+    expect(msgs[1].appAsk?.note).not.toMatch(/bank/i)
+    expect(s[1].events).toContainEqual({ name: 'ribbit_spending_check_shown', props: { turn: 'O2' } })
+    expect(s[1].state).toMatchObject({ turn: 'O2', invited: true })
+  })
+
+  it('offer: the hourly path gets the same check, once', async () => {
+    const s = await run('offer', [{ chip: 'hourly' }, { text: '$19.50, 30 hours' }])
+    expect(s[2].messages.filter((m) => m.appAsk?.why === 'spending_check')).toHaveLength(1)
+    expect(facts(s[2]).rangeSpendingCheckShown).toBe(true)
+  })
+
+  it("offer: the take-home in the job's city leads with comparing another offer, then the extras question; no second check", async () => {
     const s = await run('offer', [{ text: '85000' }, { chip: 'Austin' }])
     const msgs = s[2].messages
     expect(msgs.map((m) => m.text)).toEqual([
@@ -497,16 +521,22 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(msgs.some((m) => m.appAsk)).toBe(false)
     expect(s[2].chips.map((c) => c.value)).toEqual(['compare', 'signing', 'bonus', 'equity', 'none', '__math__'])
     expect(s[2].events.map((e) => e.name)).not.toContain('ribbit_spending_check_shown')
-    expect(s[2].state.invited).toBeFalsy()
   })
 
-  it('offer: No match or Skip goes on to rent with no spending check; the ending carries the one app ask', async () => {
+  it('offer: after the check on the take-home, a planning question at "Which city is the job in?" gets no second invite', async () => {
+    const s = await run('offer', [{ text: '80000' }, { text: 'what should I do with my savings' }], planAsk)
+    expect(s[2].messages.some((m) => m.appAsk?.why === 'plan_invite')).toBe(false)
+    expect(s[2].messages.some((m) => m.text === INVITE_TEXT)).toBe(false)
+  })
+
+  it('offer: No match or Skip goes on to rent with no second spending check; the ending carries the plan ask', async () => {
     for (const steps of [
       [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'none' }],
       [{ text: '85000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 4%' }, { chip: 'skip' }],
     ]) {
       const s = await run('offer', steps)
-      expect(s.flatMap((x) => x.messages).filter((m) => m.appAsk)).toEqual([])
+      expect(s.flatMap((x) => x.messages).filter((m) => m.appAsk).map((m) => m.appAsk?.why)).toEqual(['spending_check'])
+      expect(s[1].messages.some((m) => m.appAsk?.why === 'spending_check')).toBe(true)
       expect(said(s[s.length - 1])).toContain('Want to work that out properly?')
       const end = await reply(s[s.length - 1].state, { chip: 'later' }, svc())
       expect(end.messages.filter((m) => m.appAsk).map((m) => m.appAsk?.why)).toEqual(['plan_preview'])

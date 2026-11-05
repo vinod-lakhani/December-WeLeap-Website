@@ -53,6 +53,8 @@ function personaAnswer(p: Persona, s: Step): Answer | null {
     return { text: p.takeHome !== undefined ? `${p.takeHome} a month take-home` : String(p.salary) }
   }
   if (/^(R1_amount|M1_amount)$/.test(t)) return { text: String(p.takeHome ?? p.salary) }
+  // The offer's Yearly chip asks for the salary (Nov 3, #180); offer personas give a yearly salary.
+  if (t === 'O1_amount') return { text: String(p.salary) }
   if (/^(R2|O2|M2)$/.test(t)) {
     const c = tap ? pickChip(s, new RegExp(p.city, 'i')) : undefined
     return c ? { chip: c } : { text: p.city }
