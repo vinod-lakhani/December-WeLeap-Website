@@ -1037,11 +1037,24 @@ async function offerPay(state: ChatState, chip: string | undefined, text: string
   const lead = pay.kind === 'hourly'
     ? `At ${payLine(f)}, that's about ${fc(pay.annual)} a year. Take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
     : `On ${fc(pay.annual)}, take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
-  return say({ ...state, turn: 'O2' }, [
+  const first = !f.rangeSpendingCheckShown
+  f.rangeSpendingCheckShown = true
+  return say({ ...state, turn: 'O2', invited: true }, [
     { from: 'ribbit', text: lead, figure: `${fc(takeHome)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
+    ...(first ? [spendingCheck(TAKEHOME_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE)] : []),
     { from: 'ribbit', text: 'Which city is the job in?' },
-  ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
+  ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location',
+  [win('O2'), ...(first ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'O2' } }] : [])])
 }
+
+/**
+ * The offer's first take-home carries the app offer, as the first rent range does (R2, Oct 30): since Nov 3 the
+ * offer's only check sat at O6 and no paid visitor reached it (0 of 20), while 5 saw this figure. The thread's one
+ * invite; "Which city is the job in?" still follows, and O6 stays the second chance.
+ */
+export const TAKEHOME_SPENDING_CHECK_TEXT =
+  "Whether that's enough depends on what you spend, and that's the one part I can't see. Want to check it against what you actually spend?"
+export const TAKEHOME_SPENDING_CHECK_NOTE = "Free in WeLeap. See last month's spending next to this take-home."
 
 const EXTRA_CHIPS: Chip[] = [
   { label: 'Signing bonus', value: 'signing' }, { label: 'Annual bonus', value: 'bonus' }, { label: 'Equity', value: 'equity' },
