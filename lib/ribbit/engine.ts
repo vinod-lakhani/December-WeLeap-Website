@@ -1026,7 +1026,9 @@ async function offerPay(state: ChatState, chip: string | undefined, text: string
     f.payBasis = chip
     return say({ ...state, turn: 'O1_amount' }, [{
       from: 'ribbit',
-      text: chip === 'salary' ? "What's the yearly base salary?" : `What's the hourly rate? Add the hours if it isn't ${DEFAULT_HOURS} a week, like "$19.50, 30 hours".`,
+      // The rate alone (Nov 5): the phone's number pad has no comma, letters or "$", so "$19.50, 30 hours" can't be
+      // typed there, and 4 of 6 paid visitors who tapped Hourly left without sending. Typed hours still read.
+      text: chip === 'salary' ? "What's the yearly base salary?" : `What's the hourly rate? I'll count ${DEFAULT_HOURS} hours a week.`,
     }], [], 'money')
   }
   const pay = (state.turn === 'O1_basis' ? hourOrYear(f, chip, text) : null) ?? readPay(text, state.turn === 'O1_amount' ? f.payBasis : undefined)

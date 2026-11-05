@@ -333,9 +333,17 @@ describe('offer flow', () => {
     const s = await run('offer', [{ chip: 'hourly' }, { text: '$19.50, 30 hours' }])
     expect(said(s[0])).toBe("Congrats on the offer. What's the base pay? A yearly salary or an hourly rate both work.")
     expect(s[0].chips).toEqual([{ label: 'Yearly salary', value: 'salary' }, { label: 'Hourly', value: 'hourly' }])
-    expect(said(s[1])).toContain("What's the hourly rate?")
+    expect(said(s[1])).toBe("What's the hourly rate? I'll count 40 hours a week.")
+    expect(said(s[1])).not.toMatch(/[,$]/)
     expect(facts(s[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 30, salary: 30_420 })
     expect(said(s[2])).toContain("At $19.50 an hour, 30 hours a week, that's about $30,420 a year.")
+    expect(s[2].state.turn).toBe('O2')
+  })
+
+  it('after Hourly, the rate alone (all a phone number pad can type) is read at 40 hours a week', async () => {
+    const s = await run('offer', [{ chip: 'hourly' }, { text: '19.50' }])
+    expect(facts(s[2])).toMatchObject({ payBasis: 'hourly', hourlyRate: 19.5, hoursPerWeek: 40, salary: 40_560 })
+    expect(said(s[2])).toContain("At $19.50 an hour, 40 hours a week, that's about $40,560 a year.")
     expect(s[2].state.turn).toBe('O2')
   })
 
