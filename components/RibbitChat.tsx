@@ -272,9 +272,9 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
       </div>
     )
   }
-  // On a phone the ask is the app, not the plan (it does not carry over an install yet), so its words change too.
-  // Only the web link saves the plan, so only it turns on "Open my plan".
-  const ask = m.appAsk && (destination === 'web' ? m.appAsk : { ...m.appAsk, ...STORE_ASK })
+  // On a phone the ask is the app, not the plan (it does not carry over an install yet): the note and the store's
+  // icon say so. Only the web link saves the plan, so only it turns on "Open my plan".
+  const ask = m.appAsk && (destination === 'web' ? m.appAsk : { ...m.appAsk, label: STORE_ASK.label, note: STORE_ASK.note[destination] })
   const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
   const onAskTap = () => {
     if (destination === 'web') markPlanSaved(flow)
@@ -317,8 +317,9 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           onClick={onAskTap}
           className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
         >
+          {destination !== 'web' && <StoreGlyph store={destination} className="h-3.5 w-3.5" />}
           {ask.label}
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+          {destination === 'web' && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
         </a>
       )}
       {ask && !ask.quiet && (
@@ -330,8 +331,9 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
+              {destination !== 'web' && <StoreGlyph store={destination} className="h-[18px] w-[18px] shrink-0" />}
               {ask.label}
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+              {destination === 'web' && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
             </a>
             {onFinish && flow && (
               <button
@@ -352,6 +354,24 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
         </div>
       )}
     </div>
+  )
+}
+
+/** The store a phone's ask opens, on the button itself, so the label's promise never hides the download. The marks
+ *  are the ones in the official badges (public/badges, StoreBadges); screen readers hear "App Store" or "Google Play". */
+function StoreGlyph({ store, className }: { store: 'app_store' | 'google_play'; className: string }) {
+  return store === 'app_store' ? (
+    <svg role="img" aria-label="App Store:" viewBox="7.5 8.5 20 22" className={className} fill="currentColor">
+      <path d="M24.76888,20.30068a4.94881,4.94881,0,0,1,2.35656-4.15206,5.06566,5.06566,0,0,0-3.99116-2.15768c-1.67924-.17626-3.30719,1.00483-4.1629,1.00483-.87227,0-2.18977-.98733-3.6085-.95814a5.31529,5.31529,0,0,0-4.47292,2.72787c-1.934,3.34842-.49141,8.26947,1.3612,10.97608.9269,1.32535,2.01018,2.8058,3.42763,2.7533,1.38706-.05753,1.9051-.88448,3.5794-.88448,1.65876,0,2.14479.88448,3.591.8511,1.48838-.02416,2.42613-1.33124,3.32051-2.66914a10.962,10.962,0,0,0,1.51842-3.09251A4.78205,4.78205,0,0,1,24.76888,20.30068Z" />
+      <path d="M22.03725,12.21089a4.87248,4.87248,0,0,0,1.11452-3.49062,4.95746,4.95746,0,0,0-3.20758,1.65961,4.63634,4.63634,0,0,0-1.14371,3.36139A4.09905,4.09905,0,0,0,22.03725,12.21089Z" />
+    </svg>
+  ) : (
+    <svg role="img" aria-label="Google Play:" viewBox="17 12 42 47" className={className}>
+      <path fill="#ea4335" d="M36.6,34.41l-18.86,20.02s0,0,0,.01c.58,2.17,2.56,3.77,4.92,3.77.94,0,1.83-.26,2.58-.7l.06-.04,21.23-12.25-9.94-10.82Z" />
+      <path fill="#fbbc04" d="M55.68,31h-.02s-9.17-5.33-9.17-5.33l-10.33,9.19,10.36,10.36,9.12-5.26c1.6-.86,2.68-2.55,2.68-4.49s-1.07-3.61-2.65-4.47h0Z" />
+      <path fill="#4285f4" d="M17.73,16.44c-.11.42-.17.86-.17,1.31v35.38c0,.45.06.89.17,1.31l19.51-19.51-19.51-18.49Z" />
+      <path fill="#34a853" d="M36.74,35.43l9.76-9.76-21.21-12.3c-.77-.46-1.67-.73-2.63-.73-2.36,0-4.34,1.6-4.92,3.78h0s19,19,19,19h0Z" />
+    </svg>
   )
 }
 

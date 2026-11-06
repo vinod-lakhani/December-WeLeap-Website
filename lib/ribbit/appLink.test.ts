@@ -110,8 +110,10 @@ describe('phones go to the store (Nov 4)', () => {
     expect(referrer.get('utm_campaign')).toBe('ribbit_offer')
   })
 
-  it('promises the app, not the plan, in plain words', () => {
-    const words = `${STORE_ASK.label} ${STORE_ASK.note}`
-    expect(words).not.toMatch(/\u2014|Leap|Ribbit|plan/i)
+  it('says the app in the note, never the plan, in plain words', () => {
+    for (const note of Object.values(STORE_ASK.note)) {
+      expect(`${STORE_ASK.label} ${note}`).not.toMatch(/\u2014|Leap|Ribbit|plan/i)
+      expect(note).toMatch(/^Free (iPhone|Android) app\./)
+    }
   })
 })
