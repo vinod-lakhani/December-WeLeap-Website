@@ -97,12 +97,19 @@ export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threa
  * `ct` alone, so the token reads exactly that, and utm_source=ribbit_chat on Play, which the app reads from the
  * Install Referrer into app_installed. The App Store link shows the "Meta paycheck" product page by name, not by
  * productPageFor's Meta rule: it has the preview video and screenshots, the default listing has neither.
+ *
+ * The label is the web ask's promise, not the app (Nov 5): with "…in the free app" phone taps fell from 6 of 26
+ * to 1 of 31 rent chats that saw the ask. The note under the button and the store's icon on it say where it goes,
+ * so a tap still means the person chose the store.
  */
 export type AppDestination = 'app_store' | 'google_play' | 'web'
 
 export const STORE_ASK = {
-  label: 'Check this against your real spending in the free app',
-  note: 'Free on iPhone and Android. Takes about 3 minutes to set up.',
+  label: 'Check it against my real spending',
+  note: {
+    app_store: 'Free iPhone app. About 3 minutes to set up.',
+    google_play: 'Free Android app. About 3 minutes to set up.',
+  },
 } as const
 
 export function appDestination(platform: 'ios' | 'android' | null): AppDestination {
