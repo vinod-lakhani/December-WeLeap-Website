@@ -275,6 +275,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
   // On a phone the ask is the app, not the plan (it does not carry over an install yet): the note and the store's
   // icon say so. Only the web link saves the plan, so only it turns on "Open my plan".
   const ask = m.appAsk && (destination === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination))
+  const text = (destination !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
   const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
   const onAskTap = () => {
     if (destination === 'web') markPlanSaved(flow)
@@ -295,7 +296,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
             )}
           </div>
         )}
-        <p>{m.text}</p>
+        <p>{text}</p>
         {m.math && (
           <dl className="mt-2.5 rounded-xl bg-white/10 px-3 py-2">
             {m.math.map((row, i) => (

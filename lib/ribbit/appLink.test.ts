@@ -142,6 +142,9 @@ describe('phones go to the store (Nov 4)', () => {
       expect(label).not.toMatch(/\u2014|\bLeap\b|Ribbit|save my plan|free app|in the app/i)
     }
     expect(STORE_ASK.textInstead).toBe('Not ready for the app? Text me each step instead')
+    // The plan preview's line: no "keep this" on a phone, where the plan does not carry into the install.
+    expect(STORE_ASK.texts.plan_preview).not.toMatch(/\u2014|keep|save|free app/i)
+    expect(Object.keys(STORE_ASK.texts)).toEqual(['plan_preview'])
     expect(STORE_ASK.textInstead).not.toMatch(/\u2014|connect/i)
   })
 })

@@ -107,6 +107,10 @@ export type AppDestination = 'app_store' | 'google_play' | 'web'
 
 export const STORE_ASK = {
   labels: { plan_preview: 'Build my full plan' } as Partial<Record<AppReason, string>>,
+  /** The line an ask sits under, where the web one promises what an install does not (keeping this plan). */
+  texts: {
+    plan_preview: "Here's your plan as WeLeap would show it. In the app, the rest fills in when you connect your bank.",
+  } as Partial<Record<AppReason, string>>,
   note: {
     app_store: 'Free iPhone app. About 3 minutes to set up.',
     google_play: 'Free Android app. About 3 minutes to set up.',
