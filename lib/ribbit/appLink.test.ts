@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { STORE_ASK, appDestination, markPlanSaved, planSaved, ribbitPlanParams, ribbitStoreLink } from './appLink'
+import { STORE_ASK, appDestination, markPlanSaved, phoneAsk, planSaved, ribbitPlanParams, ribbitStoreLink, type AppReason } from './appLink'
 
 describe('the chat-to-app link contract', () => {
   it('carries the rent plan as the app reads it, and leaves out what was not given', () => {
@@ -112,8 +112,39 @@ describe('phones go to the store (Nov 4)', () => {
 
   it('says the app in the note, never the plan, in plain words', () => {
     for (const note of Object.values(STORE_ASK.note)) {
-      expect(`${STORE_ASK.label} ${note}`).not.toMatch(/\u2014|Leap|Ribbit|plan/i)
+      expect(note).not.toMatch(/\u2014|Leap|Ribbit|plan/i)
       expect(note).toMatch(/^Free (iPhone|Android) app\./)
     }
+  })
+
+  // The asks as engine.ts makes them (web labels), with what a phone shows instead.
+  const ASKS: { ask: { label: string; why: AppReason; note?: string; quiet?: boolean; textInstead?: boolean }; phone: string }[] = [
+    { ask: { label: 'Check it against my real spending', why: 'spending_check', note: 'web note' }, phone: 'Check it against my real spending' },
+    { ask: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: 'No forms: the rows above come with you.', textInstead: true }, phone: 'Build my full plan' },
+    { ask: { label: 'Click to get WeLeap', why: 'account' }, phone: 'Click to get WeLeap' },
+    { ask: { label: 'Click to get WeLeap', why: 'plan_invite' }, phone: 'Click to get WeLeap' },
+    { ask: { label: 'Get my plan', why: 'benefit', quiet: true }, phone: 'Get my plan' },
+    { ask: { label: 'A future ask', why: 'rent_answer' }, phone: 'A future ask' },
+  ]
+  for (const destination of ['app_store', 'google_play'] as const) {
+    for (const { ask, phone } of ASKS) {
+      it(`${destination}: ${ask.why} reads "${phone}" with the store's note`, () => {
+        const shown = phoneAsk(ask, destination)
+        expect(shown.label).toBe(phone)
+        expect(shown.note).toBe(STORE_ASK.note[destination])
+        expect([shown.why, shown.quiet, shown.textInstead]).toEqual([ask.why, ask.quiet, ask.textInstead])
+      })
+    }
+  }
+
+  it('no phone label promises a saved plan or names the app (that is the note and the icon)', () => {
+    for (const label of [...ASKS.map((a) => phoneAsk(a.ask, 'app_store').label), ...Object.values(STORE_ASK.labels)]) {
+      expect(label).not.toMatch(/\u2014|\bLeap\b|Ribbit|save my plan|free app|in the app/i)
+    }
+    expect(STORE_ASK.textInstead).toBe('Not ready for the app? Text me each step instead')
+    // The plan preview's line: no "keep this" on a phone, where the plan does not carry into the install.
+    expect(STORE_ASK.texts.plan_preview).not.toMatch(/\u2014|keep|save|free app/i)
+    expect(Object.keys(STORE_ASK.texts)).toEqual(['plan_preview'])
+    expect(STORE_ASK.textInstead).not.toMatch(/\u2014|connect/i)
   })
 })

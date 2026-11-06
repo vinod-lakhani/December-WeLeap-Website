@@ -6,7 +6,7 @@ import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
 import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
-import { STORE_ASK, appDestination, markPlanSaved, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination } from '@/lib/ribbit/appLink'
+import { STORE_ASK, appDestination, markPlanSaved, phoneAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 import { phonePlatform } from '@/lib/text-pilot'
@@ -274,7 +274,8 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
   }
   // On a phone the ask is the app, not the plan (it does not carry over an install yet): the note and the store's
   // icon say so. Only the web link saves the plan, so only it turns on "Open my plan".
-  const ask = m.appAsk && (destination === 'web' ? m.appAsk : { ...m.appAsk, label: STORE_ASK.label, note: STORE_ASK.note[destination] })
+  const ask = m.appAsk && (destination === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination))
+  const text = (destination !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
   const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
   const onAskTap = () => {
     if (destination === 'web') markPlanSaved(flow)
@@ -295,7 +296,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
             )}
           </div>
         )}
-        <p>{m.text}</p>
+        <p>{text}</p>
         {m.math && (
           <dl className="mt-2.5 rounded-xl bg-white/10 px-3 py-2">
             {m.math.map((row, i) => (
@@ -347,7 +348,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           </div>
           {onTextInstead && (
             <button type="button" onClick={onTextInstead} className="py-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
-              Not ready to connect? Text me each step instead
+              {destination === 'web' ? 'Not ready to connect? Text me each step instead' : STORE_ASK.textInstead}
             </button>
           )}
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}

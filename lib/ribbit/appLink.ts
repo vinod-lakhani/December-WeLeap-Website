@@ -98,19 +98,34 @@ export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threa
  * Install Referrer into app_installed. The App Store link shows the "Meta paycheck" product page by name, not by
  * productPageFor's Meta rule: it has the preview video and screenshots, the default listing has neither.
  *
- * The label is the web ask's promise, not the app (Nov 5): with "…in the free app" phone taps fell from 6 of 26
+ * The label is each ask's own promise, not the app (Nov 5): with "…in the free app" phone taps fell from 6 of 26
  * to 1 of 31 rent chats that saw the ask. The note under the button and the store's icon on it say where it goes,
- * so a tap still means the person chose the store.
+ * so a tap still means the person chose the store. A label changes on phones only where its promise is not true
+ * after an install: "Save my plan" (the plan does not carry over). Any other ask keeps its own label.
  */
 export type AppDestination = 'app_store' | 'google_play' | 'web'
 
 export const STORE_ASK = {
-  label: 'Check it against my real spending',
+  labels: { plan_preview: 'Build my full plan' } as Partial<Record<AppReason, string>>,
+  /** The line an ask sits under, where the web one promises what an install does not (keeping this plan). */
+  texts: {
+    plan_preview: "Here's your plan as WeLeap would show it. In the app, the rest fills in when you connect your bank.",
+  } as Partial<Record<AppReason, string>>,
   note: {
     app_store: 'Free iPhone app. About 3 minutes to set up.',
     google_play: 'Free Android app. About 3 minutes to set up.',
   },
+  /** The text sign-up under the ask: on web "connect" means the bank, on a phone the ask is an install. */
+  textInstead: 'Not ready for the app? Text me each step instead',
 } as const
+
+/** A chat ask as a phone shows it: the store's note, and the ask's own label unless STORE_ASK.labels replaces it. */
+export function phoneAsk<A extends { label: string; why: AppReason; note?: string }>(
+  ask: A,
+  destination: Exclude<AppDestination, 'web'>,
+): A {
+  return { ...ask, label: STORE_ASK.labels[ask.why] ?? ask.label, note: STORE_ASK.note[destination] }
+}
 
 export function appDestination(platform: 'ios' | 'android' | null): AppDestination {
   return platform === 'ios' ? 'app_store' : platform === 'android' ? 'google_play' : 'web'
