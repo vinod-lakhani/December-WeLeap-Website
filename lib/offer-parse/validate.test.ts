@@ -138,3 +138,30 @@ describe('mergeToolInputs', () => {
     expect(() => mergeToolInputs(inputs as unknown[])).not.toThrow()
   })
 })
+
+describe('validateExtraction — a startup grant', () => {
+  it('reads the grant as a count, a strike, the vesting and its kind', () => {
+    const quote = 'you will be granted an option to purchase 20,000 shares at an exercise price of $1.10 per share'
+    const { parsed, rejected } = validateExtraction({
+      equityGrantShares: ok(20000, quote),
+      equityStrikePrice: ok(1.1, quote),
+      equityVestYears: ok(4, 'vesting over four years'),
+      equityCliffMonths: ok(12, '25% vests after one year'),
+      equityType: ok('iso', 'an incentive stock option'),
+    })
+    expect(rejected).toEqual([])
+    expect(parsed.equityGrantShares?.value).toBe(20000)
+    expect(parsed.equityStrikePrice?.value).toBe(1.1)
+    expect(parsed.equityType?.value).toBe('iso')
+  })
+
+  it('drops a kind outside the closed set, a fractional count, and a nine-digit number', () => {
+    const { parsed, rejected } = validateExtraction({
+      equityType: ok('warrant', 'a warrant'),
+      equityGrantShares: ok(123456789, 'shares'),
+      equityCliffMonths: ok(12.5, 'cliff'),
+    })
+    expect(parsed).toEqual({})
+    expect(rejected.sort()).toEqual(['equityCliffMonths', 'equityGrantShares', 'equityType'])
+  })
+})

@@ -6,6 +6,7 @@ import {
   MAX_YTD_AMOUNT,
   isInRange,
   isStateCode,
+  isEquityType,
   isPayFrequency,
   isLineKind,
   type OfferFieldKey,
@@ -13,6 +14,7 @@ import {
   type ParsedPaystub,
 } from './fields'
 import { containsPii } from './redact'
+import type { EquityType } from '@/lib/offer/startupEquity'
 
 /**
  * The precision gate.
@@ -63,6 +65,12 @@ export function validateExtraction(raw: unknown): { parsed: ParsedOffer; rejecte
   if (state) {
     const meta = check('workStateCode', state, isStateCode(state.value))
     if (meta) parsed.workStateCode = { value: state.value as (typeof US_STATES)[number], ...meta }
+  }
+
+  const equity = input.equityType
+  if (equity) {
+    const meta = check('equityType', equity, isEquityType(equity.value))
+    if (meta) parsed.equityType = { value: equity.value as EquityType, ...meta }
   }
 
   return { parsed, rejected }

@@ -19,6 +19,7 @@
  */
 
 import { US_STATES } from '@/lib/states'
+import type { EquityType } from '@/lib/offer/startupEquity'
 
 export interface ParsedField {
   /** The number itself, already range-validated. */
@@ -37,6 +38,18 @@ export type ParsedOffer = Partial<Record<OfferFieldKey, ParsedField>> & {
    * take that carries personal data.
    */
   workStateCode?: { value: (typeof US_STATES)[number]; confidence: number; quote: string }
+  /** As workStateCode, a closed set: which kind of equity the grant is. */
+  equityType?: { value: EquityType; confidence: number; quote: string }
+}
+
+/** The kinds of grant the startup flow tells apart (lib/offer/startupEquity.ts). */
+export const EQUITY_TYPES = ['iso', 'nso', 'rsu', 'restricted_stock'] as const satisfies readonly EquityType[]
+
+export const EQUITY_TYPE_DESCRIPTION =
+  'The kind of equity granted: iso for incentive stock options, nso for non-qualified or non-statutory stock options, rsu for restricted stock units, restricted_stock for restricted stock or shares bought at grant. Omit if the letter grants no equity or does not say which kind; "stock options" with no other detail is omitted.'
+
+export function isEquityType(value: unknown): value is EquityType {
+  return typeof value === 'string' && (EQUITY_TYPES as readonly string[]).includes(value)
 }
 
 export const WORK_STATE_DESCRIPTION =
@@ -117,6 +130,45 @@ export const OFFER_FIELDS = {
       'Employee stock purchase plan discount, as a percentage off the market price. Typically 5 or 15.',
     min: 0,
     max: 50,
+  },
+  /*
+   * A startup grant, as the letter states it: a count and a price per share,
+   * never a dollar value the letter does not give. The Ribbit chat's startup
+   * flow works the rest out (lib/offer/startupEquity.ts). The count tops out
+   * at eight digits like every other field here, so the SSN guarantee above
+   * still holds; total shares outstanding is deliberately not read, since a
+   * company's share count runs to nine digits and more.
+   */
+  equityGrantShares: {
+    describe:
+      'The number of stock options, RSUs or shares granted, as a count of shares. Not a dollar value. Omit if the letter only gives a dollar value.',
+    min: 1,
+    max: 10_000_000,
+    integer: true,
+  },
+  equityStrikePrice: {
+    describe:
+      'The exercise or strike price per share of the stock options, in US dollars. Omit for RSUs, and omit if the letter says the price will be set later by the board.',
+    min: 0.0001,
+    max: 10_000,
+  },
+  equityVestYears: {
+    describe: 'The total vesting period of the equity grant, in years. "Vests over 48 months" is 4.',
+    min: 1,
+    max: 10,
+  },
+  equityCliffMonths: {
+    describe:
+      'The vesting cliff of the equity grant, in months. "25% vests after one year" is 12. Record 0 only if the letter says there is no cliff.',
+    min: 0,
+    max: 48,
+    integer: true,
+  },
+  equityPricePerShare: {
+    describe:
+      "The company's most recent preferred share price or price per share from its last financing round, in US dollars, only if the letter states one. Not the strike price.",
+    min: 0.0001,
+    max: 10_000,
   },
 } as const satisfies Record<string, FieldSpec>
 

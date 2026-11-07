@@ -41,7 +41,15 @@ const OFFER_META = {
     "See what a job offer is worth after tax in the job's city: monthly take-home, the 401(k) match and what to put in, one step at a time.",
   url: '/ribbit_chat?flow=offer',
 }
-const FLOW_META: Partial<Record<Flow, typeof GENERIC_META>> = { rent: RENT_META, offer: OFFER_META }
+const STARTUP_META = {
+  title: 'What is my startup offer really worth? Work it out with Ribbit',
+  description:
+    "See what your startup stock options are worth today next to the number your recruiter quoted, your share of the company, and what it has to sell for to beat another offer. Upload the offer letter or type the numbers. Free, no login.",
+  ogDescription:
+    'See what your startup stock options are worth today next to the number your recruiter quoted, and what the company has to sell for to beat another offer.',
+  url: '/ribbit_chat?flow=startup',
+}
+const FLOW_META: Partial<Record<Flow, typeof GENERIC_META>> = { rent: RENT_META, offer: OFFER_META, startup: STARTUP_META }
 
 export function generateMetadata({ searchParams }: { searchParams?: SearchParams }): Metadata {
   const flow = readFlow(searchParams).flow
@@ -59,10 +67,11 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 function readFlow(sp: SearchParams | undefined): { flow: Flow | null; entry: 'flow_param' | 'utm' | 'picker' } {
   const flow = one(sp?.flow)
-  if (flow === 'rent' || flow === 'offer' || flow === 'money') return { flow, entry: 'flow_param' }
+  if (flow === 'rent' || flow === 'offer' || flow === 'money' || flow === 'startup') return { flow, entry: 'flow_param' }
   const content = one(sp?.utm_content) ?? ''
   if (content.startsWith('rent-')) return { flow: 'rent', entry: 'utm' }
   if (content.startsWith('offer-')) return { flow: 'offer', entry: 'utm' }
+  if (content.startsWith('startup-')) return { flow: 'startup', entry: 'utm' }
   return { flow: null, entry: 'picker' }
 }
 
@@ -70,6 +79,7 @@ const HEADER: Record<Flow | 'picker', string> = {
   rent: 'What rent can I afford?',
   offer: 'What is my job offer really worth?',
   money: 'Where should my money go?',
+  startup: 'What is my startup offer really worth?',
   picker: 'Work it out with Ribbit',
 }
 
@@ -96,6 +106,7 @@ export default function Page({ searchParams }: { searchParams?: SearchParams }) 
       </Section>
       {flow === 'rent' && <RentExplainer />}
       {flow === 'offer' && <OfferExplainer />}
+      {flow === 'startup' && <StartupExplainer />}
     </PageShell>
   )
 }
@@ -156,6 +167,37 @@ function OfferExplainer() {
           <p>
             Ribbit works out the take-home and the match from your own numbers: the salary, the city the job is in,
             anything on top and the match formula. General answers from your numbers, not personal financial advice.
+          </p>
+        </article>
+      </Container>
+    </Section>
+  )
+}
+
+/** As the offer explainer: server-rendered below the chat, so the startup page's content is in its source. */
+function StartupExplainer() {
+  return (
+    <Section variant="canvas" className="!pt-0">
+      <Container maxWidth="narrow">
+        <article className="mx-auto max-w-[480px] space-y-3 border-t border-hairline pt-8 text-[15px] leading-relaxed text-subtle">
+          <h2 className="text-[1.25rem] font-bold leading-snug tracking-[-0.01em] text-ink">What are startup stock options worth?</h2>
+          <p>
+            A recruiter&apos;s equity number is usually the grant at the last round&apos;s price per share: the price
+            investors paid for preferred stock. Employees get common stock, and a new grant&apos;s strike price is set at
+            today&apos;s value of the common stock (the 409A valuation), so selling on day one would gain about nothing.
+          </p>
+          <p>
+            What the grant could become depends on your share of the company, how much later rounds shrink it, and what
+            the company sells for. Investors are usually paid back first, so a sale below what they put in can leave
+            common stock with nothing.
+          </p>
+          <p>
+            Some parts are certain: nothing vests before the cliff, buying your shares costs the strike price times the
+            number of shares, and after leaving you usually have 90 days to buy the ones that vested.
+          </p>
+          <p>
+            Ribbit works these out from your own numbers: the offer letter or what you type in. General answers from your
+            numbers, not personal financial or investment advice.
           </p>
         </article>
       </Container>

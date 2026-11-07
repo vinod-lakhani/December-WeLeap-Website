@@ -120,6 +120,7 @@ describe('phones go to the store (Nov 4)', () => {
   // The asks as engine.ts makes them (web labels), with what a phone shows instead.
   const ASKS: { ask: { label: string; why: AppReason; note?: string; quiet?: boolean; textInstead?: boolean }; phone: string }[] = [
     { ask: { label: 'Check it against my real spending', why: 'spending_check', note: 'web note' }, phone: 'Check it against my real spending' },
+    { ask: { label: 'Build my savings plan', why: 'shares_savings', note: 'web note' }, phone: 'Build my savings plan' },
     { ask: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: 'No forms: the rows above come with you.', textInstead: true }, phone: 'Build my full plan' },
     { ask: { label: 'Click to get WeLeap', why: 'account' }, phone: 'Click to get WeLeap' },
     { ask: { label: 'Click to get WeLeap', why: 'plan_invite' }, phone: 'Click to get WeLeap' },

@@ -13,6 +13,8 @@ import {
   PAY_FREQUENCIES,
   PAY_FREQUENCY_DESCRIPTION,
   WORK_STATE_DESCRIPTION,
+  EQUITY_TYPE_DESCRIPTION,
+  EQUITY_TYPES,
 } from '@/lib/offer-parse/fields'
 import { redact } from '@/lib/offer-parse/redact'
 import {
@@ -270,6 +272,17 @@ function buildTool(kind: DocKind): Anthropic.Tool {
       description: WORK_STATE_DESCRIPTION,
       properties: {
         value: { type: 'string', enum: [...US_STATES] },
+        confidence: { type: 'number' },
+        quote: { type: 'string' },
+      },
+      required: ['value', 'confidence', 'quote'],
+      additionalProperties: false,
+    }
+    properties.equityType = {
+      type: 'object',
+      description: EQUITY_TYPE_DESCRIPTION,
+      properties: {
+        value: { type: 'string', enum: [...EQUITY_TYPES] },
         confidence: { type: 'number' },
         quote: { type: 'string' },
       },
