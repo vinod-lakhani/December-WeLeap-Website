@@ -121,6 +121,70 @@ const DOC: Record<DocKind, { button: string; analytics: string; found: string }>
   },
 }
 
+/** The startup grant fields: read for the Ribbit chat, not a field on the offer tool's form. */
+const STARTUP_GRANT_KEYS = new Set(['equityGrantShares', 'equityStrikePrice', 'equityVestYears', 'equityCliffMonths', 'equityPricePerShare', 'equityType'])
+
+export type DocumentRead =
+  | { ok: true; parsed: ParsedOffer }
+  | { ok: false; reason: string; retryAfter: number | null }
+
+/**
+ * One document through /api/parse-offer, with its analytics: the upload below and the Ribbit chat's letter upload
+ * share it, so both send the same doc_* events (`surface` tells them apart). A read that finds nothing is a failure
+ * (`no_fields`) from where the person is standing, whatever the status code said. Never throws.
+ */
+export async function readDocument(file: File, kind: DocKind, surface: 'tool' | 'chat'): Promise<DocumentRead> {
+  const doc_class = DOC[kind].analytics
+  if (file.size > MAX_BYTES) {
+    track('doc_parse_failed', { doc_class, surface, failure_reason: 'too_large' })
+    return { ok: false, reason: 'too_large', retryAfter: null }
+  }
+  track('doc_uploaded', { doc_class, surface, file_type: file.type || 'unknown' })
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    body.append('kind', kind)
+    const response = await fetch('/api/parse-offer', {
+      method: 'POST',
+      body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      const header = response.headers.get('Retry-After')
+      track('doc_parse_failed', { doc_class, surface, failure_reason: String(data?.error ?? response.status) })
+      return { ok: false, reason: typeof data?.error === 'string' ? data.error : 'default', retryAfter: header === null ? null : Number(header) }
+    }
+
+    const count = Object.keys(data.parsed ?? {}).length
+    if (count === 0) {
+      track('doc_parse_failed', { doc_class, surface, failure_reason: 'no_fields' })
+      return { ok: false, reason: 'no_fields', retryAfter: null }
+    }
+
+    // First document wins, and it stays on the person — see doc-analytics.
+    stampFirstDocClass(doc_class as DocClass)
+    track('doc_parsed', {
+      doc_class,
+      surface,
+      fields_extracted: count,
+      // Which route the document took. `text` means unpdf read it and the
+      // redaction sweep ran before the model saw anything; `vision` means it
+      // was a scan or a photo and it did not.
+      extraction_path: data.path,
+      redactions: data.redactions ?? 0,
+      rejected_count: data.rejectedCount ?? 0,
+      latency_ms: data.latencyMs ?? null,
+    })
+    return { ok: true, parsed: data.parsed as ParsedOffer }
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === 'TimeoutError'
+    track('doc_parse_failed', { doc_class, surface, failure_reason: timedOut ? 'client_timeout' : 'network' })
+    return { ok: false, reason: timedOut ? 'timeout' : 'default', retryAfter: null }
+  }
+}
+
 export interface OfferLetterUploadProps {
   /** Called with whatever survived validation. Never called with nothing. */
   onParsed: (parsed: ParsedOffer, kind: DocKind) => void
@@ -213,68 +277,18 @@ export function OfferLetterUpload({ onParsed, dense = false, formAbove = false }
     setError(null)
     setFilled(null)
 
-    if (file.size > MAX_BYTES) {
-      setError(withFormDirection(MESSAGES.too_large!, formAbove))
-      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'too_large' })
-      return
-    }
-
     setBusy(kind)
-    track('doc_uploaded', { doc_class: DOC[kind].analytics, file_type: file.type || 'unknown' })
-
     try {
-      const body = new FormData()
-      body.append('file', file)
-      body.append('kind', kind)
-      const response = await fetch('/api/parse-offer', {
-        method: 'POST',
-        body,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        const header = response.headers.get('Retry-After')
-        const message = (MESSAGES[data?.error as string] ?? MESSAGES.default!).replace(
-          '{wait}',
-          waitPhrase(header === null ? null : Number(header)),
-        )
-        setError(withFormDirection(message, formAbove))
-        track('doc_parse_failed', {
-          doc_class: DOC[kind].analytics,
-          failure_reason: String(data?.error ?? response.status),
-        })
+      const read = await readDocument(file, kind, 'tool')
+      // The tool's form takes the offer's own terms; a startup grant is the Ribbit chat's (lib/offer/startupEquity.ts).
+      const count = read.ok ? Object.keys(read.parsed).filter((k) => !STARTUP_GRANT_KEYS.has(k)).length : 0
+      if (!read.ok || count === 0) {
+        const reason = read.ok ? 'no_fields' : read.reason
+        setError(withFormDirection((MESSAGES[reason] ?? MESSAGES.default!).replace('{wait}', waitPhrase(read.ok ? null : read.retryAfter)), formAbove))
         return
       }
-
-      const count = Object.keys(data.parsed ?? {}).length
-      // A parse that finds nothing is a failure from where the user is
-      // standing, whatever the status code said.
-      if (count === 0) {
-        setError(withFormDirection(MESSAGES.no_fields!, formAbove))
-        track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: 'no_fields' })
-        return
-      }
-
-      onParsed(data.parsed as ParsedOffer, kind)
+      onParsed(read.parsed, kind)
       setFilled({ count, kind })
-      // First document wins, and it stays on the person — see doc-analytics.
-      stampFirstDocClass(DOC[kind].analytics as DocClass)
-      track('doc_parsed', {
-        doc_class: DOC[kind].analytics,
-        fields_extracted: count,
-        // Which route the document took. `text` means unpdf read it and the
-        // redaction sweep ran before the model saw anything; `vision` means it
-        // was a scan or a photo and it did not.
-        extraction_path: data.path,
-        redactions: data.redactions ?? 0,
-        rejected_count: data.rejectedCount ?? 0,
-        latency_ms: data.latencyMs ?? null,
-      })
-    } catch (e) {
-      const timedOut = e instanceof DOMException && e.name === 'TimeoutError'
-      setError(withFormDirection((timedOut ? MESSAGES.timeout : MESSAGES.default)!, formAbove))
-      track('doc_parse_failed', { doc_class: DOC[kind].analytics, failure_reason: timedOut ? 'client_timeout' : 'network' })
     } finally {
       setBusy(null)
       // Let the same file be picked again after an error.

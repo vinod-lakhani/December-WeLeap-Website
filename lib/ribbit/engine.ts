@@ -22,15 +22,17 @@ import { REAL_RETURN_DEFAULT } from '@/lib/leapImpact/constants'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { federalTax, ficaTax, marginalFederalRate, taxableIncome } from '@/lib/firstPaycheck/calculation'
 import { computeOfferValue, MARKET_PTO_DAYS, type OfferInputs, type OfferValue, type TaxResult } from '@/lib/offer/calculate'
+import { DEFAULT_CLIFF_MONTHS, DEFAULT_VEST_YEARS, FUTURE_ROUNDS, afterDilution, atLastRound, breakEvenExit, companyValue, costToBuy, hasStrike, ownership, payoutAt, pct, type EquityType, type Grant } from '@/lib/offer/startupEquity'
+import type { ParsedOffer } from '@/lib/offer-parse/fields'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
-import { DEFAULT_HOURS, splitCityState, matchPresetCity, matchState, parseDebt, parseMatch, parseMoney, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
+import { DEFAULT_HOURS, splitCityState, matchPresetCity, matchState, parseDebt, parseDecimal, parseGrant, parseMatch, parseMoney, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
 import { moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
 import type { AppReason } from './appLink'
 
 const metroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>
 
-export type Flow = 'rent' | 'offer' | 'money'
+export type Flow = 'rent' | 'offer' | 'money' | 'startup'
 export interface Chip { label: string; value: string }
 export interface MathRow { label: string; value: string; strong?: boolean }
 export interface ChatMessage {
@@ -113,6 +115,20 @@ export interface Facts {
   /** A bare number at the first question that could be an hourly rate or a yearly salary ($95 or $95,000): asked. */
   pendingPay?: number
   // offer
+  // startup (lib/offer/startupEquity.ts): the grant, what it's priced at, and the company's size
+  /** Options or shares granted, the strike (0 for RSUs), and the vesting, from the letter or typed. */
+  grantShares?: number
+  strike?: number
+  /** "I don't know the strike": the cost to buy is then said in words, not dollars. */
+  strikeUnknown?: boolean
+  equityType?: EquityType
+  vestYears?: number
+  cliffMonths?: number
+  /** The last round's price per share (the investors' price), typed or worked out from the recruiter's dollar figure. */
+  pricePerShare?: number
+  sharesOutstanding?: number
+  /** The offer letter was read in this thread. */
+  letterRead?: boolean
   /** The other offer being weighed (O3_compare): its base pay a year and its take-home a month in the same place. */
   compareSalary?: number
   compareTakeHome?: number
@@ -125,6 +141,12 @@ export interface Facts {
   matchRatePct?: number
   matchUpToPct?: number
   pendingMatchCap?: number
+  /** From an uploaded benefits guide (O4), as the offer tool page reads them: the employer HSA a month and the
+   * employee-only premium a month on the HSA-eligible plan. */
+  hsaMonthly?: number
+  healthcarePremium?: number
+  /** A benefits guide was read in this thread. */
+  benefitsRead?: boolean
   value?: OfferValue
   /** The flow this thread switched from (offer → rent at O7), so the handoff can name both. */
   switchedFrom?: Flow
@@ -217,7 +239,7 @@ const STATE_NAME = (code?: string) => US_STATES_NAMED.find((s) => s.code === cod
 // "Rent" read as an answer to a question nobody asked.
 const PICKER_CHIPS: Chip[] = [
   { label: 'Rent I can afford', value: 'rent' }, { label: 'What an offer is worth', value: 'offer' },
-  { label: 'Where should my money go?', value: 'money' },
+  { label: 'Where should my money go?', value: 'money' }, { label: 'What my startup offer is worth', value: 'startup' },
 ]
 
 /**
@@ -249,12 +271,12 @@ function cityChips(): Chip[] {
 // ── Starting ──────────────────────────────────────────────────────────────────────────────────────────────
 
 export function start(flow: Flow | null): Step {
-  const state: ChatState = { flow, turn: flow === 'rent' ? 'R1' : flow === 'offer' ? 'O1' : flow === 'money' ? 'M1' : 'P0', facts: {}, history: [] }
+  const state: ChatState = { flow, turn: flow === 'rent' ? 'R1' : flow === 'offer' ? 'O1' : flow === 'money' ? 'M1' : flow === 'startup' ? 'S1' : 'P0', facts: {}, history: [] }
   if (!flow) {
     return say(state, [{ from: 'ribbit', text: 'What are we working out?', turn: 'P0' }],
       PICKER_CHIPS, 'text')
   }
-  return flow === 'rent' ? askSalary(state) : flow === 'offer' ? askOfferSalary(state) : askMoneySalary(state)
+  return flow === 'rent' ? askSalary(state) : flow === 'offer' ? askOfferSalary(state) : flow === 'startup' ? askStartup(state) : askMoneySalary(state)
 }
 
 function say(state: ChatState, messages: ChatMessage[], chips: Chip[], input: Step['input'], events: ChatEvent[] = []): Step {
@@ -277,7 +299,12 @@ const win = (turn: string): ChatEvent => ({ name: 'ribbit_win_shown', props: { t
 
 // ── Replying ──────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface Reply { chip?: string; text?: string }
+/**
+ * `letter`: an uploaded offer letter, read by /api/parse-offer on the page (the same route as the tool pages): what
+ * it found, or why it couldn't (the route's error code). The file itself never reaches the engine or the thread.
+ */
+export type DocRead = { parsed: ParsedOffer } | { failed: string }
+export interface Reply { chip?: string; text?: string; letter?: DocRead; benefits?: DocRead }
 
 /**
  * One reply. `chip` is a tapped option's value; `text` is typed. The person's own words are added to the thread
@@ -287,9 +314,9 @@ export async function reply(prev: ChatState, r: Reply, svc: ChatServices): Promi
   const state: ChatState = {
     ...prev,
     facts: { ...prev.facts },
-    history: [...prev.history, { from: 'in' as const, text: r.text ?? r.chip ?? '' }].slice(-12),
+    history: [...prev.history, { from: 'in' as const, text: r.text ?? r.chip ?? (r.letter ? 'My offer letter' : r.benefits ? 'My benefits guide' : '') }].slice(-12),
   }
-  const turnEvent: ChatEvent = { name: 'ribbit_turn', props: { turn: prev.turn, reply_kind: r.chip ? 'chip' : 'typed' } }
+  const turnEvent: ChatEvent = { name: 'ribbit_turn', props: { turn: prev.turn, reply_kind: r.letter ? 'letter' : r.benefits ? 'benefits' : r.chip ? 'chip' : 'typed' } }
   const step = await route(state, r, svc)
   return { ...step, events: [turnEvent, ...step.events] }
 }
@@ -300,6 +327,8 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
 
   if (chip === '__math__') return showMath(state)
+  if (r.letter) return readLetter(state, r.letter)
+  if (r.benefits) return readBenefits(state, r.benefits)
 
   switch (state.turn) {
     case 'P0': {
@@ -307,10 +336,11 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       // Ribbit as a question, a bare "yes" got a stray answer or, twice in three tries, none at all.
       const offerOpen = Boolean(f.moneyOffered && !f.moneyDeclined && state.ui?.chips?.some((c) => c.value === 'money'))
       const typedPick = offerOpen && YES.test(text) ? 'money' : offerOpen && NO.test(text) ? 'not_now' : ''
-      const pick = chip ?? (typedPick || (/where should my money go/i.test(text) ? 'money' : /offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : ''))
+      const pick = chip ?? (typedPick || (/where should my money go/i.test(text) ? 'money' : /startup|stock options?|equity/i.test(text) ? 'startup' : /offer|job/i.test(text) ? 'offer' : /rent/i.test(text) ? 'rent' : ''))
       if (pick === 'rent') return askSalary({ ...state, flow: 'rent', turn: 'R1' })
       if (pick === 'offer') return askOfferSalary({ ...state, flow: 'offer', turn: 'O1' })
       if (pick === 'money') return askMoneySalary({ ...state, flow: 'money', turn: 'M1' })
+      if (pick === 'startup') return askStartup({ ...state, flow: 'startup', turn: 'S1' })
       if (pick === 'not_now') return say({ ...state, facts: { ...f, moneyDeclined: true } }, [{ from: 'ribbit', text: 'Sure. Ask me anything, or pick one to work out.' }], PICKER_CHIPS, 'text')
       return question(state, text, svc, 'which tool to use: rent or a job offer')
     }
@@ -511,7 +541,20 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       return offerPay(state, chip, text, svc)
     case 'O3':
     case 'O3_amount':
+    case 'O3_equity':
       return offerExtras(state, chip, text, svc)
+
+    // ── Startup offer ─────────────────────────────────────────────────────────────────────────────────────
+    case 'S1':
+    case 'S2':
+    case 'S2_strike':
+    case 'S3':
+    case 'S3_dollar':
+    case 'S4':
+    case 'S5':
+    case 'S5_this':
+    case 'S5_other':
+      return startupTurn(state, chip, text, svc)
     case 'O3_compare':
       return offerCompare(state, text, svc)
     case 'O4':
@@ -535,6 +578,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     case 'R8':
     case 'O8':
     case 'M8':
+    case 'S8':
     case 'done':
       // The ending's "Not ready to connect? Text me each step instead" opens the text sign-up.
       if (chip === 'text') return handoff(state)
@@ -639,11 +683,12 @@ function placeTaxLine(f: Facts): string {
 
 // ── Location ────────────────────────────────────────────────────────────────────────────────────────────────
 
-const LOCATION_TURN: Record<Flow, string> = { rent: 'R2', offer: 'O2', money: 'M2' }
+// The startup flow never asks where: its figures are before tax.
+const LOCATION_TURN: Partial<Record<Flow, string>> = { rent: 'R2', offer: 'O2', money: 'M2' }
 
 async function chooseLocation(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
-  const pfx = LOCATION_TURN[state.flow ?? 'rent']
+  const pfx = LOCATION_TURN[state.flow ?? 'rent'] ?? 'R2'
   if (chip === SOMEWHERE_ELSE || /somewhere else|other/i.test(text)) {
     return say({ ...state, turn: `${pfx}_state` }, [{ from: 'ribbit', text: 'Which state?' }], [], 'location')
   }
@@ -734,7 +779,7 @@ async function metroChosen(state: ChatState, region: string, stateCode: string, 
 
 async function chooseState(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
-  const pfx = LOCATION_TURN[state.flow ?? 'rent']
+  const pfx = LOCATION_TURN[state.flow ?? 'rent'] ?? 'R2'
   const st = matchState(chip ?? text)
   if (!st) return question(state, text, svc, 'which US state')
   f.stateCode = st.code
@@ -1133,22 +1178,86 @@ async function offerExtras(state: ChatState, chip: string | undefined, text: str
       from: 'ribbit', text: `What's the other offer's base pay, yearly or hourly?${f.place ? ` I'll price it in ${f.place} too.` : ''}`,
     }], [], 'money')
   }
-  const pick = chip ?? (/sign/i.test(text) ? 'signing' : /bonus/i.test(text) ? 'bonus' : /equity|rsu|stock/i.test(text) ? 'equity' : /just|no|none|that'?s all/i.test(text) ? 'none' : '')
+  if (state.turn === 'O3_equity') {
+    // Startup equity is never a dollar a year in the package: it moves to the startup turns, with the pay kept.
+    const kind = chip ?? (/startup|private|options?\b|pre-?ipo/i.test(text) ? 'startup' : /public|rsu|listed|stock/i.test(text) ? 'public' : '')
+    if (kind === 'startup') {
+      return askGrant({ ...state, flow: 'startup', facts: { ...f, switchedFrom: 'offer' } }, '', [{ name: 'ribbit_startup_branch', props: { turn: 'O3' } }])
+    }
+    if (kind === 'public') {
+      f.pendingExtra = 'equity'
+      return say({ ...state, turn: 'O3_amount' }, [{ from: 'ribbit', text: 'About how much stock vests a year, in dollars?' }], [], 'money')
+    }
+    return question(state, text, svc, 'whether the equity is public company stock or startup options')
+  }
+  const pick = chip ?? (/sign/i.test(text) ? 'signing' : /bonus/i.test(text) ? 'bonus' : /equity|rsu|stock|options?\b/i.test(text) ? 'equity' : /just|no|none|that'?s all/i.test(text) ? 'none' : '')
   if (pick === 'none') return askMatch(state)
-  if (pick === 'signing' || pick === 'bonus' || pick === 'equity') {
+  if (pick === 'equity') {
+    return say({ ...state, turn: 'O3_equity' }, [{ from: 'ribbit', text: 'Public company stock or startup options?' }],
+      [{ label: 'Public company stock', value: 'public' }, { label: 'Startup options or shares', value: 'startup' }], 'text')
+  }
+  if (pick === 'signing' || pick === 'bonus') {
     f.pendingExtra = pick
-    const q = pick === 'signing' ? 'How much is the signing bonus?' : pick === 'bonus' ? 'What is the annual bonus target? A percent of salary or a dollar amount.' : 'About how much equity vests a year, in dollars?'
+    const q = pick === 'signing' ? 'How much is the signing bonus?' : 'What is the annual bonus target? A percent of salary or a dollar amount.'
     return say({ ...state, turn: 'O3_amount' }, [{ from: 'ribbit', text: q }], [], 'money')
   }
   return question(state, text, svc, 'anything on top of the base pay: signing bonus, annual bonus or equity, or another offer to compare')
 }
 
-function askMatch(state: ChatState): Step {
-  return say({ ...state, turn: 'O4' }, [{ from: 'ribbit', text: 'Does the company match 401k? Check the benefits page if you have it.', turn: 'O4' }], [
+export const BENEFITS_CHIP: Chip = { label: 'Upload my benefits guide', value: '__upload_benefits__' }
+
+function askMatch(state: ChatState, before: ChatMessage[] = []): Step {
+  const read = state.facts.benefitsRead
+  return say({ ...state, turn: 'O4' }, [...before, {
+    from: 'ribbit', turn: 'O4',
+    text: read ? 'Does the company match 401k?' : "Does the company match 401k? It's usually in the benefits guide. Upload it and I'll read the match.",
+  }], [
+    ...(read ? [] : [BENEFITS_CHIP]),
     { label: 'Yes, I know the %', value: 'known' }, { label: 'Yes, not sure how much', value: 'unknown' },
     { label: 'No', value: 'none' }, { label: 'Not sure', value: 'unknown' },
   ], 'text')
 }
+
+/**
+ * A benefits guide, read on the page at O4 (the same route and fields as the offer tool's "Upload benefits guide"):
+ * the match, the employer HSA and the premium on the HSA-eligible plan. A match read goes straight to what the offer
+ * is worth with it; without one the question stays open. The HSA and premium go into the package as on the tool page.
+ */
+function readBenefits(state: ChatState, doc: DocRead): Step {
+  const f = state.facts
+  if ('failed' in doc) {
+    const ui = state.ui
+    return { state, messages: [{ from: 'ribbit', text: (LETTER_FAILED[doc.failed] ?? LETTER_FAILED.default).replace(/Typing (the numbers|them) works/, 'The answers below work').replace('the numbers', 'the match') }], chips: ui?.chips ?? [], input: ui?.input ?? 'text', events: [] }
+  }
+  const p = doc.parsed
+  f.benefitsRead = true
+  if (p.employerHsaAnnual) f.hsaMonthly = Math.round(p.employerHsaAnnual.value / 12)
+  if (p.healthcarePremiumMonthly) f.healthcarePremium = Math.round(p.healthcarePremiumMonthly.value)
+  const rate = p.matchRatePct?.value
+  const cap = p.matchUpToPct?.value
+  const rows: MathRow[] = [
+    ...(rate !== undefined && cap !== undefined ? [{ label: '401k match', value: rate === 0 ? 'None' : `${rate}% up to ${cap}% of salary` }] : []),
+    ...(p.employerHsaAnnual ? [{ label: 'Employer HSA', value: `${fc(p.employerHsaAnnual.value)}/yr` }] : []),
+    ...(p.healthcarePremiumMonthly ? [{ label: 'Your health premium', value: `${fc(p.healthcarePremiumMonthly.value)}/mo` }] : []),
+  ]
+  const events: ChatEvent[] = [{ name: 'ribbit_benefits_read', props: { turn: state.turn, fields_found: rows.length, has_match: rate !== undefined && cap !== undefined } }]
+  const plan = p.healthcarePremiumMonthly || p.employerHsaAnnual ? ' The HSA and premium are for one person on the HSA plan.' : ''
+  if (rate !== undefined && cap !== undefined) {
+    const readBack: ChatMessage = { from: 'ribbit', text: `Here's what I read.${plan}`, math: rows, turn: 'O4' }
+    if (rate === 0 || cap === 0) {
+      f.match = 'none'
+      return withEvents(offerRent(state, 'No match, so nothing to collect there.', [readBack]), events)
+    }
+    const next = applyMatch(state, rate, cap)
+    return { ...next, messages: [readBack, ...next.messages], events: [...events, ...next.events] }
+  }
+  const readBack: ChatMessage = rows.length
+    ? { from: 'ribbit', text: `Here's what I read.${plan} I couldn't find the 401k match in it, though.`, math: rows }
+    : { from: 'ribbit', text: "I couldn't find the 401k match in that one." }
+  return withEvents(askMatch(state, [readBack]), events)
+}
+
+const withEvents = (step: Step, events: ChatEvent[]): Step => ({ ...step, events: [...events, ...step.events] })
 
 async function offerMatch(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
   const f = state.facts
@@ -1186,7 +1295,7 @@ async function offerMatch(state: ChatState, chip: string | undefined, text: stri
 export function offerInputs(f: Facts): OfferInputs {
   return {
     salary: f.salary ?? 0, bonusPct: f.bonusPct ?? 0, matchRatePct: f.matchRatePct ?? 0, matchUpToPct: f.matchUpToPct ?? 0,
-    hsaMonthly: 0, healthcarePremium: 0, rsuAnnual: f.rsuAnnual ?? 0, signingBonus: f.signingBonus ?? 0,
+    hsaMonthly: f.hsaMonthly ?? 0, healthcarePremium: f.healthcarePremium ?? 0, rsuAnnual: f.rsuAnnual ?? 0, signingBonus: f.signingBonus ?? 0,
     showEspp: false, esppContrib: 0, esppDiscount: 0, ptoDays: MARKET_PTO_DAYS, rentMonthly: 0, savingsPct: 20,
   }
 }
@@ -1248,6 +1357,334 @@ function offerRentMessages(f: Facts): ChatMessage[] {
 function offerRent(state: ChatState, lead?: string, before: ChatMessage[] = []): Step {
   return say({ ...state, turn: 'O7' }, [...before, ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []), ...offerRentMessages(state.facts)],
     [{ label: 'Yes', value: 'yes' }, { label: 'Later', value: 'later' }], 'text')
+}
+
+// ── Startup offer turns ─────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The startup offer (spec: "Startup Offer Analyzer: Ribbit Chat Spec"), from its own entry or from the offer flow's
+ * Equity chip. The payoff comes by S3: the recruiter's number next to what the grant is worth today. Each turn after
+ * adds one figure and can be skipped. The arithmetic is lib/offer/startupEquity.ts; nothing is added to a package.
+ */
+export const UPLOAD_CHIP: Chip = { label: 'Upload my offer letter', value: '__upload__' }
+const NOT_SURE: Chip = { label: 'Not sure', value: 'unknown' }
+
+function askStartup(state: ChatState): Step {
+  return say({ ...state, turn: 'S1' }, [
+    { from: 'ribbit', text: "Got a startup offer? Upload the letter and I'll read it, or tell me the base pay.", turn: 'S1' },
+  ], [UPLOAD_CHIP], 'money')
+}
+
+const grantNoun = (f: Facts) => (f.equityType === 'rsu' ? 'RSUs' : f.equityType === 'restricted_stock' ? 'shares' : 'options')
+const grantLine = (f: Facts) => `${(f.grantShares ?? 0).toLocaleString('en-US')} ${f.equityType === 'iso' ? 'ISOs' : f.equityType === 'nso' ? 'NSOs' : grantNoun(f)}`
+const share$ = (n: number) => `$${n < 1 ? n.toFixed(n < 0.1 ? 3 : 2) : n.toFixed(2)}`
+const vestLine = (f: Facts) => `${f.vestYears ?? DEFAULT_VEST_YEARS} years${(f.cliffMonths ?? DEFAULT_CLIFF_MONTHS) > 0 ? `, ${(f.cliffMonths ?? DEFAULT_CLIFF_MONTHS) === 12 ? '1-year' : `${f.cliffMonths}-month`} cliff` : ', no cliff'}`
+const grantOf = (f: Facts): Grant => ({ shares: f.grantShares ?? 0, strike: f.equityType === 'rsu' ? 0 : f.strike, type: f.equityType, vestYears: f.vestYears })
+
+function askGrant(state: ChatState, lead: string, events: ChatEvent[] = []): Step {
+  const f = state.facts
+  return say({ ...state, turn: 'S2' }, [
+    ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []),
+    { from: 'ribbit', text: 'How many options or shares, and at what strike price? Like 20,000 at $1.10.', turn: 'S2' },
+  ], f.letterRead ? [] : [UPLOAD_CHIP], 'text', events)
+}
+
+function askStrike(state: ChatState, lead = ''): Step {
+  return say({ ...state, turn: 'S2_strike' }, [{ from: 'ribbit', text: `${lead}What's the strike price? It's the price you'd pay for each share.`.trim() }],
+    [{ label: "I don't know it", value: 'unknown' }, { label: "They're RSUs, no strike", value: 'rsu' }], 'money')
+}
+
+function askPrice(state: ChatState, before: ChatMessage[] = []): Step {
+  const f = state.facts
+  return say({ ...state, turn: 'S3' }, [...before, {
+    from: 'ribbit', text: "Do you know the last round's price per share? The recruiter's dollar figure for the grant works too.", turn: 'S3',
+  }], [{ label: 'The recruiter gave me a dollar value', value: 'dollar' }, NOT_SURE, ...(f.letterRead ? [{ label: "Something's off", value: 'fix' }] : [])], 'money')
+}
+
+/** The next question for what the chat still lacks: the grant, its strike, then the price. */
+function nextStartupQuestion(state: ChatState, before: ChatMessage[] = []): Step {
+  const f = state.facts
+  if (!f.grantShares) return askGrant(state, before.map((m) => m.text).join(' '))
+  if (hasStrike(grantOf(f)) && f.strike === undefined && !f.strikeUnknown) return askStrike(state, before.length ? `${before.map((m) => m.text).join(' ')} ` : '')
+  if (f.pricePerShare) return priceTurn(state, before)
+  return askPrice(state, before)
+}
+
+const LETTER_FAILED: Record<string, string> = {
+  too_large: "That file is over 4MB, so I couldn't read it. A PDF export is usually much smaller than a photo. Typing the numbers works just as well.",
+  no_fields: "I couldn't find the numbers in that one. It may be a scan I can't read. Typing them works just as well.",
+  rate_limited: "That's a few documents in a short time, so I can't read another one yet. Typing the numbers works just as well.",
+  timeout: 'That one took too long to read. Typing the numbers works just as well.',
+  default: "I couldn't read that one. Typing the numbers works just as well.",
+}
+
+/** An offer letter, read on the page: what it says back, then the next missing piece. A failed read keeps the question open. */
+function readLetter(state: ChatState, letter: NonNullable<Reply['letter']>): Step {
+  const f = state.facts
+  if ('failed' in letter) {
+    const ui = state.ui
+    return { state, messages: [{ from: 'ribbit', text: LETTER_FAILED[letter.failed] ?? LETTER_FAILED.default }], chips: ui?.chips ?? [], input: ui?.input ?? 'text', events: [] }
+  }
+  const p = letter.parsed
+  const flow: Flow = state.flow === 'startup' ? 'startup' : state.flow ?? 'startup'
+  if (p.baseSalaryAnnual && !f.salary) takePay(f, { kind: 'salary', annual: p.baseSalaryAnnual.value })
+  if (p.workStateCode && !f.stateCode) f.stateCode = p.workStateCode.value
+  if (p.equityType) f.equityType = p.equityType.value
+  if (p.equityGrantShares) f.grantShares = p.equityGrantShares.value
+  if (p.equityStrikePrice) f.strike = p.equityStrikePrice.value
+  if (f.equityType === 'rsu') f.strike = 0
+  if (p.equityVestYears) f.vestYears = p.equityVestYears.value
+  if (p.equityCliffMonths !== undefined) f.cliffMonths = p.equityCliffMonths.value
+  if (p.equityPricePerShare) f.pricePerShare = p.equityPricePerShare.value
+  f.letterRead = true
+  const rows: MathRow[] = [
+    ...(p.baseSalaryAnnual ? [{ label: 'Base pay', value: fc(p.baseSalaryAnnual.value) }] : []),
+    ...(f.grantShares ? [{ label: f.equityType === 'rsu' ? 'RSUs' : 'Grant', value: grantLine(f) }] : []),
+    ...(f.grantShares && f.strike !== undefined && f.equityType !== 'rsu' ? [{ label: 'Strike price', value: share$(f.strike) }] : []),
+    ...(f.grantShares && (p.equityVestYears || p.equityCliffMonths) ? [{ label: 'Vesting', value: vestLine(f) }] : []),
+    ...(p.equityPricePerShare ? [{ label: 'Last round, per share', value: share$(p.equityPricePerShare.value) }] : []),
+  ]
+  const readBack: ChatMessage = rows.length
+    ? { from: 'ribbit', text: f.grantShares ? "Here's what I read:" : "Here's what I read. I couldn't find the grant in it, though.", math: rows, turn: 'S1' }
+    : { from: 'ribbit', text: "I couldn't find the grant in that one. Typing it works just as well.", turn: 'S1' }
+  const next = nextStartupQuestion({ ...state, flow, facts: f })
+  return { ...next, messages: [readBack, ...next.messages], events: [...next.events, { name: 'ribbit_letter_read', props: { turn: state.turn, fields_found: rows.length, has_grant: Boolean(f.grantShares) } }] }
+}
+
+async function startupTurn(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  switch (state.turn) {
+    case 'S1': {
+      const pay = readPay(text, 'salary')
+      if (!pay || pay.kind === 'unsure' || pay.annual < 1_000) return question(state, text, svc, 'the base pay in the offer')
+      takePay(f, pay)
+      return askGrant(state, `Got it, ${fc(pay.annual)} base.`)
+    }
+    case 'S2': {
+      const g = parseGrant(text)
+      if (!g.shares) return question(state, text, svc, 'how many options or shares, and the strike price')
+      f.grantShares = g.shares
+      if (g.rsu) { f.equityType = 'rsu'; f.strike = 0 }
+      if (g.strike !== undefined) f.strike = g.strike
+      return nextStartupQuestion(state)
+    }
+    case 'S2_strike': {
+      if (chip === 'rsu' || /\brsus?\b/i.test(text)) { f.equityType = 'rsu'; f.strike = 0; return nextStartupQuestion(state) }
+      if (chip === 'unknown' || /don'?t know|not sure|no idea/i.test(text)) { f.strikeUnknown = true; return nextStartupQuestion(state) }
+      const n = parseDecimal(text)
+      if (n === null || n >= 10_000) return question(state, text, svc, 'the strike price per share')
+      f.strike = n
+      return nextStartupQuestion(state)
+    }
+    case 'S3': {
+      if (chip === 'fix') return askGrant({ ...state, facts: { ...f, grantShares: undefined, strike: undefined, strikeUnknown: undefined } }, 'Type it the way it reads.')
+      if (chip === 'dollar') return say({ ...state, turn: 'S3_dollar' }, [{ from: 'ribbit', text: 'What dollar value did they give for the whole grant?' }], [], 'money')
+      if (chip === 'unknown' || /don'?t know|not sure|no idea|^no\b/i.test(text)) {
+        return askShares(state, [{ from: 'ribbit', text: "Worth asking your recruiter for the last round's price per share. It's a normal question, and it's what their dollar figure is built on." }])
+      }
+      const n = parseDecimal(text)
+      if (n === null) return question(state, text, svc, "the last round's price per share")
+      // "$4.40 a share" or a small number is a price per share; "$88,000" is the recruiter's figure for the grant.
+      if (/share|each|\/\s*sh|per\b/i.test(text) || n < 1_000) f.pricePerShare = n
+      else f.pricePerShare = grantValueToPrice(f, n, text)
+      return priceTurn(state)
+    }
+    case 'S3_dollar': {
+      const n = parseDecimal(text)
+      if (n === null) return question(state, text, svc, 'the dollar value the recruiter gave for the grant')
+      f.pricePerShare = grantValueToPrice(f, n, text)
+      return priceTurn(state)
+    }
+    case 'S4': {
+      if (chip === 'unknown' || /don'?t know|not sure|no idea|^no\b/i.test(text)) {
+        return startupEnding(state, [{ from: 'ribbit', text: "Worth asking: \"What are the total fully diluted shares?\" It's a normal question, and it turns your grant into a share of the company." }])
+      }
+      let n = parseDecimal(text)
+      // "20" after "shares outstanding" means 20 million: no company has fewer shares than one person's grant.
+      if (n !== null && f.grantShares && n <= f.grantShares && n * 1e6 > f.grantShares && !/\d{4}/.test(text.replace(/,/g, ''))) n *= 1e6
+      if (n === null || !f.grantShares || n <= f.grantShares) return question(state, text, svc, 'the total shares outstanding')
+      f.sharesOutstanding = Math.round(n)
+      const own = ownership(grantOf(f), f.sharesOutstanding)
+      return say({ ...state, turn: 'S5' }, [
+        {
+          from: 'ribbit', figure: pct(own), figureLabel: 'Your share of the company', turn: 'S4',
+          text: `Startups usually raise money again, and each round shrinks everyone's slice. After ${FUTURE_ROUNDS === 2 ? 'two' : FUTURE_ROUNDS} more rounds, plan on about ${pct(afterDilution(own))}.`,
+        },
+        { from: 'ribbit', text: 'Do you have another offer to compare it to?', turn: 'S5' },
+      ], [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }], 'text', [win('S4')])
+    }
+    case 'S5': {
+      if (chip === 'yes' || /^(y|yes|yeah|yep)\b/i.test(text)) {
+        if (!f.salary) return say({ ...state, turn: 'S5_this' }, [{ from: 'ribbit', text: "What's the base pay on this offer?" }], [], 'money')
+        return say({ ...state, turn: 'S5_other' }, [{ from: 'ribbit', text: "What's the other offer's base pay?" }], [], 'money')
+      }
+      if (chip === 'no' || /^(n|no|nope|nah)\b/i.test(text)) return exitScenarios(state)
+      // "Yes, $150,000 at a public company": the pay is already there.
+      const typed = readPay(text, 'salary')
+      if (f.salary && typed && typed.kind !== 'unsure' && typed.annual >= 1_000) return breakEven(state, typed.annual)
+      return question(state, text, svc, 'whether they have another offer to compare')
+    }
+    case 'S5_this': {
+      const pay = readPay(text, 'salary')
+      if (!pay || pay.kind === 'unsure' || pay.annual < 1_000) return question(state, text, svc, 'the base pay on this offer')
+      takePay(f, pay)
+      return say({ ...state, turn: 'S5_other' }, [{ from: 'ribbit', text: "And the other offer's base pay?" }], [], 'money')
+    }
+    case 'S5_other': {
+      const pay = readPay(text, 'salary')
+      if (!pay || pay.kind === 'unsure' || pay.annual < 1_000) return question(state, text, svc, "the other offer's base pay")
+      return breakEven(state, pay.annual)
+    }
+  }
+  return question(state, text, svc, '')
+}
+
+/** The recruiter's dollar figure as a price per share: for the whole grant, or a year of it ("$22k a year"). */
+function grantValueToPrice(f: Facts, value: number, text: string): number {
+  const whole = /year|yr|annual/i.test(text) ? value * (f.vestYears ?? DEFAULT_VEST_YEARS) : value
+  return whole / (f.grantShares ?? 1)
+}
+
+/** S3's payoff: the recruiter's number next to what the grant gains if sold today, then the shares question. */
+function priceTurn(state: ChatState, before: ChatMessage[] = []): Step {
+  const f = state.facts
+  const g = grantOf(f)
+  const price = f.pricePerShare ?? 0
+  const total = atLastRound(g, price)
+  const noun = grantNoun(f)
+  const count = (f.grantShares ?? 0).toLocaleString('en-US')
+  let payoff: ChatMessage
+  if (f.equityType === 'rsu') {
+    payoff = {
+      from: 'ribbit', figure: fc(total), figureLabel: "At the last round's price", turn: 'S3',
+      text: `At the last round's ${share$(price)}, your ${count} RSUs come to ${fc(total)}. That's the investors' price. Startup RSUs usually pay out only when the company sells or goes public, so it's what they're worth if the company grows into that price and gets there.`,
+    }
+  } else if (f.strike === undefined) {
+    payoff = {
+      from: 'ribbit', figure: fc(total), figureLabel: "At the last round's price", turn: 'S3',
+      text: `At the last round's ${share$(price)}, your ${count} ${noun} look like ${fc(total)}. That's the investors' price. A new grant's strike is usually today's value of the common stock, so selling today would gain you about nothing. Your strike price is in the grant paperwork.`,
+    }
+  } else if (f.strike >= price) {
+    payoff = {
+      from: 'ribbit', figure: '$0', figureLabel: "Your gain at the last round's price", turn: 'S3',
+      text: `Your ${share$(f.strike)} strike is at or above the last round's ${share$(price)}, so at that price your ${noun} gain you nothing yet. They're worth something only if the company grows past ${share$(f.strike)} a share.`,
+    }
+  } else {
+    payoff = {
+      from: 'ribbit', figure: 'About $0', figureLabel: `Your ${noun} if sold today`, turn: 'S3',
+      text: `At the last round's ${share$(price)}, your ${count} ${noun} look like ${fc(total)}. That's the investors' price. Your ${share$(f.strike)} strike is today's value of the common stock, so selling today would gain you about nothing. The ${fc(total)} is what it's worth if the company grows into it.`,
+      math: [
+        { label: "At the last round's price", value: fc(total) },
+        { label: 'Your strike price', value: share$(f.strike) },
+        { label: `To buy all ${count} shares`, value: fc(costToBuy(g) ?? 0) },
+      ],
+    }
+  }
+  const check = sharesCheck(f)
+  return askShares({ ...state, invited: state.invited || Boolean(check) }, [...before, payoff, ...(check ? [check] : [])],
+    [win('S3'), ...(check ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'S3' } }] : [])])
+}
+
+/**
+ * The startup chat's app offer, right after the S3 payoff (Nov 7): before it, the only ask was the ending, which
+ * anyone leaving at S4 or S5 never saw. The cost to buy is the stake the chat can name; the ask is a savings plan,
+ * which is what the app builds (it has nothing for shares yet, so "afford my shares" would promise more). Only when
+ * the cost is known (not RSUs, not an unknown strike), once per thread; the S4 question still follows.
+ */
+export const SHARES_SAVINGS_NOTE = 'Free in WeLeap. Built on your real paychecks and spending.'
+function sharesCheck(f: Facts): ChatMessage | null {
+  const cost = costToBuy(grantOf(f))
+  if (!cost || f.spendingCheckShown) return null
+  f.spendingCheckShown = true
+  const perYear = cost / (f.vestYears ?? DEFAULT_VEST_YEARS)
+  return {
+    from: 'ribbit', turn: 'S3',
+    text: `Buying them all costs ${fc(cost)}, about ${fc(perYear)} for each year that vests. Want a savings plan that makes room for it, built on what you actually earn and spend?`,
+    appAsk: { label: 'Build my savings plan', why: 'shares_savings', note: SHARES_SAVINGS_NOTE },
+  }
+}
+
+function askShares(state: ChatState, before: ChatMessage[], events: ChatEvent[] = []): Step {
+  return say({ ...state, turn: 'S4' }, [...before, {
+    from: 'ribbit', text: 'Do you know the total shares outstanding? It turns your grant into a share of the company.', turn: 'S4',
+  }], [{ label: 'No', value: 'unknown' }], 'money', events)
+}
+
+/** S5 with another offer: what the company has to sell for before the grant makes up the lower pay. */
+function breakEven(state: ChatState, otherSalary: number): Step {
+  const f = state.facts
+  f.compareSalary = otherSalary
+  const g = grantOf(f)
+  const gap = otherSalary - (f.salary ?? 0)
+  const exit = breakEvenExit(g, f.sharesOutstanding ?? 0, gap)
+  if (exit === null) {
+    return startupEnding(state, [{
+      from: 'ribbit', turn: 'S5',
+      text: `This offer pays as much as the other one or more, so your ${grantNoun(f)} are on top, not making up for anything.`,
+    }], [win('S5')])
+  }
+  const years = f.vestYears ?? DEFAULT_VEST_YEARS
+  const cost = costToBuy(g)
+  const last = f.pricePerShare && f.sharesOutstanding ? f.pricePerShare * f.sharesOutstanding : undefined
+  const times = last ? ` about ${(Math.round((exit / last) * 10) / 10).toString()} times its last valuation,` : ''
+  return startupEnding(state, [{
+    from: 'ribbit', figure: `About ${companyValue(exit)}`, figureLabel: 'What the company has to sell for', turn: 'S5',
+    text: `The other offer pays ${fc(gap)} a year more, ${fc(gap * years)} over ${years} years.${cost ? ` Buying your shares costs ${fc(cost)} more.` : ''} The company has to sell for about ${companyValue(exit)},${times} before your ${grantNoun(f)} make that up. That's before tax, and after ${FUTURE_ROUNDS === 2 ? 'two' : FUTURE_ROUNDS} more rounds of raising money.`,
+    math: [
+      { label: `Less pay over ${years} years`, value: fc(gap * years) },
+      ...(cost ? [{ label: 'Cost to buy your shares', value: fc(cost) }] : []),
+      ...(last ? [{ label: 'Last valuation', value: companyValue(last) }] : []),
+    ],
+  }], [win('S5')])
+}
+
+/** S5 without another offer: what the grant could pay at a few sale prices, after dilution and the cost to buy. */
+function exitScenarios(state: ChatState): Step {
+  const f = state.facts
+  const g = grantOf(f)
+  const last = f.pricePerShare && f.sharesOutstanding ? f.pricePerShare * f.sharesOutstanding : undefined
+  const exits = last ? [last, last * 3, last * 10] : [100e6, 500e6, 1e9]
+  return startupEnding(state, [{
+    from: 'ribbit', turn: 'S5',
+    text: `What your ${grantNoun(f)} could pay if the company sells${last ? ' at its last valuation and above' : ''}, after ${FUTURE_ROUNDS === 2 ? 'two' : FUTURE_ROUNDS} more rounds${hasStrike(g) && costToBuy(g) ? ' and the cost to buy them' : ''}, before tax. If it sells for less than investors put in, they can pay nothing.`,
+    math: exits.map((v) => ({ label: `If it sells for ${companyValue(v)}`, value: `about ${fc(Math.round(payoutAt(g, f.sharesOutstanding ?? 0, v) / 1_000) * 1_000)}` })),
+  }], [win('S5')])
+}
+
+/** S6 and the ending: what is certain about the grant whatever the sale price, then the plan card. */
+function startupEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
+  const f = state.facts
+  const g = grantOf(f)
+  const cliff = f.cliffMonths ?? DEFAULT_CLIFF_MONTHS
+  const cost = costToBuy(g)
+  const count = (f.grantShares ?? 0).toLocaleString('en-US')
+  const rows: MathRow[] = [
+    { label: 'Nothing vests until', value: cliff > 0 ? `month ${cliff}` : 'it starts vesting' },
+    ...(f.equityType === 'rsu'
+      ? [{ label: 'Tax', value: 'when they vest or pay out' }]
+      : [
+          { label: `To buy all ${count} shares`, value: cost !== undefined ? fc(cost) : `${count} × your strike` },
+          { label: 'If you leave', value: 'usually 90 days to buy' },
+        ]),
+  ]
+  const certain: ChatMessage = { from: 'ribbit', text: "The sale price is a guess. These aren't:", math: rows, turn: 'S6' }
+  return planEnding(state, [...lead, certain], events)
+}
+
+function startupCard(f: Facts): NonNullable<ChatMessage['planCard']> {
+  const g = grantOf(f)
+  const cost = costToBuy(g)
+  const exit = f.sharesOutstanding && f.compareSalary ? breakEvenExit(g, f.sharesOutstanding, f.compareSalary - (f.salary ?? 0)) : null
+  return {
+    known: [
+      ...(f.salary ? [{ label: 'Base pay', value: `${fc(f.salary)}/yr` }] : []),
+      ...(f.grantShares ? [{ label: 'Grant', value: `${grantLine(f)}${f.strike ? ` at ${share$(f.strike)}` : ''}` }] : []),
+      ...(f.grantShares && f.sharesOutstanding ? [{ label: 'Share of the company', value: pct(ownership(g, f.sharesOutstanding)) }] : []),
+      ...(cost ? [{ label: 'To buy all the shares', value: fc(cost) }] : []),
+      ...(exit ? [{ label: 'Sale price to break even', value: companyValue(exit) }] : []),
+    ],
+    locked: ['Your first paycheck, checked against this', 'Saving toward buying your shares', 'Is this month on pace?'],
+  }
 }
 
 // ── Where should my money go? turns ──────────────────────────────────────────────────────────────────────────
@@ -1392,7 +1829,7 @@ function moneyCard(f: Facts): NonNullable<ChatMessage['planCard']> {
  */
 function handoff(state: ChatState, lead?: string): Step {
   const flow: Flow = state.flow ?? 'rent'
-  const turn = flow === 'offer' ? 'O8' : 'R8'
+  const turn = flow === 'offer' ? 'O8' : flow === 'startup' ? 'S8' : 'R8'
   return say({ ...state, turn }, [
     ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []),
     { from: 'ribbit', text: "Want this by text? I'll send your numbers, answer questions there, and check in a few times over the next three weeks. Stop any time.", turn, handoff: flow },
@@ -1407,12 +1844,13 @@ function handoff(state: ChatState, lead?: string): Step {
 export const PLAN_PREVIEW_TEXT = "Want to keep this? Here's your plan as WeLeap would show it. The rest fills in when you connect your bank."
 function planEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
   const flow: Flow = state.flow ?? 'rent'
-  const turn = flow === 'offer' ? 'O8' : flow === 'money' ? 'M8' : 'R8'
-  const card = flow === 'offer' ? offerCard(state.facts) : flow === 'money' ? moneyCard(state.facts) : rentCard(state.facts)
+  const turn = flow === 'offer' ? 'O8' : flow === 'money' ? 'M8' : flow === 'startup' ? 'S8' : 'R8'
+  const card = flow === 'offer' ? offerCard(state.facts) : flow === 'money' ? moneyCard(state.facts) : flow === 'startup' ? startupCard(state.facts) : rentCard(state.facts)
   return say({ ...state, turn, invited: true }, [...lead, {
     from: 'ribbit', text: PLAN_PREVIEW_TEXT, turn, planCard: card,
-    // Text threads exist for rent and offers only, so the money flow has no "text me instead".
-    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: flow !== 'money' },
+    // Text threads exist for rent and offers; a startup offer goes as an offer thread carrying its equity figures
+    // (lib/ribbit/payload.ts), so it needs the pay. Money has no "text me instead".
+    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: flow === 'rent' || flow === 'offer' || (flow === 'startup' && Boolean(state.facts.salary && state.facts.takeHomeMonthly)) },
   }], [], 'text', [...events, { name: 'ribbit_plan_preview_shown', props: { turn, known_rows: card.known.length } }])
 }
 

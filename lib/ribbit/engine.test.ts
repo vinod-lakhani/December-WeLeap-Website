@@ -5,8 +5,9 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Step } from './engine'
-import { matchPresetCity, matchState, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { startupPlanData } from './payload'
+import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
  * Parity, the spec's rule: the chat takes what the pages take and gives the figures the pages give. The services
@@ -23,7 +24,7 @@ const svc = (over: Partial<ChatServices> = {}): ChatServices => ({
   ...over,
 })
 
-async function run(flow: 'rent' | 'offer' | 'money' | null, replies: Array<{ chip?: string; text?: string }>, s: ChatServices = svc()): Promise<Step[]> {
+async function run(flow: 'rent' | 'offer' | 'money' | 'startup' | null, replies: Array<Reply>, s: ChatServices = svc()): Promise<Step[]> {
   const steps: Step[] = [start(flow)]
   for (const r of replies) steps.push(await reply(steps[steps.length - 1].state, r, s))
   return steps
@@ -279,10 +280,10 @@ describe('rent flow', () => {
     expect(s[4].parked).toBeUndefined()
   })
 
-  it('before a tool is picked, a question leaves the three choices up', async () => {
+  it('before a tool is picked, a question leaves the four choices up', async () => {
     const s = await run(null, [{ text: 'should I put money into a Roth IRA' }])
     expect(s[1].parked).toBeUndefined()
-    expect(s[1].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money'])
+    expect(s[1].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money', 'startup'])
   })
 
   it('parks the question the turn asked, even when the turn goes on after it', async () => {
@@ -327,6 +328,50 @@ describe('offer flow', () => {
     const s = await run('offer', [{ text: '75000' }, { chip: 'Austin' }, { chip: 'none' }, { chip: 'unknown' }])
     expect(said(s[4])).toContain('Ask HR')
     expect(facts(s[4]).matchRatePct).toBeUndefined()
+  })
+
+  describe('benefits guide at O4', () => {
+    const field = (value: number) => ({ value, confidence: 0.9, quote: 'q' })
+    const toO4 = [{ text: '75000' }, { chip: 'Austin' }, { chip: 'none' }] as Reply[]
+
+    it('a read match goes straight to the package, with the HSA and premium in it as on the tool page', async () => {
+      const s = await run('offer', [...toO4, { benefits: { parsed: { matchRatePct: field(100), matchUpToPct: field(4), employerHsaAnnual: field(600), healthcarePremiumMonthly: field(80) } } }])
+      expect(s[3].chips[0]).toEqual({ label: 'Upload my benefits guide', value: '__upload_benefits__' })
+      const back = s[4].messages[0]
+      expect(back.math).toEqual([
+        { label: '401k match', value: '100% up to 4% of salary' },
+        { label: 'Employer HSA', value: '$600/yr' },
+        { label: 'Your health premium', value: '$80/mo' },
+      ])
+      expect(s[4].state.turn).toBe('O5')
+      const value = computeOfferValue({
+        salary: 75_000, bonusPct: 0, matchRatePct: 100, matchUpToPct: 4, hsaMonthly: 50, healthcarePremium: 80, rsuAnnual: 0,
+        signingBonus: 0, showEspp: false, esppContrib: 0, esppDiscount: 0, ptoDays: MARKET_PTO_DAYS, rentMonthly: 0, savingsPct: 20,
+      }, TAX)!
+      expect(said(s[4])).toContain(`worth $${Math.round(value.totalPackage).toLocaleString('en-US')} a year`)
+      expect(s[4].events.map((e) => e.name)).toEqual(expect.arrayContaining(['ribbit_benefits_read', 'ribbit_win_shown']))
+    })
+
+    it('no match in the guide: says so and keeps the question, without the upload chip', async () => {
+      const s = await run('offer', [...toO4, { benefits: { parsed: { employerHsaAnnual: field(600) } } }])
+      expect(said(s[4])).toContain("couldn't find the 401k match")
+      expect(s[4].state.turn).toBe('O4')
+      expect(s[4].chips.map((c) => c.value)).not.toContain('__upload_benefits__')
+      expect(facts(s[4]).hsaMonthly).toBe(50)
+    })
+
+    it('a 0% match is no match', async () => {
+      const s = await run('offer', [...toO4, { benefits: { parsed: { matchRatePct: field(0), matchUpToPct: field(0) } } }])
+      expect(said(s[4])).toContain('No match, so nothing to collect there.')
+      expect(facts(s[4]).match).toBe('none')
+    })
+
+    it('a failed read keeps the question and its chips', async () => {
+      const s = await run('offer', [...toO4, { benefits: { failed: 'no_fields' } }])
+      expect(said(s[4])).toBe("I couldn't find the match in that one. It may be a scan I can't read. The answers below work just as well.")
+      expect(s[4].state.turn).toBe('O4')
+      expect(s[4].chips).toEqual(s[3].chips)
+    })
   })
 
   it('the first question offers Yearly and Hourly, as the rent question offers its two', async () => {
@@ -422,7 +467,7 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[1].messages.some((m) => m.appAsk || m.planCard)).toBe(false)
     expect(facts(s[1]).mentionedSaving).toBe(1000)
     // Not now: back to the three choices; a later planning question is just answered.
-    expect(s[2].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money'])
+    expect(s[2].chips.map((c) => c.value)).toEqual(['rent', 'offer', 'money', 'startup'])
     expect(s[3].messages.map((m) => m.text)).toEqual(['answer to: should I pay off my card or invest'])
   })
 
@@ -558,10 +603,10 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(s[8].state.turn).toBe('O8')
   })
 
-  it('at the picker the three choices stay up, captioned as tasks', async () => {
+  it('at the picker the four choices stay up, captioned as tasks', async () => {
     const s = await run(null, [{ text: 'what is a roth ira' }])
     expect(s[1].chipsLabel).toBe('Or work out with Ribbit:')
-    expect(s[1].chips.map((c) => c.label)).toEqual(['Rent I can afford', 'What an offer is worth', 'Where should my money go?'])
+    expect(s[1].chips.map((c) => c.label)).toEqual(['Rent I can afford', 'What an offer is worth', 'Where should my money go?', 'What my startup offer is worth'])
   })
 })
 
@@ -725,5 +770,136 @@ describe('Where should my money go?', () => {
     const s = await run('money', [{ chip: 'take_home' }, { text: '8561' }, { text: '2000' }, { chip: 'none' }, { chip: 'known' }, { text: '100% up to 5%' }, { chip: 'keep' }])
     const card = s[7].messages.find((m) => m.planCard)!.planCard!
     expect(card.known).toContainEqual({ label: '401(k) match', value: '100% up to 5%' })
+  })
+})
+
+describe('startup flow', () => {
+  const field = (value: number) => ({ value, confidence: 0.9, quote: 'q' })
+  const letter = {
+    parsed: {
+      baseSalaryAnnual: field(130_000), equityGrantShares: field(20_000), equityStrikePrice: field(1.1),
+      equityVestYears: field(4), equityCliffMonths: field(12), equityType: { value: 'iso' as const, confidence: 0.9, quote: 'q' },
+    },
+  }
+
+  it('reads grants and prices the way people type them', () => {
+    expect(parseGrant('20,000 at $1.10')).toEqual({ shares: 20_000, strike: 1.1, rsu: false })
+    expect(parseGrant('20k options, strike 1.10')).toEqual({ shares: 20_000, strike: 1.1, rsu: false })
+    expect(parseGrant('20000 options vesting over 4 years at $1.10')).toEqual({ shares: 20_000, strike: 1.1, rsu: false })
+    expect(parseGrant('20000 at 2')).toEqual({ shares: 20_000, strike: 2, rsu: false })
+    expect(parseGrant('5,000 RSUs')).toEqual({ shares: 5_000, strike: undefined, rsu: true })
+    expect(parseGrant('15000 options')).toEqual({ shares: 15_000, strike: undefined, rsu: false })
+    expect(parseDecimal('$4.40 a share')).toBeCloseTo(4.4)
+    expect(parseDecimal('20 million')).toBe(20_000_000)
+    expect(parseDecimal('20m')).toBe(20_000_000)
+    expect(parseDecimal('$88,000')).toBe(88_000)
+  })
+
+  it('typed: base pay, the grant, the payoff by S3, ownership, the break-even and the ending, with the spec\'s numbers', async () => {
+    const s = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { text: '$4.40' }, { text: '20 million' }, { chip: 'yes' }, { text: '150000' }])
+    expect(s[0].chips.map((c) => c.value)).toContain('__upload__')
+    expect(said(s[1])).toContain('How many options or shares')
+    const payoff = s[3].messages.find((m) => m.turn === 'S3')!
+    expect(payoff.figure).toBe('About $0')
+    expect(payoff.text).toContain('look like $88,000')
+    expect(payoff.math).toContainEqual({ label: 'To buy all 20,000 shares', value: '$22,000' })
+    expect(s[3].events.map((e) => e.name)).toContain('ribbit_win_shown')
+    // The app ask right after the payoff, aimed at the cost to buy; S4 still follows.
+    const check = s[3].messages.find((m) => m.appAsk)!
+    expect(check.appAsk).toEqual({ label: 'Build my savings plan', why: 'shares_savings', note: 'Free in WeLeap. Built on your real paychecks and spending.' })
+    expect(check.text).toBe("Buying them all costs $22,000, about $5,500 for each year that vests. Want a savings plan that makes room for it, built on what you actually earn and spend?")
+    expect(s[3].state.turn).toBe('S4')
+    expect(s[3].events).toContainEqual({ name: 'ribbit_spending_check_shown', props: { turn: 'S3' } })
+    expect(s.slice(4).flatMap((x) => x.messages).filter((m) => m.appAsk?.why === 'shares_savings')).toHaveLength(0)
+    expect(s[4].messages[0].figure).toBe('0.10%')
+    expect(said(s[4])).toContain('about 0.06%')
+    const be = s[6].messages.find((m) => m.turn === 'S5')!
+    expect(be.figure).toBe('About $159M')
+    expect(be.text).toContain('1.8 times its last valuation')
+    expect(s[6].state.turn).toBe('S8')
+    const card = s[6].messages.find((m) => m.planCard)!
+    expect(card.appAsk?.textInstead).toBe(true)
+    expect(card.planCard!.known).toContainEqual({ label: 'Share of the company', value: '0.10%' })
+    // "Text me each step instead" opens the text door as a startup offer, on the offer thread (payload below).
+    const door = await reply(s[6].state, { chip: 'text' }, svc())
+    expect(door.state.turn).toBe('S8')
+    expect(door.messages.some((m) => m.handoff === 'startup')).toBe(true)
+    // Every startup figure rides on the offer payload, for the text thread and typed questions.
+    const plan = startupPlanData(facts(s[6]))!
+    expect(plan.salary).toBe(130_000)
+    expect((plan.figures as Record<string, unknown>).startup).toMatchObject({
+      grantShares: 20_000, strike: 1.1, pricePerShare: 4.4, valueAtLastRound: 88_000, costToBuyAllShares: 22_000,
+      sharesOutstanding: 20_000_000, lastValuation: 88_000_000, otherOfferSalary: 150_000, futureRoundsAssumed: 2, dilutionPerRoundPct: 20,
+    })
+    expect((plan.figures as Record<string, Record<string, number>>).startup).toMatchObject({ breakEvenSalePrice: 159_375_000, ownershipPct: 0.1, ownershipAfterFutureRoundsPct: 0.064 })
+  })
+
+  it('an uploaded letter is read back, skips the typed grant and goes straight to the price', async () => {
+    const s = await run('startup', [{ letter }, { text: '$4.40 a share' }])
+    const back = s[1].messages[0]
+    expect(back.math).toContainEqual({ label: 'Grant', value: '20,000 ISOs' })
+    expect(back.math).toContainEqual({ label: 'Strike price', value: '$1.10' })
+    expect(back.math).toContainEqual({ label: 'Vesting', value: '4 years, 1-year cliff' })
+    expect(s[1].state.turn).toBe('S3')
+    expect(s[1].chips.map((c) => c.value)).toContain('fix')
+    expect(s[1].events.map((e) => e.name)).toContain('ribbit_letter_read')
+    expect(facts(s[1]).salary).toBe(130_000)
+    expect(s[2].messages.find((m) => m.turn === 'S3')!.figure).toBe('About $0')
+  })
+
+  it("a letter that can't be read keeps the question open, with a reason and no guess", async () => {
+    const s = await run('startup', [{ letter: { failed: 'too_large' } }])
+    expect(said(s[1])).toContain('over 4MB')
+    expect(s[1].state.turn).toBe('S1')
+    expect(s[1].chips.map((c) => c.value)).toContain('__upload__')
+  })
+
+  it("the recruiter's dollar figure becomes a price per share; not knowing the shares goes to the certain costs", async () => {
+    const s = await run('startup', [{ text: '130k' }, { text: '20000 at 1.10' }, { chip: 'dollar' }, { text: '$88,000' }, { chip: 'unknown' }])
+    expect(facts(s[4]).pricePerShare).toBeCloseTo(4.4)
+    expect(said(s[5])).toContain('fully diluted shares')
+    const certain = s[5].messages.find((m) => m.turn === 'S6')!
+    expect(certain.math).toContainEqual({ label: 'Nothing vests until', value: 'month 12' })
+    expect(certain.math).toContainEqual({ label: 'If you leave', value: 'usually 90 days to buy' })
+    expect(s[5].state.turn).toBe('S8')
+  })
+
+  it('no other offer: payouts at the last valuation and above', async () => {
+    const s = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { text: '4.40' }, { text: '20000000' }, { chip: 'no' }])
+    const sc = s[5].messages.find((m) => m.turn === 'S5')!
+    expect(sc.math).toEqual([
+      { label: 'If it sells for $88M', value: 'about $34,000' },
+      { label: 'If it sells for $264M', value: 'about $147,000' },
+      { label: 'If it sells for $880M', value: 'about $541,000' },
+    ])
+  })
+
+  it('a strike missing from the grant is asked; RSUs have no strike and no cost to buy', async () => {
+    const a = await run('startup', [{ text: '130000' }, { text: '20000 options' }, { chip: 'unknown' }, { text: '4.40' }])
+    expect(said(a[2])).toContain("What's the strike price?")
+    expect(a[4].messages.find((m) => m.turn === 'S3')!.text).toContain('grant paperwork')
+    const r = await run('startup', [{ text: '130000' }, { text: '5000 RSUs' }, { text: '$10' }])
+    expect(r[3].messages.find((m) => m.turn === 'S3')!.text).toContain('RSUs come to $50,000')
+    // No cost to name, so no app ask after the payoff: not for RSUs, not for an unknown strike.
+    expect(r[3].messages.some((m) => m.appAsk)).toBe(false)
+    expect(a[4].messages.some((m) => m.appAsk)).toBe(false)
+  })
+
+  it('the offer flow\'s Equity chip asks public or startup; startup moves to the grant with the pay kept', async () => {
+    const s = await run('offer', [{ text: '130000' }, { chip: 'Austin' }, { chip: 'equity' }, { chip: 'startup' }])
+    expect(said(s[3])).toBe('Public company stock or startup options?')
+    expect(s[4].state.flow).toBe('startup')
+    expect(s[4].state.turn).toBe('S2')
+    expect(facts(s[4]).salary).toBe(130_000)
+    expect(s[4].events.map((e) => e.name)).toContain('ribbit_startup_branch')
+    const pub = await run('offer', [{ text: '130000' }, { chip: 'Austin' }, { chip: 'equity' }, { chip: 'public' }, { text: '20000' }])
+    expect(facts(pub[5]).rsuAnnual).toBe(20_000)
+  })
+
+  it('the picker offers it, tapped or typed', async () => {
+    expect(start(null).chips.map((c) => c.value)).toContain('startup')
+    const s = await run(null, [{ text: 'my startup offer' }])
+    expect(s[1].state.flow).toBe('startup')
+    expect(s[1].state.turn).toBe('S1')
   })
 })

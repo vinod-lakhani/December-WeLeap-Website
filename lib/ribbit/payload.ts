@@ -7,6 +7,7 @@ import { calculateBudgetBreakdown, calculateUpfrontCash, rentFirstMove } from '@
 import { computeOfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { computeLevers } from '@/lib/offer/levers'
 import { offerTextPayload } from '@/lib/offer/textPayload'
+import { afterDilution, atLastRound, breakEvenExit, costToBuy, DEFAULT_CLIFF_MONTHS, DEFAULT_VEST_YEARS, DILUTION_PER_ROUND, FUTURE_ROUNDS, ownership, type Grant } from '@/lib/offer/startupEquity'
 import { moneyInputs, offerInputs, type Facts } from './engine'
 import { moneyOrder } from './moneyOrder'
 
@@ -105,6 +106,8 @@ export function offerPlanData(f: Facts): Record<string, unknown> | null {
   if (f.match === 'known' || f.match === 'none') entered.push('matchRatePct', 'matchUpToPct')
   if (f.rsuAnnual !== undefined) entered.push('rsuAnnual')
   if (f.signingBonus !== undefined) entered.push('signingBonus')
+  if (f.hsaMonthly !== undefined) entered.push('hsaMonthly')
+  if (f.healthcarePremium !== undefined) entered.push('healthcarePremium')
   const payload = offerTextPayload({
     id: crypto.randomUUID(),
     side: { label: 'Offer A', location: f.place ?? '', inputs, value },
@@ -117,6 +120,43 @@ export function offerPlanData(f: Facts): Record<string, unknown> | null {
   // The backend reads extra facts from `figures` (OfferResult.Figures), so the basis goes there too.
   const figures = { ...((payload.figures as Record<string, unknown>) ?? {}), takeHomeBasis: takeHomeBasis(f) }
   return { ...payload, figures, source: CHAT_SOURCE }
+}
+
+// Figures go to the reader as written, so float noise (0.0640000…02) is rounded off first.
+const round3 = (n: number) => Math.round(n * 1000) / 1000
+const roundWhole = (n: number | null | undefined) => (n === null || n === undefined ? undefined : Math.round(n))
+
+/**
+ * A startup offer as an offer thread: the offer payload (pay, take-home) with every startup figure under
+ * `figures.startup`, which the backend lists for the reader like any other figure. So the text thread and a typed
+ * question in the chat can answer from the grant, the price and the break-even. Null until there is a pay.
+ */
+export function startupPlanData(f: Facts): Record<string, unknown> | null {
+  const offer = offerPlanData(f)
+  if (!offer || !f.grantShares) return offer
+  const g: Grant = { shares: f.grantShares, strike: f.equityType === 'rsu' ? 0 : f.strike, type: f.equityType, vestYears: f.vestYears }
+  const share = f.sharesOutstanding ? ownership(g, f.sharesOutstanding) : undefined
+  const startup = {
+    grantShares: f.grantShares,
+    equityType: f.equityType,
+    strike: g.strike,
+    strikeUnknown: f.strikeUnknown,
+    vestYears: f.vestYears ?? DEFAULT_VEST_YEARS,
+    cliffMonths: f.cliffMonths ?? DEFAULT_CLIFF_MONTHS,
+    pricePerShare: f.pricePerShare,
+    valueAtLastRound: f.pricePerShare ? Math.round(atLastRound(g, f.pricePerShare)) : undefined,
+    costToBuyAllShares: roundWhole(costToBuy(g)),
+    sharesOutstanding: f.sharesOutstanding,
+    lastValuation: f.pricePerShare && f.sharesOutstanding ? Math.round(f.pricePerShare * f.sharesOutstanding) : undefined,
+    ownershipPct: share !== undefined ? round3(share * 100) : undefined,
+    ownershipAfterFutureRoundsPct: share !== undefined ? round3(afterDilution(share) * 100) : undefined,
+    futureRoundsAssumed: FUTURE_ROUNDS,
+    dilutionPerRoundPct: DILUTION_PER_ROUND * 100,
+    otherOfferSalary: f.compareSalary,
+    breakEvenSalePrice: f.sharesOutstanding && f.compareSalary ? roundWhole(breakEvenExit(g, f.sharesOutstanding, f.compareSalary - (f.salary ?? 0))) : undefined,
+  }
+  const figures = { ...((offer.figures as Record<string, unknown>) ?? {}), startup: Object.fromEntries(Object.entries(startup).filter(([, v]) => v !== undefined)) }
+  return { ...offer, figures }
 }
 
 /**

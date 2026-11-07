@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
 import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Step } from '@/lib/ribbit/engine'
+import { BENEFITS_CHIP, UPLOAD_CHIP, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Reply, type Step } from '@/lib/ribbit/engine'
 import { STORE_ASK, appDestination, markPlanSaved, phoneAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination } from '@/lib/ribbit/appLink'
-import { offerPlanData, rentPlanData } from '@/lib/ribbit/payload'
+import { offerPlanData, rentPlanData, startupPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 import { phonePlatform } from '@/lib/text-pilot'
 
@@ -34,7 +35,7 @@ interface Saved {
   chipsLabel?: string
 }
 
-const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers', money: 'Finish my plan' }
+const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers', money: 'Finish my plan', startup: 'Finish my offer numbers' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
 const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
@@ -75,6 +76,10 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const [text, setText] = useState('')
   const lastAt = useRef<number>(Date.now())
   const endRef = useRef<HTMLDivElement>(null)
+  // The document picker: the offer letter's chip or the benefits guide's (O4) opens it, and the read goes to the
+  // engine as a reply (Reply.letter or Reply.benefits). `fileKind` is which one the open picker is for.
+  const fileRef = useRef<HTMLInputElement>(null)
+  const fileKind = useRef<DocKind>('offer')
 
   const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null) => {
     for (const e of events) {
@@ -110,9 +115,16 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [thread.messages.length, busy])
 
-  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string }) => {
+  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string; file?: File; kind?: DocKind }) => {
     if (busy) return
-    const shown = r.label ?? r.text ?? ''
+    if (r.chip === UPLOAD_CHIP.value || r.chip === BENEFITS_CHIP.value) {
+      fileKind.current = r.chip === BENEFITS_CHIP.value ? 'benefits' : 'offer'
+      track('doc_upload_started', { doc_class: fileKind.current === 'benefits' ? 'benefits_guide' : 'offer_letter', surface: 'chat', authed: false, thread_id: thread.id, flow: thread.state.flow ?? 'picker', turn: thread.state.turn })
+      fileRef.current?.click()
+      return
+    }
+    // Never the file's name: it often carries the person's own, and the thread is stored and sent with questions.
+    const shown = r.file ? (r.kind === 'benefits' ? 'My benefits guide' : 'My offer letter') : r.label ?? r.text ?? ''
     if (!shown.trim()) return
     const seconds = Math.round((Date.now() - lastAt.current) / 1000)
     lastAt.current = Date.now()
@@ -124,7 +136,14 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     const began = Date.now()
     // The thread id goes with each typed question, for the backend's questions-per-thread cap.
     const services = { ...browserServices, ask: (i: Parameters<typeof browserServices.ask>[0]) => browserServices.ask({ ...i, thread: thread.id }) }
-    const step = await engineReply(thread.state, r.chip ? { chip: r.chip } : { text: r.text }, services)
+    let input: Reply
+    if (r.file) {
+      const kind = r.kind ?? 'offer'
+      const read = await readDocument(r.file, kind, 'chat')
+      const doc = read.ok ? { parsed: read.parsed } : { failed: read.reason }
+      input = kind === 'benefits' ? { benefits: doc } : { letter: doc }
+    } else input = r.chip ? { chip: r.chip } : { text: r.text }
+    const step = await engineReply(thread.state, input, services)
     // A short typing state, so the reply reads as answered rather than loaded (under a second).
     const wait = Math.max(0, 450 - (Date.now() - began))
     await new Promise((res) => setTimeout(res, wait))
@@ -207,6 +226,20 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
         )}
         <div ref={endRef} />
       </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPT}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (file) answer({ file, kind: fileKind.current })
+        }}
+      />
 
       {thread.input !== 'none' && (
         <div className="sticky bottom-0 mt-4 border-t border-hairline bg-canvas pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
@@ -435,14 +468,15 @@ function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
  * the tool pages send (lib/ribbit/payload.ts). The figures are taken once, when the turn appears.
  */
 function Handoff({ flow, facts, threadId }: { flow: Flow; facts: ChatState['facts']; threadId: string }) {
-  const [plan] = useState(() => (flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)))
+  // A startup offer texts as an offer thread, with its equity figures on the payload.
+  const [plan] = useState(() => (flow === 'startup' ? startupPlanData(facts) : flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)))
   if (!plan) return null
   return (
     <div className="mt-2.5 rounded-2xl border border-hairline bg-white p-4">
       <TextOptIn
         planData={plan}
-        endpoint={flow === 'offer' ? '/api/offer-text' : '/api/rent-text'}
-        tool={flow === 'offer' ? 'offer' : 'rent'}
+        endpoint={flow === 'rent' ? '/api/rent-text' : '/api/offer-text'}
+        tool={flow === 'rent' ? 'rent' : 'offer'}
         onSubmitted={(method) => track('ribbit_handoff_accepted', { thread_id: threadId, flow, method })}
       />
     </div>

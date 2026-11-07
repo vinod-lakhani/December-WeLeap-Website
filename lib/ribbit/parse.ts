@@ -47,6 +47,32 @@ export function parseMoney(text: string): number | null {
   return v > 0 ? v : null
 }
 
+/** As parseMoney, with the cents kept: a price per share ("$4.40", "1.10"). "20 million" is 20,000,000. */
+export function parseDecimal(text: string): number | null {
+  const m = text.toLowerCase().replace(/,/g, '').match(/(\d*\.?\d+)\s*(k|thousand|m|mm|million|b|billion)?\b/)
+  if (!m) return null
+  const n = parseFloat(m[1])
+  const mult = m[2] === 'k' || m[2] === 'thousand' ? 1e3 : m[2] === 'm' || m[2] === 'mm' || m[2] === 'million' ? 1e6 : m[2] === 'b' || m[2] === 'billion' ? 1e9 : 1
+  const v = n * mult
+  return Number.isFinite(v) && v > 0 ? v : null
+}
+
+/**
+ * A grant as people type it: "20,000 at $1.10", "20k options, strike 1.10", "5000 RSUs". The count is the first
+ * whole number of 100 or more; the strike is a dollar amount, else a number with cents, else the other of two.
+ */
+export function parseGrant(text: string): { shares?: number; strike?: number; rsu: boolean } {
+  const rsu = /\brsus?\b|restricted stock units?/i.test(text)
+  const tokens = [...text.toLowerCase().replace(/,/g, '').matchAll(/(\$)?\s*(\d*\.?\d+)\s*(k|thousand|m|million)?\b/g)].map((m) => {
+    const mult = m[3] === 'k' || m[3] === 'thousand' ? 1e3 : m[3] === 'm' || m[3] === 'million' ? 1e6 : 1
+    return { dollar: Boolean(m[1]), cents: m[2].includes('.') && !m[3], v: parseFloat(m[2]) * mult }
+  })
+  const count = tokens.find((t) => !t.dollar && t.v >= 100 && Number.isInteger(t.v))
+  const rest = tokens.filter((t) => t !== count && t.v > 0 && t.v < 10_000)
+  const strike = rest.find((t) => t.dollar) ?? rest.find((t) => t.cents) ?? (tokens.length === 2 && count ? rest[0] : undefined)
+  return { shares: count?.v, strike: rsu ? undefined : strike?.v, rsu }
+}
+
 /** Two amounts, in the order typed ("4,200 at 24%" → [4200, 24]). Used for a card's balance and rate. */
 export function parseTwoNumbers(text: string): [number, number] | null {
   const nums = text.replace(/,/g, '').match(/\d+(?:\.\d+)?/g)
