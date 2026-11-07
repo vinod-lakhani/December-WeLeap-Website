@@ -796,7 +796,7 @@ describe('startup flow', () => {
   })
 
   it('typed: base pay, the grant, the payoff by S3, ownership, the break-even and the ending, with the spec\'s numbers', async () => {
-    const s = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { text: '$4.40' }, { text: '20 million' }, { chip: 'yes' }, { text: '150000' }])
+    const s = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { text: '$4.40' }, { text: '20 million' }, { chip: 'yes' }, { text: '150000' }, { chip: 'none' }])
     expect(s[0].chips.map((c) => c.value)).toContain('__upload__')
     expect(said(s[1])).toContain('How many options or shares')
     const payoff = s[3].messages.find((m) => m.turn === 'S3')!
@@ -816,16 +816,22 @@ describe('startup flow', () => {
     const be = s[6].messages.find((m) => m.turn === 'S5')!
     expect(be.figure).toBe('About $159M')
     expect(be.text).toContain('1.8 times its last valuation')
-    expect(s[6].state.turn).toBe('S8')
-    const card = s[6].messages.find((m) => m.planCard)!
+    // Benefits before the ending: the offer chat's 401k question, with its benefits-guide upload.
+    expect(s[6].state.turn).toBe('O4')
+    expect(s[6].chips.map((c) => c.value)).toContain('__upload_benefits__')
+    expect(s[7].state.turn).toBe('S8')
+    expect(said(s[7])).toContain('No match, so nothing to collect there.')
+    // Everything was known, so the only question for the recruiter is the exercise window.
+    expect(s[7].messages.find((m) => m.questions)!.questions!.map((q) => q.key)).toEqual(['window'])
+    const card = s[7].messages.find((m) => m.planCard)!
     expect(card.appAsk?.textInstead).toBe(true)
     expect(card.planCard!.known).toContainEqual({ label: 'Share of the company', value: '0.10%' })
     // "Text me each step instead" opens the text door as a startup offer, on the offer thread (payload below).
-    const door = await reply(s[6].state, { chip: 'text' }, svc())
+    const door = await reply(s[7].state, { chip: 'text' }, svc())
     expect(door.state.turn).toBe('S8')
     expect(door.messages.some((m) => m.handoff === 'startup')).toBe(true)
     // Every startup figure rides on the offer payload, for the text thread and typed questions.
-    const plan = startupPlanData(facts(s[6]))!
+    const plan = startupPlanData(facts(s[7]))!
     expect(plan.salary).toBe(130_000)
     expect((plan.figures as Record<string, unknown>).startup).toMatchObject({
       grantShares: 20_000, strike: 1.1, pricePerShare: 4.4, valueAtLastRound: 88_000, costToBuyAllShares: 22_000,
@@ -854,13 +860,51 @@ describe('startup flow', () => {
     expect(s[1].chips.map((c) => c.value)).toContain('__upload__')
   })
 
-  it("the recruiter's dollar figure becomes a price per share; not knowing the shares goes to the certain costs", async () => {
-    const s = await run('startup', [{ text: '130k' }, { text: '20000 at 1.10' }, { chip: 'dollar' }, { text: '$88,000' }, { chip: 'unknown' }])
+  it("the recruiter's dollar figure becomes a price per share; not knowing the shares goes to the 401k, then the certain costs", async () => {
+    const s = await run('startup', [{ text: '130k' }, { text: '20000 at 1.10' }, { chip: 'dollar' }, { text: '$88,000' }, { chip: 'unknown' }, { text: '100% up to 4%' }])
     expect(facts(s[4]).pricePerShare).toBeCloseTo(4.4)
-    expect(said(s[5])).toContain('fully diluted shares')
-    const certain = s[5].messages.find((m) => m.turn === 'S6')!
+    expect(said(s[5])).toContain("I've put it on your list of questions for the recruiter.")
+    expect(s[5].state.turn).toBe('O4')
+    const certain = s[6].messages.find((m) => m.turn === 'S6')!
     expect(certain.math).toContainEqual({ label: 'Nothing vests until', value: 'month 12' })
     expect(certain.math).toContainEqual({ label: 'If you leave', value: 'usually 90 days to buy' })
+    expect(s[6].state.turn).toBe('S8')
+    // A known match: what the pay and match come to, on the card too; no offer-only "What should I put in".
+    expect(s[6].messages[0].text).toContain('With that match, the offer is worth')
+    expect(s[6].chips).toEqual([])
+    expect(s[6].messages.find((m) => m.planCard)!.planCard!.known.map((r) => r.label)).toContain('Pay and match')
+    expect(s[6].messages.find((m) => m.questions)!.questions!.map((q) => q.key)).toEqual(['shares', 'window'])
+  })
+
+  it("every \"I don't know\" goes on the recruiter list, said when it comes up, listed and copyable at the end (Vinod's run)", async () => {
+    const noStrike = { parsed: { baseSalaryAnnual: field(200_000), equityGrantShares: field(2_132), equityVestYears: field(4), equityCliffMonths: field(12) } }
+    const s = await run('startup', [{ letter: noStrike }, { chip: 'unknown' }, { chip: 'dollar' }, { text: '80000' }, { chip: 'unknown' }, { chip: 'unknown' }])
+    expect(s[1].state.turn).toBe('S2_strike')
+    expect(s[2].messages[0].text).toBe("No problem. I've put it on your list of questions for the recruiter.")
+    expect(said(s[5])).toContain("I've put it on your list")
+    expect(s[5].state.turn).toBe('O4')
+    expect(said(s[6])).toContain("I've put it on your list")
+    const list = s[6].messages.find((m) => m.questions)!
+    expect(list.turn).toBe('S7')
+    expect(list.questions!.map((q) => q.title)).toEqual([
+      "What's the strike price on my options?",
+      'How many fully diluted shares are outstanding?',
+      'If I leave, how long do I have to buy my vested options?',
+      'Is there a 401k match, and when does it vest?',
+    ])
+    expect(s[6].events).toContainEqual({ name: 'ribbit_recruiter_questions_shown', props: { turn: 'S7', count: 4, keys: 'strike,shares,window,match' } })
+    // The list goes to the text thread with the rest of the figures.
+    expect(((startupPlanData(facts(s[6]))!.figures as Record<string, Record<string, unknown>>).startup.recruiterQuestions as string[])).toHaveLength(4)
+    // Not knowing the last round's price goes on the list too.
+    const p = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { chip: 'unknown' }])
+    expect(said(p[3])).toContain("I've put it on your list")
+    expect(facts(p[3]).recruiterAsks).toEqual(['price'])
+  })
+
+  it('a benefits guide uploaded in a startup thread goes to the ending', async () => {
+    const s = await run('startup', [{ text: '130000' }, { text: '20,000 at $1.10' }, { text: '$4.40' }, { chip: 'unknown' }, { benefits: { parsed: { matchRatePct: field(50), matchUpToPct: field(6) } } }])
+    expect(s[4].state.turn).toBe('O4')
+    expect(s[5].messages[0].math).toContainEqual({ label: '401k match', value: '50% up to 6% of salary' })
     expect(s[5].state.turn).toBe('S8')
   })
 
@@ -877,7 +921,7 @@ describe('startup flow', () => {
   it('a strike missing from the grant is asked; RSUs have no strike and no cost to buy', async () => {
     const a = await run('startup', [{ text: '130000' }, { text: '20000 options' }, { chip: 'unknown' }, { text: '4.40' }])
     expect(said(a[2])).toContain("What's the strike price?")
-    expect(a[4].messages.find((m) => m.turn === 'S3')!.text).toContain('grant paperwork')
+    expect(a[4].messages.find((m) => m.turn === 'S3')!.text).toContain('The strike is on your list for the recruiter.')
     const r = await run('startup', [{ text: '130000' }, { text: '5000 RSUs' }, { text: '$10' }])
     expect(r[3].messages.find((m) => m.turn === 'S3')!.text).toContain('RSUs come to $50,000')
     // No cost to name, so no app ask after the payoff: not for RSUs, not for an unknown strike.

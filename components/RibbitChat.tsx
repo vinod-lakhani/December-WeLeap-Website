@@ -341,7 +341,8 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           </dl>
         )}
       </div>
-      {m.order && <OrderCard steps={m.order} />}
+      {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
+      {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
       {m.planCard && <PlanCard card={m.planCard} />}
       {ask?.quiet && (
@@ -413,13 +414,14 @@ function StoreGlyph({ store, className }: { store: 'app_store' | 'google_play'; 
  * The plan as WeLeap would show it: what the chat knows, then the rows only the bank can fill, shown locked.
  */
 /** "Where should my money go?": the order as numbered steps, the paying ones first in solid green (mock-up 10). */
-function OrderCard({ steps }: { steps: NonNullable<ChatMessage['order']> }) {
+/** Numbered steps; the first `lead` are set dark (the order's first two come first; every recruiter question counts). */
+function OrderCard({ steps, label, lead = 2 }: { steps: { key: string; title: string; detail: string }[]; label: string; lead?: number }) {
   return (
-    <section aria-label="Your next-dollar order" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 py-1.5 shadow-sm">
+    <section aria-label={label} className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 py-1.5 shadow-sm">
       <ol className="flex flex-col">
         {steps.map((s, i) => (
           <li key={s.key} className={`flex gap-3 py-3 ${i < steps.length - 1 ? 'border-b border-[#f0efec]' : ''}`}>
-            <span aria-hidden="true" className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold ${i < 2 ? 'bg-[#386641] text-white' : 'bg-[#e5f4e4] text-brand-700'}`}>{i + 1}</span>
+            <span aria-hidden="true" className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold ${i < lead ? 'bg-[#386641] text-white' : 'bg-[#e5f4e4] text-brand-700'}`}>{i + 1}</span>
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[15px] font-extrabold text-ink">{s.title}</span>
               <span className="text-[14px] leading-snug text-ink-soft">{s.detail}</span>
@@ -428,6 +430,27 @@ function OrderCard({ steps }: { steps: NonNullable<ChatMessage['order']> }) {
         ))}
       </ol>
     </section>
+  )
+}
+
+/** The startup ending's questions for the recruiter: the order's numbered card, and a copy button for an email. */
+function RecruiterQuestions({ questions, threadId }: { questions: NonNullable<ChatMessage['questions']>; threadId: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    const body = questions.map((q, i) => `${i + 1}. ${q.title}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(body)
+      setCopied(true)
+      track('ribbit_recruiter_questions_copied', { thread_id: threadId, count: questions.length })
+    } catch { /* clipboard refused: the questions are still on screen to select */ }
+  }
+  return (
+    <>
+      <OrderCard steps={questions} label="Questions for the recruiter" lead={questions.length} />
+      <button type="button" onClick={copy} className="mt-2 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
+        {copied ? 'Copied' : 'Copy the questions'}
+      </button>
+    </>
   )
 }
 

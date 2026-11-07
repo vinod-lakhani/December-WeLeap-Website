@@ -62,6 +62,8 @@ export interface ChatMessage {
   handoff?: Flow
   /** "Where should my money go?": the next-dollar order, as numbered steps (lib/ribbit/moneyOrder.ts). */
   order?: MoneyStep[]
+  /** The startup ending's questions to take back to the recruiter, numbered like the order, with a copy button. */
+  questions?: RecruiterQuestion[]
 }
 export interface ChatEvent { name: string; props: Record<string, unknown> }
 
@@ -129,6 +131,8 @@ export interface Facts {
   sharesOutstanding?: number
   /** The offer letter was read in this thread. */
   letterRead?: boolean
+  /** What the person didn't know, in the order it came up: the ending lists them as questions for the recruiter. */
+  recruiterAsks?: RecruiterAsk[]
   /** The other offer being weighed (O3_compare): its base pay a year and its take-home a month in the same place. */
   compareSalary?: number
   compareTakeHome?: number
@@ -1246,7 +1250,8 @@ function readBenefits(state: ChatState, doc: DocRead): Step {
     const readBack: ChatMessage = { from: 'ribbit', text: `Here's what I read.${plan}`, math: rows, turn: 'O4' }
     if (rate === 0 || cap === 0) {
       f.match = 'none'
-      return withEvents(offerRent(state, 'No match, so nothing to collect there.', [readBack]), events)
+      const none: ChatMessage = { from: 'ribbit', text: 'No match, so nothing to collect there.' }
+      return withEvents(state.flow === 'startup' ? startupEnding(state, [readBack, none]) : offerRent(state, none.text, [readBack]), events)
     }
     const next = applyMatch(state, rate, cap)
     return { ...next, messages: [readBack, ...next.messages], events: [...events, ...next.events] }
@@ -1263,7 +1268,12 @@ async function offerMatch(state: ChatState, chip: string | undefined, text: stri
   const f = state.facts
   if (state.turn === 'O4') {
     const v = chip ?? (/^no\b/i.test(text) ? 'none' : /not sure|don'?t know/i.test(text) ? 'unknown' : parseMatch(text) ? 'known' : '')
-    if (v === 'none') { f.match = 'none'; return offerRent(state, 'No match, so nothing to collect there.') }
+    if (v === 'none') { f.match = 'none'; return state.flow === 'startup' ? startupEnding(state, [{ from: 'ribbit', text: 'No match, so nothing to collect there.' }]) : offerRent(state, 'No match, so nothing to collect there.') }
+    if (v === 'unknown' && state.flow === 'startup') {
+      f.match = 'unknown'
+      addRecruiterAsk(f, 'match')
+      return startupEnding(state, [{ from: 'ribbit', text: ON_THE_LIST }])
+    }
     if (v === 'unknown') {
       f.match = 'unknown'
       return say({ ...state, turn: 'O7' }, [
@@ -1309,6 +1319,7 @@ function applyMatch(state: ChatState, rate: number, cap: number): Step {
   const salary = f.salary ?? 0
   const halfLoss = (salary * (cap / 2 / 100) * (rate / 100)) / 12
   const text = `With that match, the offer is worth ${fc(f.value?.totalPackage ?? salary)} a year, not ${fc(salary)}, but only if you put in at least ${cap}%. At half that you leave ${fc(halfLoss)} a month on the table.`
+  if (state.flow === 'startup') return startupEnding(state, [{ from: 'ribbit', text, figure: `${fc(f.value?.totalPackage ?? salary)}/yr`, figureLabel: 'Pay and match a year', turn: 'O5' }])
   return say({ ...state, turn: 'O5' }, [{ from: 'ribbit', text, figure: `${fc(f.value?.totalPackage ?? salary)}/yr`, figureLabel: 'What the offer is worth', turn: 'O5' }],
     [{ label: 'What should I put in', value: 'put_in' }, { label: 'Skip', value: 'skip' }], 'text', [win('O5')])
 }
@@ -1470,7 +1481,11 @@ async function startupTurn(state: ChatState, chip: string | undefined, text: str
     }
     case 'S2_strike': {
       if (chip === 'rsu' || /\brsus?\b/i.test(text)) { f.equityType = 'rsu'; f.strike = 0; return nextStartupQuestion(state) }
-      if (chip === 'unknown' || /don'?t know|not sure|no idea/i.test(text)) { f.strikeUnknown = true; return nextStartupQuestion(state) }
+      if (chip === 'unknown' || /don'?t know|not sure|no idea/i.test(text)) {
+        f.strikeUnknown = true
+        addRecruiterAsk(f, 'strike')
+        return nextStartupQuestion(state, [{ from: 'ribbit', text: ON_THE_LIST }])
+      }
       const n = parseDecimal(text)
       if (n === null || n >= 10_000) return question(state, text, svc, 'the strike price per share')
       f.strike = n
@@ -1480,7 +1495,8 @@ async function startupTurn(state: ChatState, chip: string | undefined, text: str
       if (chip === 'fix') return askGrant({ ...state, facts: { ...f, grantShares: undefined, strike: undefined, strikeUnknown: undefined } }, 'Type it the way it reads.')
       if (chip === 'dollar') return say({ ...state, turn: 'S3_dollar' }, [{ from: 'ribbit', text: 'What dollar value did they give for the whole grant?' }], [], 'money')
       if (chip === 'unknown' || /don'?t know|not sure|no idea|^no\b/i.test(text)) {
-        return askShares(state, [{ from: 'ribbit', text: "Worth asking your recruiter for the last round's price per share. It's a normal question, and it's what their dollar figure is built on." }])
+        addRecruiterAsk(f, 'price')
+        return askShares(state, [{ from: 'ribbit', text: ON_THE_LIST }])
       }
       const n = parseDecimal(text)
       if (n === null) return question(state, text, svc, "the last round's price per share")
@@ -1497,7 +1513,8 @@ async function startupTurn(state: ChatState, chip: string | undefined, text: str
     }
     case 'S4': {
       if (chip === 'unknown' || /don'?t know|not sure|no idea|^no\b/i.test(text)) {
-        return startupEnding(state, [{ from: 'ribbit', text: "Worth asking: \"What are the total fully diluted shares?\" It's a normal question, and it turns your grant into a share of the company." }])
+        addRecruiterAsk(f, 'shares')
+        return startupMatch(state, [{ from: 'ribbit', text: ON_THE_LIST }])
       }
       let n = parseDecimal(text)
       // "20" after "shares outstanding" means 20 million: no company has fewer shares than one person's grant.
@@ -1562,7 +1579,7 @@ function priceTurn(state: ChatState, before: ChatMessage[] = []): Step {
   } else if (f.strike === undefined) {
     payoff = {
       from: 'ribbit', figure: fc(total), figureLabel: "At the last round's price", turn: 'S3',
-      text: `At the last round's ${share$(price)}, your ${count} ${noun} look like ${fc(total)}. That's the investors' price. A new grant's strike is usually today's value of the common stock, so selling today would gain you about nothing. Your strike price is in the grant paperwork.`,
+      text: `At the last round's ${share$(price)}, your ${count} ${noun} look like ${fc(total)}. That's the investors' price. A new grant's strike is usually today's value of the common stock, so selling today would gain you about nothing. The strike is on your list for the recruiter.`,
     }
   } else if (f.strike >= price) {
     payoff = {
@@ -1618,7 +1635,7 @@ function breakEven(state: ChatState, otherSalary: number): Step {
   const gap = otherSalary - (f.salary ?? 0)
   const exit = breakEvenExit(g, f.sharesOutstanding ?? 0, gap)
   if (exit === null) {
-    return startupEnding(state, [{
+    return startupMatch(state, [{
       from: 'ribbit', turn: 'S5',
       text: `This offer pays as much as the other one or more, so your ${grantNoun(f)} are on top, not making up for anything.`,
     }], [win('S5')])
@@ -1627,7 +1644,7 @@ function breakEven(state: ChatState, otherSalary: number): Step {
   const cost = costToBuy(g)
   const last = f.pricePerShare && f.sharesOutstanding ? f.pricePerShare * f.sharesOutstanding : undefined
   const times = last ? ` about ${(Math.round((exit / last) * 10) / 10).toString()} times its last valuation,` : ''
-  return startupEnding(state, [{
+  return startupMatch(state, [{
     from: 'ribbit', figure: `About ${companyValue(exit)}`, figureLabel: 'What the company has to sell for', turn: 'S5',
     text: `The other offer pays ${fc(gap)} a year more, ${fc(gap * years)} over ${years} years.${cost ? ` Buying your shares costs ${fc(cost)} more.` : ''} The company has to sell for about ${companyValue(exit)},${times} before your ${grantNoun(f)} make that up. That's before tax, and after ${FUTURE_ROUNDS === 2 ? 'two' : FUTURE_ROUNDS} more rounds of raising money.`,
     math: [
@@ -1644,7 +1661,7 @@ function exitScenarios(state: ChatState): Step {
   const g = grantOf(f)
   const last = f.pricePerShare && f.sharesOutstanding ? f.pricePerShare * f.sharesOutstanding : undefined
   const exits = last ? [last, last * 3, last * 10] : [100e6, 500e6, 1e9]
-  return startupEnding(state, [{
+  return startupMatch(state, [{
     from: 'ribbit', turn: 'S5',
     text: `What your ${grantNoun(f)} could pay if the company sells${last ? ' at its last valuation and above' : ''}, after ${FUTURE_ROUNDS === 2 ? 'two' : FUTURE_ROUNDS} more rounds${hasStrike(g) && costToBuy(g) ? ' and the cost to buy them' : ''}, before tax. If it sells for less than investors put in, they can pay nothing.`,
     math: exits.map((v) => ({ label: `If it sells for ${companyValue(v)}`, value: `about ${fc(Math.round(payoutAt(g, f.sharesOutstanding ?? 0, v) / 1_000) * 1_000)}` })),
@@ -1668,7 +1685,47 @@ function startupEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[
         ]),
   ]
   const certain: ChatMessage = { from: 'ribbit', text: "The sale price is a guess. These aren't:", math: rows, turn: 'S6' }
-  return planEnding(state, [...lead, certain], events)
+  const questions = recruiterQuestions(f)
+  const ask: ChatMessage[] = questions.length
+    ? [{ from: 'ribbit', text: 'Questions to take back to the recruiter. Asking them is normal, and the answers fill in the gaps above.', questions, turn: 'S7' }]
+    : []
+  return planEnding(state, [...lead, certain, ...ask], [...events, ...(questions.length ? [{ name: 'ribbit_recruiter_questions_shown', props: { turn: 'S7', count: questions.length, keys: questions.map((q) => q.key).join(',') } }] : [])])
+}
+
+/**
+ * Benefits, before the ending: the offer chat's 401k question (O4, with its benefits-guide upload and the same turn
+ * names), whose answers come back to startupEnding in a startup thread. Skipped when the thread already has it.
+ */
+function startupMatch(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
+  if (state.facts.match) return startupEnding(state, lead, events)
+  return withEvents(askMatch(state, lead), events)
+}
+
+/**
+ * The questions to take back to the recruiter (Nov 7, from Vinod's own run: "I don't know it" just moved on).
+ * Each unknown is put on the list when it comes up, and the ending lists them, with the exercise window always
+ * for options, since "usually 90 days" is a guess too. Wording is the person's own, ready to send.
+ */
+export type RecruiterAsk = 'strike' | 'price' | 'shares' | 'window' | 'match'
+export interface RecruiterQuestion { key: RecruiterAsk; title: string; detail: string }
+const ON_THE_LIST = "No problem. I've put it on your list of questions for the recruiter."
+const RECRUITER_QUESTIONS: Record<RecruiterAsk, Omit<RecruiterQuestion, 'key'>> = {
+  strike: { title: "What's the strike price on my options?", detail: "It's what you pay for each share, and it sets what buying them all costs." },
+  price: { title: 'What did investors pay per share in the last round?', detail: "It's what the recruiter's dollar figure is built on." },
+  shares: { title: 'How many fully diluted shares are outstanding?', detail: 'It turns your grant into a share of the company.' },
+  window: { title: 'If I leave, how long do I have to buy my vested options?', detail: 'Usually 90 days. Some companies give years.' },
+  match: { title: 'Is there a 401k match, and when does it vest?', detail: 'A match is pay on top of the salary.' },
+}
+const RECRUITER_ORDER: RecruiterAsk[] = ['strike', 'price', 'shares', 'window', 'match']
+
+function addRecruiterAsk(f: Facts, key: RecruiterAsk): void {
+  if (!f.recruiterAsks?.includes(key)) f.recruiterAsks = [...(f.recruiterAsks ?? []), key]
+}
+
+export function recruiterQuestions(f: Facts): RecruiterQuestion[] {
+  const keys = new Set(f.recruiterAsks ?? [])
+  if (f.grantShares && f.equityType !== 'rsu') keys.add('window')
+  return RECRUITER_ORDER.filter((k) => keys.has(k)).map((key) => ({ key, ...RECRUITER_QUESTIONS[key] }))
 }
 
 function startupCard(f: Facts): NonNullable<ChatMessage['planCard']> {
@@ -1678,6 +1735,7 @@ function startupCard(f: Facts): NonNullable<ChatMessage['planCard']> {
   return {
     known: [
       ...(f.salary ? [{ label: 'Base pay', value: `${fc(f.salary)}/yr` }] : []),
+      ...(f.match === 'known' && f.value ? [{ label: 'Pay and match', value: `${fc(f.value.totalPackage)}/yr` }] : []),
       ...(f.grantShares ? [{ label: 'Grant', value: `${grantLine(f)}${f.strike ? ` at ${share$(f.strike)}` : ''}` }] : []),
       ...(f.grantShares && f.sharesOutstanding ? [{ label: 'Share of the company', value: pct(ownership(g, f.sharesOutstanding)) }] : []),
       ...(cost ? [{ label: 'To buy all the shares', value: fc(cost) }] : []),

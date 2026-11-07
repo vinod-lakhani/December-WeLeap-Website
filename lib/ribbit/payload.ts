@@ -8,7 +8,7 @@ import { computeOfferValue, type TaxResult } from '@/lib/offer/calculate'
 import { computeLevers } from '@/lib/offer/levers'
 import { offerTextPayload } from '@/lib/offer/textPayload'
 import { afterDilution, atLastRound, breakEvenExit, costToBuy, DEFAULT_CLIFF_MONTHS, DEFAULT_VEST_YEARS, DILUTION_PER_ROUND, FUTURE_ROUNDS, ownership, type Grant } from '@/lib/offer/startupEquity'
-import { moneyInputs, offerInputs, type Facts } from './engine'
+import { moneyInputs, offerInputs, recruiterQuestions, type Facts } from './engine'
 import { moneyOrder } from './moneyOrder'
 
 export const CHAT_SOURCE = 'ribbit_chat'
@@ -153,6 +153,7 @@ export function startupPlanData(f: Facts): Record<string, unknown> | null {
     futureRoundsAssumed: FUTURE_ROUNDS,
     dilutionPerRoundPct: DILUTION_PER_ROUND * 100,
     otherOfferSalary: f.compareSalary,
+    recruiterQuestions: recruiterQuestions(f).map((q) => q.title),
     breakEvenSalePrice: f.sharesOutstanding && f.compareSalary ? roundWhole(breakEvenExit(g, f.sharesOutstanding, f.compareSalary - (f.salary ?? 0))) : undefined,
   }
   const figures = { ...((offer.figures as Record<string, unknown>) ?? {}), startup: Object.fromEntries(Object.entries(startup).filter(([, v]) => v !== undefined)) }
