@@ -77,6 +77,22 @@ describe('it stays small enough to clear the CTA', () => {
     expect(code).not.toMatch(/flex flex-col[^"]*gap-3 w-full sm:w-auto/)
   })
 
+  it('keeps text and button in one row on phones too', () => {
+    // Nov 9 2026: the row went vertical below sm, stacking a full-width button
+    // under the text, about 110px over the chat's reply box at 390x664.
+    const code = src().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(code).not.toMatch(/flex-col/)
+    expect(code).not.toMatch(/\bw-full\b/)
+  })
+
+  it('slides away while a text field has focus, without counting as Got it', () => {
+    const code = src()
+    expect(code).toMatch(/addEventListener\("focusin"/)
+    expect(code).toMatch(/isVisible && !typing \? "translate-y-0" : "translate-y-full"/)
+    // Only the button records the acknowledgement.
+    expect(code.match(/localStorage\.setItem/g)).toHaveLength(1)
+  })
+
   it('does not reintroduce full-width stacked buttons', () => {
     expect(src()).not.toMatch(/className="w-full sm:w-auto/)
   })
