@@ -52,10 +52,16 @@ export interface ChatMessage {
    * thread's facts, lib/ribbit/appLink.ts), small print under it, and for the endings a text link that opens the
    * text sign-up instead ("Not ready to connect?").
    */
-  /** quiet: a small text link instead of the lime button (the benefit line after the one invite). */
-  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean; quiet?: boolean }
-  /** The plan as WeLeap would show it: rows the chat knows, and rows only the bank can fill (shown locked). */
-  planCard?: { known: { label: string; value: string }[]; locked: string[] }
+  /** quiet: a small text link instead of the lime button (the benefit line after the one invite). gap: the move-in
+   * score's gap the button is labelled by, sent with the tap. */
+  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean; quiet?: boolean; gap?: ScoreGap }
+  /** Small print under the text, in the bubble ("A WeLeap check from your answers, not a credit score."). */
+  fine?: string
+  /**
+   * The plan as WeLeap would show it: rows the chat knows, and rows only the bank can fill (shown locked). With
+   * `steps` (the move-in score) the locked rows give way to a checklist, done and still open, under `title`.
+   */
+  planCard?: { known: { label: string; value: string }[]; locked: string[]; title?: string; steps?: { label: string; done: boolean }[] }
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -109,6 +115,8 @@ export interface Facts {
   start?: 'working' | 'this_month' | 'next_month' | 'date'
   startDate?: string
   upfront?: { low: number; high: number }
+  /** The move-in score, once taken (R3_saved): what was set aside and the three parts. */
+  score?: MoveInScore & { savedBand: string }
   purpose?: 'cushion' | 'card' | 'future'
   roommate?: 'yes' | 'no' | 'not_sure'
   /** The first answer's pay as given, in any flow: a yearly salary, or an hourly rate at hoursPerWeek (salary is then
@@ -334,6 +342,8 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
 
   if (chip === '__math__') return showMath(state)
+  // "Text me each step instead" under an ask: the move-in score's sits mid-flow, so it can be tapped at a later turn.
+  if (chip === 'text') return handoff(state)
   if (r.letter) return readLetter(state, r.letter)
   if (r.benefits) return readBenefits(state, r.benefits)
 
@@ -399,7 +409,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       return askDebt(state, lead)
     }
     case 'R3_debt': {
-      if (chip === 'none' || /^(none|no|nope|zero|0)\b/i.test(text)) { f.debtMonthly = 0; return askPick(state, 'No debt to take off.') }
+      if (chip === 'none' || /^(none|no|nope|zero|0)\b/i.test(text)) { f.debtMonthly = 0; return offerScore(state, 'No debt to take off.') }
       if (chip === 'yes') return say({ ...state, turn: 'R3_debt_amount' }, [{ from: 'ribbit', text: 'About how much a month, all together?' }], [], 'money')
       const n = parseMoney(text)
       if (n !== null) return applyDebt(state, n)
@@ -409,6 +419,19 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       const n = parseMoney(text)
       if (n === null) return question(state, text, svc, 'their monthly debt payments, as a number')
       return applyDebt(state, n)
+    }
+    case 'R3_score':
+    case 'R3_scored': {
+      // The score offer, then after the score: "Pick my rent" goes on, a typed number is the rent pick.
+      if (state.turn === 'R3_score' && (chip === 'score' || (!chip && /score/i.test(text)))) return askSaved(state)
+      if (chip === 'pick' || (!chip && /^(pick|rent|skip)\b/i.test(text))) return askPick(state, '')
+      if (!chip && parseMoney(text)) return route({ ...state, turn: 'R4' }, r, svc)
+      return question(state, text, svc, state.turn === 'R3_score' ? 'whether they want their move-in score or to pick a rent' : 'the monthly rent they would sign at')
+    }
+    case 'R3_saved': {
+      const band = chip && SAVED_MIDDLE[chip] !== undefined ? chip : savedBand(parseMoney(text))
+      if (!band) return question(state, text, svc, 'how much they have set aside for the move')
+      return scoreTurn(state, band)
     }
     case 'R4': {
       const range = f.range!
@@ -944,7 +967,152 @@ function applyDebt(state: ChatState, debt: number): Step {
   const f = state.facts
   f.debtMonthly = debt
   f.range = calculateRentRange(f.takeHomeMonthly ?? 0, debt)
-  return askPick(state, debt > 0 ? `With ${fc(debt)} a month in debt payments, rent that fits is ${f.range.formatted}.` : '')
+  return offerScore(state, debt > 0 ? `With ${fc(debt)} a month in debt payments, rent that fits is ${f.range.formatted}.` : '')
+}
+
+// ── Move-in score (spec: "Rent Chat: Move-In Score and Unfinished-Plan Spec", Nov 6) ─────────────────────────────
+
+/**
+ * Offered after the debt answer, before the pick: the debt answer sets the final range, and the move-in cash comes
+ * from its top. Two chips in one reply, so it's one choice and never forced.
+ */
+export const SCORE_OFFER_TEXT = "Want your move-in score first? One question about what you've saved, then the rent pick."
+const SCORE_OFFER_CHIPS: Chip[] = [{ label: 'Get my move-in score', value: 'score' }, { label: 'Pick my rent', value: 'pick' }]
+
+function offerScore(state: ChatState, lead: string): Step {
+  const r = state.facts.range!
+  return say({ ...state, turn: 'R3_score' }, [
+    ...(lead ? [{ from: 'ribbit' as const, text: lead, figure: state.facts.debtMonthly ? span(r.low, r.high) : undefined, figureLabel: 'Rent that fits, after debt' }] : []),
+    { from: 'ribbit', text: SCORE_OFFER_TEXT },
+  ], SCORE_OFFER_CHIPS, 'money', [{ name: 'ribbit_score_offered', props: { turn: 'R3' } }])
+}
+
+/** One tap, no typing; a typed amount lands in its band. The score uses the band's middle, and the math says so. */
+const SAVED_CHIPS: Chip[] = [
+  { label: 'Under $1,000', value: 'saved_under_1k' }, { label: '$1,000 to $3,000', value: 'saved_1k_3k' },
+  { label: '$3,000 to $6,000', value: 'saved_3k_6k' }, { label: 'More than $6,000', value: 'saved_over_6k' },
+]
+const SAVED_MIDDLE: Record<string, number> = { saved_under_1k: 500, saved_1k_3k: 2000, saved_3k_6k: 4500, saved_over_6k: 7000 }
+
+function savedBand(n: number | null): string | null {
+  if (n === null) return null
+  return n < 1000 ? 'saved_under_1k' : n <= 3000 ? 'saved_1k_3k' : n <= 6000 ? 'saved_3k_6k' : 'saved_over_6k'
+}
+
+function askSaved(state: ChatState): Step {
+  return say({ ...state, turn: 'R3_saved' }, [{ from: 'ribbit', text: 'How much do you have set aside for the move?' }],
+    SAVED_CHIPS, 'money', [{ name: 'ribbit_score_started', props: { turn: 'R3' } }])
+}
+
+export type ScoreGap = 'move_in_cash' | 'debt' | 'cushion'
+export interface MoveInScore {
+  saved: number
+  /** The top of the move-in estimate (calculateUpfrontCash on the top of the range). */
+  moveInHigh: number
+  /** Debt payments as a share of take-home (0.03 = 3%), and the cushion left after the move in months of take-home. */
+  debtShare: number
+  cushionMonths: number
+  moveIn: number
+  debt: number
+  cushion: number
+  total: number
+  gap: ScoreGap
+}
+
+/**
+ * Three parts, 100 points, by WeLeap's own rule of thumb (the math view shows the thresholds). Rent fit is not a
+ * part: the range is built to fit take-home, so it would always score full. The gap is move-in cash whenever it is
+ * short, because it has a deadline; otherwise the part furthest below its maximum (debt on a tie, the cushion when
+ * both are full).
+ */
+export function moveInScore(saved: number, moveInHigh: number, debtMonthly: number, takeHome: number): MoveInScore {
+  const moveIn = moveInHigh > 0 ? Math.round(Math.min(1, saved / moveInHigh) * 40) : 40
+  const debtShare = takeHome > 0 ? debtMonthly / takeHome : debtMonthly > 0 ? 1 : 0
+  const debt = debtShare <= 0.05 ? 30 : debtShare <= 0.15 ? 20 : debtShare <= 0.25 ? 10 : 0
+  const cushionMonths = takeHome > 0 ? (saved - moveInHigh) / takeHome : 0
+  const cushion = cushionMonths <= 0 ? 0 : cushionMonths < 1 ? 10 : cushionMonths <= 3 ? 20 : 30
+  const gap: ScoreGap = moveIn < 40 ? 'move_in_cash' : debt === 30 && cushion === 30 ? 'cushion' : debt <= cushion ? 'debt' : 'cushion'
+  return { saved, moveInHigh, debtShare, cushionMonths, moveIn, debt, cushion, total: moveIn + debt + cushion, gap }
+}
+
+/** One button, labelled by the gap: the person's goal on the label, the store mark on it on phones (#187). */
+export const GAP_BUTTON: Record<ScoreGap, string> = {
+  move_in_cash: 'Plan my savings for the move', debt: 'Plan my debt payoff', cushion: 'Build my cushion',
+}
+const GAP_STEP: Record<ScoreGap, string> = {
+  move_in_cash: 'A plan for your move-in cash', debt: 'A plan for your debt payments', cushion: 'A plan for your cushion',
+}
+export const SCORE_FINE = 'A WeLeap check from your answers, not a credit score.'
+export const SCORE_CARD_TEXT = 'Your move plan so far. The two open steps are what WeLeap does next.'
+
+/** Names the one gap and nothing worse: no grades, no "bad", "behind" or "can't afford". */
+function scoreText(s: MoveInScore, debtMonthly: number): string {
+  if (s.gap === 'move_in_cash') {
+    return `Rent fits your take-home. Move-in cash is the gap: about ${fc(s.moveInHigh)} before the keys, and you have about ${fc(s.saved)}.`
+  }
+  const covered = 'Rent fits your take-home and your move-in cash is covered.'
+  if (s.gap === 'debt') {
+    return `${covered} Debt payments are the gap: ${fc(debtMonthly)} a month is ${Math.round(s.debtShare * 100)}% of your take-home.`
+  }
+  if (s.cushion === 30) return `${covered} Debt payments are light, and you'd keep more than 3 months of take-home after the move.`
+  const left = Math.max(0, s.saved - s.moveInHigh)
+  return left > 0
+    ? `${covered} The cushion after the move is the gap: about ${fc(left)} left, ${s.cushionMonths < 1 ? 'under a month' : 'one to three months'} of take-home.`
+    : `${covered} The cushion after the move is the gap: the move would use about all of what you've set aside.`
+}
+
+function scoreTurn(state: ChatState, band: string): Step {
+  const f = state.facts
+  const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly ?? 0)
+  f.upfront = { low: up.low, high: up.high }
+  const s = moveInScore(SAVED_MIDDLE[band], up.high, f.debtMonthly ?? 0, f.takeHomeMonthly ?? 0)
+  f.score = { ...s, savedBand: band }
+  // The plan preview card moves up with the score (it showed only at the end, which almost no phone chat reaches), and
+  // its button becomes the gap button: one card and one main button in the turn.
+  const card = scoreCard(f, s.gap)
+  return say({ ...state, turn: 'R3_scored', invited: true }, [
+    { from: 'ribbit', text: scoreText(s, f.debtMonthly ?? 0), figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: SCORE_FINE, turn: 'R3_score' },
+    {
+      from: 'ribbit', text: SCORE_CARD_TEXT, turn: 'R3_score', planCard: card,
+      appAsk: { label: GAP_BUTTON[s.gap], why: 'score_gap', gap: s.gap, note: 'No forms: your numbers come with you.', textInstead: true },
+    },
+  ], [{ label: 'Pick my rent', value: 'pick' }, { label: 'Show me the math', value: '__math__' }], 'money', [
+    { name: 'ribbit_score_shown', props: { turn: 'R3', score: s.total, gap: s.gap, move_in_cash: s.moveIn, debt: s.debt, cushion: s.cushion, saved_band: band } },
+    { name: 'ribbit_plan_card_shown', props: { turn: 'R3', gap: s.gap, known_rows: card.known.length } },
+  ])
+}
+
+function scoreCard(f: Facts, gap: ScoreGap): NonNullable<ChatMessage['planCard']> {
+  const known = [
+    ...(f.takeHomeMonthly ? [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly)}/mo` }] : []),
+    ...(f.range ? [{ label: 'Rent that fits', value: span(f.range.low, f.range.high) }] : []),
+    ...(f.debtMonthly ? [{ label: 'Debt payments', value: `${fc(f.debtMonthly)}/mo` }] : []),
+    ...(f.upfront ? [{ label: 'Move-in cash, up to', value: fc(f.upfront.high) }] : []),
+  ]
+  return {
+    title: 'Your move plan',
+    known,
+    locked: [],
+    steps: [
+      { label: 'Rent range', done: true }, { label: 'Take-home after tax', done: true }, { label: 'Move-in score', done: true },
+      { label: GAP_STEP[gap], done: false }, { label: 'Checked against your real spending', done: false },
+    ],
+  }
+}
+
+/** "Show me the math" on the score: the three parts with their points, and the thresholds behind them. */
+function scoreMath(f: Facts): MathRow[] {
+  const s = f.score!
+  const band = SAVED_CHIPS.find((c) => c.value === s.savedBand)?.label ?? ''
+  const months = s.cushionMonths <= 0 ? 'none left' : s.cushionMonths < 1 ? 'under a month' : s.cushionMonths <= 3 ? '1 to 3 months' : 'more than 3 months'
+  return [
+    { label: `Set aside (the middle of ${band})`, value: fc(s.saved) },
+    { label: 'Move-in cash, estimated from the top of your range', value: fc(s.moveInHigh) },
+    { label: `Move-in cash: ${fc(s.saved)} of ${fc(s.moveInHigh)}, × 40, at most 40`, value: `${s.moveIn} of 40` },
+    { label: `Debt payments, ${Math.round(s.debtShare * 100)}% of take-home (up to 5% = 30, 15% = 20, 25% = 10, more = 0)`, value: `${s.debt} of 30` },
+    { label: `Cushion after the move, ${months} of take-home (none = 0, under a month = 10, 1 to 3 = 20, more = 30)`, value: `${s.cushion} of 30` },
+    { label: 'Move-in score', value: `${s.total} / 100`, strong: true },
+  ]
 }
 
 function askPick(state: ChatState, lead: string): Step {
@@ -1965,6 +2133,10 @@ function offerCard(f: Facts): NonNullable<ChatMessage['planCard']> {
 
 function showMath(state: ChatState): Step {
   const f = state.facts
+  if (state.turn === 'R3_scored' && f.score) {
+    const chips = (state.ui?.chips ?? []).filter((c) => c.value !== '__math__')
+    return { state, messages: [{ from: 'ribbit', text: "How the score is worked out, by WeLeap's own rule of thumb:", math: scoreMath(f) }], chips, input: state.ui?.input ?? 'money', events: [{ name: 'ribbit_math_opened', props: { turn: state.turn } }] }
+  }
   const rows: MathRow[] = []
   if (f.salary) rows.push({ label: f.payBasis === 'hourly' && f.hourlyRate ? `${payLine(f)}, 52 weeks` : 'Salary', value: fc(f.salary) })
   if (f.tax) {

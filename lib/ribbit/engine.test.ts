@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
 import { startupPlanData } from './payload'
 import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
@@ -117,21 +117,21 @@ describe('rent flow', () => {
   })
 
   it('the purpose question says where the money comes from, and typed answers land on the right option', async () => {
-    const base = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { chip: 'next_month' }]
+    const base = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'pick' }, { chip: 'low' }, { chip: 'next_month' }]
     const s = await run('rent', base)
-    const f = facts(s[6])
+    const f = facts(s[7])
     const saving = f.range!.high - f.pick!
-    expect(said(s[6])).toContain(`Signing at $${f.pick!.toLocaleString('en-US')} instead of $${f.range!.high.toLocaleString('en-US')} leaves $${saving.toLocaleString('en-US')} a month. Where should that`)
-    expect(s[6].chips.map((c) => c.label)).toEqual(['Rebuild my savings after the move', 'Paying down a card', 'Saving for later', 'How the upfront is worked out'])
-    expect(facts((await run('rent', [...base, { text: 'saving for later' }]))[7]).purpose).toBe('future')
-    expect(facts((await run('rent', [...base, { text: 'the move-in money' }]))[7]).purpose).toBe('cushion')
-    const math = (await run('rent', [...base, { chip: 'upfront_math' }]))[7]
+    expect(said(s[7])).toContain(`Signing at $${f.pick!.toLocaleString('en-US')} instead of $${f.range!.high.toLocaleString('en-US')} leaves $${saving.toLocaleString('en-US')} a month. Where should that`)
+    expect(s[7].chips.map((c) => c.label)).toEqual(['Rebuild my savings after the move', 'Paying down a card', 'Saving for later', 'How the upfront is worked out'])
+    expect(facts((await run('rent', [...base, { text: 'saving for later' }]))[8]).purpose).toBe('future')
+    expect(facts((await run('rent', [...base, { text: 'the move-in money' }]))[8]).purpose).toBe('cushion')
+    const math = (await run('rent', [...base, { chip: 'upfront_math' }]))[8]
     expect(said(math)).toContain('Where should that')
   })
 
   it('a preset city: range, market rents and upfront from the shared libraries, debt included', async () => {
     const s = await run('rent', [
-      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '300' }, { chip: 'low' }, { chip: 'next_month' }, { chip: 'cushion' },
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '300' }, { chip: 'pick' }, { chip: 'low' }, { chip: 'next_month' }, { chip: 'cushion' },
     ])
     // After the city: take-home from /api/tax, less Austin's local tax (none), as the rent page computes it.
     const takeHome = (TAX.netIncomeAnnual - localTaxAnnual('Austin', 80_000 - STANDARD_DEDUCTION_2026_SINGLE)) / 12
@@ -139,12 +139,12 @@ describe('rent flow', () => {
     const range = calculateRentRange(takeHome, 300)
     expect(said(s[2])).toContain(`$${Math.round(market.marketLow).toLocaleString('en-US')}`)
     expect(facts(s[5]).range).toEqual(range)
-    expect(facts(s[6]).pick).toBe(range.low)
+    expect(facts(s[7]).pick).toBe(range.low)
     const up = calculateUpfrontCash(range, takeHome)
-    expect(said(s[7])).toContain(`$${up.low.toLocaleString('en-US')} to $${up.high.toLocaleString('en-US')}`)
+    expect(said(s[8])).toContain(`$${up.low.toLocaleString('en-US')} to $${up.high.toLocaleString('en-US')}`)
     // Cushion: half the freed amount after each of two paychecks, toward the top of the upfront range.
-    expect(said(s[8])).toContain(`$${Math.round((range.high - range.low) / 2).toLocaleString('en-US')} the day after each paycheck`)
-    expect(said(s[8])).toContain(`until you're back to $${up.high.toLocaleString('en-US')}, what the move takes out`)
+    expect(said(s[9])).toContain(`$${Math.round((range.high - range.low) / 2).toLocaleString('en-US')} the day after each paycheck`)
+    expect(said(s[9])).toContain(`until you're back to $${up.high.toLocaleString('en-US')}, what the move takes out`)
   })
 
   it('labels each headline, and shows the market range against the range that fits', async () => {
@@ -536,22 +536,22 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
   })
 
   it('rent: the spending check after the pick, once, and a typed start date still lands', async () => {
-    const s = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'low' }, { text: 'next month' }])
-    const check = s[5].messages.find((m) => m.appAsk)!
+    const s = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'pick' }, { chip: 'low' }, { text: 'next month' }])
+    const check = s[6].messages.find((m) => m.appAsk)!
     expect(check.appAsk).toEqual(expect.objectContaining({ label: 'Check it against my real spending', why: 'spending_check' }))
-    expect(check.text).toContain(`Before you sign at $${facts(s[5]).pick!.toLocaleString('en-US')}`)
-    expect(check.appAsk?.note).toBe(`Free in WeLeap. See last month's spending next to $${facts(s[5]).pick!.toLocaleString('en-US')} rent, and what's left.`)
+    expect(check.text).toContain(`Before you sign at $${facts(s[6]).pick!.toLocaleString('en-US')}`)
+    expect(check.appAsk?.note).toBe(`Free in WeLeap. See last month's spending next to $${facts(s[6]).pick!.toLocaleString('en-US')} rent, and what's left.`)
     expect(check.appAsk?.note).not.toMatch(/bank/i)
-    expect(s[5].chips.map((c) => c.value)).toEqual(['keep'])
-    expect(s[5].events.some((e) => e.name === 'ribbit_spending_check_shown')).toBe(true)
-    expect(facts(s[6]).start).toBe('next_month')
+    expect(s[6].chips.map((c) => c.value)).toEqual(['keep'])
+    expect(s[6].events.some((e) => e.name === 'ribbit_spending_check_shown')).toBe(true)
+    expect(facts(s[7]).start).toBe('next_month')
   })
 
   it('rent: the ending is the plan card, with the text sign-up one tap away', async () => {
     const s = await run('rent', [
-      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'low' }, { chip: 'keep' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'text' },
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'pick' }, { chip: 'low' }, { chip: 'keep' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'text' },
     ])
-    const end = s[9]
+    const end = s[10]
     const card = end.messages.find((m) => m.planCard)!
     const f = facts(end)
     expect(card.text).toBe(PLAN_PREVIEW_TEXT)
@@ -561,7 +561,7 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Save my plan and unlock the rest', why: 'plan_preview', textInstead: true }))
     expect(end.events.some((e) => e.name === 'ribbit_plan_preview_shown')).toBe(true)
     expect(end.messages.some((m) => /watch/i.test(m.text))).toBe(false)
-    expect(s[10].messages.some((m) => m.handoff === 'rent')).toBe(true)
+    expect(s[11].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
   it('offer: the first take-home, before state tax and the city, carries no app ask', async () => {
@@ -972,5 +972,100 @@ describe('startup flow', () => {
     const s = await run(null, [{ text: 'my startup offer' }])
     expect(s[1].state.flow).toBe('startup')
     expect(s[1].state.turn).toBe('S1')
+  })
+})
+
+describe('move-in score (rent, after the debt answer)', () => {
+  it("scores the spec's worked example: 21 + 30 + 0 = 51, gap move-in cash", () => {
+    expect(moveInScore(2_000, 3_900, 150, 4_534)).toMatchObject({ moveIn: 21, debt: 30, cushion: 0, total: 51, gap: 'move_in_cash' })
+  })
+
+  it('debt and cushion thresholds; the gap is move-in cash when short, else the part furthest below its maximum', () => {
+    // Covered move-in; debt 20% of take-home = 10, cushion under a month = 10: a tie goes to debt.
+    expect(moveInScore(7_000, 3_000, 900, 4_500)).toMatchObject({ moveIn: 40, debt: 10, cushion: 10, gap: 'debt' })
+    expect(moveInScore(7_000, 3_000, 0, 4_500)).toMatchObject({ debt: 30, cushion: 10, gap: 'cushion' })
+    expect(moveInScore(7_000, 3_000, 225, 4_500)).toMatchObject({ debt: 30 }) // exactly 5%
+    expect(moveInScore(7_000, 3_000, 675, 4_500)).toMatchObject({ debt: 20 }) // exactly 15%
+    expect(moveInScore(7_000, 3_000, 1_200, 4_500)).toMatchObject({ debt: 0 }) // over 25%
+    expect(moveInScore(9_000, 3_000, 0, 4_000)).toMatchObject({ cushion: 20 }) // 1.5 months
+    expect(moveInScore(20_000, 3_000, 0, 4_000)).toMatchObject({ moveIn: 40, debt: 30, cushion: 30, total: 100, gap: 'cushion' })
+    // Short of the move-in cash, that is the gap even when debt is heavier.
+    expect(moveInScore(500, 3_000, 1_200, 4_500)).toMatchObject({ moveIn: 7, debt: 0, gap: 'move_in_cash' })
+  })
+
+  it('offered as one of two chips after the debt answer; one tap on savings gives the score, card and gap button', async () => {
+    const base: Reply[] = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '300' }]
+    const s = await run('rent', [...base, { chip: 'score' }, { chip: 'saved_1k_3k' }])
+    // The offer: after the range with debt, before the pick; not forced.
+    expect(s[5].state.turn).toBe('R3_score')
+    expect(said(s[5])).toContain(SCORE_OFFER_TEXT)
+    expect(s[5].chips.map((c) => c.label)).toEqual(['Get my move-in score', 'Pick my rent'])
+    expect(s[5].events.map((e) => e.name)).toContain('ribbit_score_offered')
+    expect(s[5].messages.some((m) => m.appAsk)).toBe(false)
+    // The one question: four chips, no typing.
+    expect(said(s[6])).toBe('How much do you have set aside for the move?')
+    expect(s[6].chips.map((c) => c.label)).toEqual(['Under $1,000', '$1,000 to $3,000', '$3,000 to $6,000', 'More than $6,000'])
+    expect(s[6].events.map((e) => e.name)).toContain('ribbit_score_started')
+    // The score: move-in cash from the top of the range (calculateUpfrontCash), savings at the band's middle.
+    const f = facts(s[7])
+    const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly!)
+    const want = moveInScore(2_000, up.high, 300, f.takeHomeMonthly!)
+    const result = s[7].messages[0]
+    expect(result.figure).toBe(`${want.total} / 100`)
+    expect(result.figureLabel).toBe('Move-in score')
+    expect(result.fine).toBe(SCORE_FINE)
+    expect(result.text).toContain(`Move-in cash is the gap: about $${up.high.toLocaleString('en-US')} before the keys, and you have about $2,000.`)
+    // The plan card moves up with it: the checklist in place of the locked rows, one gap button, text instead.
+    const card = s[7].messages[1]
+    expect(card.text).toBe(SCORE_CARD_TEXT)
+    expect(card.planCard!.title).toBe('Your move plan')
+    expect(card.planCard!.steps!.filter((x) => x.done).map((x) => x.label)).toEqual(['Rent range', 'Take-home after tax', 'Move-in score'])
+    expect(card.planCard!.steps!.filter((x) => !x.done).map((x) => x.label)).toEqual(['A plan for your move-in cash', 'Checked against your real spending'])
+    expect(card.planCard!.locked).toEqual([])
+    expect(card.appAsk).toEqual(expect.objectContaining({ label: GAP_BUTTON.move_in_cash, why: 'score_gap', gap: 'move_in_cash', textInstead: true }))
+    expect(s[7].messages.filter((m) => m.appAsk)).toHaveLength(1)
+    expect(s[7].chips.map((c) => c.value)).toEqual(['pick', '__math__'])
+    const shown = s[7].events.find((e) => e.name === 'ribbit_score_shown')!
+    expect(shown.props).toMatchObject({ score: want.total, gap: 'move_in_cash', move_in_cash: want.moveIn, debt: want.debt, cushion: want.cushion })
+    expect(s[7].events.map((e) => e.name)).toContain('ribbit_plan_card_shown')
+    expect(s[7].state.invited).toBe(true)
+  })
+
+  it('the math shows the three parts and their thresholds; then the pick goes on as before', async () => {
+    const base: Reply[] = [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'score' }, { chip: 'saved_over_6k' }]
+    const s = await run('rent', [...base, { chip: '__math__' }, { chip: 'pick' }, { chip: 'low' }])
+    const rows = s[7].messages[0].math!
+    expect(rows.map((r) => r.label)).toEqual([
+      'Set aside (the middle of More than $6,000)',
+      'Move-in cash, estimated from the top of your range',
+      expect.stringMatching(/^Move-in cash: \$7,000 of \$[\d,]+, × 40, at most 40$/),
+      expect.stringMatching(/^Debt payments, 0% of take-home \(up to 5% = 30, 15% = 20, 25% = 10, more = 0\)$/),
+      expect.stringMatching(/^Cushion after the move, .+ of take-home \(none = 0, under a month = 10, 1 to 3 = 20, more = 30\)$/),
+      'Move-in score',
+    ])
+    expect(rows[5].value).toBe(`${facts(s[6]).score!.total} / 100`)
+    expect(s[7].chips.map((c) => c.value)).toEqual(['pick'])
+    expect(s[8].state.turn).toBe('R4')
+    expect(facts(s[9]).pick).toBe(facts(s[9]).range!.low)
+  })
+
+  it('"Pick my rent" skips it; a typed amount picks a band or a rent; text-me works from a later turn', async () => {
+    const skip = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'pick' }])
+    expect(skip[5].state.turn).toBe('R4')
+    expect(skip[5].events.map((e) => e.name)).not.toContain('ribbit_score_started')
+    const typedSaved = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'score' }, { text: '2500' }])
+    expect(facts(typedSaved[6]).score).toMatchObject({ saved: 2_000, savedBand: 'saved_1k_3k' })
+    const typedRent = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { text: '1500' }])
+    expect(facts(typedRent[5]).pick).toBe(1_500)
+    const later = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'score' }, { chip: 'saved_under_1k' }, { chip: 'pick' }, { chip: 'text' }])
+    expect(later[8].messages.some((m) => m.handoff === 'rent')).toBe(true)
+  })
+
+  it('names one gap in plain words: no grades, shame words or long dashes', () => {
+    const cases = [moveInScore(500, 3_000, 0, 4_500), moveInScore(7_000, 3_000, 900, 4_500), moveInScore(7_000, 3_000, 0, 4_500), moveInScore(20_000, 3_000, 0, 4_000)]
+    expect(new Set(cases.map((c) => c.gap))).toEqual(new Set(['move_in_cash', 'debt', 'cushion']))
+    for (const text of [SCORE_OFFER_TEXT, SCORE_CARD_TEXT, SCORE_FINE, ...Object.values(GAP_BUTTON)]) {
+      expect(text).not.toMatch(/\bbad\b|behind|can't afford|—/i)
+    }
   })
 })
