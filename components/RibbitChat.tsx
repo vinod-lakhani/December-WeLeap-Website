@@ -76,6 +76,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const [text, setText] = useState('')
   const lastAt = useRef<number>(Date.now())
   const endRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   // The document picker: the offer letter's chip or the benefits guide's (O4) opens it, and the read goes to the
   // engine as a reply (Reply.letter or Reply.benefits). `fileKind` is which one the open picker is for.
   const fileRef = useRef<HTMLInputElement>(null)
@@ -115,7 +116,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [thread.messages.length, busy])
 
-  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string; file?: File; kind?: DocKind }) => {
+  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string; typed?: string; file?: File; kind?: DocKind }) => {
     if (busy) return
     if (r.chip === UPLOAD_CHIP.value || r.chip === BENEFITS_CHIP.value) {
       fileKind.current = r.chip === BENEFITS_CHIP.value ? 'benefits' : 'offer'
@@ -142,7 +143,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
       const read = await readDocument(r.file, kind, 'chat')
       const doc = read.ok ? { parsed: read.parsed } : { failed: read.reason }
       input = kind === 'benefits' ? { benefits: doc } : { letter: doc }
-    } else input = r.chip ? { chip: r.chip } : { text: r.text }
+    } else input = r.chip ? { chip: r.chip, typed: r.typed } : { text: r.text }
     const step = await engineReply(thread.state, input, services)
     // A short typing state, so the reply reads as answered rather than loaded (under a second).
     const wait = Math.max(0, 450 - (Date.now() - began))
@@ -260,7 +261,11 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
                   key={c.value}
                   type="button"
                   disabled={busy}
-                  onClick={() => answer({ chip: c.value, label: c.label })}
+                  onClick={() => {
+                    // Focused in the tap itself: a phone opens its keypad only for a focus made while handling a tap.
+                    if (c.opensKeyboard) inputRef.current?.focus()
+                    answer({ chip: c.value, label: c.label, typed: text })
+                  }}
                   className="min-h-10 rounded-full border-2 border-[#386641] bg-white px-3.5 text-[14px] font-semibold text-[#386641] transition hover:bg-[#386641] hover:text-white disabled:opacity-50"
                 >
                   {c.label}
@@ -273,6 +278,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             className="flex items-center gap-2"
           >
             <input
+              ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               inputMode={thread.input === 'money' ? 'decimal' : 'text'}

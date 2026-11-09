@@ -33,7 +33,9 @@ import type { AppReason } from './appLink'
 const metroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>
 
 export type Flow = 'rent' | 'offer' | 'money' | 'startup'
-export interface Chip { label: string; value: string }
+/** `opensKeyboard`: the next turn asks for a typed answer, so the tap focuses the reply box while it's still a tap (a
+ * phone opens its keypad only then, not after the reply comes back). */
+export interface Chip { label: string; value: string; opensKeyboard?: boolean }
 export interface MathRow { label: string; value: string; strong?: boolean }
 export interface ChatMessage {
   from: 'ribbit' | 'you'
@@ -308,7 +310,8 @@ const win = (turn: string): ChatEvent => ({ name: 'ribbit_win_shown', props: { t
  * it found, or why it couldn't (the route's error code). The file itself never reaches the engine or the thread.
  */
 export type DocRead = { parsed: ParsedOffer } | { failed: string }
-export interface Reply { chip?: string; text?: string; letter?: DocRead; benefits?: DocRead }
+/** `typed`: what was in the reply box when a chip was tapped. Only the offer's Yearly and Hourly read it. */
+export interface Reply { chip?: string; text?: string; typed?: string; letter?: DocRead; benefits?: DocRead }
 
 /**
  * One reply. `chip` is a tapped option's value; `text` is typed. The person's own words are added to the thread
@@ -542,7 +545,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     case 'O1':
     case 'O1_amount':
     case 'O1_basis':
-      return offerPay(state, chip, text, svc)
+      return offerPay(state, chip, text, svc, (r.typed ?? '').trim())
     case 'O3':
     case 'O3_amount':
     case 'O3_equity':
@@ -992,8 +995,8 @@ function askStart(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = [
  * elect), the one thing the chat can't see is their spending. Once per thread; "Keep going" carries on.
  */
 const KEEP_GOING: Chip[] = [{ label: 'Keep going without it', value: 'keep' }]
-function spendingCheck(text: string, note: string): ChatMessage {
-  return { from: 'ribbit', text, appAsk: { label: 'Check it against my real spending', why: 'spending_check', note } }
+function spendingCheck(text: string, note: string, label = 'Check it against my real spending'): ChatMessage {
+  return { from: 'ribbit', text, appAsk: { label, why: 'spending_check', note } }
 }
 
 function upfrontMath(state: ChatState): Step {
@@ -1056,7 +1059,13 @@ function cardPayoff(state: ChatState, balance: number, apr: number): Step {
 
 // Hourly as well as yearly, as the rent question offers its two (Nov 3): a paid visitor typed "19.50", which read
 // as $20 a year and went to Ribbit as a question.
-const PAY_CHIPS: Chip[] = [{ label: 'Yearly salary', value: 'salary' }, { label: 'Hourly', value: 'hourly' }]
+const PAY_CHIPS: Chip[] = [{ label: 'Yearly salary', value: 'salary', opensKeyboard: true }, { label: 'Hourly', value: 'hourly', opensKeyboard: true }]
+/** Under the amount question, the other one (Nov 8): a paid visitor who tapped Yearly but is paid by the hour could
+ * only switch with Start over. */
+const OTHER_PAY_CHIP: Record<'salary' | 'hourly', Chip> = {
+  salary: { label: "It's hourly", value: 'hourly', opensKeyboard: true },
+  hourly: { label: "It's a yearly salary", value: 'salary', opensKeyboard: true },
+}
 
 function askOfferSalary(state: ChatState): Step {
   return say({ ...state, turn: 'O1' }, [
@@ -1069,16 +1078,19 @@ const fcc = (n: number) => (Number.isInteger(n) ? fc(n) : `$${n.toFixed(2)}`)
 /** The pay as the chat says it back: "$19.50 an hour, 40 hours a week" or "$85,000". */
 const payLine = (f: Facts) => (f.payBasis === 'hourly' && f.hourlyRate ? `${fcc(f.hourlyRate)} an hour, ${f.hoursPerWeek} hours a week` : fc(f.salary ?? 0))
 
-async function offerPay(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
+async function offerPay(state: ChatState, chip: string | undefined, text: string, svc: ChatServices, typed = ''): Promise<Step> {
   const f = state.facts
   if (state.turn !== 'O1_basis' && (chip === 'salary' || chip === 'hourly')) {
     f.payBasis = chip
+    // A number already in the box is the answer (Nov 8): a paid visitor typed theirs, then tapped Yearly salary, the
+    // tap cleared it and the question came back, and they left.
+    if (readPay(typed, chip)) return offerPay({ ...state, turn: 'O1_amount' }, undefined, typed, svc)
     return say({ ...state, turn: 'O1_amount' }, [{
       from: 'ribbit',
       // The rate alone (Nov 5): the phone's number pad has no comma, letters or "$", so "$19.50, 30 hours" can't be
       // typed there, and 4 of 6 paid visitors who tapped Hourly left without sending. Typed hours still read.
       text: chip === 'salary' ? "What's the yearly base salary?" : `What's the hourly rate? I'll count ${DEFAULT_HOURS} hours a week.`,
-    }], [], 'money')
+    }], [OTHER_PAY_CHIP[chip]], 'money')
   }
   const pay = (state.turn === 'O1_basis' ? hourOrYear(f, chip, text) : null) ?? readPay(text, state.turn === 'O1_amount' ? f.payBasis : undefined)
   if (!pay || (pay.kind === 'salary' && pay.annual < 1_000)) return question(state, text, svc, 'the base pay in the offer, yearly or hourly')
@@ -1088,23 +1100,20 @@ async function offerPay(state: ChatState, chip: string | undefined, text: string
   const lead = pay.kind === 'hourly'
     ? `At ${payLine(f)}, that's about ${fc(pay.annual)} a year. Take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
     : `On ${fc(pay.annual)}, take-home before state tax and any 401k is about ${fc(takeHome)} a month.`
-  const first = !f.rangeSpendingCheckShown
-  f.rangeSpendingCheckShown = true
-  return say({ ...state, turn: 'O2', invited: true }, [
+  return say({ ...state, turn: 'O2' }, [
     { from: 'ribbit', text: lead, figure: `${fc(takeHome)}/mo`, figureLabel: 'Take-home before state tax', turn: 'O2' },
-    ...(first ? [spendingCheck(TAKEHOME_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE)] : []),
     { from: 'ribbit', text: 'Which city is the job in?' },
-  ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location',
-  [win('O2'), ...(first ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'O2' } }] : [])])
+  ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('O2')])
 }
 
 /**
- * The offer's first take-home carries the app offer, as the first rent range does (R2, Oct 30): since Nov 3 the
- * offer's only check sat at O6 and no paid visitor reached it (0 of 20), while 5 saw this figure. The thread's one
- * invite; "Which city is the job in?" still follows, and O6 stays the second chance.
+ * The app offer sits on the take-home in the job's city (O3), the offer's real answer, as rent's sits on its range
+ * (R2). Nov 5 to 8 it sat on the first take-home (O2), before state tax and the city, in rent's words: 0 of 25 paid
+ * visitors tapped it, against 15 of 85 on rent. The thread's one invite; O6 stays the second chance.
  */
 export const TAKEHOME_SPENDING_CHECK_TEXT =
-  "Whether that's enough depends on what you spend, and that's the one part I can't see. Want to check it against what you actually spend?"
+  "That's the paycheck. What it covers depends on what you spend, the one part I can't see. WeLeap can split your first one before it lands: rent, savings, the 401k."
+export const TAKEHOME_SPENDING_CHECK_LABEL = 'Plan my first paycheck'
 export const TAKEHOME_SPENDING_CHECK_NOTE = "Free in WeLeap. See last month's spending next to this take-home."
 
 const EXTRA_CHIPS: Chip[] = [
@@ -1127,10 +1136,14 @@ const extrasChips = (f: Facts): Chip[] => [
 function offerAfterLocation(state: ChatState): Step {
   const f = state.facts
   const line = placeTaxLine(f) || `In ${f.place}, take-home before any 401k is about ${fc(f.takeHomeMonthly ?? 0)} a month.`
-  return say({ ...state, turn: 'O3' }, [
+  // Once a thread, and not after an invite a question at "Which city?" already brought.
+  const first = !f.rangeSpendingCheckShown && !state.invited
+  f.rangeSpendingCheckShown = true
+  return say({ ...state, turn: 'O3', invited: state.invited || first }, [
     { from: 'ribbit', text: f.tax ? `${line} That's before any 401k.` : line, figure: `${fc(f.takeHomeMonthly ?? 0)}/mo`, figureLabel: 'Take-home', turn: 'O3' },
+    ...(first ? [spendingCheck(TAKEHOME_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_LABEL)] : []),
     { from: 'ribbit', text: `Weighing another offer? I can put the two side by side. Otherwise, ${extrasQuestion(f).toLowerCase()}` },
-  ], extrasChips(f), 'text', [win('O3')])
+  ], extrasChips(f), 'text', [win('O3'), ...(first ? [{ name: 'ribbit_spending_check_shown', props: { turn: 'O3' } }] : [])])
 }
 
 /** The other offer's base pay, priced in the same place with the same taxes, next to this one's take-home. */
