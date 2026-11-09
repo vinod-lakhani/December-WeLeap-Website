@@ -318,7 +318,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
   const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
   const onAskTap = () => {
     if (destination === 'web') markPlanSaved(flow)
-    track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination })
+    track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination, ...(ask!.gap ? { gap: ask!.gap } : {}) })
   }
   return (
     <div className="max-w-[92%] self-start">
@@ -336,6 +336,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           </div>
         )}
         <p>{text}</p>
+        {m.fine && <p className="mt-1.5 text-[12.5px] italic leading-snug text-white/75">{m.fine}</p>}
         {m.math && (
           <dl className="mt-2.5 rounded-xl bg-white/10 px-3 py-2">
             {m.math.map((row, i) => (
@@ -461,12 +462,15 @@ function RecruiterQuestions({ questions, threadId }: { questions: NonNullable<Ch
 }
 
 function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
+  const done = card.steps?.filter((s) => s.done).length ?? 0
   return (
-    <section aria-label="Your WeLeap plan preview" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
+    <section aria-label={card.title ?? 'Your WeLeap plan preview'} className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[16px] font-extrabold text-ink">Your WeLeap plan</span>
-        {/* Only when something on the card came from the chat: a question asked before Rent or Offer has no numbers yet. */}
-        {card.known.length > 0 && (
+        <span className="text-[16px] font-extrabold text-ink">{card.title ?? 'Your WeLeap plan'}</span>
+        {card.steps ? (
+          <span className="shrink-0 rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold tabular-nums text-brand-700">{done} of {card.steps.length} done</span>
+        ) : card.known.length > 0 && (
+          // Only when something on the card came from the chat: a question asked before Rent or Offer has no numbers yet.
           <span className="rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold text-brand-700">From this chat</span>
         )}
       </div>
@@ -476,18 +480,38 @@ function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
           <span className="text-right font-bold tabular-nums text-ink">{row.value}</span>
         </div>
       ))}
-      <div className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle`}>
-        Unlocks when you connect your bank
-      </div>
-      {card.locked.map((label) => (
-        <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
-          <span className="inline-flex items-center gap-2">
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-            {label}
-          </span>
-          <span aria-label="Shown after you connect" className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
-        </div>
-      ))}
+      {card.steps ? (
+        // The move-in score's card: what's done, and the two steps the app does (the gap plan, the spending check).
+        <ul className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-1.5`}>
+          {card.steps.map((s) => (
+            <li key={s.label} className={`flex items-center gap-2.5 py-2 text-[14px] ${s.done ? 'text-ink' : 'font-semibold text-ink'}`}>
+              {s.done ? (
+                <span aria-label="Done" className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#386641] text-white">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                </span>
+              ) : (
+                <span aria-label="Not done yet" className="h-[18px] w-[18px] shrink-0 rounded-[5px] border-2 border-[#9aa597] bg-white" />
+              )}
+              {s.label}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <>
+          <div className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle`}>
+            Unlocks when you connect your bank
+          </div>
+          {card.locked.map((label) => (
+            <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
+              <span className="inline-flex items-center gap-2">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                {label}
+              </span>
+              <span aria-label="Shown after you connect" className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
+            </div>
+          ))}
+        </>
+      )}
     </section>
   )
 }
