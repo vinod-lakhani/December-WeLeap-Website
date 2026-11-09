@@ -333,7 +333,11 @@ export async function reply(prev: ChatState, r: Reply, svc: ChatServices): Promi
   }
   const turnEvent: ChatEvent = { name: 'ribbit_turn', props: { turn: prev.turn, reply_kind: r.letter ? 'letter' : r.benefits ? 'benefits' : r.chip ? 'chip' : 'typed' } }
   const step = await route(state, r, svc)
-  return { ...step, events: [turnEvent, ...step.events] }
+  // Each app button as it is shown, once: the denominator of the button's tap rate (ribbit_win_shown is not it).
+  const asks: ChatEvent[] = step.messages.filter((m) => m.appAsk).map((m) => ({
+    name: 'ribbit_app_ask_shown', props: { turn: m.turn ?? step.state.turn, why: m.appAsk!.why, ...(m.appAsk!.gap ? { gap: m.appAsk!.gap } : {}) },
+  }))
+  return { ...step, events: [turnEvent, ...step.events, ...asks] }
 }
 
 async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Step> {

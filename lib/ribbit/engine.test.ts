@@ -1069,3 +1069,20 @@ describe('move-in score (rent, after the debt answer)', () => {
     }
   })
 })
+
+describe('ribbit_app_ask_shown: one event per app button shown', () => {
+  it('fires with the turn and the ask, once, on the turn that shows the button', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'yes' }, { text: '300' }, { chip: 'score' }, { chip: 'saved_1k_3k' }])
+    const shown = (step: Step) => step.events.filter((e) => e.name === 'ribbit_app_ask_shown')
+    // The range with the spending check: the turn that shows it sends exactly that one.
+    const withCheck = s.findIndex((step) => step.messages.some((m) => m.appAsk?.why === 'spending_check'))
+    expect(withCheck).toBeGreaterThan(0)
+    expect(shown(s[withCheck])).toEqual([{ name: 'ribbit_app_ask_shown', props: expect.objectContaining({ why: 'spending_check' }) }])
+    // The score's gap button carries the gap.
+    expect(shown(s[6])).toEqual([{ name: 'ribbit_app_ask_shown', props: expect.objectContaining({ why: 'score_gap', gap: 'move_in_cash' }) }])
+    // Turns without a button send none.
+    expect(shown(s[5])).toEqual([])
+    // As many as buttons shown, never more.
+    for (const step of s.slice(1)) expect(shown(step).length).toBe(step.messages.filter((m) => m.appAsk).length)
+  })
+})

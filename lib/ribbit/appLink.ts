@@ -132,11 +132,42 @@ export function appDestination(platform: 'ios' | 'android' | null): AppDestinati
   return platform === 'ios' ? 'app_store' : platform === 'android' ? 'google_play' : 'web'
 }
 
-export function ribbitStoreLink(flow: Flow | null, destination: Exclude<AppDestination, 'web'>): string {
-  const campaign = `ribbit_${flow ?? 'general'}`
+export function ribbitStoreLink(flow: Flow | null, destination: Exclude<AppDestination, 'web'>, campaign = `ribbit_${flow ?? 'general'}`): string {
   return destination === 'app_store'
     ? appStoreUrl({ utm_campaign: campaign }, APPLE_PROVIDER_TOKEN, PRODUCT_PAGES.metaPaycheck)
     : playStoreUrl({ utm_source: 'ribbit_chat', utm_campaign: campaign })
+}
+
+/**
+ * Where a phone's ask goes (decided Nov 9 2026), after phone rent taps fell from 16% to 8% once the button carried
+ * the store's mark and note:
+ *   - rent: a 50/50 split, kept on the chat thread. Both arms show the same plain button (the phone label and text,
+ *     no store mark, no note, one text-instead line), so only the link differs: `web` is the plan link above, `store`
+ *     the store under its own campaign (SPLIT_CAMPAIGN). Read on new accounts per chat that saw the button.
+ *   - offer (and the startup offer, which the app opens as an offer): the web app, as on desktop.
+ *   - everything else: the store, as decided Nov 4.
+ * Desktop is never in the split.
+ */
+export type DestArm = 'web' | 'store'
+export const SPLIT_CAMPAIGN = 'ribbit_rent_split'
+export const SPLIT_TEXT_INSTEAD = 'Not ready? Text me each step instead'
+
+export function assignArm(random: () => number = Math.random): DestArm {
+  return random() < 0.5 ? 'web' : 'store'
+}
+
+/** `view`: how the ask looks (web's label and note, the store's, or the split's plain one); `to`: where it goes. */
+export interface AskRoute { view: 'web' | 'store' | 'plain'; to: AppDestination; arm?: DestArm }
+
+export function askRoute(flow: Flow | null, device: AppDestination, arm: DestArm | undefined): AskRoute {
+  if (device === 'web' || flow === 'offer' || flow === 'startup') return { view: 'web', to: 'web' }
+  if (flow === 'rent' && arm) return { view: 'plain', to: arm === 'web' ? 'web' : device, arm }
+  return { view: 'store', to: device }
+}
+
+/** The split's button: the phone label (true in both arms), and no note, since each note names one destination. */
+export function plainAsk<A extends { label: string; why: AppReason; note?: string }>(ask: A): A {
+  return { ...ask, label: STORE_ASK.labels[ask.why] ?? ask.label, note: undefined }
 }
 
 /**
