@@ -7,7 +7,7 @@ import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
 import { BENEFITS_CHIP, UPLOAD_CHIP, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Reply, type Step } from '@/lib/ribbit/engine'
-import { STORE_ASK, appDestination, markPlanSaved, phoneAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination } from '@/lib/ribbit/appLink'
+import { SPLIT_CAMPAIGN, SPLIT_TEXT_INSTEAD, STORE_ASK, appDestination, askRoute, assignArm, markPlanSaved, phoneAsk, plainAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute, type DestArm } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData, startupPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 import { phonePlatform } from '@/lib/text-pilot'
@@ -33,12 +33,24 @@ interface Saved {
   parked?: string
   /** Caption over the options when they are not the answer to the last question (Step.chipsLabel). */
   chipsLabel?: string
+  /** The rent destination split's arm (lib/ribbit/appLink.ts), phones only: kept with the thread, so a reload, a
+   *  later visit or Start over never switches it. */
+  arm?: DestArm
 }
 
 const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers', money: 'Finish my plan', startup: 'Finish my offer numbers' }
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
 const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
+
+function device(): AppDestination {
+  return appDestination(phonePlatform(navigator.userAgent, navigator.maxTouchPoints))
+}
+
+/** dest_arm on a thread that starts in rent; a picker thread gets it on its events once it is in rent. */
+function splitProps(flow: Flow | null, arm: DestArm | undefined): { dest_arm?: DestArm } {
+  return flow === 'rent' && arm ? { dest_arm: arm } : {}
+}
 
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `t${Date.now().toString(36)}`
@@ -68,10 +80,11 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   // Read after mount (storage is client-only), so the server HTML and the first render agree.
   const [saved, setSaved] = useState(false)
   useEffect(() => setSaved(!!planSaved()), [])
-  // Phones get the store, everything else the web app (lib/ribbit/appLink.ts). Read after mount: the server render
-  // has no user agent, so the first paint is the web link and a phone swaps it before anyone can tap.
+  // The device's own destination: a phone's store, else the web app; askRoute (lib/ribbit/appLink.ts) decides per
+  // flow and arm. Read after mount: the server render has no user agent, so the first paint is the web link and a
+  // phone swaps it before anyone can tap.
   const [destination, setDestination] = useState<AppDestination>('web')
-  useEffect(() => setDestination(appDestination(phonePlatform(navigator.userAgent, navigator.maxTouchPoints))), [])
+  useEffect(() => setDestination(device()), [])
   const [busy, setBusy] = useState(false)
   const [text, setText] = useState('')
   const lastAt = useRef<number>(Date.now())
@@ -82,9 +95,13 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const fileRef = useRef<HTMLInputElement>(null)
   const fileKind = useRef<DocKind>('offer')
 
-  const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null) => {
+  const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null, arm: DestArm | undefined) => {
+    const route = askRoute(flow, device(), arm)
     for (const e of events) {
-      track(e.name, { ...e.props, thread_id: id, flow: flow ?? 'picker' })
+      track(e.name, {
+        ...e.props, thread_id: id, flow: flow ?? 'picker', ...(route.arm ? { dest_arm: route.arm } : {}),
+        ...(e.name === 'ribbit_app_ask_shown' ? { destination: route.to } : {}),
+      })
       // The chat's first number is the tool page's completed calculation: the same tool_completed event, so the
       // same Google Ads conversion (lib/google-ads.ts), Meta and GA events, once per tool per tab as on the page
       // (claimToolCompletion). source tells the chat's apart in PostHog.
@@ -96,15 +113,18 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
   // Restore a thread in progress, or start a new one with an id.
   useEffect(() => {
+    const phone = device() !== 'web'
     const saved = load(initialFlow)
     if (saved) {
-      setThread(saved)
+      // A thread from before the split gets its arm now; desktop threads never have one.
+      setThread(phone && !saved.arm ? { ...saved, arm: assignArm() } : saved)
       setRestored(true)
       return
     }
     const id = newId()
-    setThread((t) => ({ ...t, id }))
-    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry })
+    const arm = phone ? assignArm() : undefined
+    setThread((t) => ({ ...t, id, arm }))
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, ...splitProps(initialFlow, arm) })
   }, [initialFlow, entry])
 
   useEffect(() => {
@@ -150,8 +170,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     await new Promise((res) => setTimeout(res, wait))
     setBusy(false)
     setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked, chipsLabel: step.chipsLabel }))
-    send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow)
-  }, [busy, thread.state, thread.id, send])
+    send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow, thread.arm)
+  }, [busy, thread.state, thread.id, thread.arm, send])
 
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
@@ -163,9 +183,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     try { localStorage.removeItem(STORE_KEY) } catch { /* nothing stored */ }
     const s = start(initialFlow)
     const id = newId()
-    setThread({ id, messages: s.messages, state: s.state, chips: s.chips, input: s.input })
+    setThread({ id, messages: s.messages, state: s.state, chips: s.chips, input: s.input, arm: thread.arm })
     setRestored(false)
-    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, restart: true })
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, restart: true, ...splitProps(initialFlow, thread.arm) })
   }
 
   return (
@@ -201,7 +221,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             facts={thread.state.facts}
             threadId={thread.id}
             flow={thread.state.flow}
-            destination={destination}
+            route={askRoute(thread.state.flow, destination, thread.arm)}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
             onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
@@ -300,8 +320,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead }: {
-  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; destination: AppDestination
+function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
+  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute
   onFinish?: () => void; onTextInstead?: () => void
 }) {
   if (m.from === 'you') {
@@ -312,14 +332,20 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
     )
   }
   // On a phone the ask is the app, not the plan (it does not carry over an install yet): the note and the store's
-  // icon say so. Only the web link saves the plan, so only it turns on "Open my plan".
-  const ask = m.appAsk && (destination === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination))
-  const text = (destination !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
-  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
+  // icon say so. The rent split's plain button says neither, the same in both arms. Only the web link saves the
+  // plan, so only it turns on "Open my plan".
+  const { view, to: destination } = route
+  const ask = m.appAsk && (view === 'web' ? m.appAsk : view === 'plain' ? plainAsk(m.appAsk) : phoneAsk(m.appAsk, destination as Exclude<AppDestination, 'web'>))
+  const text = (view !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
+  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination, route.arm ? SPLIT_CAMPAIGN : undefined))
   const onAskTap = () => {
     if (destination === 'web') markPlanSaved(flow)
-    track('ribbit_app_link_clicked', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination, ...(ask!.gap ? { gap: ask!.gap } : {}) })
+    track('ribbit_app_link_clicked', {
+      thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination,
+      ...(ask!.gap ? { gap: ask!.gap } : {}), ...(route.arm ? { dest_arm: route.arm } : {}),
+    })
   }
+  const storeMark = view === 'store' && destination !== 'web' ? destination : null
   return (
     <div className="max-w-[92%] self-start">
       <div className="rounded-2xl rounded-bl-md bg-[#386641] px-4 py-3 text-[15px] leading-snug text-white">
@@ -359,9 +385,9 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           onClick={onAskTap}
           className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
         >
-          {destination !== 'web' && <StoreGlyph store={destination} className="h-3.5 w-3.5" />}
+          {storeMark && <StoreGlyph store={storeMark} className="h-3.5 w-3.5" />}
           {ask.label}
-          {destination === 'web' && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
+          {!storeMark && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
         </a>
       )}
       {ask && !ask.quiet && (
@@ -373,9 +399,9 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
-              {destination !== 'web' && <StoreGlyph store={destination} className="h-[18px] w-[18px] shrink-0" />}
+              {storeMark && <StoreGlyph store={storeMark} className="h-[18px] w-[18px] shrink-0" />}
               {ask.label}
-              {destination === 'web' && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
+              {!storeMark && <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>}
             </a>
             {onFinish && flow && (
               <button
@@ -389,7 +415,7 @@ function Bubble({ m, facts, threadId, flow, destination, onFinish, onTextInstead
           </div>
           {onTextInstead && (
             <button type="button" onClick={onTextInstead} className="py-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
-              {destination === 'web' ? 'Not ready to connect? Text me each step instead' : STORE_ASK.textInstead}
+              {view === 'web' ? 'Not ready to connect? Text me each step instead' : view === 'plain' ? SPLIT_TEXT_INSTEAD : STORE_ASK.textInstead}
             </button>
           )}
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
