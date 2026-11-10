@@ -23,10 +23,17 @@
  * Reduced motion: no autoplay. The poster shows with native controls, and the
  * visitor decides.
  *
+ * Refused autoplay gets the same: native controls over the poster, so a tap
+ * plays it. Instagram's iOS browser refuses muted inline autoplay for many
+ * visitors (Nov 3–10 on /get: 7 of 27 started on iOS 26, 20 of 32 on iOS 27,
+ * against ~95% on Android); there was no way to play it there before. Only
+ * NotAllowedError counts; an AbortError is our own pause() on scroll-away.
+ *
  * Events: `product_video_viewed` the first time it is on screen,
  * `product_video_started` on the first play, and `product_video_progress` at
  * 25/50/75/100% of the first run through — enough to tell whether the clip is
- * watched before anyone reads the tap rate against it.
+ * watched before anyone reads the tap rate against it. `product_video_blocked`
+ * once when the browser refuses autoplay.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -86,8 +93,10 @@ export function ProductTourVideo({
   const media = CLIPS[clip];
   const ref = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const viewed = useRef(false);
   const started = useRef(false);
+  const blockSent = useRef(false);
   const reached = useRef(new Set<number>());
 
   useEffect(() => {
@@ -109,8 +118,14 @@ export function ProductTourVideo({
             track('product_video_viewed', { placement, clip });
           }
           if (!reduce) {
-            // A blocked play() rejects; the poster stays, which is the right fallback.
-            video.play().catch(() => {});
+            // A refused play() leaves the poster; controls let a tap play it.
+            video.play().catch((err: unknown) => {
+              if ((err as { name?: unknown } | null)?.name !== 'NotAllowedError') return;
+              setBlocked(true);
+              if (blockSent.current) return;
+              blockSent.current = true;
+              track('product_video_blocked', { placement, clip });
+            });
           }
         } else if (!video.paused) {
           video.pause();
@@ -125,7 +140,7 @@ export function ProductTourVideo({
   const onPlay = () => {
     if (started.current) return;
     started.current = true;
-    track('product_video_started', { placement, clip, autoplay: !reducedMotion });
+    track('product_video_started', { placement, clip, autoplay: !reducedMotion && !blocked });
   };
 
   /**
@@ -161,7 +176,7 @@ export function ProductTourVideo({
       loop
       playsInline
       preload="none"
-      controls={reducedMotion}
+      controls={reducedMotion || blocked}
       onPlay={onPlay}
       onTimeUpdate={onTimeUpdate}
       aria-label={media.label}
