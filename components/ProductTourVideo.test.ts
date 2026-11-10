@@ -41,6 +41,13 @@ describe('ProductTourVideo', () => {
   it('does not autoplay for visitors who asked for reduced motion', () => {
     expect(code).toMatch(/prefers-reduced-motion: reduce/)
     expect(code).toMatch(/if \(!reduce\)/)
-    expect(code).toMatch(/controls=\{reducedMotion\}/)
+    expect(code).toMatch(/controls=\{reducedMotion \|\| blocked\}/)
+  })
+
+  it('shows controls when the browser refuses autoplay, and counts the refusal once', () => {
+    expect(code).toMatch(/name\?: unknown \} \| null\)\?\.name !== 'NotAllowedError'/)
+    expect(code).toMatch(/setBlocked\(/)
+    expect(code).toMatch(/track\('product_video_blocked'/)
+    expect(code).toMatch(/autoplay: !reducedMotion && !blocked/)
   })
 })
