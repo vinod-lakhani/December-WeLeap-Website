@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
 import { ribbitPlanParams } from './appLink'
 import { startupPlanData } from './payload'
 import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
@@ -478,6 +478,37 @@ describe('typed answers Ribbit reads', () => {
     const s = await run('rent', [{ text: 'about eighty grand' }], svc({ ask: async () => ({ kind: 'step' as const, value: '80000' }) }))
     expect(facts(s[1]).salary).toBe(80_000)
     expect(said(s[1])).toContain('Which city?')
+  })
+
+  it('a value Ribbit read that still does not fit says it was not caught, not that Ribbit is down (Nov 10: "4600")', async () => {
+    const s = await run('rent', [{ text: '80000' }, { text: '4600' }], svc({ ask: async ({ message }) => ({ kind: 'step' as const, value: message }) }))
+    expect(s[2].messages.map((m) => m.text)).toEqual([NOT_CAUGHT_TEXT])
+    expect(s[2].state.turn).toBe('R2')
+    expect(s[2].chips.map((c) => c.value)).toContain('NYC')
+  })
+})
+
+describe('D.C. at the city question (Nov 12)', () => {
+  const dc = { label: 'Washington, DC', value: 'Washington, DC' }
+  const places = svc({
+    metros: async (st) => (st === 'DC' ? [dc] : st === 'WA' ? [{ label: 'Seattle, WA', value: 'Seattle, WA' }, { label: 'Olympia, WA', value: 'Olympia, WA' }] : []),
+    findMetros: async (city) => (city.toLowerCase() === 'washington' ? [{ ...dc, stateCode: 'DC' }] : []),
+    ask: async ({ message }) => ({ kind: 'step' as const, value: message }),
+  })
+
+  it('"DC" is the Washington, DC metro, with no one-option "Which area of D.C.?"', async () => {
+    for (const typed of ['DC', 'D.C.', 'washington dc']) {
+      const s = await run('rent', [{ text: '80000' }, { text: typed }], places)
+      expect(facts(s[2]).region?.regionName).toBe('Washington, DC')
+      expect(said(s[2])).not.toMatch(/Which area/)
+    }
+  })
+
+  it('"DC" typed at Washington state\'s areas starts the place over and lands on D.C.', async () => {
+    const s = await run('rent', [{ text: '80000' }, { chip: '__elsewhere__' }, { text: 'washington' }, { text: 'DC' }], places)
+    expect(s[3].state.turn).toBe('R2_metro')
+    expect(facts(s[4]).region?.regionName).toBe('Washington, DC')
+    expect(facts(s[4]).stateCode).toBe('DC')
   })
 })
 

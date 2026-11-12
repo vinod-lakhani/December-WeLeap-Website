@@ -285,6 +285,7 @@ export const APP_LINK_TEXT = "Your balances and spending aren't in this chat, so
 
 /** After a planning question before any tool: the offer to work it out with their numbers. */
 export const MONEY_OFFER_TEXT = 'Want me to work out your order with your numbers? Four quick questions.'
+export const NOT_CAUGHT_TEXT = "I didn't catch that one. Tap an option or type it another way."
 export const MONEY_BACK_FAILED_TEXT = "I couldn't get back to your question just now. Ask it again here and I'll answer it with these numbers."
 export const MONEY_REOFFER_TEXT = 'Want me to check that against your pay? Same four quick questions.'
 /** A purchase being planned ("can I afford a car?", "is now a good time to buy?"): offered the money flow like a plan question. */
@@ -870,6 +871,8 @@ async function chooseState(state: ChatState, chip: string | undefined, text: str
   }
   const options = await svc.metros(st.code)
   f.metroOptions = options.filter((o) => o.value !== OUTSIDE_METRO)
+  // D.C. is all city: its one area is the answer, not a question with one option.
+  if (st.code === 'DC' && f.metroOptions.length === 1) return metroChosen(state, f.metroOptions[0].value, 'DC', svc)
   if (!f.metroOptions.length) {
     f.outsideMetro = true
     f.region = undefined
@@ -895,6 +898,12 @@ async function chooseMetro(state: ChatState, chip: string | undefined, text: str
   const t = (chip ?? text).toLowerCase()
   const hit = options.find((o) => o.value.toLowerCase() === t) ?? options.find((o) => o.label.toLowerCase().includes(t) && t.length >= 3)
   if (!hit && !chip) {
+    // A preset city or another state ("DC" at Washington's areas, Nov 12) is a different answer to where: start the
+    // location over with it.
+    const other = matchState(text)
+    if (matchPresetCity(text) || (other && other.code !== f.stateCode)) {
+      return chooseLocation({ ...state, turn: LOCATION_TURN[state.flow ?? 'rent'] ?? 'R2' }, undefined, text, svc)
+    }
     // A typed place in the rent data ("Dallas TX" against "Dallas, TX") is that metro.
     const { city } = splitCityState(text)
     if (city && svc.findMetros) {
@@ -2392,8 +2401,10 @@ async function question(state: ChatState, text: string, svc: ChatServices, waiti
   }
   const res = await svc.ask({ flow: state.flow ?? 'rent', facts: state.facts, message: text, step: waitingFor ? `waiting for ${waitingFor}` : '', history: state.history })
   if (res?.kind === 'step' && res.value && waitingFor) {
-    // Ribbit read the words as the answer: apply it, once (a second miss does not go back to Ribbit).
-    return route(state, { text: res.value }, { ...svc, ask: async () => null })
+    // Ribbit read the words as the answer: apply it, once (a second miss does not go back to Ribbit). A second miss
+    // says it didn't catch them: it used to say Ribbit was down (Nov 10-12: "4600" at the city question and "DC" at
+    // Washington's areas, read as answers that still did not fit).
+    return route(state, { text: res.value }, { ...svc, ask: async () => ({ kind: 'question', reply: NOT_CAUGHT_TEXT }) })
   }
   const events: ChatEvent[] = [{ name: 'ribbit_question_typed', props: { turn: state.turn } }]
   const messages: ChatMessage[] = []
