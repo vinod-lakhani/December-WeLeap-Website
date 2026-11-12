@@ -48,8 +48,9 @@ const BACK = /Back to your question/
 // The app offer on the first rent range (decided Oct 30; was the city answer's "Save my plan", Oct 29): every rent
 // conversation must show it.
 const RENT_INVITE = /That range assumes the rest of your spending fits/
-// The same offer on the offer's first answer, the take-home in the job's city (Nov 1, before the offer ads).
-const OFFER_INVITE = /Whether that's enough depends on what you spend/
+// The same offer on the offer's first answer, the take-home in the job's city (Nov 1, before the offer ads; its
+// words since aa3db92, TAKEHOME_SPENDING_CHECK_TEXT in lib/ribbit/engine.ts).
+const OFFER_INVITE = /What it covers depends on what you spend/
 
 export const CONVERSATIONS: Conversation[] = [
   // ── Real threads ──────────────────────────────────────────────────────────────────────────────────────────
