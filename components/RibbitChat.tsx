@@ -6,8 +6,8 @@ import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUplo
 import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { BENEFITS_CHIP, UPLOAD_CHIP, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Reply, type Step } from '@/lib/ribbit/engine'
-import { SPLIT_CAMPAIGN, SPLIT_TEXT_INSTEAD, STORE_ASK, appDestination, askRoute, assignArm, markPlanSaved, phoneAsk, plainAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute, type DestArm } from '@/lib/ribbit/appLink'
+import { BENEFITS_CHIP, RENT_ARMS, UPLOAD_CHIP, assignRentArm, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
+import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { offerPlanData, rentPlanData, startupPlanData } from '@/lib/ribbit/payload'
 import { browserServices } from '@/lib/ribbit/services'
 import { phonePlatform } from '@/lib/text-pilot'
@@ -33,9 +33,6 @@ interface Saved {
   parked?: string
   /** Caption over the options when they are not the answer to the last question (Step.chipsLabel). */
   chipsLabel?: string
-  /** The rent destination split's arm (lib/ribbit/appLink.ts), phones only: kept with the thread, so a reload, a
-   *  later visit or Start over never switches it. */
-  arm?: DestArm
 }
 
 const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', offer: 'Finish my offer numbers', money: 'Finish my plan', startup: 'Finish my offer numbers' }
@@ -47,9 +44,27 @@ function device(): AppDestination {
   return appDestination(phonePlatform(navigator.userAgent, navigator.maxTouchPoints))
 }
 
-/** dest_arm on a thread that starts in rent; a picker thread gets it on its events once it is in rent. */
-function splitProps(flow: Flow | null, arm: DestArm | undefined): { dest_arm?: DestArm } {
-  return flow === 'rent' && arm ? { dest_arm: arm } : {}
+/** rent_arm on a rent thread's events (engine.ts RentArm); a picker thread gets it once it is in rent. */
+function armProps(flow: Flow | null, arm: RentArm | undefined): { rent_arm?: RentArm } {
+  return flow === 'rent' && arm ? { rent_arm: arm } : {}
+}
+
+/** ?rent_arm=control|b|c: a test sign-up on one arm (Nov 12, one per arm with a weleap.ai email before real
+ *  traffic counts). Its events say rent_arm_forced, and the link into the app carries the arm as any other. */
+function forcedArm(): RentArm | undefined {
+  const v = new URLSearchParams(window.location.search).get('rent_arm')
+  return RENT_ARMS.find((a) => a === v)
+}
+
+/**
+ * The thread's rent arm, kept with it so a reload, a later visit or Start over never switches it. A thread stored
+ * before the test that is already past the range saw the control chat, so it stays there.
+ */
+function threadArm(state: ChatState): RentArm {
+  const forced = forcedArm()
+  if (forced) return forced
+  if (state.rentArm && RENT_ARMS.includes(state.rentArm)) return state.rentArm
+  return state.flow === 'rent' && !state.turn.startsWith('R1') ? 'control' : assignRentArm()
 }
 
 function newId(): string {
@@ -81,7 +96,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const [saved, setSaved] = useState(false)
   useEffect(() => setSaved(!!planSaved()), [])
   // The device's own destination: a phone's store, else the web app; askRoute (lib/ribbit/appLink.ts) decides per
-  // flow and arm. Read after mount: the server render has no user agent, so the first paint is the web link and a
+  // flow. Read after mount: the server render has no user agent, so the first paint is the web link and a
   // phone swaps it before anyone can tap.
   const [destination, setDestination] = useState<AppDestination>('web')
   useEffect(() => setDestination(device()), [])
@@ -95,11 +110,11 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const fileRef = useRef<HTMLInputElement>(null)
   const fileKind = useRef<DocKind>('offer')
 
-  const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null, arm: DestArm | undefined) => {
-    const route = askRoute(flow, device(), arm)
+  const send = useCallback((events: ChatEvent[], id: string, flow: Flow | null, arm: RentArm | undefined) => {
+    const route = askRoute(flow, device())
     for (const e of events) {
       track(e.name, {
-        ...e.props, thread_id: id, flow: flow ?? 'picker', ...(route.arm ? { dest_arm: route.arm } : {}),
+        ...e.props, thread_id: id, flow: flow ?? 'picker', ...armProps(flow, arm),
         ...(e.name === 'ribbit_app_ask_shown' ? { destination: route.to } : {}),
       })
       // The chat's first number is the tool page's completed calculation: the same tool_completed event, so the
@@ -113,18 +128,17 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
   // Restore a thread in progress, or start a new one with an id.
   useEffect(() => {
-    const phone = device() !== 'web'
     const saved = load(initialFlow)
     if (saved) {
-      // A thread from before the split gets its arm now; desktop threads never have one.
-      setThread(phone && !saved.arm ? { ...saved, arm: assignArm() } : saved)
+      setThread({ ...saved, state: { ...saved.state, rentArm: threadArm(saved.state) } })
       setRestored(true)
       return
     }
     const id = newId()
-    const arm = phone ? assignArm() : undefined
-    setThread((t) => ({ ...t, id, arm }))
-    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, ...splitProps(initialFlow, arm) })
+    // Every thread gets an arm, desktop and phone: a picker thread may go on to rent.
+    const rentArm = forcedArm() ?? assignRentArm()
+    setThread((t) => ({ ...t, id, state: { ...t.state, rentArm } }))
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, ...armProps(initialFlow, rentArm), ...(forcedArm() ? { rent_arm_forced: true } : {}) })
   }, [initialFlow, entry])
 
   useEffect(() => {
@@ -170,8 +184,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     await new Promise((res) => setTimeout(res, wait))
     setBusy(false)
     setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked, chipsLabel: step.chipsLabel }))
-    send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow, thread.arm)
-  }, [busy, thread.state, thread.id, thread.arm, send])
+    send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow, step.state.rentArm)
+  }, [busy, thread.state, thread.id, send])
 
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
@@ -183,9 +197,10 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     try { localStorage.removeItem(STORE_KEY) } catch { /* nothing stored */ }
     const s = start(initialFlow)
     const id = newId()
-    setThread({ id, messages: s.messages, state: s.state, chips: s.chips, input: s.input, arm: thread.arm })
+    const rentArm = thread.state.rentArm
+    setThread({ id, messages: s.messages, state: { ...s.state, rentArm }, chips: s.chips, input: s.input })
     setRestored(false)
-    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, restart: true, ...splitProps(initialFlow, thread.arm) })
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, restart: true, ...armProps(initialFlow, rentArm) })
   }
 
   return (
@@ -221,7 +236,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             facts={thread.state.facts}
             threadId={thread.id}
             flow={thread.state.flow}
-            route={askRoute(thread.state.flow, destination, thread.arm)}
+            route={askRoute(thread.state.flow, destination)}
+            rentArm={thread.state.rentArm}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
             onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
@@ -320,8 +336,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
-  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute
+function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInstead }: {
+  m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
   onFinish?: () => void; onTextInstead?: () => void
 }) {
   if (m.from === 'you') {
@@ -332,18 +348,19 @@ function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
     )
   }
   // On a phone the ask is the app, not the plan (it does not carry over an install yet): the note and the store's
-  // icon say so. The rent split's plain button says neither, the same in both arms. Only the web link saves the
-  // plan, so only it turns on "Open my plan".
+  // icon say so. Only the web link saves the plan, so only it turns on "Open my plan".
   const { view, to: destination } = route
-  const ask = m.appAsk && (view === 'web' ? m.appAsk : view === 'plain' ? plainAsk(m.appAsk) : phoneAsk(m.appAsk, destination as Exclude<AppDestination, 'web'>))
+  const ask = m.appAsk && (view === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination as Exclude<AppDestination, 'web'>))
   const text = (view !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
-  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination, route.arm ? SPLIT_CAMPAIGN : undefined))
-  const onAskTap = () => {
+  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId, rentArm) : ribbitStoreLink(flow, destination))
+  // surface: the button (or quiet link), or C's locked rows, which open the same sign-up.
+  const onAskTap = (surface: 'button' | 'locked_card' = 'button') => {
     if (destination === 'web') markPlanSaved(flow)
     track('ribbit_app_link_clicked', {
-      thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination,
-      ...(ask!.gap ? { gap: ask!.gap } : {}), ...(route.arm ? { dest_arm: route.arm } : {}),
+      thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination, surface,
+      ...(ask!.gap ? { gap: ask!.gap } : {}), ...armProps(flow, rentArm),
     })
+    if (surface === 'locked_card') track('ribbit_locked_card_tapped', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, ...armProps(flow, rentArm) })
   }
   const storeMark = view === 'store' && destination !== 'web' ? destination : null
   return (
@@ -377,12 +394,13 @@ function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
       {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
       {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
-      {m.planCard && <PlanCard card={m.planCard} />}
+      {m.planCard && <PlanCard card={m.planCard} lockedHref={m.planCard.lockedTitle && ask ? askHref : undefined} onLockedTap={() => onAskTap('locked_card')} />}
+      {m.places && <PlacesCard places={m.places} />}
       {ask?.quiet && (
         // The benefit line's link: small, under the line, so it reads as information rather than a second pitch.
         <a
           href={askHref}
-          onClick={onAskTap}
+          onClick={() => onAskTap()}
           className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
         >
           {storeMark && <StoreGlyph store={storeMark} className="h-3.5 w-3.5" />}
@@ -395,7 +413,7 @@ function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
           <div className="flex flex-wrap gap-2">
             <a
               href={askHref}
-              onClick={onAskTap}
+              onClick={() => onAskTap()}
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
@@ -415,7 +433,7 @@ function Bubble({ m, facts, threadId, flow, route, onFinish, onTextInstead }: {
           </div>
           {onTextInstead && (
             <button type="button" onClick={onTextInstead} className="py-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
-              {view === 'web' ? 'Not ready to connect? Text me each step instead' : view === 'plain' ? SPLIT_TEXT_INSTEAD : STORE_ASK.textInstead}
+              {view === 'web' ? 'Not ready to connect? Text me each step instead' : STORE_ASK.textInstead}
             </button>
           )}
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
@@ -487,14 +505,26 @@ function RecruiterQuestions({ questions, threadId }: { questions: NonNullable<Ch
   )
 }
 
-function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
+/** lockedHref: the locked rows open the ask's sign-up too (C, where they are what the account unlocks). */
+function PlanCard({ card, lockedHref, onLockedTap }: { card: NonNullable<ChatMessage['planCard']>; lockedHref?: string; onLockedTap?: () => void }) {
   const done = card.steps?.filter((s) => s.done).length ?? 0
+  const lockedRows = card.locked.map((label) => (
+    <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
+      <span className="inline-flex items-center gap-2">
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+        {label}
+      </span>
+      <span aria-label={card.lockedTitle ? 'Shown after you sign up' : 'Shown after you connect'} className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
+    </div>
+  ))
   return (
     <section aria-label={card.title ?? 'Your WeLeap plan preview'} className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[16px] font-extrabold text-ink">{card.title ?? 'Your WeLeap plan'}</span>
         {card.steps ? (
           <span className="shrink-0 rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold tabular-nums text-brand-700">{done} of {card.steps.length} done</span>
+        ) : card.badge ? (
+          <span className="shrink-0 rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold tabular-nums text-brand-700">{card.badge}</span>
         ) : card.known.length > 0 && (
           // Only when something on the card came from the chat: a question asked before Rent or Offer has no numbers yet.
           <span className="rounded-full bg-[#e5f4e4] px-2.5 py-1 text-[12px] font-semibold text-brand-700">From this chat</span>
@@ -522,22 +552,44 @@ function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
             </li>
           ))}
         </ul>
-      ) : (
+      ) : card.locked.length > 0 && (
         <>
           <div className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle`}>
-            Unlocks when you connect your bank
+            {card.lockedTitle ?? 'Unlocks when you connect your bank'}
           </div>
-          {card.locked.map((label) => (
-            <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
-              <span className="inline-flex items-center gap-2">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                {label}
-              </span>
-              <span aria-label="Shown after you connect" className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
-            </div>
-          ))}
+          {lockedHref ? (
+            <a href={lockedHref} onClick={onLockedTap} className="-mx-2 block rounded-xl px-2 transition hover:bg-[#f6f5f0]">{lockedRows}</a>
+          ) : lockedRows}
         </>
       )}
+    </section>
+  )
+}
+
+/** Rent arm B's places side by side: a row per figure, a column per place, the best score in green. */
+function PlacesCard({ places }: { places: Place[] }) {
+  const best = Math.max(...places.map((p) => p.score))
+  const cols = { gridTemplateColumns: `minmax(0, 1.2fr) repeat(${places.length}, minmax(0, 1fr))` }
+  const rows: { label: string; value: (p: Place) => string }[] = [
+    { label: 'Rent', value: (p) => fc(p.rent) },
+    { label: 'Move-in cash', value: (p) => fc(p.moveIn) },
+    { label: 'Left monthly', value: (p) => fc(p.left) },
+    { label: 'Score', value: (p) => String(p.score) },
+  ]
+  return (
+    <section aria-label="Your places side by side" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-3.5 shadow-sm">
+      <div className="grid gap-2 pb-2 text-[13px] font-bold text-ink-soft" style={cols}>
+        <span />
+        {places.map((p, i) => <span key={i} className="truncate text-right">{p.short}</span>)}
+      </div>
+      {rows.map((row) => (
+        <div key={row.label} className="grid gap-2 border-t border-[#f0efec] py-2.5 text-[14px] tabular-nums" style={cols}>
+          <span className="text-ink-soft">{row.label}</span>
+          {places.map((p, i) => (
+            <span key={i} className={`text-right font-bold ${row.label === 'Score' && p.score === best ? 'text-brand-700' : 'text-ink'}`}>{row.value(p)}</span>
+          ))}
+        </div>
+      ))}
     </section>
   )
 }

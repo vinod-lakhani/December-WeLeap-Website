@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { SPLIT_CAMPAIGN, SPLIT_TEXT_INSTEAD, STORE_ASK, appDestination, askRoute, assignArm, markPlanSaved, phoneAsk, plainAsk, planSaved, ribbitPlanParams, ribbitStoreLink, type AppReason } from './appLink'
+import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, planSaved, ribbitPlanParams, ribbitStoreLink, type AppReason } from './appLink'
 
 describe('the chat-to-app link contract', () => {
   it('carries the rent plan as the app reads it, and leaves out what was not given', () => {
@@ -150,47 +150,15 @@ describe('phones go to the store (Nov 4)', () => {
   })
 })
 
-describe('the rent destination split and offer on the web (Nov 9)', () => {
-  it('rent on a phone follows the arm with the plain button; desktop is never in it', () => {
-    expect(askRoute('rent', 'app_store', 'web')).toEqual({ view: 'plain', to: 'web', arm: 'web' })
-    expect(askRoute('rent', 'app_store', 'store')).toEqual({ view: 'plain', to: 'app_store', arm: 'store' })
-    expect(askRoute('rent', 'google_play', 'store')).toEqual({ view: 'plain', to: 'google_play', arm: 'store' })
-    expect(askRoute('rent', 'web', 'store')).toEqual({ view: 'web', to: 'web' })
-  })
-
-  it('offer and the startup offer go to the web app on phones, as on desktop; other flows keep the store', () => {
-    for (const flow of ['offer', 'startup'] as const) {
-      expect(askRoute(flow, 'app_store', 'store')).toEqual({ view: 'web', to: 'web' })
-      expect(askRoute(flow, 'google_play', undefined)).toEqual({ view: 'web', to: 'web' })
+describe('where a phone\'s ask goes: rent and offer on the web (Nov 12)', () => {
+  it('rent, offer and the startup offer go to the web app on phones, as on desktop; other flows keep the store', () => {
+    for (const flow of ['rent', 'offer', 'startup'] as const) {
+      expect(askRoute(flow, 'app_store')).toEqual({ view: 'web', to: 'web' })
+      expect(askRoute(flow, 'google_play')).toEqual({ view: 'web', to: 'web' })
+      expect(askRoute(flow, 'web')).toEqual({ view: 'web', to: 'web' })
     }
-    expect(askRoute('money', 'app_store', 'web')).toEqual({ view: 'store', to: 'app_store' })
-    expect(askRoute(null, 'google_play', 'web')).toEqual({ view: 'store', to: 'google_play' })
-  })
-
-  it('assigns the arms half and half', () => {
-    expect(assignArm(() => 0.49)).toBe('web')
-    expect(assignArm(() => 0.5)).toBe('store')
-    let web = 0
-    for (let i = 0; i < 2000; i++) if (assignArm() === 'web') web++
-    expect(web).toBeGreaterThan(850)
-    expect(web).toBeLessThan(1150)
-  })
-
-  it('the plain button is the same in both arms: the phone label, no note, one text-instead line', () => {
-    expect(plainAsk({ label: 'Save my plan and unlock the rest', why: 'plan_preview', note: 'No forms: the rows above come with you.', textInstead: true }))
-      .toEqual({ label: 'Build my full plan', why: 'plan_preview', note: undefined, textInstead: true })
-    expect(plainAsk({ label: 'Plan my savings for the move', why: 'score_gap', note: 'No forms: your numbers come with you.' }))
-      .toEqual({ label: 'Plan my savings for the move', why: 'score_gap', note: undefined })
-    expect(SPLIT_TEXT_INSTEAD).toBe('Not ready? Text me each step instead')
-    expect(SPLIT_TEXT_INSTEAD).not.toMatch(/\u2014|app|connect/i)
-  })
-
-  it('the store arm counts under its own campaign on both stores', () => {
-    expect(SPLIT_CAMPAIGN).toBe('ribbit_rent_split')
-    expect(new URL(ribbitStoreLink('rent', 'app_store', SPLIT_CAMPAIGN)).searchParams.get('ct')).toBe('ribbit_rent_split')
-    const play = new URL(ribbitStoreLink('rent', 'google_play', SPLIT_CAMPAIGN))
-    expect(play.searchParams.get('utm_campaign')).toBe('ribbit_rent_split')
-    expect(new URLSearchParams(play.searchParams.get('referrer') ?? '').get('utm_campaign')).toBe('ribbit_rent_split')
-    expect(new URL(ribbitStoreLink('rent', 'app_store')).searchParams.get('ct')).toBe('ribbit_rent')
+    expect(askRoute('money', 'app_store')).toEqual({ view: 'store', to: 'app_store' })
+    expect(askRoute(null, 'google_play')).toEqual({ view: 'store', to: 'google_play' })
+    expect(askRoute(null, 'web')).toEqual({ view: 'web', to: 'web' })
   })
 })

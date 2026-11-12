@@ -5,7 +5,8 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { APP_LINK_TEXT, HANDOFF_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { ribbitPlanParams } from './appLink'
 import { startupPlanData } from './payload'
 import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
@@ -1084,5 +1085,153 @@ describe('ribbit_app_ask_shown: one event per app button shown', () => {
     expect(shown(s[5])).toEqual([])
     // As many as buttons shown, never more.
     for (const step of s.slice(1)) expect(shown(step).length).toBe(step.messages.filter((m) => m.appAsk).length)
+  })
+})
+
+describe('the rent test arms (Nov 12): control, B (check a place), C (the move plan behind an account)', () => {
+  async function runArm(arm: RentArm | undefined, replies: Reply[], s: ChatServices = svc()): Promise<Step[]> {
+    const first = start('rent')
+    const steps: Step[] = [{ ...first, state: { ...first.state, rentArm: arm } }]
+    for (const r of replies) steps.push(await reply(steps[steps.length - 1].state, r, s))
+    return steps
+  }
+  const asks = (step: Step) => step.messages.filter((m) => m.appAsk).map((m) => m.appAsk!)
+  const named = (step: Step, name: string) => step.events.filter((e) => e.name === name)
+
+  it('assigns a third each, and keeps the arm through every turn', async () => {
+    expect([0, 0.33, 0.34, 0.66, 0.67, 0.9999].map((r) => assignRentArm(() => r))).toEqual(['control', 'control', 'b', 'b', 'c', 'c'])
+    const n = { control: 0, b: 0, c: 0 }
+    for (let i = 0; i < 3000; i++) n[assignRentArm()]++
+    for (const arm of ['control', 'b', 'c'] as const) expect(n[arm]).toBeGreaterThan(850)
+    const s = await runArm('b', [{ text: '71500' }, { chip: 'looking' }, { chip: 'Austin' }, { chip: 'no' }])
+    for (const step of s) expect(step.state.rentArm).toBe('b')
+  })
+
+  it('control, and a thread with no arm, is the chat as it was: the range, the spending check, "Which city?"', async () => {
+    for (const arm of ['control', undefined] as const) {
+      const s = await runArm(arm, [{ text: '71500' }])
+      expect(s[1].state.turn).toBe('R2')
+      expect(asks(s[1]).map((a) => a.why)).toEqual(['spending_check'])
+      expect(s[1].messages[s[1].messages.length - 1].text).toBe('Which city?')
+    }
+  })
+
+  it('all three show the same range first', async () => {
+    const first = await Promise.all((['control', 'b', 'c'] as const).map(async (arm) => (await runArm(arm, [{ text: '71500' }]))[1].messages[0]))
+    expect(first[1]).toEqual(first[0])
+    expect(first[2]).toEqual(first[0])
+    expect(first[0].figureLabel).toBe('Rent that fits')
+  })
+
+  it('C: the move plan, locked behind a free account, with the one ask and no free middle', async () => {
+    const s = await runArm('c', [{ text: '71500' }])
+    const f = facts(s[1])
+    expect(s[1].state.turn).toBe('R2c')
+    expect(s[1].state.invited).toBe(true)
+    const plan = s[1].messages[1]
+    expect(plan.text).toBe(MOVE_PLAN_TEXT)
+    expect(plan.planCard).toEqual({
+      title: 'Your move plan', lockedTitle: 'Unlocks with a free account', locked: MOVE_PLAN_LOCKED,
+      known: [{ label: 'Take-home', value: `$${Math.round(f.takeHomeMonthly!).toLocaleString('en-US')}/mo` }, { label: 'Rent that fits', value: `$${f.range!.low.toLocaleString('en-US')}–$${f.range!.high.toLocaleString('en-US')}/mo` }],
+    })
+    expect(asks(s[1])).toEqual([{ label: 'Create a free account to see it', why: 'move_plan', note: MOVE_PLAN_NOTE }])
+    // The link carries the move-in cash the locked row names.
+    const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly!)
+    expect(f.upfront).toEqual({ low: up.low, high: up.high })
+    expect(ribbitPlanParams(f, 'rent', 'move_plan', 't', 'c')).toMatchObject({ why: 'move_plan', arm: 'c', upfront: String(up.high), rent_low: String(f.range!.low) })
+    expect(ribbitPlanParams(f, 'offer', 'move_plan', 't', 'c').arm).toBeUndefined()
+    expect(named(s[1], 'ribbit_app_ask_shown')).toEqual([{ name: 'ribbit_app_ask_shown', props: { turn: 'R2', why: 'move_plan' } }])
+    expect(named(s[1], 'ribbit_win_shown')).toHaveLength(1)
+    expect(s[1].chips.map((c) => c.value)).toEqual(['range_only', '__math__'])
+    // "Just the range" ends politely; the button stays up in the thread, and typing still reaches Ribbit.
+    const done = await reply(s[1].state, { chip: 'range_only' }, svc())
+    expect(done.state.turn).toBe('R2c_done')
+    expect(said(done)).toBe(`Sure. ${f.range!.formatted} is yours either way. The button is there if you want the rest.`)
+    expect(done.chips).toEqual([])
+    expect(named(done, 'ribbit_move_plan_declined')).toHaveLength(1)
+    expect(said(await reply(done.state, { text: 'Austin' }, svc()))).toBe('answer to: Austin')
+    expect(said(await reply(s[1].state, { text: 'no thanks' }, svc()))).toMatch(/^Sure\./)
+  })
+
+  it('B: a place\'s rent gets its move-in cash, what\'s left and a score; a second goes side by side', async () => {
+    const s = await runArm('b', [{ text: '71500' }, { chip: 'type_rent' }, { text: '$1,450, a 1-bed in East Austin' }, { chip: 'saved_1k_3k' }, { text: '1300 2-bed with a roommate in Mueller' }])
+    // The prompt in place of the spending check: no button yet.
+    expect(s[1].state.turn).toBe('R2b')
+    expect(said(s[1])).toContain(PLACE_PROMPT_TEXT)
+    expect(asks(s[1])).toEqual([])
+    expect(s[1].chips.map((c) => c.label)).toEqual(['Type a rent', 'Still looking', 'Show me the math'])
+    expect(s[1].chips[0].opensKeyboard).toBe(true)
+    expect(said(s[2])).toBe("What's the monthly rent?")
+    // Savings are asked once, so the score is honest.
+    expect(s[3].state.turn).toBe('R2b_saved')
+    expect(said(s[3])).toBe('Got it, $1,450. One question so I can score it: how much do you have set aside for the move?')
+    const f = facts(s[4])
+    const moveIn = calculateUpfrontCash({ ...f.range!, low: 1_450, high: 1_450 }, f.takeHomeMonthly!).high
+    const score = moveInScore(2_000, moveIn, 0, f.takeHomeMonthly!)
+    const card = s[4].messages[0]
+    expect(card.figure).toBe(`${score.total} / 100`)
+    expect(card.planCard).toEqual({
+      title: '1-bed in East Austin', badge: '$1,450/mo', locked: [],
+      known: [
+        { label: 'Cash before you move', value: `$${moveIn.toLocaleString('en-US')}` },
+        { label: 'Left each month after rent', value: `$${Math.round(f.takeHomeMonthly! - 1_450).toLocaleString('en-US')}` },
+        { label: 'Rent as a share of take-home', value: `${Math.round((1_450 / f.takeHomeMonthly!) * 100)}%` },
+      ],
+    })
+    // A quiet save under the first card, since most check one place at most.
+    expect(asks(s[4])).toEqual([{ label: 'Save this place', why: 'place_check', quiet: true }])
+    expect(facts(s[4])).toMatchObject({ pick: 1_450, upfront: { low: moveIn, high: moveIn } })
+    expect(named(s[4], 'ribbit_app_ask_shown')).toEqual([{ name: 'ribbit_app_ask_shown', props: { turn: 'R2b', why: 'place_check' } }])
+    expect(s[4].messages[1].text).toBe(PLACE_ANOTHER_TEXT)
+    expect(s[4].chips.map((c) => c.value)).toEqual(['another', 'the_one'])
+    expect(named(s[4], 'ribbit_place_checked')[0].props).toMatchObject({ n: 1, rent: 1_450, score: score.total, saved_band: 'saved_1k_3k' })
+    // The second place: no savings question again, the two side by side, the ask at the better one.
+    const both = s[5]
+    expect(both.messages[0].places?.map((p) => [p.short, p.rent])).toEqual([['East Austin', 1_450], ['Mueller', 1_300]])
+    expect(both.messages[0].text).toMatch(/^Mueller leaves you \$150 more a month and needs \$\d+ less to move in\.$/)
+    expect(asks(both)).toEqual([{ label: 'Save my plan at $1,300', why: 'place_check', note: PLACE_ASK_NOTE }])
+    expect(facts(both)).toMatchObject({ pick: 1_300 })
+    expect(both.chips).toEqual([{ label: 'Save East Austin instead', value: 'pick_0' }, { label: 'Add another place', value: 'another', opensKeyboard: true }])
+    expect(named(both, 'ribbit_app_ask_shown')).toEqual([{ name: 'ribbit_app_ask_shown', props: { turn: 'R2b', why: 'place_check' } }])
+    // Choosing the other place moves the ask (and the plan's rent) to it.
+    const other = await reply(both.state, { chip: 'pick_0' }, svc())
+    expect(asks(other)[0].label).toBe('Save my plan at $1,450')
+    // The link carries the arm and the rents checked, never the names typed.
+    const link = ribbitPlanParams(facts(other), 'rent', 'place_check', 't', 'b')
+    expect(link).toMatchObject({ why: 'place_check', rent: '1450', arm: 'b', places: '1450,1300' })
+    expect(Object.values(link).join(' ')).not.toMatch(/Austin|Mueller/)
+  })
+
+  it('B: "That\'s the one" saves the one place; "Still looking" goes on as the control does', async () => {
+    const one = await runArm('b', [{ text: '71500' }, { text: '1400' }, { chip: 'saved_3k_6k' }, { chip: 'the_one' }])
+    expect(asks(one[4])).toEqual([{ label: 'Save my plan at $1,400', why: 'place_check', note: PLACE_ASK_NOTE }])
+    expect(said(one[4])).toBe("Save it and I'll build your month around $1,400: needs, wants and savings.")
+    expect(one[3].messages[0].planCard?.title).toBe('Place 1')
+    const looking = await runArm('b', [{ text: '71500' }, { chip: 'looking' }, { chip: 'Austin' }])
+    expect(said(looking[2])).toBe('No problem. Which city?')
+    expect(looking[2].state.turn).toBe('R2')
+    expect(looking[3].state.turn).toMatch(/^R3/)
+    // A city typed at the prompt is the next question answered.
+    expect((await runArm('b', [{ text: '71500' }, { text: 'Austin' }]))[2].state.turn).toMatch(/^R3/)
+  })
+
+  it('B: words that are not a rent go to Ribbit, and three places is the most', async () => {
+    const s = await runArm('b', [{ text: '71500' }, { text: 'what about utilities?' }])
+    expect(said(s[2])).toBe('answer to: what about utilities?')
+    const three = await runArm('b', [{ text: '71500' }, { text: '1400' }, { chip: 'saved_3k_6k' }, { text: '1500' }, { text: '1300' }, { text: '1200' }])
+    expect(facts(three[5]).places).toHaveLength(3)
+    expect(three[5].chips.map((c) => c.value)).toEqual(['pick_0', 'pick_1'])
+    expect(said(three[6])).toBe('I can line up 3 places at a time. Start over to check a new set.')
+  })
+
+  it('names a place from the words around its rent', () => {
+    expect(placeName('$1,450, a 1-bed in East Austin', 1)).toEqual({ name: '1-bed in East Austin', short: 'East Austin' })
+    expect(placeName('1300 2-bed with a roommate in Mueller', 2)).toEqual({ name: '2-bed with a roommate in Mueller', short: 'Mueller' })
+    expect(placeName('$1,600/mo', 2)).toEqual({ name: 'Place 2', short: 'Place 2' })
+    expect(placeName('the loft is 1600 a month', 1)).toEqual({ name: 'The loft', short: 'The loft' })
+  })
+
+  it('no em dashes in the arms\' words', () => {
+    for (const line of [PLACE_PROMPT_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, MOVE_PLAN_TEXT, MOVE_PLAN_NOTE, ...MOVE_PLAN_LOCKED]) expect(line).not.toMatch(/\u2014/)
   })
 })
