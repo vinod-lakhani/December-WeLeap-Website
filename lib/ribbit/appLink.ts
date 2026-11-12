@@ -11,7 +11,8 @@
  *
  * Parameters the app reads (all optional except src and why):
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
- *   why               plan_preview | spending_check | shares_savings | plan_invite | account | benefit | rent_answer | score_gap (which ask was tapped)
+ *   why               plan_preview | spending_check | shares_savings | plan_invite | account | benefit | rent_answer | score_gap |
+ *                     place_check | move_plan (which ask was tapped; the app shows plan_preview's words for any it doesn't name)
  *   rt                the chat thread id, to stitch the web events to the app
  *   flow              rent | offer | money | general (the startup flow sends offer)
  *   salary            yearly salary, dollars (when given)
@@ -41,7 +42,7 @@ import { moneyOrder } from './moneyOrder'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
 
-export type AppReason = 'plan_preview' | 'spending_check' | 'shares_savings' | 'plan_invite' | 'account' | 'benefit' | 'rent_answer' | 'score_gap'
+export type AppReason = 'plan_preview' | 'spending_check' | 'shares_savings' | 'plan_invite' | 'account' | 'benefit' | 'rent_answer' | 'score_gap' | 'place_check' | 'move_plan'
 
 const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
 
@@ -132,42 +133,26 @@ export function appDestination(platform: 'ios' | 'android' | null): AppDestinati
   return platform === 'ios' ? 'app_store' : platform === 'android' ? 'google_play' : 'web'
 }
 
-export function ribbitStoreLink(flow: Flow | null, destination: Exclude<AppDestination, 'web'>, campaign = `ribbit_${flow ?? 'general'}`): string {
+export function ribbitStoreLink(flow: Flow | null, destination: Exclude<AppDestination, 'web'>): string {
+  const campaign = `ribbit_${flow ?? 'general'}`
   return destination === 'app_store'
     ? appStoreUrl({ utm_campaign: campaign }, APPLE_PROVIDER_TOKEN, PRODUCT_PAGES.metaPaycheck)
     : playStoreUrl({ utm_source: 'ribbit_chat', utm_campaign: campaign })
 }
 
 /**
- * Where a phone's ask goes (decided Nov 9 2026), after phone rent taps fell from 16% to 8% once the button carried
- * the store's mark and note:
- *   - rent: a 50/50 split, kept on the chat thread. Both arms show the same plain button (the phone label and text,
- *     no store mark, no note, one text-instead line), so only the link differs: `web` is the plan link above, `store`
- *     the store under its own campaign (SPLIT_CAMPAIGN). Read on new accounts per chat that saw the button.
- *   - offer (and the startup offer, which the app opens as an offer): the web app, as on desktop.
+ * Where a phone's ask goes:
+ *   - rent: the web app, as on desktop (decided Nov 12 2026, when the rent test of three chat arms began; the Nov 9
+ *     web/store split ended with it, so the only difference between rent chats is the arm, engine.ts RentArm).
+ *   - offer (and the startup offer, which the app opens as an offer): the web app (Nov 9).
  *   - everything else: the store, as decided Nov 4.
- * Desktop is never in the split.
  */
-export type DestArm = 'web' | 'store'
-export const SPLIT_CAMPAIGN = 'ribbit_rent_split'
-export const SPLIT_TEXT_INSTEAD = 'Not ready? Text me each step instead'
+/** `view`: how the ask looks (web's label and note, or the store's); `to`: where it goes. */
+export interface AskRoute { view: 'web' | 'store'; to: AppDestination }
 
-export function assignArm(random: () => number = Math.random): DestArm {
-  return random() < 0.5 ? 'web' : 'store'
-}
-
-/** `view`: how the ask looks (web's label and note, the store's, or the split's plain one); `to`: where it goes. */
-export interface AskRoute { view: 'web' | 'store' | 'plain'; to: AppDestination; arm?: DestArm }
-
-export function askRoute(flow: Flow | null, device: AppDestination, arm: DestArm | undefined): AskRoute {
-  if (device === 'web' || flow === 'offer' || flow === 'startup') return { view: 'web', to: 'web' }
-  if (flow === 'rent' && arm) return { view: 'plain', to: arm === 'web' ? 'web' : device, arm }
+export function askRoute(flow: Flow | null, device: AppDestination): AskRoute {
+  if (device === 'web' || flow === 'rent' || flow === 'offer' || flow === 'startup') return { view: 'web', to: 'web' }
   return { view: 'store', to: device }
-}
-
-/** The split's button: the phone label (true in both arms), and no note, since each note names one destination. */
-export function plainAsk<A extends { label: string; why: AppReason; note?: string }>(ask: A): A {
-  return { ...ask, label: STORE_ASK.labels[ask.why] ?? ask.label, note: undefined }
 }
 
 /**

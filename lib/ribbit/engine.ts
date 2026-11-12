@@ -61,7 +61,15 @@ export interface ChatMessage {
    * The plan as WeLeap would show it: rows the chat knows, and rows only the bank can fill (shown locked). With
    * `steps` (the move-in score) the locked rows give way to a checklist, done and still open, under `title`.
    */
-  planCard?: { known: { label: string; value: string }[]; locked: string[]; title?: string; steps?: { label: string; done: boolean }[] }
+  planCard?: {
+    known: { label: string; value: string }[]; locked: string[]; title?: string; steps?: { label: string; done: boolean }[]
+    /** Over the locked rows when they unlock with something other than the bank (C: a free account). */
+    lockedTitle?: string
+    /** In place of "From this chat" in the corner (B's place card: its rent). */
+    badge?: string
+  }
+  /** Rent arm B: two or three places side by side (rent, move-in cash, left monthly, score). */
+  places?: Place[]
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
   /** The turn that produced it, for analytics and the handoff. */
@@ -182,6 +190,11 @@ export interface Facts {
   moneyDeclined?: boolean
   /** The offer was made again after they kept going without it (once). */
   moneyReoffered?: boolean
+  // rent arm B: the places checked against the range, in order, and the savings band asked once to score them
+  places?: Place[]
+  placeSaved?: string
+  /** A place's rent given before the savings band was: checked once the band is in. */
+  pendingPlace?: { rent: number; name: string; short: string }
 }
 
 export interface ChatState {
@@ -196,6 +209,8 @@ export interface ChatState {
   invited?: boolean
   /** Benefit lines shown after the invite (MAX_BENEFIT_LINES a thread, as in the text thread). */
   benefitsShown?: number
+  /** The rent test's arm (RentArm), set by the page when the thread starts and kept through Start over. */
+  rentArm?: RentArm
 }
 
 export interface Step {
@@ -388,10 +403,14 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
         ? `${incomeLead(f)} take-home before state tax is about ${fc(takeHome)} a month.`
         : `On ${fc(takeHome)} a month take-home,`
       const line = f.takeHomeFrom === 'salary' ? `${basis} Rent that fits is ${f.range.formatted}.` : `${basis} rent that fits is ${f.range.formatted}.`
+      const fits: ChatMessage = { from: 'ribbit', text: line, figure: span(f.range.low, f.range.high), figureLabel: 'Rent that fits', turn: 'R2' }
+      // The rent test's arms part here, after the same range (RentArm below).
+      if (state.rentArm === 'b') return askPlace(state, [fits], [win('R2')])
+      if (state.rentArm === 'c') return movePlan(state, fits)
       f.rangeSpendingCheckShown = true
       // The thread's first app offer, as the city-answer invite was: later turns don't invite again.
       return say({ ...state, turn: 'R2', invited: true }, [
-        { from: 'ribbit', text: line, figure: span(f.range.low, f.range.high), figureLabel: 'Rent that fits', turn: 'R2' },
+        fits,
         spendingCheck(RANGE_SPENDING_CHECK_TEXT, RANGE_SPENDING_CHECK_NOTE),
         { from: 'ribbit', text: 'Which city?' },
       ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('R2'), { name: 'ribbit_spending_check_shown', props: { turn: 'R2' } }])
@@ -399,6 +418,25 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     case 'R2':
     case 'O2':
       return chooseLocation(state, chip, text, svc)
+    case 'R2b':
+    case 'R2b_more':
+    case 'R2b_done':
+      return placeTurn(state, chip, text, svc)
+    case 'R2b_saved': {
+      const band = chip && SAVED_MIDDLE[chip] !== undefined ? chip : savedBand(parseMoney(text))
+      if (!band) return question(state, text, svc, 'how much they have set aside for the move')
+      const place = f.pendingPlace!
+      f.placeSaved = band
+      f.pendingPlace = undefined
+      return placeChecked(state, place)
+    }
+    case 'R2c':
+      if (chip === 'range_only' || (!chip && /^(no|nah|nope|just the range|range only)\b/i.test(text))) {
+        return say({ ...state, turn: 'R2c_done' }, [{ from: 'ribbit', text: MOVE_PLAN_DECLINED(f.range!.formatted) }], [], 'text', [{ name: 'ribbit_move_plan_declined', props: { turn: 'R2' } }])
+      }
+      return question(state, text, svc, '')
+    case 'R2c_done':
+      return question(state, text, svc, '')
     case 'R2_metro':
     case 'O2_metro':
       return chooseMetro(state, chip, text, svc)
@@ -1117,6 +1155,171 @@ function scoreMath(f: Facts): MathRow[] {
     { label: `Cushion after the move, ${months} of take-home (none = 0, under a month = 10, 1 to 3 = 20, more = 30)`, value: `${s.cushion} of 30` },
     { label: 'Move-in score', value: `${s.total} / 100`, strong: true },
   ]
+}
+
+// ── The rent test's arms (decided Nov 12 2026) ────────────────────────────────────────────────────────────────
+
+/**
+ * Rent chats get one of three arms, a third each, at random per thread (the page assigns it and keeps it through a
+ * reload or Start over). All three show the same range first; they part right after it:
+ *   - control: the chat as it was (the spending check, then "Which city?").
+ *   - b: "Got a place in mind?" A place's rent gets its move-in cash, what's left each month and a move-in score;
+ *     a second or third goes side by side. The ask saves the plan at the place they pick.
+ *   - c: the rest of the move plan, shown locked behind a free account; no free middle.
+ * Each ask promises only what the app shows after sign-up (plan.weleap.app, client/webui ribbitPlan.ts): take-home,
+ * the rent or the range, and the month split into needs, wants and savings. C's "Cash to have before you move" row
+ * needs the app to show `upfront` on a rent plan.
+ */
+export type RentArm = 'control' | 'b' | 'c'
+export const RENT_ARMS: RentArm[] = ['control', 'b', 'c']
+
+export function assignRentArm(random: () => number = Math.random): RentArm {
+  return RENT_ARMS[Math.min(RENT_ARMS.length - 1, Math.floor(random() * RENT_ARMS.length))]
+}
+
+/** A place checked in arm B: `short` heads its column side by side ("Mueller" out of "2-bed in Mueller"). */
+export interface Place { name: string; short: string; rent: number; moveIn: number; left: number; share: number; score: number }
+
+export const PLACE_PROMPT_TEXT = "Got a place in mind? Tell me its rent and I'll check it against your budget: the cash you need to move in, and what's left each month."
+export const PLACE_ANOTHER_TEXT = "Looking at another place? Give me its rent and I'll put them side by side."
+export const PLACE_ASK_NOTE = 'Free account. No bank needed.'
+const PLACE_FINE = 'A WeLeap check from your answers, not a credit score. Debt payments are not in it yet.'
+const MAX_PLACES = 3
+const ANOTHER_PLACE: Chip = { label: 'Add another place', value: 'another', opensKeyboard: true }
+
+function askPlace(state: ChatState, before: ChatMessage[], events: ChatEvent[]): Step {
+  return say({ ...state, turn: 'R2b' }, [...before, { from: 'ribbit', text: PLACE_PROMPT_TEXT }], [
+    { label: 'Type a rent', value: 'type_rent', opensKeyboard: true }, { label: 'Still looking', value: 'looking' },
+    { label: 'Show me the math', value: '__math__' },
+  ], 'money', [...events, { name: 'ribbit_place_prompt_shown', props: { turn: 'R2' } }])
+}
+
+/** What they called the place, from the words around its rent ("$1,450, a 1-bed in East Austin"), else Place 2. */
+export function placeName(text: string, n: number): { name: string; short: string } {
+  const words = text
+    .replace(/\$?\d[\d,]*(\.\d+)?\s*k?\b(\s*(\/\s*mo(nth)?|a month|per month|monthly))?/i, ' ')
+    .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
+    .replace(/^(it'?s|is|for|at|about|around|a|an)\s+/i, '')
+    .replace(/\s+(is|at|for|about|around)$/i, '')
+    .trim()
+  if (words.length < 3 || words.length > 40 || !/[a-z]{3}/i.test(words)) return { name: `Place ${n}`, short: `Place ${n}` }
+  const name = words[0].toUpperCase() + words.slice(1)
+  const area = name.match(/\b(?:in|on|near|at)\s+([A-Z][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,2})\s*$/)?.[1]
+  return { name, short: area ?? (name.length <= 16 ? name : `Place ${n}`) }
+}
+
+async function placeTurn(state: ChatState, chip: string | undefined, text: string, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  const places = f.places ?? []
+  if (chip === 'looking') {
+    return say({ ...state, turn: 'R2' }, [{ from: 'ribbit', text: 'No problem. Which city?' }],
+      [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [{ name: 'ribbit_place_skipped', props: { turn: 'R2' } }])
+  }
+  if (chip === 'type_rent' || chip === 'another') {
+    return say(state, [{ from: 'ribbit', text: places.length ? "What's the next place's rent?" : "What's the monthly rent?" }], [], 'money')
+  }
+  if (chip === 'the_one' && places.length) return choosePlace(state, places[places.length - 1], [])
+  const picked = chip?.startsWith('pick_') ? places[Number(chip.slice(5))] : undefined
+  if (picked) return choosePlace(state, picked, [])
+  // A city instead of a rent ("Austin"): the control's next question, answered.
+  if (!chip && state.turn === 'R2b' && !places.length && (matchPresetCity(text) || matchState(text))) return chooseLocation({ ...state, turn: 'R2' }, undefined, text, svc)
+  const rent = chip ? null : parseMoney(text)
+  if (!rent || rent < 200 || rent > 20_000) return question(state, text, svc, 'the monthly rent of a place they are looking at')
+  if (places.length >= MAX_PLACES) {
+    return say(state, [{ from: 'ribbit', text: `I can line up ${MAX_PLACES} places at a time. Start over to check a new set.` }], state.ui?.chips ?? [], 'money')
+  }
+  const place = { rent, ...placeName(text, places.length + 1) }
+  if (!f.placeSaved) {
+    return say({ ...state, turn: 'R2b_saved', facts: { ...f, pendingPlace: place } },
+      [{ from: 'ribbit', text: `Got it, ${fc(rent)}. One question so I can score it: how much do you have set aside for the move?` }], SAVED_CHIPS, 'money')
+  }
+  return placeChecked(state, place)
+}
+
+function placeChecked(state: ChatState, given: { rent: number; name: string; short: string }): Step {
+  const f = state.facts
+  const takeHome = f.takeHomeMonthly ?? 0
+  const range = f.range!
+  const moveIn = calculateUpfrontCash({ ...range, low: given.rent, high: given.rent }, takeHome).high
+  const s = moveInScore(SAVED_MIDDLE[f.placeSaved!], moveIn, f.debtMonthly ?? 0, takeHome)
+  const place: Place = { ...given, moveIn, left: Math.max(0, takeHome - given.rent), share: takeHome ? given.rent / takeHome : 0, score: s.total }
+  const places = [...(f.places ?? []), place]
+  f.places = places
+  const events: ChatEvent[] = [{ name: 'ribbit_place_checked', props: {
+    turn: 'R2b', n: places.length, rent: place.rent, score: s.total, gap: s.gap,
+    fit: place.rent > range.high ? 'above' : place.rent < range.low ? 'below' : 'in_range', saved_band: f.placeSaved,
+  } }]
+  if (places.length === 1) {
+    const fit = place.rent > range.high
+      ? `${fc(place.rent)} is above your range of ${range.formatted}, so it leaves less for everything else.`
+      : place.rent < range.low
+        ? `${fc(place.rent)} is under your range, so it leaves room to save.`
+        : `${fc(place.rent)} fits, ${place.rent >= (range.low + range.high) / 2 ? 'near the top' : 'in the lower half'} of your range.`
+    const tight = s.gap === 'move_in_cash' ? ' The tight part is the cash before the keys.' : ''
+    return say({ ...state, turn: 'R2b_more' }, [
+      {
+        from: 'ribbit', text: fit + tight, figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: PLACE_FINE, turn: 'R2b',
+        planCard: {
+          title: place.name, badge: `${fc(place.rent)}/mo`, locked: [],
+          known: [
+            { label: 'Cash before you move', value: fc(place.moveIn) },
+            { label: 'Left each month after rent', value: fc(place.left) },
+            { label: 'Rent as a share of take-home', value: `${Math.round(place.share * 100)}%` },
+          ],
+        },
+      },
+      { from: 'ribbit', text: PLACE_ANOTHER_TEXT },
+    ], [ANOTHER_PLACE, { label: "That's the one", value: 'the_one' }], 'money', events)
+  }
+  // Side by side: the best score first, the lower rent on a tie (with the same savings that is the cheapest).
+  const best = [...places].sort((a, b) => b.score - a.score || a.rent - b.rent)[0]
+  const next = [...places].filter((p) => p !== best).sort((a, b) => a.rent - b.rent)[0]
+  const more = best.left - next.left
+  const less = next.moveIn - best.moveIn
+  const line = more > 0
+    ? `${best.short} leaves you ${fc(more)} more a month${less > 0 ? ` and needs ${fc(less)} less to move in` : ''}.`
+    : `They come out the same on the numbers.`
+  return choosePlace(state, best, [{ from: 'ribbit', text: line, places, turn: 'R2b' }], events)
+}
+
+/** The ask, at the place they chose (or the best side by side): the app opens with that rent in the plan. */
+function choosePlace(state: ChatState, place: Place, before: ChatMessage[], events: ChatEvent[] = []): Step {
+  const f = state.facts
+  const places = f.places ?? []
+  f.pick = place.rent
+  f.upfront = { low: place.moveIn, high: place.moveIn }
+  const others = places.map((p, i) => ({ p, i })).filter(({ p }) => p !== place)
+  return say({ ...state, turn: 'R2b_done', invited: true }, [...before, {
+    from: 'ribbit', text: `Save ${places.length > 1 ? place.short : 'it'} and I'll build your month around ${fc(place.rent)}: needs, wants and savings.`, turn: 'R2b',
+    appAsk: { label: `Save my plan at ${fc(place.rent)}`, why: 'place_check', note: PLACE_ASK_NOTE },
+  }], [
+    ...others.map(({ p, i }) => ({ label: `Save ${p.short} instead`, value: `pick_${i}` })),
+    ...(places.length < MAX_PLACES ? [ANOTHER_PLACE] : []),
+  ], 'money', [...events, { name: 'ribbit_place_chosen', props: { turn: 'R2b', n: places.length, rent: place.rent } }])
+}
+
+export const MOVE_PLAN_TEXT = "That's your range. I've also worked out the rest of your move."
+export const MOVE_PLAN_NOTE = 'Free. No bank needed.'
+export const MOVE_PLAN_LOCKED = ['Cash to have before you move', 'Your month after rent: needs, wants, savings']
+const MOVE_PLAN_DECLINED = (range: string) => `Sure. ${range} is yours either way. The button is there if you want the rest.`
+
+/** C: the move plan's rows the app shows after sign-up, locked; the chat stops at the range. */
+function movePlan(state: ChatState, fits: ChatMessage): Step {
+  const f = state.facts
+  const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly ?? 0)
+  f.upfront = { low: up.low, high: up.high }
+  const card: NonNullable<ChatMessage['planCard']> = {
+    title: 'Your move plan',
+    known: [{ label: 'Take-home', value: `${fc(f.takeHomeMonthly ?? 0)}/mo` }, { label: 'Rent that fits', value: span(f.range!.low, f.range!.high) }],
+    locked: MOVE_PLAN_LOCKED,
+    lockedTitle: 'Unlocks with a free account',
+  }
+  return say({ ...state, turn: 'R2c', invited: true }, [fits, {
+    from: 'ribbit', text: MOVE_PLAN_TEXT, turn: 'R2', planCard: card,
+    appAsk: { label: 'Create a free account to see it', why: 'move_plan', note: MOVE_PLAN_NOTE },
+  }], [{ label: 'Just the range, thanks', value: 'range_only' }, { label: 'Show me the math', value: '__math__' }], 'text', [
+    win('R2'), { name: 'ribbit_plan_card_shown', props: { turn: 'R2', known_rows: card.known.length } },
+  ])
 }
 
 function askPick(state: ChatState, lead: string): Step {
