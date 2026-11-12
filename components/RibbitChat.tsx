@@ -49,11 +49,20 @@ function armProps(flow: Flow | null, arm: RentArm | undefined): { rent_arm?: Ren
   return flow === 'rent' && arm ? { rent_arm: arm } : {}
 }
 
+/** ?rent_arm=control|b|c: a test sign-up on one arm (Nov 12, one per arm with a weleap.ai email before real
+ *  traffic counts). Its events say rent_arm_forced, and the link into the app carries the arm as any other. */
+function forcedArm(): RentArm | undefined {
+  const v = new URLSearchParams(window.location.search).get('rent_arm')
+  return RENT_ARMS.find((a) => a === v)
+}
+
 /**
  * The thread's rent arm, kept with it so a reload, a later visit or Start over never switches it. A thread stored
  * before the test that is already past the range saw the control chat, so it stays there.
  */
 function threadArm(state: ChatState): RentArm {
+  const forced = forcedArm()
+  if (forced) return forced
   if (state.rentArm && RENT_ARMS.includes(state.rentArm)) return state.rentArm
   return state.flow === 'rent' && !state.turn.startsWith('R1') ? 'control' : assignRentArm()
 }
@@ -127,9 +136,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     }
     const id = newId()
     // Every thread gets an arm, desktop and phone: a picker thread may go on to rent.
-    const rentArm = assignRentArm()
+    const rentArm = forcedArm() ?? assignRentArm()
     setThread((t) => ({ ...t, id, state: { ...t.state, rentArm } }))
-    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, ...armProps(initialFlow, rentArm) })
+    track('ribbit_thread_started', { thread_id: id, flow: initialFlow ?? 'picker', entry, ...armProps(initialFlow, rentArm), ...(forcedArm() ? { rent_arm_forced: true } : {}) })
   }, [initialFlow, entry])
 
   useEffect(() => {
