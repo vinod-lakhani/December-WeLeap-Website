@@ -1138,7 +1138,8 @@ describe('the rent test arms (Nov 12): control, B (check a place), C (the move p
     // The link carries the move-in cash the locked row names.
     const up = calculateUpfrontCash(f.range!, f.takeHomeMonthly!)
     expect(f.upfront).toEqual({ low: up.low, high: up.high })
-    expect(ribbitPlanParams(f, 'rent', 'move_plan', 't')).toMatchObject({ why: 'move_plan', upfront: String(up.high), rent_low: String(f.range!.low) })
+    expect(ribbitPlanParams(f, 'rent', 'move_plan', 't', 'c')).toMatchObject({ why: 'move_plan', arm: 'c', upfront: String(up.high), rent_low: String(f.range!.low) })
+    expect(ribbitPlanParams(f, 'offer', 'move_plan', 't', 'c').arm).toBeUndefined()
     expect(named(s[1], 'ribbit_app_ask_shown')).toEqual([{ name: 'ribbit_app_ask_shown', props: { turn: 'R2', why: 'move_plan' } }])
     expect(named(s[1], 'ribbit_win_shown')).toHaveLength(1)
     expect(s[1].chips.map((c) => c.value)).toEqual(['range_only', '__math__'])
@@ -1177,6 +1178,10 @@ describe('the rent test arms (Nov 12): control, B (check a place), C (the move p
         { label: 'Rent as a share of take-home', value: `${Math.round((1_450 / f.takeHomeMonthly!) * 100)}%` },
       ],
     })
+    // A quiet save under the first card, since most check one place at most.
+    expect(asks(s[4])).toEqual([{ label: 'Save this place', why: 'place_check', quiet: true }])
+    expect(facts(s[4])).toMatchObject({ pick: 1_450, upfront: { low: moveIn, high: moveIn } })
+    expect(named(s[4], 'ribbit_app_ask_shown')).toEqual([{ name: 'ribbit_app_ask_shown', props: { turn: 'R2b', why: 'place_check' } }])
     expect(s[4].messages[1].text).toBe(PLACE_ANOTHER_TEXT)
     expect(s[4].chips.map((c) => c.value)).toEqual(['another', 'the_one'])
     expect(named(s[4], 'ribbit_place_checked')[0].props).toMatchObject({ n: 1, rent: 1_450, score: score.total, saved_band: 'saved_1k_3k' })
@@ -1191,7 +1196,10 @@ describe('the rent test arms (Nov 12): control, B (check a place), C (the move p
     // Choosing the other place moves the ask (and the plan's rent) to it.
     const other = await reply(both.state, { chip: 'pick_0' }, svc())
     expect(asks(other)[0].label).toBe('Save my plan at $1,450')
-    expect(ribbitPlanParams(facts(other), 'rent', 'place_check', 't')).toMatchObject({ why: 'place_check', rent: '1450' })
+    // The link carries the arm and the rents checked, never the names typed.
+    const link = ribbitPlanParams(facts(other), 'rent', 'place_check', 't', 'b')
+    expect(link).toMatchObject({ why: 'place_check', rent: '1450', arm: 'b', places: '1450,1300' })
+    expect(Object.values(link).join(' ')).not.toMatch(/Austin|Mueller/)
   })
 
   it('B: "That\'s the one" saves the one place; "Still looking" goes on as the control does', async () => {

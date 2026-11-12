@@ -343,13 +343,15 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
   const { view, to: destination } = route
   const ask = m.appAsk && (view === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination as Exclude<AppDestination, 'web'>))
   const text = (view !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
-  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId) : ribbitStoreLink(flow, destination))
-  const onAskTap = () => {
+  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId, rentArm) : ribbitStoreLink(flow, destination))
+  // surface: the button (or quiet link), or C's locked rows, which open the same sign-up.
+  const onAskTap = (surface: 'button' | 'locked_card' = 'button') => {
     if (destination === 'web') markPlanSaved(flow)
     track('ribbit_app_link_clicked', {
-      thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination,
+      thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, destination, surface,
       ...(ask!.gap ? { gap: ask!.gap } : {}), ...armProps(flow, rentArm),
     })
+    if (surface === 'locked_card') track('ribbit_locked_card_tapped', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, ...armProps(flow, rentArm) })
   }
   const storeMark = view === 'store' && destination !== 'web' ? destination : null
   return (
@@ -383,13 +385,13 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
       {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
       {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
-      {m.planCard && <PlanCard card={m.planCard} />}
+      {m.planCard && <PlanCard card={m.planCard} lockedHref={m.planCard.lockedTitle && ask ? askHref : undefined} onLockedTap={() => onAskTap('locked_card')} />}
       {m.places && <PlacesCard places={m.places} />}
       {ask?.quiet && (
         // The benefit line's link: small, under the line, so it reads as information rather than a second pitch.
         <a
           href={askHref}
-          onClick={onAskTap}
+          onClick={() => onAskTap()}
           className="mt-1.5 inline-flex items-center gap-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
         >
           {storeMark && <StoreGlyph store={storeMark} className="h-3.5 w-3.5" />}
@@ -402,7 +404,7 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
           <div className="flex flex-wrap gap-2">
             <a
               href={askHref}
-              onClick={onAskTap}
+              onClick={() => onAskTap()}
               // The brand lime, not the bubbles' green: on a green thread it has to read as the thing to tap.
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-lime px-5 py-2 text-left text-[15px] font-extrabold text-ink shadow-sm ring-1 ring-black/5 transition hover:brightness-95"
             >
@@ -494,8 +496,18 @@ function RecruiterQuestions({ questions, threadId }: { questions: NonNullable<Ch
   )
 }
 
-function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
+/** lockedHref: the locked rows open the ask's sign-up too (C, where they are what the account unlocks). */
+function PlanCard({ card, lockedHref, onLockedTap }: { card: NonNullable<ChatMessage['planCard']>; lockedHref?: string; onLockedTap?: () => void }) {
   const done = card.steps?.filter((s) => s.done).length ?? 0
+  const lockedRows = card.locked.map((label) => (
+    <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
+      <span className="inline-flex items-center gap-2">
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+        {label}
+      </span>
+      <span aria-label={card.lockedTitle ? 'Shown after you sign up' : 'Shown after you connect'} className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
+    </div>
+  ))
   return (
     <section aria-label={card.title ?? 'Your WeLeap plan preview'} className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-1.5 pt-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -536,15 +548,9 @@ function PlanCard({ card }: { card: NonNullable<ChatMessage['planCard']> }) {
           <div className={`${card.known.length ? 'mt-2 border-t border-dashed border-[#c9cfc7]' : ''} pb-1 pt-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle`}>
             {card.lockedTitle ?? 'Unlocks when you connect your bank'}
           </div>
-          {card.locked.map((label) => (
-            <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-[14px] text-subtle">
-              <span className="inline-flex items-center gap-2">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
-                {label}
-              </span>
-              <span aria-label={card.lockedTitle ? 'Shown after you sign up' : 'Shown after you connect'} className="h-3 w-12 shrink-0 rounded-md bg-hairline" />
-            </div>
-          ))}
+          {lockedHref ? (
+            <a href={lockedHref} onClick={onLockedTap} className="-mx-2 block rounded-xl px-2 transition hover:bg-[#f6f5f0]">{lockedRows}</a>
+          ) : lockedRows}
         </>
       )}
     </section>

@@ -1250,13 +1250,16 @@ function placeChecked(state: ChatState, given: { rent: number; name: string; sho
     fit: place.rent > range.high ? 'above' : place.rent < range.low ? 'below' : 'in_range', saved_band: f.placeSaved,
   } }]
   if (places.length === 1) {
+    // A quiet save under the first card (most check one place at most): the plan at this rent.
+    f.pick = place.rent
+    f.upfront = { low: place.moveIn, high: place.moveIn }
     const fit = place.rent > range.high
       ? `${fc(place.rent)} is above your range of ${range.formatted}, so it leaves less for everything else.`
       : place.rent < range.low
         ? `${fc(place.rent)} is under your range, so it leaves room to save.`
         : `${fc(place.rent)} fits, ${place.rent >= (range.low + range.high) / 2 ? 'near the top' : 'in the lower half'} of your range.`
     const tight = s.gap === 'move_in_cash' ? ' The tight part is the cash before the keys.' : ''
-    return say({ ...state, turn: 'R2b_more' }, [
+    return say({ ...state, turn: 'R2b_more', invited: true }, [
       {
         from: 'ribbit', text: fit + tight, figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: PLACE_FINE, turn: 'R2b',
         planCard: {
@@ -1267,6 +1270,7 @@ function placeChecked(state: ChatState, given: { rent: number; name: string; sho
             { label: 'Rent as a share of take-home', value: `${Math.round(place.share * 100)}%` },
           ],
         },
+        appAsk: { label: 'Save this place', why: 'place_check', quiet: true },
       },
       { from: 'ribbit', text: PLACE_ANOTHER_TEXT },
     ], [ANOTHER_PLACE, { label: "That's the one", value: 'the_one' }], 'money', events)

@@ -34,10 +34,12 @@
  *   debt_kind         money flow: card | loan, when the person said which
  *   debt_now          money flow: what they pay on it today (the card's minimum in the app)
  *   ef_goal           money flow: the emergency fund goal (three months of essentials)
+ *   arm               rent: the rent test's arm (control | b | c), so the app's events, sign-up included, carry it
+ *   places            rent arm B: the rents of the places checked, in order ("1450,1300"); never their names
  */
 import { appLinkAt } from '@/lib/app-link'
 import { APPLE_PROVIDER_TOKEN, PRODUCT_PAGES, appStoreUrl, playStoreUrl } from '@/lib/stores'
-import { moneyInputs, type Facts, type Flow } from './engine'
+import { moneyInputs, type Facts, type Flow, type RentArm } from './engine'
 import { moneyOrder } from './moneyOrder'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
@@ -47,7 +49,7 @@ export type AppReason = 'plan_preview' | 'spending_check' | 'shares_savings' | '
 const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
 
 /** The plan's numbers as link parameters. Absent facts are left out, never guessed. */
-export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string): Record<string, string> {
+export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string, arm?: RentArm): Record<string, string> {
   const money = flow === 'money' ? moneyOrder(moneyInputs(f)) : undefined
   const p: Record<string, string | undefined> = {
     src: 'ribbit_chat',
@@ -80,13 +82,15 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     debt_kind: money && f.debt?.kind ? f.debt.kind : undefined,
     debt_now: money && f.debt ? round(f.debt.payment) : undefined,
     ef_goal: money ? round(money.emergencyGoal) : undefined,
+    arm: flow === 'rent' ? arm : undefined,
+    places: flow === 'rent' && f.places?.length ? f.places.map((p) => round(p.rent)).join(',') : undefined,
   }
   return Object.fromEntries(Object.entries(p).filter((e): e is [string, string] => e[1] !== undefined && e[1] !== ''))
 }
 
 /** The full link into the app, with attribution. Client-side (attribution reads storage and PostHog). */
-export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threadId: string): string {
-  return appLinkAt(RIBBIT_APP_URL, '/react/', ribbitPlanParams(f, flow, why, threadId))
+export function ribbitAppLink(f: Facts, flow: Flow | null, why: AppReason, threadId: string, arm?: RentArm): string {
+  return appLinkAt(RIBBIT_APP_URL, '/react/', ribbitPlanParams(f, flow, why, threadId, arm))
 }
 
 /**
