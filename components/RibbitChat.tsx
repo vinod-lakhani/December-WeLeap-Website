@@ -363,6 +363,10 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
     if (surface === 'locked_card') track('ribbit_locked_card_tapped', { thread_id: threadId, flow: flow ?? 'picker', turn: m.turn, why: ask!.why, ...armProps(flow, rentArm) })
   }
   const storeMark = view === 'store' && destination !== 'web' ? destination : null
+  const card = m.planCard && <PlanCard card={m.planCard} lockedHref={m.planCard.lockedTitle && ask ? askHref : undefined} onLockedTap={() => onAskTap('locked_card')} />
+  // C's move plan goes under its button. With the card first, its height put the button behind the cookie banner on a
+  // phone (Nov 15, iPhone in Safari: control's button on screen, C's covered), so most of C never saw it.
+  const buttonFirst = Boolean(m.planCard?.lockedTitle && ask && !ask.quiet)
   return (
     <div className="max-w-[92%] self-start">
       <div className="rounded-2xl rounded-bl-md bg-[#386641] px-4 py-3 text-[15px] leading-snug text-white">
@@ -394,7 +398,7 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
       {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
       {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
       {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
-      {m.planCard && <PlanCard card={m.planCard} lockedHref={m.planCard.lockedTitle && ask ? askHref : undefined} onLockedTap={() => onAskTap('locked_card')} />}
+      {!buttonFirst && card}
       {m.places && <PlacesCard places={m.places} />}
       {ask?.quiet && (
         // The benefit line's link: small, under the line, so it reads as information rather than a second pitch.
@@ -439,6 +443,7 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
         </div>
       )}
+      {buttonFirst && card}
     </div>
   )
 }
