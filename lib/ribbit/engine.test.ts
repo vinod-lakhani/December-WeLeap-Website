@@ -579,9 +579,9 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(facts(s[7]).start).toBe('next_month')
   })
 
-  it('rent: the ending is the plan card, with the text sign-up one tap away', async () => {
+  it('rent: the ending is the plan card', async () => {
     const s = await run('rent', [
-      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'pick' }, { chip: 'low' }, { chip: 'keep' }, { chip: 'next_month' }, { chip: 'cushion' }, { chip: 'text' },
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'pick' }, { chip: 'low' }, { chip: 'keep' }, { chip: 'next_month' }, { chip: 'cushion' },
     ])
     const end = s[10]
     const card = end.messages.find((m) => m.planCard)!
@@ -590,10 +590,20 @@ describe('prompts to use WeLeap (the text thread\'s rules)', () => {
     expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', 'Debt payments', 'Rebuilding savings'])
     expect(card.planCard!.known[3].value).toBe(`$${f.perCheck!.toLocaleString('en-US')} a paycheck to $${f.upfront!.high.toLocaleString('en-US')}`)
     expect(card.planCard!.locked[1]).toBe(`Does $${f.pick!.toLocaleString('en-US')} still fit after that?`)
-    expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Save my plan and unlock the rest', why: 'plan_preview', textInstead: true }))
+    expect(card.appAsk).toEqual(expect.objectContaining({ label: 'Save my plan and unlock the rest', why: 'plan_preview' }))
     expect(end.events.some((e) => e.name === 'ribbit_plan_preview_shown')).toBe(true)
-    expect(end.messages.some((m) => /watch/i.test(m.text))).toBe(false)
-    expect(s[11].messages.some((m) => m.handoff === 'rent')).toBe(true)
+    expect(end.messages.some((m) => /watch|by text/i.test(m.text))).toBe(false)
+  })
+
+  it('rent: signing at the top of the range goes from the upfront cash straight to the plan card', async () => {
+    const s = await run('rent', [
+      { text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'yes' }, { text: '200' }, { chip: 'pick' }, { chip: 'high' }, { chip: 'keep' }, { chip: 'next_month' },
+    ])
+    const end = s[9]
+    expect(end.state.turn).toBe('R8')
+    expect(end.messages[0]).toMatchObject({ turn: 'R6', figureLabel: 'Cash to have before you move' })
+    expect(end.messages.find((m) => m.planCard)?.text).toBe(PLAN_PREVIEW_TEXT)
+    expect(end.messages.some((m) => /by text/i.test(m.text))).toBe(false)
   })
 
   it('offer: the first take-home, before state tax and the city, carries no app ask', async () => {
@@ -786,7 +796,7 @@ describe('Where should my money go?', () => {
     expect(s[6].chips.map((c) => c.value)).toEqual(['keep', '__math__'])
     const card = s[7].messages.find((m) => m.planCard)!
     expect(card.planCard!.known.map((r) => r.label)).toEqual(['Take-home', 'Rent', '401(k) at 4%, with the match', '22% debt', 'Emergency fund goal'])
-    expect(card.appAsk).toEqual(expect.objectContaining({ why: 'plan_preview', textInstead: false }))
+    expect(card.appAsk).toEqual(expect.objectContaining({ why: 'plan_preview' }))
     expect(s[7].state.turn).toBe('M8')
   })
 
@@ -883,13 +893,8 @@ describe('startup flow', () => {
     // Everything was known, so the only question for the recruiter is the exercise window.
     expect(s[7].messages.find((m) => m.questions)!.questions!.map((q) => q.key)).toEqual(['window'])
     const card = s[7].messages.find((m) => m.planCard)!
-    expect(card.appAsk?.textInstead).toBe(true)
     expect(card.planCard!.known).toContainEqual({ label: 'Share of the company', value: '0.10%' })
-    // "Text me each step instead" opens the text door as a startup offer, on the offer thread (payload below).
-    const door = await reply(s[7].state, { chip: 'text' }, svc())
-    expect(door.state.turn).toBe('S8')
-    expect(door.messages.some((m) => m.handoff === 'startup')).toBe(true)
-    // Every startup figure rides on the offer payload, for the text thread and typed questions.
+    // Every startup figure rides on the offer payload, for typed questions.
     const plan = startupPlanData(facts(s[7]))!
     expect(plan.salary).toBe(130_000)
     expect((plan.figures as Record<string, unknown>).startup).toMatchObject({
@@ -1047,14 +1052,14 @@ describe('move-in score (rent, after the debt answer)', () => {
     expect(result.figureLabel).toBe('Move-in score')
     expect(result.fine).toBe(SCORE_FINE)
     expect(result.text).toContain(`Move-in cash is the gap: about $${up.high.toLocaleString('en-US')} before the keys, and you have about $2,000.`)
-    // The plan card moves up with it: the checklist in place of the locked rows, one gap button, text instead.
+    // The plan card moves up with it: the checklist in place of the locked rows, one gap button.
     const card = s[7].messages[1]
     expect(card.text).toBe(SCORE_CARD_TEXT)
     expect(card.planCard!.title).toBe('Your move plan')
     expect(card.planCard!.steps!.filter((x) => x.done).map((x) => x.label)).toEqual(['Rent range', 'Take-home after tax', 'Move-in score'])
     expect(card.planCard!.steps!.filter((x) => !x.done).map((x) => x.label)).toEqual(['A plan for your move-in cash', 'Checked against your real spending'])
     expect(card.planCard!.locked).toEqual([])
-    expect(card.appAsk).toEqual(expect.objectContaining({ label: GAP_BUTTON.move_in_cash, why: 'score_gap', gap: 'move_in_cash', textInstead: true }))
+    expect(card.appAsk).toEqual(expect.objectContaining({ label: GAP_BUTTON.move_in_cash, why: 'score_gap', gap: 'move_in_cash' }))
     expect(s[7].messages.filter((m) => m.appAsk)).toHaveLength(1)
     expect(s[7].chips.map((c) => c.value)).toEqual(['pick', '__math__'])
     const shown = s[7].events.find((e) => e.name === 'ribbit_score_shown')!
@@ -1081,7 +1086,7 @@ describe('move-in score (rent, after the debt answer)', () => {
     expect(facts(s[9]).pick).toBe(facts(s[9]).range!.low)
   })
 
-  it('"Pick my rent" skips it; a typed amount picks a band or a rent; text-me works from a later turn', async () => {
+  it('"Pick my rent" skips it; a typed amount picks a band or a rent', async () => {
     const skip = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'pick' }])
     expect(skip[5].state.turn).toBe('R4')
     expect(skip[5].events.map((e) => e.name)).not.toContain('ribbit_score_started')
@@ -1089,8 +1094,6 @@ describe('move-in score (rent, after the debt answer)', () => {
     expect(facts(typedSaved[6]).score).toMatchObject({ saved: 2_000, savedBand: 'saved_1k_3k' })
     const typedRent = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { text: '1500' }])
     expect(facts(typedRent[5]).pick).toBe(1_500)
-    const later = await run('rent', [{ text: '80000' }, { chip: 'Austin' }, { chip: 'no' }, { chip: 'none' }, { chip: 'score' }, { chip: 'saved_under_1k' }, { chip: 'pick' }, { chip: 'text' }])
-    expect(later[8].messages.some((m) => m.handoff === 'rent')).toBe(true)
   })
 
   it('names one gap in plain words: no grades, shame words or long dashes', () => {

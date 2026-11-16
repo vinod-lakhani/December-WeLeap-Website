@@ -121,8 +121,6 @@ export const STORE_ASK = {
     app_store: 'Free iPhone app. About 3 minutes to set up.',
     google_play: 'Free Android app. About 3 minutes to set up.',
   },
-  /** The text sign-up under the ask: on web "connect" means the bank, on a phone the ask is an install. */
-  textInstead: 'Not ready for the app? Text me each step instead',
 } as const
 
 /** A chat ask as a phone shows it: the store's note, and the ask's own label unless STORE_ASK.labels replaces it. */
@@ -131,6 +129,15 @@ export function phoneAsk<A extends { label: string; why: AppReason; note?: strin
   destination: Exclude<AppDestination, 'web'>,
 ): A {
   return { ...ask, label: STORE_ASK.labels[ask.why] ?? ask.label, note: STORE_ASK.note[destination] }
+}
+
+/** Which phone the page is on, from the user agent. Null is everything else. */
+export function phonePlatform(userAgent: string, maxTouchPoints = 0): 'ios' | 'android' | null {
+  if (/iPhone|iPad|iPod/.test(userAgent)) return 'ios'
+  // iPadOS reports itself as a Mac; the touch screen gives it away.
+  if (/Macintosh/.test(userAgent) && maxTouchPoints > 1) return 'ios'
+  if (/Android/.test(userAgent)) return 'android'
+  return null
 }
 
 export function appDestination(platform: 'ios' | 'android' | null): AppDestination {

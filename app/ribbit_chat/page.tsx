@@ -7,8 +7,8 @@ import type { Flow } from '@/lib/ribbit/engine'
 
 /**
  * /ribbit_chat — the rent and offer tools as a conversation with Ribbit (spec: "Ribbit Chat Tool — Rent and Offer
- * Flows"). Its own page so it can run in parallel with everything else: the tool pages and the text pilot on
- * /rent_text and /offer_text are untouched. A destination for links and ads, not a search page: noindex but
+ * Flows"). Its own page so it can run in parallel with everything else: the tool pages are untouched (the text
+ * pilot's /rent_text and /offer_text redirect here since Nov 16 2026). A destination for links and ads, not a search page: noindex but
  * crawlable, out of the sitemap and the tools grid.
  *
  * The flow is read on the server at the first load: `flow`, then `utm_content` (rent-* / offer-*, as the Posting

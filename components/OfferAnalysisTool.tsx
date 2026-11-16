@@ -35,8 +35,6 @@ import { TermQuestion, TermSummary } from '@/components/TermQuestion';
 import { computeOfferValue, EMPTY_OFFER_VALUE, MARKET_PTO_DAYS, type OfferInputs, type TaxResult, enteredOfferInputs, enteredPackageParts } from '@/lib/offer/calculate';
 import { compareOffers, type OfferSide } from '@/lib/offer/compare';
 import { computeLevers } from '@/lib/offer/levers';
-import { offerTextPayload } from '@/lib/offer/textPayload';
-import { TextOptIn } from '@/components/TextOptIn';
 import { EXAMPLE } from '@/lib/offer/example';
 import { OfferCampaignHero } from '@/components/OfferCampaignHero';
 import { OfferLevers } from '@/components/OfferLevers';
@@ -212,8 +210,6 @@ export interface OfferAnalysisToolProps {
    * the first screen is identical — same sections, same math, same results.
    */
   campaign?: boolean
-  /** Internal text pilot: shows the "Get this breakdown by text" door under the headline. */
-  textPilot?: boolean
   /**
    * The `page` property on the tool's own events (share card, feedback). The canonical page keeps the
    * default; a landing that hosts the tool passes its own path, so a breakdown by `page` does not merge them.
@@ -221,7 +217,7 @@ export interface OfferAnalysisToolProps {
   page?: string
 }
 
-export function OfferAnalysisTool({ campaign = false, textPilot = false, page = '/offer' }: OfferAnalysisToolProps = {}) {
+export function OfferAnalysisTool({ campaign = false, page = '/offer' }: OfferAnalysisToolProps = {}) {
   // 1. Base salary
   /**
    * Campaign traffic opens on the figure from the creative, so the promise in
@@ -763,7 +759,7 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
       <>
         If the letter also has a bonus or a 401(k) match, the package is bigger: for example, a {EXAMPLE_BONUS_PCT}%
         bonus and a {EXAMPLE_MATCH_RATE_PCT}% match on the first {EXAMPLE_MATCH_UP_TO_PCT}% of salary would put it
-        near {fc(exampleTotal)}. {textPilot ? 'Tell Ribbit which you have.' : 'Answer the bonus and match questions below to see yours.'}
+        near {fc(exampleTotal)}. Answer the bonus and match questions below to see yours.
       </>
     ) : null;
 
@@ -869,22 +865,6 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
   );
   const comparison = useMemo(() => (sideA && sideB ? compareOffers(sideA, sideB) : null), [sideA, sideB]);
 
-  // The figures the text door sends: every one the calculator holds, example terms included, so Ribbit can
-  // answer a what-if — plus which fields the visitor entered, because the texts quote only those.
-  const offerText = useMemo(() => {
-    if (!textPilot || !calc || !calcEntered) return null;
-    // The other offer counts once it has a salary; until then the comparison is an empty table.
-    const other = sideB && calcB ? sideB : null;
-    return offerTextPayload({
-      id: crypto.randomUUID(),
-      side: { label: 'Offer A', location: city ? `${city}, ${jobState}` : '', inputs: offerInputs, value: calc },
-      tax: taxWithLocal,
-      levers,
-      comparison: other ? comparison : null,
-      other,
-      entered: { fields: [...entered].sort(), value: calcEntered },
-    });
-  }, [textPilot, calc, calcEntered, city, jobState, offerInputs, sideB, calcB, comparison, levers, taxWithLocal, entered]);
 
 
   // ── Market rent data load ────────────────────────────────────────────────────
@@ -1266,12 +1246,6 @@ export function OfferAnalysisTool({ campaign = false, textPilot = false, page = 
             You&apos;d keep about {fc(shown.takeHomeMonthly)}/mo after tax
           </p>
         </>
-      )}
-
-      {textPilot && offerText && (
-        <div className="mx-auto mt-6 max-w-md text-left">
-          <TextOptIn planData={offerText} endpoint="/api/offer-text" tool="offer" />
-        </div>
       )}
 
       {/* THE ASK, directly under the number that earns it.

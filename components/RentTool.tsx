@@ -26,7 +26,6 @@ import { RentCampaignHero } from '@/components/RentCampaignHero';
 import { RentFirstMove } from '@/components/RentFirstMove';
 import { formatCurrency } from '@/lib/rounding';
 import { track } from '@/lib/analytics';
-import { TextOptIn, TextOptInStickyBar } from '@/components/TextOptIn';
 import type { ResultView } from '@/components/ResultsCards';
 import { claimToolCompletion, useResultShown } from '@/lib/tool-funnel'
 import { nextRunIndex } from '@/lib/run-index';
@@ -72,8 +71,6 @@ export interface RentToolProps {
    * scrolls gets the same tool either way, already filled in.
    */
   campaign?: boolean
-  /** Internal pilot: show the text opt-in under the result. */
-  textPilot?: boolean
   /**
    * The `page` property on the tool's own events. The canonical page keeps the default; a landing that
    * hosts the tool passes its own path, so a PostHog breakdown by `page` does not merge the two.
@@ -96,7 +93,7 @@ export interface RentToolProps {
  */
 const MIN_PLAUSIBLE_SALARY = 10000;
 
-export function RentTool({ campaign = false, textPilot = false, page = '/how-much-rent-can-i-afford' }: RentToolProps = {}) {
+export function RentTool({ campaign = false, page = '/how-much-rent-can-i-afford' }: RentToolProps = {}) {
   const [resultView, setResultView] = useState<ResultView | null>(null);
   /**
    * Campaign traffic starts on the worked example from the creative, so the
@@ -805,13 +802,6 @@ export function RentTool({ campaign = false, textPilot = false, page = '/how-muc
           <ResultsCards
             page={page}
             onView={setResultView}
-            answerSlot={
-              textPilot && planData ? (
-                // The text door sits right under the number. On a phone the results start below the
-                // fold, so the sticky bar below points back here.
-                <TextOptIn planData={planData} />
-              ) : undefined
-            }
             afterHero={
               <RentFirstMove
                 rentRangeLow={rentRangeLow}
@@ -948,8 +938,6 @@ export function RentTool({ campaign = false, textPilot = false, page = '/how-muc
 
           {/* Tile 2: Secondary — Day 1 Rent Plan (PDF). Target of the bridge's
               "Email me my plan instead" link. */}
-          {textPilot && planData && results && <TextOptInStickyBar />}
-
           <div id="email-plan" className="scroll-mt-24">
             <WaitlistForm planData={planData} variant="secondary" page={page} />
           </div>
