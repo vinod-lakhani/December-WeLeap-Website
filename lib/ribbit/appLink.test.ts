@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, planSaved, ribbitPlanParams, ribbitStoreLink, type AppReason } from './appLink'
+import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitPlanParams, ribbitStoreLink, type AppReason } from './appLink'
 
 describe('the chat-to-app link contract', () => {
   it('carries the rent plan as the app reads it, and leaves out what was not given', () => {
@@ -84,6 +84,14 @@ describe('remembering a tapped Save my plan, for "Open my plan"', () => {
 })
 
 describe('phones go to the store (Nov 4)', () => {
+  it('tells iPhone, iPad and Android from desktop', () => {
+    expect(phonePlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')).toBe('ios')
+    expect(phonePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 5)).toBe('ios')
+    expect(phonePlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8)')).toBe('android')
+    expect(phonePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 0)).toBeNull()
+    expect(phonePlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBeNull()
+  })
+
   it('sends iPhone to the App Store, Android to Play, everything else to the web app', () => {
     expect(appDestination('ios')).toBe('app_store')
     expect(appDestination('android')).toBe('google_play')
@@ -118,10 +126,10 @@ describe('phones go to the store (Nov 4)', () => {
   })
 
   // The asks as engine.ts makes them (web labels), with what a phone shows instead.
-  const ASKS: { ask: { label: string; why: AppReason; note?: string; quiet?: boolean; textInstead?: boolean }; phone: string }[] = [
+  const ASKS: { ask: { label: string; why: AppReason; note?: string; quiet?: boolean }; phone: string }[] = [
     { ask: { label: 'Check it against my real spending', why: 'spending_check', note: 'web note' }, phone: 'Check it against my real spending' },
     { ask: { label: 'Build my savings plan', why: 'shares_savings', note: 'web note' }, phone: 'Build my savings plan' },
-    { ask: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: 'No forms: the rows above come with you.', textInstead: true }, phone: 'Build my full plan' },
+    { ask: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: 'No forms: the rows above come with you.' }, phone: 'Build my full plan' },
     { ask: { label: 'Click to get WeLeap', why: 'account' }, phone: 'Click to get WeLeap' },
     { ask: { label: 'Click to get WeLeap', why: 'plan_invite' }, phone: 'Click to get WeLeap' },
     { ask: { label: 'Get my plan', why: 'benefit', quiet: true }, phone: 'Get my plan' },
@@ -133,7 +141,7 @@ describe('phones go to the store (Nov 4)', () => {
         const shown = phoneAsk(ask, destination)
         expect(shown.label).toBe(phone)
         expect(shown.note).toBe(STORE_ASK.note[destination])
-        expect([shown.why, shown.quiet, shown.textInstead]).toEqual([ask.why, ask.quiet, ask.textInstead])
+        expect([shown.why, shown.quiet]).toEqual([ask.why, ask.quiet])
       })
     }
   }
@@ -142,11 +150,9 @@ describe('phones go to the store (Nov 4)', () => {
     for (const label of [...ASKS.map((a) => phoneAsk(a.ask, 'app_store').label), ...Object.values(STORE_ASK.labels)]) {
       expect(label).not.toMatch(/\u2014|\bLeap\b|Ribbit|save my plan|free app|in the app/i)
     }
-    expect(STORE_ASK.textInstead).toBe('Not ready for the app? Text me each step instead')
     // The plan preview's line: no "keep this" on a phone, where the plan does not carry into the install.
     expect(STORE_ASK.texts.plan_preview).not.toMatch(/\u2014|keep|save|free app/i)
     expect(Object.keys(STORE_ASK.texts)).toEqual(['plan_preview'])
-    expect(STORE_ASK.textInstead).not.toMatch(/\u2014|connect/i)
   })
 })
 

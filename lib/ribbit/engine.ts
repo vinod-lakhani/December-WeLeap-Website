@@ -49,12 +49,11 @@ export interface ChatMessage {
   compare?: { label: string; value: string }
   /**
    * An ask into the WeLeap app under this message: the lime button (the link is built by the page from the
-   * thread's facts, lib/ribbit/appLink.ts), small print under it, and for the endings a text link that opens the
-   * text sign-up instead ("Not ready to connect?").
+   * thread's facts, lib/ribbit/appLink.ts) and small print under it.
    */
   /** quiet: a small text link instead of the lime button (the benefit line after the one invite). gap: the move-in
    * score's gap the button is labelled by, sent with the tap. */
-  appAsk?: { label: string; why: AppReason; note?: string; textInstead?: boolean; quiet?: boolean; gap?: ScoreGap }
+  appAsk?: { label: string; why: AppReason; note?: string; quiet?: boolean; gap?: ScoreGap }
   /** Small print under the text, in the bubble ("A WeLeap check from your answers, not a credit score."). */
   fine?: string
   /**
@@ -72,10 +71,8 @@ export interface ChatMessage {
   places?: Place[]
   /** "Show me the math": the breakdown, rendered as rows under the text. */
   math?: MathRow[]
-  /** The turn that produced it, for analytics and the handoff. */
+  /** The turn that produced it, for analytics. */
   turn?: string
-  /** Render the text door (the approved consent and button) under this message. */
-  handoff?: Flow
   /** "Where should my money go?": the next-dollar order, as numbered steps (lib/ribbit/moneyOrder.ts). */
   order?: MoneyStep[]
   /** The startup ending's questions to take back to the recruiter, numbered like the order, with a copy button. */
@@ -170,7 +167,7 @@ export interface Facts {
   /** A benefits guide was read in this thread. */
   benefitsRead?: boolean
   value?: OfferValue
-  /** The flow this thread switched from (offer → rent at O7), so the handoff can name both. */
+  /** The flow this thread switched from (offer → rent at O7). */
   switchedFrom?: Flow
   // money ("Where should my money go?"); the rent is `pick`, as in the rent flow
   /** The biggest debt, read from one line or asked piece by piece. */
@@ -217,7 +214,7 @@ export interface Step {
   state: ChatState
   messages: ChatMessage[]
   chips: Chip[]
-  /** What the text field is for at this turn; 'none' hides it (the handoff turn has its own form). */
+  /** What the text field is for at this turn; 'none' hides it. */
   input: 'money' | 'location' | 'text' | 'none'
   events: ChatEvent[]
   /**
@@ -362,8 +359,6 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
 
   if (chip === '__math__') return showMath(state)
-  // "Text me each step instead" under an ask: the move-in score's sits mid-flow, so it can be tapped at a later turn.
-  if (chip === 'text') return handoff(state)
   if (r.letter) return readLetter(state, r.letter)
   if (r.benefits) return readBenefits(state, r.benefits)
 
@@ -653,8 +648,6 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
     case 'M8':
     case 'S8':
     case 'done':
-      // The ending's "Not ready to connect? Text me each step instead" opens the text sign-up.
-      if (chip === 'text') return handoff(state)
       return question(state, text, svc, '')
   }
   return question(state, text, svc, '')
@@ -1125,7 +1118,7 @@ function scoreTurn(state: ChatState, band: string): Step {
     { from: 'ribbit', text: scoreText(s, f.debtMonthly ?? 0), figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: SCORE_FINE, turn: 'R3_score' },
     {
       from: 'ribbit', text: SCORE_CARD_TEXT, turn: 'R3_score', planCard: card,
-      appAsk: { label: GAP_BUTTON[s.gap], why: 'score_gap', gap: s.gap, note: 'No forms: your numbers come with you.', textInstead: true },
+      appAsk: { label: GAP_BUTTON[s.gap], why: 'score_gap', gap: s.gap, note: 'No forms: your numbers come with you.' },
     },
   ], [{ label: 'Pick my rent', value: 'pick' }, { label: 'Show me the math', value: '__math__' }], 'money', [
     { name: 'ribbit_score_shown', props: { turn: 'R3', score: s.total, gap: s.gap, move_in_cash: s.moveIn, debt: s.debt, cushion: s.cushion, saved_band: band } },
@@ -1354,9 +1347,11 @@ function upfrontTurn(state: ChatState): Step {
   const lead = f.start === 'working'
     ? `Moving takes about ${fc(up.low)} to ${fc(up.high)} upfront: deposit, first month and setup.`
     : `Your first paycheck may not land for a few weeks, so you'll want ${fc(up.low)} to ${fc(up.high)} upfront.`
-  if (saving <= 0) return handoff({ ...state, turn: 'R6' }, lead)
+  const upfront: ChatMessage = { from: 'ribbit', text: lead, figure: `${fc(up.low)}–${fc(up.high)}`, figureLabel: 'Cash to have before you move', turn: 'R6' }
+  // Signing at the top of the range frees nothing to direct, so the plan comes next.
+  if (saving <= 0) return planEnding({ ...state, turn: 'R6' }, [upfront], [win('R6')])
   return say({ ...state, turn: 'R6' }, [
-    { from: 'ribbit', text: lead, figure: `${fc(up.low)}–${fc(up.high)}`, figureLabel: 'Cash to have before you move', turn: 'R6' },
+    upfront,
     { from: 'ribbit', text: purposeQuestion(f) },
   ], [...PURPOSE_CHIPS, { label: 'How the upfront is worked out', value: 'upfront_math' }], 'text', [win('R6')])
 }
@@ -2279,26 +2274,12 @@ function moneyCard(f: Facts): NonNullable<ChatMessage['planCard']> {
   }
 }
 
-// ── Handoff, math, questions ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * The follow-up turn. The text door under it carries the approved consent wording and button; the line above it
- * says only what that consent covers (the breakdown, answers, a few follow-ups over three weeks). The spec's
- * "check on the 1st" wording waits for counsel.
- */
-function handoff(state: ChatState, lead?: string): Step {
-  const flow: Flow = state.flow ?? 'rent'
-  const turn = flow === 'offer' ? 'O8' : flow === 'startup' ? 'S8' : 'R8'
-  return say({ ...state, turn }, [
-    ...(lead ? [{ from: 'ribbit' as const, text: lead }] : []),
-    { from: 'ribbit', text: "Want this by text? I'll send your numbers, answer questions there, and check in a few times over the next three weeks. Stop any time.", turn, handoff: flow },
-  ], [], 'text', [{ name: 'ribbit_handoff_offered', props: { turn } }])
-}
+// ── Ending, math, questions ─────────────────────────────────────────────────────────────────────────────────
 
 /**
  * The ending (decided Oct 26, replacing "Watch it for me"): the plan as WeLeap would show it. Known rows are the
  * thread's own numbers; locked rows name what only the bank can show. The button saves the plan in the app (the
- * pre-filled plan and the landing page are the app's side); a text link opens the text sign-up instead.
+ * pre-filled plan and the landing page are the app's side).
  */
 export const PLAN_PREVIEW_TEXT = "Want to keep this? Here's your plan as WeLeap would show it. The rest fills in when you connect your bank."
 function planEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] = []): Step {
@@ -2307,9 +2288,7 @@ function planEnding(state: ChatState, lead: ChatMessage[], events: ChatEvent[] =
   const card = flow === 'offer' ? offerCard(state.facts) : flow === 'money' ? moneyCard(state.facts) : flow === 'startup' ? startupCard(state.facts) : rentCard(state.facts)
   return say({ ...state, turn, invited: true }, [...lead, {
     from: 'ribbit', text: PLAN_PREVIEW_TEXT, turn, planCard: card,
-    // Text threads exist for rent and offers; a startup offer goes as an offer thread carrying its equity figures
-    // (lib/ribbit/payload.ts), so it needs the pay. Money has no "text me instead".
-    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.`, textInstead: flow === 'rent' || flow === 'offer' || (flow === 'startup' && Boolean(state.facts.salary && state.facts.takeHomeMonthly)) },
+    appAsk: { label: 'Save my plan and unlock the rest', why: 'plan_preview', note: `No forms: the rows above come with you. Connecting your bank takes about 2 minutes.` },
   }], [], 'text', [...events, { name: 'ribbit_plan_preview_shown', props: { turn, known_rows: card.known.length } }])
 }
 

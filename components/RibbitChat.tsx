@@ -3,14 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
-import { TextOptIn } from '@/components/TextOptIn'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
 import { BENEFITS_CHIP, RENT_ARMS, UPLOAD_CHIP, assignRentArm, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
-import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
-import { offerPlanData, rentPlanData, startupPlanData } from '@/lib/ribbit/payload'
+import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { browserServices } from '@/lib/ribbit/services'
-import { phonePlatform } from '@/lib/text-pilot'
 
 /**
  * The Ribbit chat on /ribbit_chat (spec: "Ribbit Chat Tool — Rent and Offer Flows"). The thread is the page: one
@@ -240,7 +237,6 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             rentArm={thread.state.rentArm}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
-            onTextInstead={m.appAsk?.textInstead ? () => answer({ chip: 'text', label: 'Text me each step instead' }) : undefined}
           />
         ))}
         {thread.messages.length === first.current.messages.length && initialFlow && TOOL_PAGE[initialFlow] && !restored && (
@@ -336,9 +332,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInstead }: {
+function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish }: {
   m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
-  onFinish?: () => void; onTextInstead?: () => void
+  onFinish?: () => void
 }) {
   if (m.from === 'you') {
     return (
@@ -397,7 +393,6 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
       </div>
       {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
       {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
-      {m.handoff && <Handoff flow={m.handoff} facts={facts} threadId={threadId} />}
       {!buttonFirst && card}
       {m.places && <PlacesCard places={m.places} />}
       {ask?.quiet && (
@@ -435,11 +430,6 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish, onTextInst
               </button>
             )}
           </div>
-          {onTextInstead && (
-            <button type="button" onClick={onTextInstead} className="py-1 text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]">
-              {view === 'web' ? 'Not ready to connect? Text me each step instead' : STORE_ASK.textInstead}
-            </button>
-          )}
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
         </div>
       )}
@@ -596,25 +586,5 @@ function PlacesCard({ places }: { places: Place[] }) {
         </div>
       ))}
     </section>
-  )
-}
-
-/**
- * The follow-up turn: the existing text door, with its counsel-approved consent and button, fed the same figures
- * the tool pages send (lib/ribbit/payload.ts). The figures are taken once, when the turn appears.
- */
-function Handoff({ flow, facts, threadId }: { flow: Flow; facts: ChatState['facts']; threadId: string }) {
-  // A startup offer texts as an offer thread, with its equity figures on the payload.
-  const [plan] = useState(() => (flow === 'startup' ? startupPlanData(facts) : flow === 'offer' ? offerPlanData(facts) : rentPlanData(facts)))
-  if (!plan) return null
-  return (
-    <div className="mt-2.5 rounded-2xl border border-hairline bg-white p-4">
-      <TextOptIn
-        planData={plan}
-        endpoint={flow === 'rent' ? '/api/rent-text' : '/api/offer-text'}
-        tool={flow === 'rent' ? 'rent' : 'offer'}
-        onSubmitted={(method) => track('ribbit_handoff_accepted', { thread_id: threadId, flow, method })}
-      />
-    </div>
   )
 }

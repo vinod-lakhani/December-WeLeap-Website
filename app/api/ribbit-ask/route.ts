@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 
 import { clientKey, makeRateLimiter } from '@/lib/offer-parse/rate-limit'
-import { offerPayload, rentPayload } from '@/lib/text-pilot'
+import { offerPayload, rentPayload } from '@/lib/ribbit/payload'
 
 /**
  * POST /api/ribbit-ask — a typed question in the Ribbit chat (/ribbit_chat). Forwards it, with the person's figures
- * in the same shape the text door sends, to the backend's /internal/rentpilot/ask: the same assistant, bundle and
- * rules as the text thread. Nothing is stored. Rate-limited per visitor, ahead of the model call; the backend also
+ * in the shapes lib/ribbit/payload.ts builds, to the backend's /internal/rentpilot/ask, which answers with Ribbit's
+ * assistant and the figures bundle. Nothing is stored. Rate-limited per visitor, ahead of the model call; the backend also
  * caps questions per thread (the thread id is forwarded) and per day. Needs
  * RENTPILOT_URL (any of its paths; only the origin is used) and RENTPILOT_KEY.
  */

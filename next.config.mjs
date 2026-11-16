@@ -101,6 +101,18 @@ const nextConfig = {
         permanent: true,
       },
       {
+        // The rent and offer text pilots' paid landings, retired Nov 16 2026 (texting moved to app users). Old ads and
+        // shared links land in the chat for the same tool; the query (campaign, UTMs) carries over.
+        source: '/rent_text',
+        destination: '/ribbit_chat?flow=rent',
+        permanent: false,
+      },
+      {
+        source: '/offer_text',
+        destination: '/ribbit_chat?flow=offer',
+        permanent: false,
+      },
+      {
         // Short alias for the share card and social bios. People retype these
         // from a screenshot, so the long path is unusable there.
         source: '/rent',
