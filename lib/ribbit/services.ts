@@ -1,7 +1,8 @@
 /**
  * The chat's services in the browser: the same routes the tool pages call (/api/tax, /api/zori), and Ribbit for
  * typed questions (/api/ribbit-ask). Every failure comes back null, which the engine answers honestly ("I don't
- * have rental prices for…", "My answers are down for a moment") rather than with a guess.
+ * have rental prices for…", "My answers are down for a moment") rather than with a guess. Rent arm D's net worth comes
+ * from the app backend (/api/ribbit-preview).
  */
 import type { AskResult, ChatServices } from './engine'
 import { moneyAskData, offerPlanData, rentPlanData, startupPlanData } from './payload'
@@ -42,6 +43,14 @@ export const browserServices: ChatServices = {
       return Array.isArray(d?.matches) ? d!.matches! : []
     } catch {
       return []
+    }
+  },
+  async preview(input) {
+    try {
+      const d = await json<{ values?: number[] }>(await fetch('/api/ribbit-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }))
+      return Array.isArray(d?.values) ? d!.values! : null
+    } catch {
+      return null
     }
   },
   async ask({ flow: chatFlow, facts, message, step, history, thread }) {

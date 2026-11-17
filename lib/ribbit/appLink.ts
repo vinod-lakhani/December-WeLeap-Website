@@ -12,7 +12,9 @@
  * Parameters the app reads (all optional except src and why):
  *   src=ribbit_chat   the experiment's flag; nothing else in the app changes without it
  *   why               plan_preview | spending_check | shares_savings | plan_invite | account | benefit | rent_answer | score_gap |
- *                     place_check | move_plan (which ask was tapped; the app shows plan_preview's words for any it doesn't name)
+ *                     place_check | move_plan | inline_signup (rent arm D's "Use email") | saved_plan (after a chat sign-up; the
+ *                     link then carries no plan, the account has it) (which ask was tapped; the app shows plan_preview's
+ *                     words for any it doesn't name)
  *   rt                the chat thread id, to stitch the web events to the app
  *   flow              rent | offer | money | general (the startup flow sends offer)
  *   salary            yearly salary, dollars (when given)
@@ -34,23 +36,29 @@
  *   debt_kind         money flow: card | loan, when the person said which
  *   debt_now          money flow: what they pay on it today (the card's minimum in the app)
  *   ef_goal           money flow: the emergency fund goal (three months of essentials)
- *   arm               rent: the rent test's arm (control | b | c), so the app's events, sign-up included, carry it
+ *   arm               rent: the rent test's arm (control | b | c | d), so the app's events, sign-up included, carry it
+ *   split             rent arm D: the plan's savings split, savings_breakdown bucket:monthly pairs ("emergencyFund:295,investing:106")
+ *   ef_months         rent arm D: the safety net's months of needs
+ *   saved             rent arm D: what they have saved today
  *   places            rent arm B: the rents of the places checked, in order ("1450,1300"); never their names
  */
 import { appLinkAt } from '@/lib/app-link'
 import { APPLE_PROVIDER_TOKEN, PRODUCT_PAGES, appStoreUrl, playStoreUrl } from '@/lib/stores'
-import { moneyInputs, type Facts, type Flow, type RentArm } from './engine'
+import { dAccountPlan, moneyInputs, type Facts, type Flow, type RentArm } from './engine'
 import { moneyOrder } from './moneyOrder'
 
 export const RIBBIT_APP_URL = process.env.NEXT_PUBLIC_RIBBIT_APP_URL ?? 'https://dev3.weleap.app'
 
-export type AppReason = 'plan_preview' | 'spending_check' | 'shares_savings' | 'plan_invite' | 'account' | 'benefit' | 'rent_answer' | 'score_gap' | 'place_check' | 'move_plan'
+export type AppReason = 'plan_preview' | 'spending_check' | 'shares_savings' | 'plan_invite' | 'account' | 'benefit' | 'rent_answer' | 'score_gap' | 'place_check' | 'move_plan' | 'inline_signup' | 'saved_plan'
 
 const round = (n: number | undefined) => (n === undefined || !Number.isFinite(n) ? undefined : String(Math.round(n)))
 
 /** The plan's numbers as link parameters. Absent facts are left out, never guessed. */
 export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, threadId: string, arm?: RentArm): Record<string, string> {
   const money = flow === 'money' ? moneyOrder(moneyInputs(f)) : undefined
+  // Rent arm D, once the leaps are answered: the plan as the account would save it (dAccountPlan).
+  const d = flow === 'rent' && arm === 'd' && f.savedToday !== undefined ? dAccountPlan(f).answers : undefined
+  const split = d?.savingsBreakdown as Record<string, number> | undefined
   const p: Record<string, string | undefined> = {
     src: 'ribbit_chat',
     why,
@@ -75,15 +83,18 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     k401_cost: round(f.electionCost),
     worth: f.match === 'known' ? round(f.value?.totalPackage) : undefined,
     saving: round(f.mentionedSaving),
-    debt_balance: money && f.debt ? round(f.debt.balance) : undefined,
-    debt_rate: money && f.debt ? String(f.debt.aprPct) : undefined,
+    debt_balance: money && f.debt ? round(f.debt.balance) : d && f.card ? round(f.card.balance) : undefined,
+    debt_rate: money && f.debt ? String(f.debt.aprPct) : d && f.card ? String(f.card.aprPct) : undefined,
     debt_pay: money?.debtPlan ? round(money.debtPlan.payment) : undefined,
     debt_months: money?.debtPlan && Number.isFinite(money.debtPlan.months) ? String(money.debtPlan.months) : undefined,
-    debt_kind: money && f.debt?.kind ? f.debt.kind : undefined,
+    debt_kind: money && f.debt?.kind ? f.debt.kind : d && f.card ? 'card' : undefined,
     debt_now: money && f.debt ? round(f.debt.payment) : undefined,
     ef_goal: money ? round(money.emergencyGoal) : undefined,
     arm: flow === 'rent' ? arm : undefined,
     places: flow === 'rent' && f.places?.length ? f.places.map((p) => round(p.rent)).join(',') : undefined,
+    split: split ? Object.entries(split).map(([k, v]) => `${k}:${Math.round(v)}`).join(',') : undefined,
+    ef_months: d ? String(d.efTargetMonths) : undefined,
+    saved: d ? round(f.savedToday) : undefined,
   }
   return Object.fromEntries(Object.entries(p).filter((e): e is [string, string] => e[1] !== undefined && e[1] !== ''))
 }

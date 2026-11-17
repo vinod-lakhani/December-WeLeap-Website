@@ -1132,9 +1132,12 @@ describe('the rent test arms (Nov 12): control, B (check a place), C (the move p
   const asks = (step: Step) => step.messages.filter((m) => m.appAsk).map((m) => m.appAsk!)
   const named = (step: Step, name: string) => step.events.filter((e) => e.name === name)
 
-  it('assigns only control now that B and C are retired, and keeps an arm through every turn', async () => {
-    expect([0, 0.33, 0.34, 0.66, 0.67, 0.9999].map((r) => assignRentArm(() => r))).toEqual(['control', 'control', 'control', 'control', 'control', 'control'])
-    for (let i = 0; i < 300; i++) expect(assignRentArm()).toBe('control')
+  it('assigns control and D half each (B and C retired), and keeps an arm through every turn', async () => {
+    expect([0, 0.33, 0.49, 0.5, 0.67, 0.9999].map((r) => assignRentArm(() => r))).toEqual(['control', 'control', 'control', 'd', 'd', 'd'])
+    const n = { control: 0, b: 0, c: 0, d: 0 }
+    for (let i = 0; i < 3000; i++) n[assignRentArm()]++
+    expect(n.b + n.c).toBe(0)
+    for (const arm of ['control', 'd'] as const) expect(n[arm]).toBeGreaterThan(1350)
     const s = await runArm('b', [{ text: '71500' }, { chip: 'looking' }, { chip: 'Austin' }, { chip: 'no' }])
     for (const step of s) expect(step.state.rentArm).toBe('b')
   })
