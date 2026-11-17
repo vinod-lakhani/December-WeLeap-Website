@@ -1745,9 +1745,11 @@ async function dWholePlan(state: ChatState, svc: ChatServices): Promise<Step> {
   if (f.withLeaps) {
     const w = f.withLeaps
     const o = f.withoutLeaps
-    const compare = n && o ? `Without them: ${fc100(o[D_YEARS])}. By ${dYear(10)}: ${fc100(w[10])} instead of ${fc100(o[10])}. Same ${fc(p.month.savings)} a month.` : `By ${dYear(10)}: ${fc100(w[10])}.`
+    // Leaps that don't come out ahead at 40 years (a safety net alone, no match or card) aren't shown as a loss.
+    const ahead = !!o && w[D_YEARS] > o[D_YEARS]
+    const compare = n && ahead ? `Without them: ${fc100(o[D_YEARS])}. By ${dYear(10)}: ${fc100(w[10])} instead of ${fc100(o[10])}. Same ${fc(p.month.savings)} a month.` : `By ${dYear(10)}: ${fc100(w[10])}.`
     plan = { from: 'ribbit', turn: 'R4', figure: fc100(w[D_YEARS]), figureLabel: n ? `With your ${n} leap${n === 1 ? '' : 's'}, by ${dYear(D_YEARS)}` : `Your plan, by ${dYear(D_YEARS)}`, text: compare, planCard: card }
-    events.push({ name: 'ribbit_plan_networth_shown', props: { turn: 'R4', leaps: n, with_leaps: Math.round(w[D_YEARS]), ...(o ? { without_leaps: Math.round(o[D_YEARS]) } : {}) } })
+    events.push({ name: 'ribbit_plan_networth_shown', props: { turn: 'R4', leaps: n, with_leaps: Math.round(w[D_YEARS]), ...(o ? { without_leaps: Math.round(o[D_YEARS]) } : {}), compared: n > 0 && ahead } })
   } else {
     plan = { from: 'ribbit', turn: 'R4', text: `Here's where your ${fc(p.month.savings)} goes each month.`, planCard: card }
     events.push({ name: 'ribbit_networth_failed', props: { turn: 'R4' } })
