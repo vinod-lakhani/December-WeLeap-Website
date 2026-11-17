@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { BENEFITS_CHIP, RENT_ARMS, UPLOAD_CHIP, assignRentArm, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
+import { BENEFITS_CHIP, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
 import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { browserServices } from '@/lib/ribbit/services'
 
@@ -46,11 +46,11 @@ function armProps(flow: Flow | null, arm: RentArm | undefined): { rent_arm?: Ren
   return flow === 'rent' && arm ? { rent_arm: arm } : {}
 }
 
-/** ?rent_arm=control|b|c: a test sign-up on one arm (Nov 12, one per arm with a weleap.ai email before real
+/** ?rent_arm=<a live arm>: a test sign-up on one arm (Nov 12, one per arm with a weleap.ai email before real
  *  traffic counts). Its events say rent_arm_forced, and the link into the app carries the arm as any other. */
 function forcedArm(): RentArm | undefined {
   const v = new URLSearchParams(window.location.search).get('rent_arm')
-  return RENT_ARMS.find((a) => a === v)
+  return LIVE_RENT_ARMS.find((a) => a === v)
 }
 
 /**

@@ -1173,10 +1173,13 @@ function scoreMath(f: Facts): MathRow[] {
  * needs the app to show `upfront` on a rent plan.
  */
 export type RentArm = 'control' | 'b' | 'c'
+/** Every arm a stored thread can carry. */
 export const RENT_ARMS: RentArm[] = ['control', 'b', 'c']
+/** The arms a new thread is drawn from. B and C retired Nov 16 2026; a thread already on one keeps it. */
+export const LIVE_RENT_ARMS: RentArm[] = ['control']
 
 export function assignRentArm(random: () => number = Math.random): RentArm {
-  return RENT_ARMS[Math.min(RENT_ARMS.length - 1, Math.floor(random() * RENT_ARMS.length))]
+  return LIVE_RENT_ARMS[Math.min(LIVE_RENT_ARMS.length - 1, Math.floor(random() * LIVE_RENT_ARMS.length))]
 }
 
 /** A place checked in arm B: `short` heads its column side by side ("Mueller" out of "2-bed in Mueller"). */
