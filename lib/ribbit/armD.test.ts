@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { D_CARD_QUESTION, D_MATCH_QUESTION, D_SIGNUP_TEXT, cardMinimum, dAccountPlan, monthsToClear, reply, start, type ChatServices, type NetWorthPreviewInput, type Reply, type Step } from './engine'
+import { D_CARD_QUESTION, D_MATCH_QUESTION, D_SIGNUP_EARLY_TEXT, D_SIGNUP_TEXT, cardMinimum, dAccountPlan, monthsToClear, reply, start, type ChatServices, type NetWorthPreviewInput, type Reply, type Step } from './engine'
 import { ribbitPlanParams } from './appLink'
 import { previewRequest, previewValues } from './preview'
 import { cleanAnswers, signInAndSave } from './accountSave'
@@ -92,7 +92,7 @@ describe('rent arm D', () => {
     expect(shown.figureLabel).toMatch(/^With your 3 leaps, by \d{4}$/)
     expect(sumRows(shown.planCard!.known)).toBe(savings)
     expect(plan.messages.at(-1)).toMatchObject({ text: D_SIGNUP_TEXT, signup: true })
-    expect(named(plan, 'ribbit_inline_signup_shown')).toHaveLength(1)
+    expect(named(plan, 'ribbit_inline_signup_shown').map((e) => e.props)).toEqual([{ turn: 'R4', position: 'end', leaps: 3 }])
 
     // Signed in: the first move, and three things to ask next.
     expect(signed.messages[0].text).toBe("You're in. Your plan and your 3 leaps are saved in WeLeap, and I emailed you a copy.")
@@ -165,6 +165,41 @@ describe('rent arm D', () => {
     const asked = await reply(st[3].state, { text: 'what is an emergency fund' }, s)
     expect(asked.messages[0].text).toBe('answer to: what is an emergency fund')
     expect(asked.state.turn).toBe('R2d_saved')
+  })
+
+  it('offers the sign-up on the 50/30/20 month, right after the answer, without gating what comes next', async () => {
+    const { s } = services()
+    const [, , city] = await runD(HAPPY.slice(0, 2), s)
+    expect(city.messages.at(-1)).toMatchObject({ text: D_SIGNUP_EARLY_TEXT, signup: true })
+    expect(named(city, 'ribbit_inline_signup_shown').map((e) => e.props)).toEqual([{ turn: 'R3', position: 'early', leaps: 0 }])
+    expect(city.chips.map((c) => c.value)).toEqual(['grow', '__math__'])
+    expect(city.state).toMatchObject({ turn: 'R2d', invited: true })
+
+    // Skipped: the leaps and the end card come as before.
+    const skipped = await runD(HAPPY.slice(0, 8), s)
+    expect(skipped.at(-1)!.messages.at(-1)).toMatchObject({ text: D_SIGNUP_TEXT, signup: true })
+
+    // Typed instead: Ribbit answers and the card stays open.
+    const asked = await reply(city.state, { text: 'is 20% enough' }, s)
+    expect(asked.state.turn).toBe('R2d')
+  })
+
+  it('signed up early: saved, then on to the net worth and leaps, and the end opens the app instead of asking again', async () => {
+    const { s } = services()
+    const st = await runD([...HAPPY.slice(0, 2), { chip: '__signed_in__', signedIn: { emailed: false } }, ...HAPPY.slice(2, 8)], s)
+    const early = st[3]
+    expect(early.state.facts.signedUp).toBe(true)
+    expect(early.messages[0].text).toBe("You're in. Your plan is saved in WeLeap.")
+    expect(early.chips.map((c) => c.value)).toEqual(['grow', '__math__'])
+    expect(named(st[4], 'ribbit_networth_shown')).toHaveLength(1)
+    const end = st.at(-1)!
+    expect(end.messages.some((m) => m.signup)).toBe(false)
+    expect(named(end, 'ribbit_inline_signup_shown')).toHaveLength(0)
+    expect(end.messages.at(-1)?.appAsk).toMatchObject({ why: 'saved_plan' })
+    expect(named(end, 'ribbit_app_ask_shown')).toHaveLength(1)
+    expect(end.state.turn).toBe('R2d_in')
+    expect(end.chips.map((c) => c.value)).toEqual(['pw_wants', 'pw_offer', 'pw_years'])
+    for (const step of st) for (const m of step.messages) expect(m.text).not.toMatch(/—/)
   })
 
   it('after sign-up: the wants and years chips point at the saved plan; the offer chip opens the offer chat', async () => {

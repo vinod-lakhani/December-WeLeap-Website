@@ -202,7 +202,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   // Rent arm D's sign-up card finished: the plan is saved with the account. user_signed_up is sent here, not in the
   // app: the account was made on this page, so the app's first sign-in is not a new one.
   const signedIn = useCallback((method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => {
-    const props = { thread_id: thread.id, flow: 'rent', rent_arm: thread.state.rentArm, method }
+    const props = { thread_id: thread.id, flow: 'rent', rent_arm: thread.state.rentArm, method, position: signupPosition(thread.state.turn) }
     try { getPostHog().identify(res.uid, res.email ? { email: res.email } : undefined) } catch { /* analytics off */ }
     track('ribbit_inline_signup_completed', { ...props, is_new: res.isNew, emailed: res.emailed })
     if (res.isNew) track('user_signed_up', { method, rent_arm: thread.state.rentArm, tool_source: 'rent_chat', surface: 'ribbit_chat' })
@@ -210,6 +210,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     setSaved(true)
     answer({ chip: '__signed_in__', label: method === 'apple' ? 'Continue with Apple' : 'Continue with Google', signedIn: { emailed: res.emailed } })
   }, [thread.id, thread.state.rentArm, answer])
+
+  const lastSignup = thread.messages.reduce((last, m, i) => (m.signup ? i : last), -1)
+  const signupLive = thread.state.turn === 'R2d' || thread.state.turn === 'R2d_signup'
 
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
@@ -262,7 +265,11 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             flow={thread.state.flow}
             route={askRoute(thread.state.flow, destination)}
             rentArm={thread.state.rentArm}
-            signup={m.signup ? { active: thread.state.turn === 'R2d_signup' && !busy, onSignedIn: signedIn } : undefined}
+            // Only the latest sign-up card, while its turn is open (or once signed up); the early card leaves once
+            // the person taps on past it.
+            signup={m.signup && i === lastSignup && (signupLive || thread.state.facts.signedUp)
+              ? { active: signupLive && !busy, position: signupPosition(thread.state.turn), onSignedIn: signedIn }
+              : undefined}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
           />
@@ -362,7 +369,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
 
 function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish }: {
   m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
-  signup?: { active: boolean; onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void }
+  signup?: { active: boolean; position: SignupPosition; onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void }
   onFinish?: () => void
 }) {
   if (m.from === 'you') {
@@ -688,12 +695,16 @@ function GrowthCard({ growth, threadId }: { growth: NonNullable<ChatMessage['gro
   )
 }
 
+/** Which of arm D's two sign-up cards: on the 50/30/20 month (R2d) or after the leaps. */
+type SignupPosition = 'early' | 'end'
+const signupPosition = (turn: string): SignupPosition => (turn === 'R2d' ? 'early' : 'end')
+
 /**
  * Rent arm D's sign-up card: Apple and Google sign in right here (lib/ribbit/signIn.ts) and save the plan with the
  * account; "Use email" opens the app's own sign-up with the plan in the link. Live only at the sign-up turn.
  */
-function SignupCard({ facts, threadId, rentArm, active, onSignedIn }: {
-  facts: ChatState['facts']; threadId: string; rentArm?: RentArm; active: boolean
+function SignupCard({ facts, threadId, rentArm, active, position, onSignedIn }: {
+  facts: ChatState['facts']; threadId: string; rentArm?: RentArm; active: boolean; position: SignupPosition
   onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void
 }) {
   const [busy, setBusy] = useState<SignInMethod | null>(null)
@@ -704,7 +715,7 @@ function SignupCard({ facts, threadId, rentArm, active, onSignedIn }: {
   if (facts.signedUp) {
     return <p className="mt-2 text-[13.5px] font-semibold text-brand-700">Plan saved.</p>
   }
-  const props = { thread_id: threadId, flow: 'rent', rent_arm: rentArm }
+  const props = { thread_id: threadId, flow: 'rent', rent_arm: rentArm, position }
   const go = async (method: SignInMethod) => {
     if (busy || !active) return
     setBusy(method)

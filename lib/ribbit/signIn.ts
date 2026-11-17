@@ -1,8 +1,9 @@
 /**
  * Rent arm D's sign-up card, in the browser: the Apple or Google popup on the WeLeap app's Firebase project, then
  * /api/ribbit-signup, which signs in to the app backend and saves the plan. The config is the app's public web
- * config (client/webui/src/app/firebase.ts); www.weleap.ai is an authorized domain on it. The providers are set up
- * as the app's web sign-in sets them up.
+ * config (client/webui/src/app/firebase.ts); www.weleap.ai is an authorized domain on it. The API key is public too
+ * (it ships in the page), but it comes from Vercel (NEXT_PUBLIC_FIREBASE_API_KEY) so it is not in this public repo.
+ * The providers are set up as the app's web sign-in sets them up.
  *
  * Firebase loads when the card appears (preloadSignIn), not on the tap: Safari opens the popup only when it is
  * opened from the tap itself, with no download in between. The website keeps no Firebase session afterwards.
@@ -11,7 +12,7 @@ import type { FirebaseApp } from 'firebase/app'
 import type * as FirebaseAuth from 'firebase/auth'
 
 const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyAFydDROIAAgzJRuPG56hO-jGBQdLdM8S8',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: 'weleap-dev.firebaseapp.com',
   projectId: 'weleap-dev',
   storageBucket: 'weleap-dev.firebasestorage.app',

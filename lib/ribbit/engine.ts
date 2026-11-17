@@ -1389,7 +1389,8 @@ function movePlan(state: ChatState, fits: ChatMessage): Step {
 // After the city: the app's 50/30/20 month, what the savings grow into (the app backend's net worth, on the 40
 // years onboarding shows), three tap questions each answered by a leap in the app feed's order (safety net, match,
 // card; backend/feed/next_leaps.go), the plan with and without them, and a sign-up card that saves it with the
-// account. The money routes as the money plan tool routes it (lib/allocator computeCapitalRouting): the match
+// account. The same card is offered first on the 50/30/20 month, right after the rent answer (where control asks),
+// and never gates what comes next: the first D threads left before the card after the leaps (Nov 17). The money routes as the money plan tool routes it (lib/allocator computeCapitalRouting): the match
 // first, 40% to the safety net until three months of needs, 40% of the rest to a card, the rest 60/40 retirement
 // and investing.
 
@@ -1411,6 +1412,7 @@ export const D_MATCH_QUESTION = 'Does your job match what you put in your 401(k)
 export const D_CARD_QUESTION = 'Any credit card balance you carry month to month?'
 export const D_SIGNUP_TEXT = 'Save your plan. WeLeap keeps these leaps on track and finds more in your real spending.'
 export const D_SIGNUP_NOTE = 'Free. No bank needed. You stay in this chat.'
+export const D_SIGNUP_EARLY_TEXT = 'Save this plan to WeLeap now, or see what it grows into first.'
 export const D_OPEN_NOTE = 'Sign in with the same account. Your plan and leaps are there.'
 
 /** The app's 50/30/20 month (IncomeAllocation's default), on the take-home after tax. */
@@ -1549,7 +1551,7 @@ function dSplit(state: ChatState, taxLine: string, fitsCard: Pick<ChatMessage, '
   // D: the range's middle is the rent the month is planned at (the person has not picked one).
   f.pick = Math.round((f.range!.low + f.range!.high) / 2 / 25) * 25
   const lead = taxLine || `On ${fc(m.take)} a month take-home, rent that fits is ${f.range!.formatted}.`
-  return say({ ...state, turn: 'R2d' }, [
+  return say({ ...state, turn: 'R2d', invited: true }, [
     { from: 'ribbit', text: lead, ...fitsCard, turn: 'R3' },
     {
       from: 'ribbit', text: `Rent fits inside your needs. That leaves ${fc(m.savings)} a month for future you.`, turn: 'R3',
@@ -1558,10 +1560,15 @@ function dSplit(state: ChatState, taxLine: string, fitsCard: Pick<ChatMessage, '
         known: [{ label: 'Needs 50%', value: fc(m.needs) }, { label: 'Wants 30%', value: fc(m.wants) }, { label: 'Savings 20%', value: fc(m.savings) }],
       },
     },
-  ], [{ label: `What does ${fc(m.savings)} a month grow into?`, value: 'grow' }, { label: 'Show me the math', value: '__math__' }], 'text', [
+    // The early sign-up: an offer beside the next tap, never a gate.
+    { from: 'ribbit', text: D_SIGNUP_EARLY_TEXT, signup: true, turn: 'R3' },
+  ], dGrowChips(m.savings), 'text', [
     win('R3'), { name: 'ribbit_plan_split_shown', props: { turn: 'R3', take_home: m.take, savings: m.savings } },
+    { name: 'ribbit_inline_signup_shown', props: { turn: 'R3', position: 'early', leaps: 0 } },
   ])
 }
+
+const dGrowChips = (savings: number): Chip[] => [{ label: `What does ${fc(savings)} a month grow into?`, value: 'grow' }, { label: 'Show me the math', value: '__math__' }]
 
 async function dTurn(state: ChatState, r: Reply, svc: ChatServices): Promise<Step> {
   const f = state.facts
@@ -1569,6 +1576,7 @@ async function dTurn(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
   switch (state.turn) {
     case 'R2d':
+      if (r.signedIn) return dSignedInEarly(state, r.signedIn)
       return chip === 'grow' ? dGrow(state, svc) : question(state, text, svc, '')
     case 'R2d_saved': {
       const n = chip ? D_SAVED_MIDDLE[chip] : D_NOTHING.test(text) ? 0 : parseMoney(text)
@@ -1754,7 +1762,12 @@ async function dWholePlan(state: ChatState, svc: ChatServices): Promise<Step> {
     plan = { from: 'ribbit', turn: 'R4', text: `Here's where your ${fc(p.month.savings)} goes each month.`, planCard: card }
     events.push({ name: 'ribbit_networth_failed', props: { turn: 'R4' } })
   }
-  events.push({ name: 'ribbit_inline_signup_shown', props: { turn: 'R4', leaps: n } })
+  // Signed up early: the plan with the leaps opens through the app link, which carries them (lib/ribbit/appLink.ts).
+  if (f.signedUp) {
+    const ask = { label: 'Open your plan in WeLeap', why: 'saved_plan' as const, note: D_OPEN_NOTE }
+    return say({ ...state, turn: 'R2d_in' }, [plan, { from: 'ribbit', text: n ? 'Open it in WeLeap and your leaps are in it.' : 'Open it in WeLeap.', appAsk: ask, turn: 'R4' }], dAfterChips(f), 'text', events)
+  }
+  events.push({ name: 'ribbit_inline_signup_shown', props: { turn: 'R4', position: 'end', leaps: n } })
   return say({ ...state, turn: 'R2d_signup', invited: true }, [plan, { from: 'ribbit', text: D_SIGNUP_TEXT, signup: true, turn: 'R4' }], [], 'text', events)
 }
 
@@ -1785,6 +1798,16 @@ function dSignedIn(state: ChatState, signedIn: { emailed: boolean }): Step {
     { from: 'ribbit', text: first + second },
     { from: 'ribbit', text: "Here's what else I can do for you:" },
   ], dAfterChips(f), 'text', [])
+}
+
+/** Signed up from the early card: saved, and the chat goes on to the net worth and the leaps. */
+function dSignedInEarly(state: ChatState, signedIn: { emailed: boolean }): Step {
+  state.facts.signedUp = true
+  const m = dMonth(state.facts)
+  return say({ ...state, turn: 'R2d', invited: true }, [
+    { from: 'ribbit', text: `You're in. Your plan is saved in WeLeap${signedIn.emailed ? ', and I emailed you a copy' : ''}.`, turn: 'R3' },
+    { from: 'ribbit', text: `Now see what your ${fc(m.savings)} a month grows into, and three quick taps find your leaps.` },
+  ], dGrowChips(m.savings), 'text', [])
 }
 
 function dAfter(state: ChatState, chip: string): Step {
