@@ -5,8 +5,9 @@
  * A pure state machine. Each reply produces the next Ribbit messages, the chips for the next answer and the
  * analytics to send; the state is plain JSON, so a refresh restores the thread from localStorage. Every figure
  * comes from the same code the tool pages run, through `ChatServices` (the same /api/tax and /api/zori routes)
- * and the shared libraries (lib/rent, lib/localTax, lib/zoriClient, lib/hudRents, lib/offer) — the chat has no
- * arithmetic of its own beyond a card payoff and the split of a monthly amount across paychecks. Austin in the
+ * and the shared libraries (lib/rent, lib/localTax, lib/zoriClient, lib/hudRents, lib/offer, lib/allocator); arm D's
+ * net worth comes from the app backend (`ChatServices.preview`). The chat has no arithmetic of its own beyond a card
+ * payoff, a card minimum and the split of a monthly amount across paychecks. Austin in the
  * spec is a worked example only: any state, preset city, metro or "outside a metro" the pages take, this takes.
  *
  * Words are the spec's lines with the figures filled in. A typed message that is not an answer to the open
@@ -27,7 +28,9 @@ import type { ParsedOffer } from '@/lib/offer-parse/fields'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
 import { DEFAULT_HOURS, splitCityState, matchPresetCity, matchState, parseDebt, parseDecimal, parseGrant, parseMatch, parseMoney, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
-import { moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
+import { ESSENTIALS_SHARE, moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
+import { computeCapitalRouting } from '@/lib/allocator/capitalRouting'
+import { EF_TARGET_MONTHS, IRA_LIMIT } from '@/lib/allocator/constants'
 import type { AppReason } from './appLink'
 
 const metroMapping = defaultMetroMappingData as Record<string, { regionName: string; stateName: string }>
@@ -77,6 +80,12 @@ export interface ChatMessage {
   order?: MoneyStep[]
   /** The startup ending's questions to take back to the recruiter, numbered like the order, with a copy button. */
   questions?: RecruiterQuestion[]
+  /** Rent arm D: the net worth reveal, the backend's value a year (index = years from now) on `monthly` saved. */
+  growth?: { values: number[]; monthly: number; startYear: number }
+  /** Rent arm D: the page puts this in place of the earlier message with the same key (Leap 1 once the match is in). */
+  key?: string
+  /** Rent arm D: the sign-up card (Apple, Google, email) under this message. */
+  signup?: boolean
 }
 export interface ChatEvent { name: string; props: Record<string, unknown> }
 
@@ -192,6 +201,18 @@ export interface Facts {
   placeSaved?: string
   /** A place's rent given before the savings band was: checked once the band is in. */
   pendingPlace?: { rent: number; name: string; short: string }
+  // rent arm D: the answers the leaps are worked out from, and the backend's net worth for them
+  /** What they have saved today (a band's middle, or as typed). */
+  savedToday?: number
+  /** "Does your job match…": yes (matchRatePct/matchUpToPct set, f.match 'known'), no, or not sure. */
+  dMatch?: 'yes' | 'no' | 'unsure'
+  /** The card balance they carry, at the money plan tool's APR; null when they carry none. */
+  card?: { balance: number; aprPct: number } | null
+  /** Net worth a year, from now to 40 years: with the leaps, and on the default split without them. */
+  withLeaps?: number[]
+  withoutLeaps?: number[]
+  /** Signed up inside the chat (the plan is saved with the account). */
+  signedUp?: boolean
 }
 
 export interface ChatState {
@@ -240,6 +261,24 @@ export interface ChatServices {
    */
   /** thread: the chat's id, for the backend's questions-per-thread cap (the page adds it). */
   ask(input: { flow: Flow; facts: Facts; message: string; step: string; history: ChatState['history']; thread?: string }): Promise<AskResult | null>
+  /** Rent arm D: the app backend's net worth for a plan not saved yet, a value a year for 40 years; null if it failed. */
+  preview?(input: NetWorthPreviewInput): Promise<number[] | null>
+}
+
+/**
+ * Rent arm D: a plan as the app saves it, for the backend's net worth (financial-plan PreviewNetWorth, through
+ * /api/ribbit-preview). Monthly amounts; savingsBreakdown is the app's savings_breakdown buckets.
+ */
+export interface NetWorthPreviewInput {
+  needs: number
+  wants: number
+  savings: number
+  savingsBreakdown: Record<string, number>
+  efMonths: number
+  emergencyFund: number
+  annualGross?: number
+  k401?: { pct: number; matchRatePct: number; matchUpToPct: number }
+  card?: { balance: number; aprPct: number; minimum: number }
 }
 
 /**
@@ -332,7 +371,8 @@ const win = (turn: string): ChatEvent => ({ name: 'ribbit_win_shown', props: { t
  */
 export type DocRead = { parsed: ParsedOffer } | { failed: string }
 /** `typed`: what was in the reply box when a chip was tapped. Only the offer's Yearly and Hourly read it. */
-export interface Reply { chip?: string; text?: string; typed?: string; letter?: DocRead; benefits?: DocRead }
+/** `signedIn`: rent arm D's sign-up card finished (the page saved the plan with the account; emailed: the copy went out). */
+export interface Reply { chip?: string; text?: string; typed?: string; letter?: DocRead; benefits?: DocRead; signedIn?: { emailed: boolean } }
 
 /**
  * One reply. `chip` is a tapped option's value; `text` is typed. The person's own words are added to the thread
@@ -403,6 +443,8 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       // The rent test's arms part here, after the same range (RentArm below).
       if (state.rentArm === 'b') return askPlace(state, [fits], [win('R2')])
       if (state.rentArm === 'c') return movePlan(state, fits)
+      // D asks nothing of the app until the plan is built (dSplit after the city).
+      if (state.rentArm === 'd') return say({ ...state, turn: 'R2' }, [fits, { from: 'ribbit', text: 'Which city?' }], cityChips(), 'location', [win('R2')])
       f.rangeSpendingCheckShown = true
       // The thread's first app offer, as the city-answer invite was: later turns don't invite again.
       return say({ ...state, turn: 'R2', invited: true }, [
@@ -643,6 +685,15 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       if (chip === 'later' || /later|no/i.test(text)) return planEnding(state, [])
       return question(state, text, svc, 'whether to work out rent now')
     }
+    case 'R2d':
+    case 'R2d_saved':
+    case 'R2d_match':
+    case 'R2d_match_cap':
+    case 'R2d_card':
+    case 'R2d_plan':
+    case 'R2d_signup':
+    case 'R2d_in':
+      return dTurn(state, r, svc)
     case 'R8':
     case 'O8':
     case 'M8':
@@ -971,6 +1022,7 @@ async function marketTurn(state: ChatState, svc: ChatServices): Promise<Step> {
     : ''
   // The city answer gets the headline card in every version.
   const fitsCard = { figure: span(range.low, range.high), figureLabel: 'Rent that fits' }
+  if (state.rentArm === 'd') return dSplit(state, taxLine, fitsCard)
   if (!market) {
     const none = f.outsideMetro && !f.typedTown ? `I don't have rental prices outside a metro, so your range stands on its own.` : `I don't have rental prices for ${f.place}, so your range stands on its own.`
     return askDebt(state, [taxLine, none].filter(Boolean).join(' '), 'R3', fitsCard)
@@ -1172,11 +1224,12 @@ function scoreMath(f: Facts): MathRow[] {
  * the rent or the range, and the month split into needs, wants and savings. C's "Cash to have before you move" row
  * needs the app to show `upfront` on a rent plan.
  */
-export type RentArm = 'control' | 'b' | 'c'
+export type RentArm = 'control' | 'b' | 'c' | 'd'
 /** Every arm a stored thread can carry. */
-export const RENT_ARMS: RentArm[] = ['control', 'b', 'c']
-/** The arms a new thread is drawn from. B and C retired Nov 16 2026; a thread already on one keeps it. */
-export const LIVE_RENT_ARMS: RentArm[] = ['control']
+export const RENT_ARMS: RentArm[] = ['control', 'b', 'c', 'd']
+/** The arms a new thread is drawn from, evenly. B and C retired Nov 16 2026 (a thread already on one keeps it); D,
+ *  the chat as onboarding, started against control. */
+export const LIVE_RENT_ARMS: RentArm[] = ['control', 'd']
 
 export function assignRentArm(random: () => number = Math.random): RentArm {
   return LIVE_RENT_ARMS[Math.min(LIVE_RENT_ARMS.length - 1, Math.floor(random() * LIVE_RENT_ARMS.length))]
@@ -1329,6 +1382,420 @@ function movePlan(state: ChatState, fits: ChatMessage): Step {
   }], [{ label: 'Just the range, thanks', value: 'range_only' }, { label: 'Show me the math', value: '__math__' }], 'text', [
     win('R2'), { name: 'ribbit_plan_card_shown', props: { turn: 'R2', known_rows: card.known.length } },
   ])
+}
+
+// ── Rent arm D: the chat as onboarding ──────────────────────────────────────────────────────────────────────
+//
+// After the city: the app's 50/30/20 month, what the savings grow into (the app backend's net worth, on the 40
+// years onboarding shows), three tap questions each answered by a leap in the app feed's order (safety net, match,
+// card; backend/feed/next_leaps.go), the plan with and without them, and a sign-up card that saves it with the
+// account. The money routes as the money plan tool routes it (lib/allocator computeCapitalRouting): the match
+// first, 40% to the safety net until three months of needs, 40% of the rest to a card, the rest 60/40 retirement
+// and investing.
+
+/** The app's default savings priorities (40% cash, 40% retirement, 20% investing): the reveal, and the plan without leaps. */
+const D_DEFAULT_SPLIT = { emergencyFund: 0.4, traditionalIRA: 0.4 }
+/** The money plan tool's card APR when the rate isn't asked (capitalRouting). */
+const D_CARD_APR = 17
+/** The employer's 401(k) share grows at the backend's retirement rate (financial-plan networth.go). */
+const D_401K_RETURN = 0.07
+const D_YEARS = 40
+const D_SAVED_CHIPS: Chip[] = [{ label: 'Under $1k', value: 'saved_under_1k' }, { label: '$1k–$3k', value: 'saved_1k_3k' }, { label: '$3k–$10k', value: 'saved_3k_10k' }, { label: '$10k+', value: 'saved_10k_plus' }]
+const D_SAVED_MIDDLE: Record<string, number> = { saved_under_1k: 500, saved_1k_3k: 2000, saved_3k_10k: 6500, saved_10k_plus: 12000 }
+const D_MATCH_CHIPS: Chip[] = [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }, { label: 'Not sure', value: 'unsure' }]
+const D_CAP_CHIPS: Chip[] = [...[3, 4, 5, 6].map((n) => ({ label: `${n}%`, value: String(n) })), { label: 'Not sure', value: 'unsure' }]
+const D_CARD_CHIPS: Chip[] = [{ label: 'None', value: 'card_none' }, { label: 'Under $2k', value: 'card_under_2k' }, { label: '$2k–$5k', value: 'card_2k_5k' }, { label: '$5k+', value: 'card_5k_plus' }]
+const D_CARD_MIDDLE: Record<string, number> = { card_under_2k: 1000, card_2k_5k: 3500, card_5k_plus: 7500 }
+const D_NOTHING = /^\s*(none|nothing|zero|no|nope|nah|\$?0)\b/i
+export const D_MATCH_QUESTION = 'Does your job match what you put in your 401(k)?'
+export const D_CARD_QUESTION = 'Any credit card balance you carry month to month?'
+export const D_SIGNUP_TEXT = 'Save your plan. WeLeap keeps these leaps on track and finds more in your real spending.'
+export const D_SIGNUP_NOTE = 'Free. No bank needed. You stay in this chat.'
+export const D_OPEN_NOTE = 'Sign in with the same account. Your plan and leaps are there.'
+
+/** The app's 50/30/20 month (IncomeAllocation's default), on the take-home after tax. */
+function dMonth(f: Facts): { take: number; needs: number; wants: number; savings: number } {
+  const take = Math.round(f.takeHomeMonthly ?? 0)
+  const needs = Math.round(take * ESSENTIALS_SHARE)
+  const wants = Math.round(take * 0.3)
+  return { take, needs, wants, savings: take - needs - wants }
+}
+
+/** A card's minimum, the common issuer formula: the month's interest plus 1% of the balance, at least $25. */
+export function cardMinimum(balance: number, aprPct: number): number {
+  return Math.min(balance, Math.max(25, Math.round(balance * (aprPct / 1200 + 0.01))))
+}
+
+/** "Apr 2028": the month `months` from now. */
+function dMonthLabel(months: number): string {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + months)
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+const dYear = (years: number) => new Date().getFullYear() + years
+/** Headline net worth figures, to the nearest $100 ($3,039,600). */
+const fc100 = (n: number) => fc(Math.round(n / 100) * 100)
+
+type DLeap = 'safety_net' | 'match' | 'card'
+
+interface DPlan {
+  month: ReturnType<typeof dMonth>
+  efTarget: number
+  ef: number
+  efMonths?: number
+  efFunded: boolean
+  k401: { contribution: number; match: number; cost: number } | null
+  card: { balance: number; aprPct: number; pay: number; months: number; minimum: number; minimumMonths: number } | null
+  /** Monthly, by the app's savings_breakdown bucket; sums to the month's savings. The 401(k)'s after-tax cost
+   *  counts toward it (employeeTraditional401k); the backend projects the 401(k) from the Savings row instead. */
+  breakdown: Record<string, number>
+  leaps: DLeap[]
+}
+
+/** The plan from the answers so far: unanswered ones route as no. */
+function dPlan(f: Facts): DPlan {
+  const month = dMonth(f)
+  const k401 = f.dMatch === 'yes' && f.salary ? election(f) : null
+  const cost = Math.round(k401?.cost ?? 0)
+  const r = computeCapitalRouting({
+    postTaxSavingsMonthly: Math.max(0, month.savings - cost),
+    efCurrent: f.savedToday ?? 0,
+    retirementHeadroomAnnual: IRA_LIMIT,
+    unlock: { essentialMonthly: month.needs, carriesBalance: Boolean(f.card), debtBalance: f.card?.balance },
+  })
+  const ef = Math.round(r.efAlloc)
+  const debt = Math.round(r.debtAlloc)
+  const ira = Math.round(r.retirementAlloc)
+  const breakdown: Record<string, number> = { emergencyFund: ef, employeeTraditional401k: cost, debtPaydown: debt, traditionalIRA: ira, investing: Math.max(0, month.savings - ef - cost - debt - ira) }
+  for (const k of Object.keys(breakdown)) if (breakdown[k] <= 0) delete breakdown[k]
+  let card: DPlan['card'] = null
+  if (f.card) {
+    const minimum = cardMinimum(f.card.balance, f.card.aprPct)
+    const pay = Math.max(debt, minimum)
+    card = { ...f.card, pay, months: monthsToClear(f.card.balance, f.card.aprPct, pay), minimum, minimumMonths: monthsToClear(f.card.balance, f.card.aprPct, minimum) }
+  }
+  const leaps: DLeap[] = [...(r.efFunded || ef <= 0 ? [] : ['safety_net' as const]), ...(k401 ? ['match' as const] : []), ...(card ? ['card' as const] : [])]
+  return { month, efTarget: r.efTarget, ef, efMonths: r.monthsToEfTarget, efFunded: r.efFunded, k401: k401 && { ...k401, cost }, card, breakdown, leaps }
+}
+
+const leapNo = (p: DPlan, leap: DLeap) => p.leaps.indexOf(leap) + 1
+
+/** The backend preview's inputs: the reveal (default split, nothing saved yet), and the plan with or without the leaps. */
+export function dPreviewInput(f: Facts, kind: 'reveal' | 'with' | 'without'): NetWorthPreviewInput {
+  const m = dMonth(f)
+  const base = { needs: m.needs, wants: m.wants, savings: m.savings, efMonths: EF_TARGET_MONTHS, annualGross: f.salary }
+  const card = f.card ? { balance: f.card.balance, aprPct: f.card.aprPct, minimum: cardMinimum(f.card.balance, f.card.aprPct) } : undefined
+  if (kind === 'with') {
+    const p = dPlan(f)
+    const k401 = p.k401 && f.matchUpToPct ? { pct: f.matchUpToPct, matchRatePct: f.matchRatePct ?? 100, matchUpToPct: f.matchUpToPct } : undefined
+    return { ...base, savingsBreakdown: p.breakdown, emergencyFund: f.savedToday ?? 0, k401, card }
+  }
+  const ef = Math.round(m.savings * D_DEFAULT_SPLIT.emergencyFund)
+  const ira = Math.round(m.savings * D_DEFAULT_SPLIT.traditionalIRA)
+  const split = { emergencyFund: ef, traditionalIRA: ira, investing: m.savings - ef - ira }
+  return kind === 'reveal' ? { ...base, savingsBreakdown: split, emergencyFund: 0 } : { ...base, savingsBreakdown: split, emergencyFund: f.savedToday ?? 0, card }
+}
+
+/**
+ * What the sign-up saves with the account (users SaveRibbitPlan): the answers the app sets itself up from
+ * (RibbitPlanAnswers, as JSON), and the rows of the "plan saved" email.
+ */
+export function dAccountPlan(f: Facts): { answers: Record<string, unknown>; rows: MathRow[] } {
+  const p = dPlan(f)
+  const answers: Record<string, unknown> = {
+    salary: f.takeHomeFrom === 'salary' ? f.salary : undefined,
+    takeHomeMonthly: p.month.take,
+    state: f.stateCode,
+    city: f.place,
+    rent: f.pick,
+    matchRatePct: p.k401 ? f.matchRatePct : undefined,
+    matchUpToPct: p.k401 ? f.matchUpToPct : undefined,
+    debtBalance: f.card?.balance,
+    debtRatePct: f.card?.aprPct,
+    debtKind: f.card ? 'card' : undefined,
+    savingsToday: f.savedToday,
+    savingsBreakdown: p.breakdown,
+    efTargetMonths: EF_TARGET_MONTHS,
+    rentArm: 'd',
+  }
+  const rows: MathRow[] = [
+    { label: 'Take-home', value: `${fc(p.month.take)}/mo` },
+    ...(f.pick ? [{ label: 'Rent', value: `${fc(f.pick)}/mo` }] : []),
+    { label: 'Saving', value: `${fc(p.month.savings)}/mo` },
+    ...dFlowRows(p),
+    ...(f.withLeaps?.[D_YEARS] ? [{ label: `Net worth by ${dYear(D_YEARS)}`, value: fc100(f.withLeaps[D_YEARS]) }] : []),
+  ]
+  return { answers: Object.fromEntries(Object.entries(answers).filter(([, v]) => v !== undefined && v !== '')), rows }
+}
+
+/** Where the month's savings go, as rows (the plan card and the email). */
+function dFlowRows(p: DPlan): MathRow[] {
+  const b = p.breakdown
+  return [
+    ...(b.emergencyFund ? [{ label: p.efMonths ? `Safety net, until ${dMonthLabel(p.efMonths)}` : 'Safety net', value: fc(b.emergencyFund) }] : []),
+    ...(p.k401 ? [{ label: `401(k) after tax; employer adds ${fc(p.k401.match)}`, value: fc(p.k401.cost) }] : []),
+    ...(b.debtPaydown && p.card ? [{ label: `Credit card, until ${dMonthLabel(p.card.months)}`, value: fc(b.debtPaydown) }] : []),
+    ...(b.traditionalIRA ? [{ label: 'Retirement (IRA)', value: fc(b.traditionalIRA) }] : []),
+    ...(b.investing ? [{ label: 'Investing', value: fc(b.investing) }] : []),
+  ]
+}
+
+/** After the city: the take-home, the range, and the app's 50/30/20 month at the range's middle. */
+function dSplit(state: ChatState, taxLine: string, fitsCard: Pick<ChatMessage, 'figure' | 'figureLabel'>): Step {
+  const f = state.facts
+  const m = dMonth(f)
+  // D: the range's middle is the rent the month is planned at (the person has not picked one).
+  f.pick = Math.round((f.range!.low + f.range!.high) / 2 / 25) * 25
+  const lead = taxLine || `On ${fc(m.take)} a month take-home, rent that fits is ${f.range!.formatted}.`
+  return say({ ...state, turn: 'R2d' }, [
+    { from: 'ribbit', text: lead, ...fitsCard, turn: 'R3' },
+    {
+      from: 'ribbit', text: `Rent fits inside your needs. That leaves ${fc(m.savings)} a month for future you.`, turn: 'R3',
+      planCard: {
+        title: `Your month at ${fc(f.pick)} rent`, locked: [],
+        known: [{ label: 'Needs 50%', value: fc(m.needs) }, { label: 'Wants 30%', value: fc(m.wants) }, { label: 'Savings 20%', value: fc(m.savings) }],
+      },
+    },
+  ], [{ label: `What does ${fc(m.savings)} a month grow into?`, value: 'grow' }, { label: 'Show me the math', value: '__math__' }], 'text', [
+    win('R3'), { name: 'ribbit_plan_split_shown', props: { turn: 'R3', take_home: m.take, savings: m.savings } },
+  ])
+}
+
+async function dTurn(state: ChatState, r: Reply, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  const text = (r.text ?? '').trim()
+  const chip = r.chip
+  switch (state.turn) {
+    case 'R2d':
+      return chip === 'grow' ? dGrow(state, svc) : question(state, text, svc, '')
+    case 'R2d_saved': {
+      const n = chip ? D_SAVED_MIDDLE[chip] : D_NOTHING.test(text) ? 0 : parseMoney(text)
+      if (n === undefined || n === null) return question(state, text, svc, 'how much they have saved right now')
+      f.savedToday = n
+      return dSafetyNet(state, chip ?? 'typed')
+    }
+    case 'R2d_match': {
+      const a = chip ?? (YES.test(text) ? 'yes' : NO.test(text) ? 'no' : /not sure|don'?t know|idk|unsure|no idea/i.test(text) ? 'unsure' : '')
+      if (!a) return question(state, text, svc, 'whether their job matches what they put in their 401(k)')
+      const ev = dAnswered('match', a)
+      if (a === 'yes') return say({ ...state, turn: 'R2d_match_cap' }, [{ from: 'ribbit', text: 'Up to what share of your pay?' }], D_CAP_CHIPS, 'money', [ev])
+      return dNoMatch(state, a as 'no' | 'unsure', ev)
+    }
+    case 'R2d_match_cap': {
+      if (chip === 'unsure' || (!chip && /not sure|don'?t know|idk|unsure|no idea/i.test(text))) return dNoMatch(state, 'unsure', dAnswered('match_cap', 'unsure'))
+      const cap = chip ? Number(chip) : Number(text.match(/(\d+(?:\.\d+)?)/)?.[1])
+      if (!(cap >= 1 && cap <= 10)) return question(state, text, svc, 'the share of pay their employer matches up to')
+      f.dMatch = 'yes'
+      f.match = 'known'
+      f.matchRatePct = 100
+      f.matchUpToPct = cap
+      return dMatchLeap(state, dAnswered('match_cap', String(cap)))
+    }
+    case 'R2d_card': {
+      const none = chip === 'card_none' || (!chip && D_NOTHING.test(text))
+      const balance = none ? 0 : chip ? D_CARD_MIDDLE[chip] : parseMoney(text)
+      if (!none && !balance) return question(state, text, svc, 'the credit card balance they carry month to month')
+      f.card = none ? null : { balance: balance!, aprPct: D_CARD_APR }
+      return dCardLeap(state, dAnswered('card', chip ?? (none ? 'none' : 'typed')))
+    }
+    case 'R2d_plan':
+      return chip === 'plan' ? dWholePlan(state, svc) : question(state, text, svc, '')
+    case 'R2d_signup':
+      return r.signedIn ? dSignedIn(state, r.signedIn) : question(state, text, svc, '')
+    case 'R2d_in':
+      return chip?.startsWith('pw_') ? dAfter(state, chip) : question(state, text, svc, '')
+  }
+  return question(state, text, svc, '')
+}
+
+const dAnswered = (leap: string, answer: string): ChatEvent => ({ name: 'ribbit_leap_question_answered', props: { turn: 'R2d', leap, answer } })
+
+/** "What does it grow into?": the backend's net worth on the default split, 40 years, then the first leap question. */
+async function dGrow(state: ChatState, svc: ChatServices): Promise<Step> {
+  const m = dMonth(state.facts)
+  const values = (await svc.preview?.(dPreviewInput(state.facts, 'reveal'))) ?? null
+  const messages: ChatMessage[] = []
+  const events: ChatEvent[] = []
+  if (values && values.length > D_YEARS) {
+    messages.push({ from: 'ribbit', text: "Here's where you're headed.", turn: 'R3', growth: { values, monthly: m.savings, startYear: dYear(0) } })
+    messages.push({ from: 'ribbit', text: `That's with your ${fc(m.savings)} in a default split. Where it goes first matters more. Three quick taps and I'll show you.` })
+    events.push({ name: 'ribbit_networth_shown', props: { turn: 'R3', years: D_YEARS, value: Math.round(values[D_YEARS]) } })
+  } else {
+    messages.push({ from: 'ribbit', text: `Where your ${fc(m.savings)} goes first matters as much as how much it is. Three quick taps and I'll show you.` })
+    events.push({ name: 'ribbit_networth_failed', props: { turn: 'R3' } })
+  }
+  messages.push({ from: 'ribbit', text: 'How much do you have saved right now?' })
+  return say({ ...state, turn: 'R2d_saved' }, messages, D_SAVED_CHIPS, 'money', events)
+}
+
+/** Leap 1, or a line saying the safety net is already there. Keyed: the page swaps it in place once the match is in. */
+function dSafetyNetMessage(f: Facts, p: DPlan): ChatMessage {
+  const saved = f.savedToday ?? 0
+  if (!p.leaps.includes('safety_net')) {
+    return { from: 'ribbit', key: 'leap_ef', turn: 'R2d', text: `With ${fc(saved)} saved, your ${EF_TARGET_MONTHS} months of needs (${fc(p.efTarget)}) is already covered. It keeps the next surprise off a credit card.` }
+  }
+  return {
+    from: 'ribbit', key: 'leap_ef', turn: 'R2d', text: 'This comes first. It keeps the next surprise off a credit card.',
+    planCard: {
+      title: `Build ${EF_TARGET_MONTHS} months of needs: ${fc(p.efTarget)}`, badge: `Leap ${leapNo(p, 'safety_net')} · Safety net`, locked: [],
+      known: [
+        { label: 'You have', value: fc(saved) },
+        { label: 'Each month', value: fc(p.ef) },
+        ...(p.efMonths ? [{ label: 'Fully built', value: dMonthLabel(p.efMonths) }] : []),
+      ],
+    },
+  }
+}
+
+function dSafetyNet(state: ChatState, answer: string): Step {
+  const f = state.facts
+  const p = dPlan(f)
+  const leap = dSafetyNetMessage(f, p)
+  const events = [dAnswered('safety_net', answer), ...(p.leaps.includes('safety_net') ? [{ name: 'ribbit_leap_shown', props: { turn: 'R2d', leap: 'safety_net', monthly: p.ef } }] : [])]
+  // The match is priced from a salary: a typed take-home skips to the card.
+  if (!f.salary || f.takeHomeFrom !== 'salary') return dAskCard(state, [leap], events)
+  return say({ ...state, turn: 'R2d_match' }, [leap, { from: 'ribbit', text: D_MATCH_QUESTION }], D_MATCH_CHIPS, 'text', events)
+}
+
+function dNoMatch(state: ChatState, answer: 'no' | 'unsure', ev: ChatEvent): Step {
+  const f = state.facts
+  f.dMatch = answer
+  const before: ChatMessage[] = answer === 'unsure' && f.salary
+    ? [{ from: 'ribbit', text: `Worth asking HR. If they match 5%, that's ${fc(f.salary * 0.05)} a year on top of your pay.` }]
+    : []
+  return dAskCard(state, before, [ev])
+}
+
+function dAskCard(state: ChatState, before: ChatMessage[], events: ChatEvent[]): Step {
+  return say({ ...state, turn: 'R2d_card' }, [...before, { from: 'ribbit', text: D_CARD_QUESTION }], D_CARD_CHIPS, 'money', events)
+}
+
+/** Monthly payments at the backend's 401(k) rate for `years`: what the employer's share alone grows to. */
+function employerShareGrows(monthly: number, years: number): number {
+  const m = Math.pow(1 + D_401K_RETURN, 1 / 12) - 1
+  return monthly * ((Math.pow(1 + m, years * 12) - 1) / m)
+}
+
+function dMatchLeap(state: ChatState, ev: ChatEvent): Step {
+  const f = state.facts
+  const p = dPlan(f)
+  const k = p.k401!
+  const grows = Math.round(employerShareGrows(k.match, D_YEARS) / 1000) * 1000
+  const leap: ChatMessage = {
+    from: 'ribbit', turn: 'R2d', text: `Their share alone grows to about ${fc(grows)} by ${dYear(D_YEARS)}.`,
+    planCard: {
+      title: `Put ${f.matchUpToPct}% into your 401(k)`, badge: `Leap ${leapNo(p, 'match')} · Free money`, locked: [],
+      known: [
+        { label: 'From your paycheck', value: `${fc(k.contribution)}/mo` },
+        { label: 'Costs you after tax', value: `about ${fc(k.cost)}/mo` },
+        { label: 'Your employer adds', value: `${fc(k.match * 12)}/yr` },
+      ],
+    },
+  }
+  // The match goes first in the money, so the safety net's monthly amount changes: Leap 1 is redrawn in place.
+  return dAskCard(state, [dSafetyNetMessage(f, p), leap], [ev, { name: 'ribbit_leap_shown', props: { turn: 'R2d', leap: 'match', monthly: Math.round(k.contribution) } }])
+}
+
+/** "2 years sooner" or "9 months sooner". */
+function sooner(months: number): string {
+  if (months >= 18) {
+    const y = Math.round(months / 12)
+    return `${y} year${y === 1 ? '' : 's'} sooner`
+  }
+  return `${months} month${months === 1 ? '' : 's'} sooner`
+}
+
+function dCardLeap(state: ChatState, ev: ChatEvent): Step {
+  const p = dPlan(state.facts)
+  const messages: ChatMessage[] = []
+  const events: ChatEvent[] = [ev]
+  if (!p.card) {
+    messages.push({ from: 'ribbit', text: 'No balance to carry. More of your savings goes where it grows.' })
+  } else {
+    const c = p.card
+    const gap = Number.isFinite(c.minimumMonths) ? c.minimumMonths - c.months : Infinity
+    messages.push({
+      from: 'ribbit', turn: 'R2d', text: gap >= 1 ? `${sooner(gap)}, and the interest stops.` : 'Paid off, and the interest stops.',
+      planCard: {
+        title: `Clear the card at ${fc(c.pay)} a month`, badge: `Leap ${leapNo(p, 'card')} · Debt`, locked: [],
+        known: [
+          { label: 'Debt-free', value: Number.isFinite(c.months) ? dMonthLabel(c.months) : 'Not at this amount' },
+          { label: 'Minimum payments only', value: Number.isFinite(c.minimumMonths) ? dMonthLabel(c.minimumMonths) : 'Never' },
+        ],
+      },
+    })
+    events.push({ name: 'ribbit_leap_shown', props: { turn: 'R2d', leap: 'card', monthly: c.pay } })
+  }
+  return say({ ...state, turn: 'R2d_plan' }, messages, [{ label: 'See my whole plan', value: 'plan' }], 'text', events)
+}
+
+/** With and without the leaps (the backend, both), where each month's savings go, and the sign-up card. */
+async function dWholePlan(state: ChatState, svc: ChatServices): Promise<Step> {
+  const f = state.facts
+  const p = dPlan(f)
+  const [withLeaps, without] = await Promise.all([svc.preview?.(dPreviewInput(f, 'with')) ?? null, svc.preview?.(dPreviewInput(f, 'without')) ?? null])
+  f.withLeaps = withLeaps && withLeaps.length > D_YEARS ? withLeaps : undefined
+  f.withoutLeaps = without && without.length > D_YEARS ? without : undefined
+  const n = p.leaps.length
+  const card: NonNullable<ChatMessage['planCard']> = { title: `Your ${fc(p.month.savings)} a month`, known: dFlowRows(p), locked: [] }
+  const events: ChatEvent[] = []
+  let plan: ChatMessage
+  if (f.withLeaps) {
+    const w = f.withLeaps
+    const o = f.withoutLeaps
+    const compare = n && o ? `Without them: ${fc100(o[D_YEARS])}. By ${dYear(10)}: ${fc100(w[10])} instead of ${fc100(o[10])}. Same ${fc(p.month.savings)} a month.` : `By ${dYear(10)}: ${fc100(w[10])}.`
+    plan = { from: 'ribbit', turn: 'R4', figure: fc100(w[D_YEARS]), figureLabel: n ? `With your ${n} leap${n === 1 ? '' : 's'}, by ${dYear(D_YEARS)}` : `Your plan, by ${dYear(D_YEARS)}`, text: compare, planCard: card }
+    events.push({ name: 'ribbit_plan_networth_shown', props: { turn: 'R4', leaps: n, with_leaps: Math.round(w[D_YEARS]), ...(o ? { without_leaps: Math.round(o[D_YEARS]) } : {}) } })
+  } else {
+    plan = { from: 'ribbit', turn: 'R4', text: `Here's where your ${fc(p.month.savings)} goes each month.`, planCard: card }
+    events.push({ name: 'ribbit_networth_failed', props: { turn: 'R4' } })
+  }
+  events.push({ name: 'ribbit_inline_signup_shown', props: { turn: 'R4', leaps: n } })
+  return say({ ...state, turn: 'R2d_signup', invited: true }, [plan, { from: 'ribbit', text: D_SIGNUP_TEXT, signup: true, turn: 'R4' }], [], 'text', events)
+}
+
+function dAfterChips(f: Facts): Chip[] {
+  return [
+    { label: `Am I really spending ${fc(dMonth(f).wants)} on wants?`, value: 'pw_wants' },
+    { label: 'I have a job offer. What is it worth?', value: 'pw_offer' },
+    ...(f.withLeaps ? [{ label: 'Where am I in 10, 20, 40 years?', value: 'pw_years' }] : []),
+  ]
+}
+
+/** Signed up in the chat: the first move, and what else WeLeap does. */
+function dSignedIn(state: ChatState, signedIn: { emailed: boolean }): Step {
+  const f = state.facts
+  f.signedUp = true
+  const p = dPlan(f)
+  const n = p.leaps.length
+  const saved = `You're in. Your plan${n ? ` and your ${n} leap${n === 1 ? '' : 's'}` : ''} ${n ? 'are' : 'is'} saved in WeLeap${signedIn.emailed ? ', and I emailed you a copy' : ''}.`
+  const move: Record<DLeap, string> = {
+    safety_net: `set aside ${fc(p.ef)} a month for your safety net`,
+    match: `put ${f.matchUpToPct}% into your 401(k) at work`,
+    card: `put ${fc(p.card?.pay ?? 0)} a month on the card`,
+  }
+  const first = n ? `Your first move is Leap 1: ${move[p.leaps[0]]}.` : 'Your savings go to retirement and investing from here.'
+  const second = p.leaps[1] === 'match' ? ` Leap 2 is a 5-minute change to your 401(k) at work.` : ''
+  return say({ ...state, turn: 'R2d_in' }, [
+    { from: 'ribbit', text: saved, turn: 'R5' },
+    { from: 'ribbit', text: first + second },
+    { from: 'ribbit', text: "Here's what else I can do for you:" },
+  ], dAfterChips(f), 'text', [])
+}
+
+function dAfter(state: ChatState, chip: string): Step {
+  const f = state.facts
+  const ev: ChatEvent = { name: 'ribbit_postsignup_question_asked', props: { turn: 'R5', chip_kind: chip.slice(3) } }
+  if (chip === 'pw_offer') return withEvents(askOfferSalary({ ...state, flow: 'offer', turn: 'O1', facts: { switchedFrom: 'rent' } }), [ev])
+  const ask = { label: 'Open your plan in WeLeap', why: 'saved_plan' as const, note: D_OPEN_NOTE }
+  const w = f.withLeaps
+  const text = chip === 'pw_years' && w
+    ? `On this plan: ${fc100(w[10])} in 10 years, ${fc100(w[20])} in 20, and ${fc100(w[D_YEARS])} by ${dYear(D_YEARS)}. WeLeap tracks it against what you really save.`
+    : "That one needs your real spending, which WeLeap reads from your bank. Whatever turns up there can go to your leaps."
+  const rest = (state.ui?.chips ?? dAfterChips(f)).filter((c) => c.value !== chip)
+  return say({ ...state, turn: 'R2d_in' }, [{ from: 'ribbit', text, appAsk: ask, turn: 'R5' }], rest, 'text', [ev])
 }
 
 function askPick(state: ChatState, lead: string): Step {

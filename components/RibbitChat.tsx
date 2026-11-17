@@ -5,9 +5,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { BENEFITS_CHIP, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
+import { BENEFITS_CHIP, D_SIGNUP_NOTE, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, dAccountPlan, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
 import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { browserServices } from '@/lib/ribbit/services'
+import { preloadSignIn, signInAndSavePlan, type SignInMethod } from '@/lib/ribbit/signIn'
+import { getPostHog } from '@/lib/posthog-lazy'
 
 /**
  * The Ribbit chat on /ribbit_chat (spec: "Ribbit Chat Tool — Rent and Offer Flows"). The thread is the page: one
@@ -36,6 +38,18 @@ const FINISH_LABEL: Record<Flow, string> = { rent: 'Finish my rent numbers', off
 
 /** "When does the job start?" → "when does the job start?", for after "Back to your plan:". Keeps "NYC". */
 const inSentence = (q: string) => (/^[A-Z][a-z]/.test(q) ? q[0].toLowerCase() + q.slice(1) : q)
+
+/** New messages after the thread; one with the key of an earlier message takes its place (rent arm D's Leap 1). */
+function withReplies(thread: ChatMessage[], next: ChatMessage[]): ChatMessage[] {
+  const out = [...thread]
+  const added: ChatMessage[] = []
+  for (const m of next) {
+    const i = m.key ? out.findIndex((x) => x.key === m.key) : -1
+    if (i >= 0) out[i] = m
+    else added.push(m)
+  }
+  return [...out, ...added]
+}
 
 function device(): AppDestination {
   return appDestination(phonePlatform(navigator.userAgent, navigator.maxTouchPoints))
@@ -147,7 +161,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [thread.messages.length, busy])
 
-  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string; typed?: string; file?: File; kind?: DocKind }) => {
+  const answer = useCallback(async (r: { chip?: string; label?: string; text?: string; typed?: string; file?: File; kind?: DocKind; signedIn?: { emailed: boolean } }) => {
     if (busy) return
     if (r.chip === UPLOAD_CHIP.value || r.chip === BENEFITS_CHIP.value) {
       fileKind.current = r.chip === BENEFITS_CHIP.value ? 'benefits' : 'offer'
@@ -174,15 +188,28 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
       const read = await readDocument(r.file, kind, 'chat')
       const doc = read.ok ? { parsed: read.parsed } : { failed: read.reason }
       input = kind === 'benefits' ? { benefits: doc } : { letter: doc }
-    } else input = r.chip ? { chip: r.chip, typed: r.typed } : { text: r.text }
+    } else if (r.signedIn) input = { chip: r.chip, signedIn: r.signedIn }
+    else input = r.chip ? { chip: r.chip, typed: r.typed } : { text: r.text }
     const step = await engineReply(thread.state, input, services)
     // A short typing state, so the reply reads as answered rather than loaded (under a second).
     const wait = Math.max(0, 450 - (Date.now() - began))
     await new Promise((res) => setTimeout(res, wait))
     setBusy(false)
-    setThread((t) => ({ ...t, messages: [...t.messages, ...step.messages], state: step.state, chips: step.chips, input: step.input, parked: step.parked, chipsLabel: step.chipsLabel }))
+    setThread((t) => ({ ...t, messages: withReplies(t.messages, step.messages), state: step.state, chips: step.chips, input: step.input, parked: step.parked, chipsLabel: step.chipsLabel }))
     send(step.events.map((e) => (e.name === 'ribbit_turn' ? { ...e, props: { ...e.props, seconds_since_last: seconds } } : e)), thread.id, step.state.flow, step.state.rentArm)
   }, [busy, thread.state, thread.id, send])
+
+  // Rent arm D's sign-up card finished: the plan is saved with the account. user_signed_up is sent here, not in the
+  // app: the account was made on this page, so the app's first sign-in is not a new one.
+  const signedIn = useCallback((method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => {
+    const props = { thread_id: thread.id, flow: 'rent', rent_arm: thread.state.rentArm, method }
+    try { getPostHog().identify(res.uid, res.email ? { email: res.email } : undefined) } catch { /* analytics off */ }
+    track('ribbit_inline_signup_completed', { ...props, is_new: res.isNew, emailed: res.emailed })
+    if (res.isNew) track('user_signed_up', { method, rent_arm: thread.state.rentArm, tool_source: 'rent_chat', surface: 'ribbit_chat' })
+    markPlanSaved('rent')
+    setSaved(true)
+    answer({ chip: '__signed_in__', label: method === 'apple' ? 'Continue with Apple' : 'Continue with Google', signedIn: { emailed: res.emailed } })
+  }, [thread.id, thread.state.rentArm, answer])
 
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
@@ -235,6 +262,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             flow={thread.state.flow}
             route={askRoute(thread.state.flow, destination)}
             rentArm={thread.state.rentArm}
+            signup={m.signup ? { active: thread.state.turn === 'R2d_signup' && !busy, onSignedIn: signedIn } : undefined}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
           />
@@ -332,8 +360,9 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish }: {
+function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish }: {
   m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
+  signup?: { active: boolean; onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void }
   onFinish?: () => void
 }) {
   if (m.from === 'you') {
@@ -348,7 +377,8 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish }: {
   const { view, to: destination } = route
   const ask = m.appAsk && (view === 'web' ? m.appAsk : phoneAsk(m.appAsk, destination as Exclude<AppDestination, 'web'>))
   const text = (view !== 'web' && m.appAsk && STORE_ASK.texts[m.appAsk.why]) || m.text
-  const askHref = ask && (destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId, rentArm) : ribbitStoreLink(flow, destination))
+  // After a chat sign-up the account holds the plan, so the link carries none (saved_plan).
+  const askHref = ask && (ask.why === 'saved_plan' ? ribbitOpenPlanLink() : destination === 'web' ? ribbitAppLink(facts, flow, ask.why, threadId, rentArm) : ribbitStoreLink(flow, destination))
   // surface: the button (or quiet link), or C's locked rows, which open the same sign-up.
   const onAskTap = (surface: 'button' | 'locked_card' = 'button') => {
     if (destination === 'web') markPlanSaved(flow)
@@ -391,6 +421,8 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, onFinish }: {
           </dl>
         )}
       </div>
+      {m.growth && <GrowthCard growth={m.growth} threadId={threadId} />}
+      {m.signup && signup && <SignupCard facts={facts} threadId={threadId} rentArm={rentArm} {...signup} />}
       {m.order && <OrderCard steps={m.order} label="Your next-dollar order" />}
       {m.questions && <RecruiterQuestions questions={m.questions} threadId={threadId} />}
       {!buttonFirst && card}
@@ -585,6 +617,137 @@ function PlacesCard({ places }: { places: Place[] }) {
           ))}
         </div>
       ))}
+    </section>
+  )
+}
+
+/** The year spans the app's Growth Outlook offers. */
+const GROWTH_SPANS = [1, 5, 10, 20, 40]
+/** What the same money earns parked in checking, as the app's Growth Outlook prices it. */
+const CHECKING_RATE = 0.004
+const fc100 = (n: number) => fc(Math.round(n / 100) * 100)
+
+/**
+ * Rent arm D's net worth reveal, the app's Growth Outlook in a card: the backend's figure for the span picked, its
+ * line, the same money parked in checking, the first $100K and the first million, and what compounding added.
+ */
+function GrowthCard({ growth, threadId }: { growth: NonNullable<ChatMessage['growth']>; threadId: string }) {
+  const last = growth.values.length - 1
+  const [years, setYears] = useState(Math.min(40, last))
+  const shown = growth.values.slice(0, years + 1)
+  const value = shown[shown.length - 1]
+  const m = Math.pow(1 + CHECKING_RATE, 1 / 12) - 1
+  const checking = growth.monthly * ((Math.pow(1 + m, years * 12) - 1) / m)
+  const putIn = growth.monthly * 12 * years
+  const first = (target: number) => {
+    const i = growth.values.findIndex((v) => v >= target)
+    return i > 0 ? growth.startYear + i : null
+  }
+  const hundredK = first(100_000)
+  const million = first(1_000_000)
+  const top = Math.max(value, checking, 1)
+  const x = (i: number) => (shown.length > 1 ? (i / (shown.length - 1)) * 300 : 0)
+  const y = (v: number) => 92 - (Math.max(0, v) / top) * 86
+  const line = shown.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  return (
+    <section aria-label="What your savings grow into" className="mt-2.5 rounded-2xl border border-hairline bg-white px-4 pb-3.5 pt-4 shadow-sm">
+      <div className="text-[11.5px] font-bold uppercase tracking-[0.06em] text-subtle">Your plan</div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-[28px] font-extrabold tracking-[-0.02em] tabular-nums text-ink">{fc100(value)}</span>
+        <span className="text-[14px] font-semibold text-ink-soft">by {growth.startYear + years}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Years ahead">
+        {GROWTH_SPANS.filter((n) => n <= last).map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={n === years}
+            onClick={() => {
+              setYears(n)
+              track('ribbit_networth_span_changed', { thread_id: threadId, flow: 'rent', rent_arm: 'd', years: n })
+            }}
+            className={`h-8 min-w-11 rounded-full px-3 text-[13px] font-bold transition ${n === years ? 'bg-[#386641] text-white' : 'bg-[#e5f4e4] text-brand-700 hover:bg-[#d6ecd4]'}`}
+          >
+            {n}Y
+          </button>
+        ))}
+      </div>
+      <svg viewBox="0 0 300 96" className="mt-3 h-24 w-full" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" y1={y(0)} x2="300" y2={y(checking)} stroke="#c9cfc7" strokeWidth="2" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+        <polyline points={line} fill="none" stroke="#386641" strokeWidth="3" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <dl className="mt-2 flex flex-col gap-1 text-[13.5px]">
+        <div className="flex justify-between gap-3"><dt className="text-ink-soft">Parked in checking</dt><dd className="font-bold tabular-nums text-ink">{fc100(checking)}</dd></div>
+        {hundredK && <div className="flex justify-between gap-3"><dt className="text-ink-soft">First $100K</dt><dd className="font-bold tabular-nums text-ink">{hundredK}</dd></div>}
+        {million && <div className="flex justify-between gap-3"><dt className="text-ink-soft">Millionaire</dt><dd className="font-bold tabular-nums text-ink">{million}</dd></div>}
+      </dl>
+      {value > putIn && putIn > 0 && (
+        <p className="mt-2.5 text-[13.5px] leading-snug text-ink-soft">You put in {fc(putIn)}. Compounding does the other {fc100(value - putIn)}.</p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * Rent arm D's sign-up card: Apple and Google sign in right here (lib/ribbit/signIn.ts) and save the plan with the
+ * account; "Use email" opens the app's own sign-up with the plan in the link. Live only at the sign-up turn.
+ */
+function SignupCard({ facts, threadId, rentArm, active, onSignedIn }: {
+  facts: ChatState['facts']; threadId: string; rentArm?: RentArm; active: boolean
+  onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void
+}) {
+  const [busy, setBusy] = useState<SignInMethod | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (active) preloadSignIn().catch(() => undefined)
+  }, [active])
+  if (facts.signedUp) {
+    return <p className="mt-2 text-[13.5px] font-semibold text-brand-700">Plan saved.</p>
+  }
+  const props = { thread_id: threadId, flow: 'rent', rent_arm: rentArm }
+  const go = async (method: SignInMethod) => {
+    if (busy || !active) return
+    setBusy(method)
+    setError('')
+    track('ribbit_inline_signup_method', { ...props, method })
+    const plan = dAccountPlan(facts)
+    const res = await signInAndSavePlan(method, { thread: threadId, answers: plan.answers, rows: plan.rows })
+    setBusy(null)
+    if (res.ok) {
+      onSignedIn(method, res)
+      return
+    }
+    track('ribbit_inline_signup_failed', { ...props, method, reason: res.reason, code: res.code })
+    setError(
+      res.reason === 'cancelled' ? ''
+        : res.reason === 'popup_blocked' ? 'Your browser blocked the sign-in window. Allow pop-ups for weleap.ai, or use email.'
+          : "That didn't go through. Try again, or use email.",
+    )
+  }
+  const emailHref = ribbitAppLink(facts, 'rent', 'inline_signup', threadId, rentArm)
+  const base = 'inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-bold transition disabled:opacity-60'
+  return (
+    <section aria-label="Save your plan" className="mt-2.5 flex w-[300px] max-w-full flex-col gap-2 rounded-2xl border border-hairline bg-white p-3 shadow-sm">
+      <button type="button" disabled={!active || !!busy} onClick={() => go('apple')} className={`${base} bg-black text-white hover:bg-[#222]`}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.21 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.87.69 1.19-.02 1.94-1.08 2.66-2.15.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.31-3.55zM14.18 6.15c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.7-.93 2.7.98.08 1.98-.5 2.59-1.24z" /></svg>
+        {busy === 'apple' ? 'Saving your plan…' : 'Continue with Apple'}
+      </button>
+      <button type="button" disabled={!active || !!busy} onClick={() => go('google')} className={`${base} border border-[#c9cfc7] bg-white text-ink hover:bg-[#f6f5f0]`}>
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]"><path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h5.9a5.05 5.05 0 0 1-2.2 3.31v2.75h3.55c2.08-1.92 3.25-4.74 3.25-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.55-2.75c-.99.66-2.25 1.06-3.73 1.06-2.87 0-5.3-1.94-6.16-4.54H2.17v2.84A11 11 0 0 0 12 23z" /><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.17a11 11 0 0 0 0 9.88l3.67-2.84z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.17 7.06l3.67 2.84C6.7 7.3 9.13 5.38 12 5.38z" /></svg>
+        {busy === 'google' ? 'Saving your plan…' : 'Continue with Google'}
+      </button>
+      <a
+        href={emailHref}
+        onClick={() => {
+          track('ribbit_inline_signup_method', { ...props, method: 'email' })
+          markPlanSaved('rent')
+        }}
+        className="py-1 text-center text-[14px] font-semibold text-[#386641] underline underline-offset-[3px]"
+      >
+        Use email
+      </a>
+      {error && <p role="alert" className="text-center text-[13px] leading-snug text-[#9b2c2c]">{error}</p>}
+      <p className="text-center text-[12.5px] leading-snug text-subtle">{D_SIGNUP_NOTE}</p>
     </section>
   )
 }
