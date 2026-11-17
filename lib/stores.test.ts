@@ -106,6 +106,12 @@ describe('custom product pages', () => {
     expect(productPageFor({ utm_source: 'Meta' })).toBe(PRODUCT_PAGES.metaPaycheck)
   })
 
+  it('sends the ChatGPT paycheck ad, and only that ad, to the paycheck page', () => {
+    expect(productPageFor({ utm_source: 'chatgpt', utm_content: 'paycheck_l3' })).toBe(PRODUCT_PAGES.metaPaycheck)
+    expect(productPageFor({ utm_source: 'chatgpt', utm_content: 'app_get' })).toBe('')
+    expect(productPageFor({ utm_source: 'chatgpt' })).toBe('')
+  })
+
   it('leaves every other source on the default listing', () => {
     expect(productPageFor({ utm_source: 'google' })).toBe('')
     expect(productPageFor({ utm_campaign: 'direct' })).toBe('')

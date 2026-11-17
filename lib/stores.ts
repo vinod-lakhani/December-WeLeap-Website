@@ -122,9 +122,21 @@ export const PRODUCT_PAGES = {
   metaPaycheck: 'df7f34a1-7955-431b-9354-eac1b36ec89b',
 } as const;
 
-/** Which custom product page a visit should see, or '' for the default listing. */
+/**
+ * Which custom product page a visit should see, or '' for the default listing.
+ *
+ * Meta traffic always gets the paycheck page: that campaign's creatives all
+ * tell the paycheck story. ChatGPT traffic gets it only when the ad itself is
+ * the paycheck one (utm_content names it), because that account also runs a
+ * "now what" ad that makes no paycheck promise and should land on the default
+ * listing. Added 16 Nov 2026 to mirror the Meta L3 chain (ad, /get pitch,
+ * store page) on ChatGPT Ads, where the generic chain had 0 store taps in 15.
+ */
 export function productPageFor(utm: StoreUtm): string {
-  return cleanUtm(utm).utm_source === 'meta' ? PRODUCT_PAGES.metaPaycheck : '';
+  const u = cleanUtm(utm);
+  if (u.utm_source === 'meta') return PRODUCT_PAGES.metaPaycheck;
+  if (u.utm_source === 'chatgpt' && /paycheck/.test(u.utm_content ?? '')) return PRODUCT_PAGES.metaPaycheck;
+  return '';
 }
 
 export function appStoreUrl(utm: StoreUtm, pt: string = APPLE_PROVIDER_TOKEN, ppid: string = ''): string {
