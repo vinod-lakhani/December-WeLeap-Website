@@ -53,8 +53,13 @@ export async function signInAndSavePlan(method: SignInMethod, plan: { thread: st
     provider = o
   }
   let user: FirebaseAuth.User
+  // New to WeLeap: the popup just created the Firebase user. The gateway's Login creates the app's user row on
+  // its own, so the server never reports a new account for a chat sign-in.
+  let firebaseNew = false
   try {
-    user = (await auth.signInWithPopup(a, provider)).user
+    const cred = await auth.signInWithPopup(a, provider)
+    user = cred.user
+    firebaseNew = auth.getAdditionalUserInfo(cred)?.isNewUser === true
   } catch (err) {
     const code = (err as { code?: string })?.code ?? ''
     return { ok: false, reason: CANCELLED.has(code) ? 'cancelled' : code === 'auth/popup-blocked' ? 'popup_blocked' : 'failed', code }
@@ -64,7 +69,7 @@ export async function signInAndSavePlan(method: SignInMethod, plan: { thread: st
     const res = await fetch('/api/ribbit-signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...plan }) })
     const out = (await res.json().catch(() => null)) as { ok?: boolean; isNew?: boolean; emailed?: boolean; error?: string } | null
     if (!out?.ok) return { ok: false, reason: 'save_failed', code: out?.error }
-    return { ok: true, isNew: Boolean(out.isNew), emailed: Boolean(out.emailed), uid: user.uid, email: user.email ?? undefined }
+    return { ok: true, isNew: firebaseNew || Boolean(out.isNew), emailed: Boolean(out.emailed), uid: user.uid, email: user.email ?? undefined }
   } catch {
     return { ok: false, reason: 'save_failed' }
   } finally {

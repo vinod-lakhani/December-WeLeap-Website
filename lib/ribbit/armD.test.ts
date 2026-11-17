@@ -140,6 +140,21 @@ describe('rent arm D', () => {
     expect(plan.messages.find((m) => m.figure)?.figureLabel).toMatch(/^Your plan, by/)
   })
 
+  it('leaps that do not come out ahead are not shown as a loss (a safety net alone, Nov 16 test)', async () => {
+    let calls = 0
+    // Call 1 is the reveal; then the plan's "with" and "without", in that order.
+    const { s } = services({ preview: async () => series([1_900_000, 1_940_523, 1_962_128][Math.min(calls++, 2)]) })
+    const st = await runD([{ text: '71500' }, { chip: 'Austin' }, { chip: 'grow' }, { chip: 'saved_under_1k' }, { chip: 'no' }, { chip: 'card_none' }, { chip: 'plan' }], s)
+    const plan = st.at(-1)!
+    const shown = plan.messages.find((m) => m.figure)!
+    expect(shown.figureLabel).toMatch(/^With your 1 leap, by/)
+    expect(shown.text).not.toMatch(/Without them/)
+    expect(named(plan, 'ribbit_plan_networth_shown')[0].props).toMatchObject({ leaps: 1, with_leaps: 1_940_523, without_leaps: 1_962_128, compared: false })
+    const happy = (await runD(HAPPY.slice(0, 8), services().s)).at(-1)!
+    expect(happy.messages.find((m) => m.figure)!.text).toMatch(/^Without them/)
+    expect(named(happy, 'ribbit_plan_networth_shown')[0].props).toMatchObject({ compared: true })
+  })
+
   it('reads typed answers, and sends anything else to Ribbit', async () => {
     const { s } = services()
     const st = await runD([{ text: '71500' }, { chip: 'Austin' }, { chip: 'grow' }, { text: 'about 2k' }, { text: 'not sure' }, { text: 'nope' }], s)
