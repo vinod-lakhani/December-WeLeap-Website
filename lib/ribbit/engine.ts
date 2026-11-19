@@ -1227,9 +1227,9 @@ function scoreMath(f: Facts): MathRow[] {
 export type RentArm = 'control' | 'b' | 'c' | 'd'
 /** Every arm a stored thread can carry. */
 export const RENT_ARMS: RentArm[] = ['control', 'b', 'c', 'd']
-/** The arms a new thread is drawn from, evenly. B and C retired Nov 16 2026 (a thread already on one keeps it); D,
- *  the chat as onboarding, started against control. */
-export const LIVE_RENT_ARMS: RentArm[] = ['control', 'd']
+/** The arms a new thread is drawn from, evenly. B and C retired Nov 16 2026 and D on Nov 19 2026; a thread already
+ *  on one keeps it. D's code stays for a later revisit. */
+export const LIVE_RENT_ARMS: RentArm[] = ['control']
 
 export function assignRentArm(random: () => number = Math.random): RentArm {
   return LIVE_RENT_ARMS[Math.min(LIVE_RENT_ARMS.length - 1, Math.floor(random() * LIVE_RENT_ARMS.length))]
