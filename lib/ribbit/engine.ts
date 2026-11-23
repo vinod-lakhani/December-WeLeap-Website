@@ -204,8 +204,11 @@ export interface Facts {
   placeSaved?: string
   /** A place's rent given before the savings band was: checked once the band is in. */
   pendingPlace?: { rent: number; name: string; short: string }
-  /** The places came from "Check another place" on a reopened chat: checked against the range, with no score. */
-  placeFrom?: 'restored'
+  /** The places came from "Check another place" on a reopened chat or the "Comparing places" pick: checked
+   * against the range, with no score. */
+  placeFrom?: 'restored' | 'intent'
+  /** The "What's this for?" pick (the page sets it), carried on the app link. */
+  intent?: Intent
   // rent arm D: the answers the leaps are worked out from, and the backend's net worth for them
   /** What they have saved today (a band's middle, or as typed). */
   savedToday?: number
@@ -404,9 +407,10 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
 
   if (chip === '__math__') return showMath(state)
-  // A reopened chat's "Check another place" (Nov 23): B's place check from their range, without its savings question.
-  if (chip === ANOTHER_PLACE_CHIP && state.flow === 'rent' && f.range) {
-    f.placeFrom = 'restored'
+  // A reopened chat's "Check another place", or "Check a place" under the Comparing places pick (Nov 23): B's place
+  // check from their range, without its savings question.
+  if ((chip === ANOTHER_PLACE_CHIP || chip === CHECK_PLACE_CHIP) && state.flow === 'rent' && f.range) {
+    f.placeFrom = chip === CHECK_PLACE_CHIP ? 'intent' : 'restored'
     return placeTurn({ ...state, turn: 'R2b' }, 'type_rent', '', svc)
   }
   if (r.letter) return readLetter(state, r.letter)
@@ -1275,6 +1279,18 @@ export const INTENTS = [
 ] as const
 export type Intent = (typeof INTENTS)[number]['value']
 
+/**
+ * A line under the pick, toward what fits that reason (Nov 23): the app's button above for a lease or a new job (the
+ * first paycheck is when a plan is easiest to start), a place check for comparing, nothing for just curious.
+ */
+export const INTENT_NUDGE: Partial<Record<Intent, { text: string; place?: true }>> = {
+  lease_soon: { text: "Before you sign, see your month at the rent you pick: what's left after bills, and what to set aside to move in. The button above checks it against what you really spend." },
+  comparing: { text: 'Got a listing? Check its rent against your range.', place: true },
+  new_job: { text: 'Your first paycheck is the easiest time to set up a plan. The button above starts one from your real numbers.' },
+}
+export const CHECK_A_PLACE = 'Check a place'
+export const CHECK_PLACE_CHIP = '__check_place__'
+
 function askPlace(state: ChatState, before: ChatMessage[], events: ChatEvent[]): Step {
   return say({ ...state, turn: 'R2b' }, [...before, { from: 'ribbit', text: PLACE_PROMPT_TEXT }], [
     { label: 'Type a rent', value: 'type_rent', opensKeyboard: true }, { label: 'Still looking', value: 'looking' },
@@ -1317,7 +1333,7 @@ async function placeTurn(state: ChatState, chip: string | undefined, text: strin
     return say(state, [{ from: 'ribbit', text: `I can line up ${MAX_PLACES} places at a time. Start over to check a new set.` }], state.ui?.chips ?? [], 'money')
   }
   const place = { rent, ...placeName(text, places.length + 1) }
-  if (f.placeFrom === 'restored' && !f.placeSaved) return placeFit(state, place)
+  if (f.placeFrom && !f.placeSaved) return placeFit(state, place)
   if (!f.placeSaved) {
     return say({ ...state, turn: 'R2b_saved', facts: { ...f, pendingPlace: place } },
       [{ from: 'ribbit', text: `Got it, ${fc(rent)}. One question so I can score it: how much do you have set aside for the move?` }], SAVED_CHIPS, 'money')
@@ -1355,7 +1371,7 @@ function placeCard(place: Place): NonNullable<ChatMessage['planCard']> {
 }
 
 /**
- * A place checked from a reopened chat (Nov 23): B's card without the move-in score, so no savings question
+ * A place checked from a reopened chat or the Comparing places pick (Nov 23): B's card without the move-in score, so no savings question
  * first, and one card a place (the side-by-side compares scores). "That's the one" asks as B does.
  */
 function placeFit(state: ChatState, given: { rent: number; name: string; short: string }): Step {
@@ -1366,7 +1382,7 @@ function placeFit(state: ChatState, given: { rent: number; name: string; short: 
     { from: 'ribbit', text: placeFitLine(place.rent, f.range!), turn: 'R2b', planCard: placeCard(place) },
     { from: 'ribbit', text: PLACE_NEXT_TEXT },
   ], [...(f.places.length < MAX_PLACES ? [ANOTHER_PLACE] : []), { label: "That's the one", value: 'the_one' }], 'money', [{ name: 'ribbit_place_checked', props: {
-    turn: 'R2b', n: f.places.length, rent: place.rent, fit: placeFitKind(place.rent, f.range!), source: 'restored',
+    turn: 'R2b', n: f.places.length, rent: place.rent, fit: placeFitKind(place.rent, f.range!), source: f.placeFrom,
   } }])
 }
 
