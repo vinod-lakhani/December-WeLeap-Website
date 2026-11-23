@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { ANOTHER_PLACE_CHIP, APP_LINK_TEXT, HANDOFF_TEXT, INTENTS, PLACE_NEXT_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { ANOTHER_PLACE_CHIP, CHECK_PLACE_CHIP, INTENT_NUDGE, APP_LINK_TEXT, HANDOFF_TEXT, INTENTS, PLACE_NEXT_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
 import { ribbitPlanParams } from './appLink'
 import { startupPlanData } from './payload'
 import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
@@ -1310,7 +1310,27 @@ describe('rent intent and a reopened chat (Nov 23)', () => {
   })
 
   it('"Check another place" does nothing special before there is a range', async () => {
-    const s = await run('rent', [{ chip: ANOTHER_PLACE_CHIP }])
+    const s = await run('rent', [{ chip: ANOTHER_PLACE_CHIP }, { chip: CHECK_PLACE_CHIP }])
     expect(s[1].state.turn).toBe('R1')
+    expect(s[2].state.turn).toBe('R1')
+  })
+
+  it('a nudge for every pick but "Just curious", and "Check a place" only for comparing', () => {
+    expect(Object.keys(INTENT_NUDGE).sort()).toEqual(['comparing', 'lease_soon', 'new_job'])
+    expect(INTENT_NUDGE.curious).toBeUndefined()
+    expect(Object.entries(INTENT_NUDGE).filter(([, n]) => n!.place).map(([k]) => k)).toEqual(['comparing'])
+    for (const n of Object.values(INTENT_NUDGE)) expect(n!.text).not.toMatch(/\u2014|Leap|Ribbit/)
+  })
+
+  it('"Check a place" under Comparing places runs the same check, sourced to the pick, and the pick rides the link', async () => {
+    const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip: CHECK_PLACE_CHIP }, { text: '1450' }])
+    expect(s[3].state.turn).toBe('R2b')
+    expect(said(s[3])).toBe("What's the monthly rent?")
+    expect(facts(s[4]).placeFrom).toBe('intent')
+    expect(s[4].messages[1].text).toBe(PLACE_NEXT_TEXT)
+    expect(named(s[4], 'ribbit_place_checked')[0].props).toMatchObject({ n: 1, rent: 1_450, source: 'intent' })
+    expect(ribbitPlanParams({ ...facts(s[4]), intent: 'comparing' }, 'rent', 'place_check', 't', 'control').intent).toBe('comparing')
+    expect(ribbitPlanParams(facts(s[4]), 'rent', 'place_check', 't', 'control').intent).toBeUndefined()
+    expect(ribbitPlanParams({ ...facts(s[4]), intent: 'comparing' }, 'offer', 'move_plan', 't', 'control').intent).toBeUndefined()
   })
 })

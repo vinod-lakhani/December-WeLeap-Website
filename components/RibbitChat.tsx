@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { ANOTHER_PLACE_CHIP, BENEFITS_CHIP, CHECK_ANOTHER_PLACE, D_SIGNUP_NOTE, INTENTS, INTENT_QUESTION, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, dAccountPlan, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Intent, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
+import { ANOTHER_PLACE_CHIP, BENEFITS_CHIP, CHECK_ANOTHER_PLACE, CHECK_A_PLACE, CHECK_PLACE_CHIP, D_SIGNUP_NOTE, INTENTS, INTENT_NUDGE, INTENT_QUESTION, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, dAccountPlan, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Intent, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
 import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { browserServices } from '@/lib/ribbit/services'
 import { preloadSignIn, signInAndSavePlan, type SignInMethod } from '@/lib/ribbit/signIn'
@@ -214,11 +214,16 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const lastSignup = thread.messages.reduce((last, m, i) => (m.signup ? i : last), -1)
   const signupLive = thread.state.turn === 'R2d' || thread.state.turn === 'R2d_signup'
 
-  // "What's this for?": one tap, kept on its message so a reopened chat shows the pick; no reply turn.
+  // "What's this for?": one tap, kept on its message so a reopened chat shows the pick and its nudge; no reply turn.
+  // The pick rides the app link too (facts.intent).
   const chooseIntent = (index: number, intent: Intent) => {
     const m = thread.messages[index]
     if (!m?.intent || m.intentChosen) return
-    setThread((t) => ({ ...t, messages: t.messages.map((x, i) => (i === index ? { ...x, intentChosen: intent } : x)) }))
+    setThread((t) => ({
+      ...t,
+      messages: t.messages.map((x, i) => (i === index ? { ...x, intentChosen: intent } : x)),
+      state: { ...t.state, facts: { ...t.state.facts, intent } },
+    }))
     track('ribbit_intent_answered', { intent, turn: m.turn, thread_id: thread.id, flow: thread.state.flow ?? 'picker', ...armProps(thread.state.flow, thread.state.rentArm) })
   }
 
@@ -231,6 +236,17 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
     restoredShown.current = true
     track('ribbit_restored_shown', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, ...armProps('rent', thread.state.rentArm) })
   }, [anotherPlace, thread.id, thread.state.turn, thread.state.rentArm])
+
+  // "Check a place" under the Comparing places pick: the same check, until a place is checked (or the reopened
+  // chat's own button is there).
+  const checkPlace = thread.state.flow === 'rent' && !!thread.state.facts.range && !thread.state.facts.places?.length
+    && !thread.state.turn.startsWith('R2b') && !anotherPlace && !busy
+    ? () => {
+      track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'intent', ...armProps('rent', thread.state.rentArm) })
+      inputRef.current?.focus()
+      answer({ chip: CHECK_PLACE_CHIP, label: CHECK_A_PLACE })
+    }
+    : undefined
 
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
@@ -291,13 +307,14 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
             onIntent={m.intent ? (intent) => chooseIntent(i, intent) : undefined}
+            onCheckPlace={m.intent ? checkPlace : undefined}
           />
         ))}
         {anotherPlace && !busy && (
           <button
             type="button"
             onClick={() => {
-              track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, ...armProps('rent', thread.state.rentArm) })
+              track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'restored', ...armProps('rent', thread.state.rentArm) })
               // Focused in the tap: the next turn asks for a rent, and a phone opens its keypad only for a tap's focus.
               inputRef.current?.focus()
               answer({ chip: ANOTHER_PLACE_CHIP, label: CHECK_ANOTHER_PLACE })
@@ -401,11 +418,12 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish, onIntent }: {
+function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish, onIntent, onCheckPlace }: {
   m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
   signup?: { active: boolean; position: SignupPosition; onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void }
   onFinish?: () => void
   onIntent?: (intent: Intent) => void
+  onCheckPlace?: () => void
 }) {
   if (m.from === 'you') {
     return (
@@ -507,15 +525,17 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish, on
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
         </div>
       )}
-      {m.intent && onIntent && <IntentPick chosen={m.intentChosen} onPick={onIntent} />}
+      {m.intent && onIntent && <IntentPick chosen={m.intentChosen} onPick={onIntent} onCheckPlace={onCheckPlace} />}
       {buttonFirst && card}
     </div>
   )
 }
 
-/** "What's this for?" under the answer's button: small outlined options, so the lime button stays the one to tap. */
-function IntentPick({ chosen, onPick }: { chosen?: Intent; onPick: (intent: Intent) => void }) {
+/** "What's this for?" under the answer's button: small outlined options, so the lime button stays the one to tap.
+ *  After a pick, a line toward what fits that reason (INTENT_NUDGE), with "Check a place" for comparing. */
+function IntentPick({ chosen, onPick, onCheckPlace }: { chosen?: Intent; onPick: (intent: Intent) => void; onCheckPlace?: () => void }) {
   const picked = INTENTS.find((o) => o.value === chosen)
+  const nudge = chosen && INTENT_NUDGE[chosen]
   return (
     <div className="mt-3 flex flex-col items-start gap-1.5">
       <span className="text-[13px] font-semibold text-subtle">{INTENT_QUESTION}</span>
@@ -537,6 +557,17 @@ function IntentPick({ chosen, onPick }: { chosen?: Intent; onPick: (intent: Inte
             </button>
           ))}
         </div>
+      )}
+      {nudge && <p className="mt-1 text-[14px] leading-snug text-ink-soft">{nudge.text}</p>}
+      {nudge?.place && onCheckPlace && (
+        <button
+          type="button"
+          onClick={onCheckPlace}
+          className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-[#386641] bg-white px-4 text-[15px] font-bold text-[#386641] transition hover:bg-[#386641]/5"
+        >
+          {CHECK_A_PLACE}
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+        </button>
       )}
     </div>
   )

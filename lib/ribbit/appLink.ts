@@ -92,6 +92,8 @@ export function ribbitPlanParams(f: Facts, flow: Flow | null, why: AppReason, th
     ef_goal: money ? round(money.emergencyGoal) : undefined,
     arm: flow === 'rent' ? arm : undefined,
     places: flow === 'rent' && f.places?.length ? f.places.map((p) => round(p.rent)).join(',') : undefined,
+    // "What's this for?" (Nov 23): which answers lead to an account.
+    intent: flow === 'rent' ? f.intent : undefined,
     split: split ? Object.entries(split).map(([k, v]) => `${k}:${Math.round(v)}`).join(',') : undefined,
     ef_months: d ? String(d.efTargetMonths) : undefined,
     saved: d ? round(f.savedToday) : undefined,
