@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACCEPT, readDocument, type DocKind } from '@/components/OfferLetterUpload'
 import { track } from '@/lib/analytics'
 import { claimToolCompletion } from '@/lib/tool-funnel'
-import { BENEFITS_CHIP, D_SIGNUP_NOTE, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, dAccountPlan, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
+import { ANOTHER_PLACE_CHIP, BENEFITS_CHIP, CHECK_ANOTHER_PLACE, D_SIGNUP_NOTE, INTENTS, INTENT_QUESTION, LIVE_RENT_ARMS, RENT_ARMS, UPLOAD_CHIP, assignRentArm, dAccountPlan, fc, reply as engineReply, start, type ChatEvent, type ChatMessage, type ChatState, type Chip, type Flow, type Intent, type Place, type RentArm, type Reply, type Step } from '@/lib/ribbit/engine'
 import { STORE_ASK, appDestination, askRoute, markPlanSaved, phoneAsk, phonePlatform, planSaved, ribbitAppLink, ribbitOpenPlanLink, ribbitStoreLink, type AppDestination, type AskRoute } from '@/lib/ribbit/appLink'
 import { browserServices } from '@/lib/ribbit/services'
 import { preloadSignIn, signInAndSavePlan, type SignInMethod } from '@/lib/ribbit/signIn'
@@ -214,6 +214,24 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const lastSignup = thread.messages.reduce((last, m, i) => (m.signup ? i : last), -1)
   const signupLive = thread.state.turn === 'R2d' || thread.state.turn === 'R2d_signup'
 
+  // "What's this for?": one tap, kept on its message so a reopened chat shows the pick; no reply turn.
+  const chooseIntent = (index: number, intent: Intent) => {
+    const m = thread.messages[index]
+    if (!m?.intent || m.intentChosen) return
+    setThread((t) => ({ ...t, messages: t.messages.map((x, i) => (i === index ? { ...x, intentChosen: intent } : x)) }))
+    track('ribbit_intent_answered', { intent, turn: m.turn, thread_id: thread.id, flow: thread.state.flow ?? 'picker', ...armProps(thread.state.flow, thread.state.rentArm) })
+  }
+
+  // A reopened rent chat with a range (Nov 23 replays: most came back to the same tab and left without a tap):
+  // a button to check another place's rent, until they are checking places.
+  const anotherPlace = restored && thread.state.flow === 'rent' && !!thread.state.facts.range && !thread.state.turn.startsWith('R2b')
+  const restoredShown = useRef(false)
+  useEffect(() => {
+    if (!anotherPlace || restoredShown.current) return
+    restoredShown.current = true
+    track('ribbit_restored_shown', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, ...armProps('rent', thread.state.rentArm) })
+  }, [anotherPlace, thread.id, thread.state.turn, thread.state.rentArm])
+
   // Unfolds the parked question's options; the question itself is already in the thread above.
   const backToPlan = () => {
     setThread((t) => ({ ...t, parked: undefined }))
@@ -272,8 +290,24 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
               : undefined}
             // "Finish my numbers" belongs to the open question it would return to, so only while it is parked.
             onFinish={m.appAsk && thread.parked !== undefined && thread.state.flow ? backToPlan : undefined}
+            onIntent={m.intent ? (intent) => chooseIntent(i, intent) : undefined}
           />
         ))}
+        {anotherPlace && !busy && (
+          <button
+            type="button"
+            onClick={() => {
+              track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, ...armProps('rent', thread.state.rentArm) })
+              // Focused in the tap: the next turn asks for a rent, and a phone opens its keypad only for a tap's focus.
+              inputRef.current?.focus()
+              answer({ chip: ANOTHER_PLACE_CHIP, label: CHECK_ANOTHER_PLACE })
+            }}
+            className="mt-1 inline-flex min-h-11 items-center gap-2 self-start rounded-xl border-2 border-[#386641] bg-white px-4 text-[15px] font-bold text-[#386641] transition hover:bg-[#386641]/5"
+          >
+            {CHECK_ANOTHER_PLACE}
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+          </button>
+        )}
         {thread.messages.length === first.current.messages.length && initialFlow && TOOL_PAGE[initialFlow] && !restored && (
           <a
             href={TOOL_PAGE[initialFlow]}
@@ -367,10 +401,11 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   )
 }
 
-function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish }: {
+function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish, onIntent }: {
   m: ChatMessage; facts: ChatState['facts']; threadId: string; flow: Flow | null; route: AskRoute; rentArm?: RentArm
   signup?: { active: boolean; position: SignupPosition; onSignedIn: (method: SignInMethod, res: { isNew: boolean; emailed: boolean; uid: string; email?: string }) => void }
   onFinish?: () => void
+  onIntent?: (intent: Intent) => void
 }) {
   if (m.from === 'you') {
     return (
@@ -472,7 +507,37 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish }: 
           {ask.note && <p className="text-[13px] leading-snug text-subtle">{ask.note}</p>}
         </div>
       )}
+      {m.intent && onIntent && <IntentPick chosen={m.intentChosen} onPick={onIntent} />}
       {buttonFirst && card}
+    </div>
+  )
+}
+
+/** "What's this for?" under the answer's button: small outlined options, so the lime button stays the one to tap. */
+function IntentPick({ chosen, onPick }: { chosen?: Intent; onPick: (intent: Intent) => void }) {
+  const picked = INTENTS.find((o) => o.value === chosen)
+  return (
+    <div className="mt-3 flex flex-col items-start gap-1.5">
+      <span className="text-[13px] font-semibold text-subtle">{INTENT_QUESTION}</span>
+      {picked ? (
+        <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[#386641] px-3 text-[13.5px] font-semibold text-white">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          {picked.label}
+        </span>
+      ) : (
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={INTENT_QUESTION}>
+          {INTENTS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => onPick(o.value)}
+              className="min-h-9 rounded-full border border-[#9aa597] bg-white px-3 text-[13.5px] font-semibold text-ink-soft transition hover:border-[#386641] hover:text-[#386641]"
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
