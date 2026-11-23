@@ -5,7 +5,7 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { APP_LINK_TEXT, HANDOFF_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { ANOTHER_PLACE_CHIP, APP_LINK_TEXT, HANDOFF_TEXT, INTENTS, PLACE_NEXT_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
 import { ribbitPlanParams } from './appLink'
 import { startupPlanData } from './payload'
 import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
@@ -1267,5 +1267,50 @@ describe('the rent test arms (Nov 12): control, B (check a place), C (the move p
 
   it('no em dashes in the arms\' words', () => {
     for (const line of [PLACE_PROMPT_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, MOVE_PLAN_TEXT, MOVE_PLAN_NOTE, ...MOVE_PLAN_LOCKED]) expect(line).not.toMatch(/\u2014/)
+  })
+})
+
+describe('rent intent and a reopened chat (Nov 23)', () => {
+  const named = (step: Step, name: string) => step.events.filter((e) => e.name === name)
+  const asks = (step: Step) => step.messages.filter((m) => m.appAsk).map((m) => m.appAsk!)
+
+  it('"What\'s this for?" sits under the range answer\'s button, shown once, and the city question keeps its chips', async () => {
+    const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }])
+    const withIntent = s[1].messages.filter((m) => m.intent)
+    expect(withIntent).toHaveLength(1)
+    expect(withIntent[0].appAsk?.why).toBe('spending_check')
+    expect(withIntent[0].turn).toBe('R2')
+    expect(named(s[1], 'ribbit_intent_shown')).toEqual([{ name: 'ribbit_intent_shown', props: { turn: 'R2' } }])
+    expect(s[1].chips.map((c) => c.value)).toContain('NYC')
+    expect(INTENTS.map((o) => o.label)).toEqual(['Signing a lease soon', 'Comparing places', 'Moving for a new job', 'Just curious'])
+    // Later turns don't ask again.
+    expect(named(s[2], 'ribbit_intent_shown')).toEqual([])
+    expect(s[2].messages.some((m) => m.intent)).toBe(false)
+  })
+
+  it('"Check another place" checks rents against the range with no savings question, then asks as B does', async () => {
+    const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip: ANOTHER_PLACE_CHIP }, { text: '$1,450, a 1-bed in East Austin' }, { chip: 'another' }, { text: '1300 2-bed in Mueller' }, { chip: 'the_one' }])
+    expect(s[3].state.turn).toBe('R2b')
+    expect(said(s[3])).toBe("What's the monthly rent?")
+    expect(s[3].input).toBe('money')
+    const first = s[4]
+    const f = facts(first)
+    const moveIn = calculateUpfrontCash({ ...f.range!, low: 1_450, high: 1_450 }, f.takeHomeMonthly!).high
+    expect(first.state.turn).toBe('R2b_more')
+    expect(first.messages[0].figure).toBeUndefined()
+    expect(first.messages[0].planCard?.known[0]).toEqual({ label: 'Cash before you move', value: `$${moveIn.toLocaleString('en-US')}` })
+    expect(first.messages[1].text).toBe(PLACE_NEXT_TEXT)
+    expect(first.chips.map((c) => c.value)).toEqual(['another', 'the_one'])
+    expect(named(first, 'ribbit_place_checked')[0].props).toMatchObject({ n: 1, rent: 1_450, source: 'restored' })
+    expect(said(s[5])).toBe("What's the next place's rent?")
+    expect(named(s[6], 'ribbit_place_checked')[0].props).toMatchObject({ n: 2, rent: 1_300, source: 'restored' })
+    expect(s[6].messages[0].planCard?.title).toBe('2-bed in Mueller')
+    expect(asks(s[7])).toEqual([{ label: 'Save my plan at $1,300', why: 'place_check', note: PLACE_ASK_NOTE }])
+    expect(s[7].chips[0]).toEqual({ label: 'Save East Austin instead', value: 'pick_0' })
+  })
+
+  it('"Check another place" does nothing special before there is a range', async () => {
+    const s = await run('rent', [{ chip: ANOTHER_PLACE_CHIP }])
+    expect(s[1].state.turn).toBe('R1')
   })
 })

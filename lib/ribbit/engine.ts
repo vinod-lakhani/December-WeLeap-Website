@@ -86,6 +86,9 @@ export interface ChatMessage {
   key?: string
   /** Rent arm D: the sign-up card (Apple, Google, email) under this message. */
   signup?: boolean
+  /** The one-tap "What's this for?" under this message's button (INTENTS). The page keeps the pick on the message. */
+  intent?: boolean
+  intentChosen?: Intent
 }
 export interface ChatEvent { name: string; props: Record<string, unknown> }
 
@@ -201,6 +204,8 @@ export interface Facts {
   placeSaved?: string
   /** A place's rent given before the savings band was: checked once the band is in. */
   pendingPlace?: { rent: number; name: string; short: string }
+  /** The places came from "Check another place" on a reopened chat: checked against the range, with no score. */
+  placeFrom?: 'restored'
   // rent arm D: the answers the leaps are worked out from, and the backend's net worth for them
   /** What they have saved today (a band's middle, or as typed). */
   savedToday?: number
@@ -399,6 +404,11 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   const chip = r.chip
 
   if (chip === '__math__') return showMath(state)
+  // A reopened chat's "Check another place" (Nov 23): B's place check from their range, without its savings question.
+  if (chip === ANOTHER_PLACE_CHIP && state.flow === 'rent' && f.range) {
+    f.placeFrom = 'restored'
+    return placeTurn({ ...state, turn: 'R2b' }, 'type_rent', '', svc)
+  }
   if (r.letter) return readLetter(state, r.letter)
   if (r.benefits) return readBenefits(state, r.benefits)
 
@@ -446,12 +456,15 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
       // D asks nothing of the app until the plan is built (dSplit after the city).
       if (state.rentArm === 'd') return say({ ...state, turn: 'R2' }, [fits, { from: 'ribbit', text: 'Which city?' }], cityChips(), 'location', [win('R2')])
       f.rangeSpendingCheckShown = true
-      // The thread's first app offer, as the city-answer invite was: later turns don't invite again.
+      // The thread's first app offer, as the city-answer invite was: later turns don't invite again. "What's this
+      // for?" sits under its button, so the city question keeps the chips.
       return say({ ...state, turn: 'R2', invited: true }, [
         fits,
-        spendingCheck(RANGE_SPENDING_CHECK_TEXT, RANGE_SPENDING_CHECK_NOTE),
+        { ...spendingCheck(RANGE_SPENDING_CHECK_TEXT, RANGE_SPENDING_CHECK_NOTE), turn: 'R2', intent: true },
         { from: 'ribbit', text: 'Which city?' },
-      ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [win('R2'), { name: 'ribbit_spending_check_shown', props: { turn: 'R2' } }])
+      ], [...cityChips(), { label: 'Show me the math', value: '__math__' }], 'location', [
+        win('R2'), { name: 'ribbit_spending_check_shown', props: { turn: 'R2' } }, { name: 'ribbit_intent_shown', props: { turn: 'R2' } },
+      ])
     }
     case 'R2':
     case 'O2':
@@ -1244,6 +1257,23 @@ export const PLACE_ASK_NOTE = 'Free account. No bank needed.'
 const PLACE_FINE = 'A WeLeap check from your answers, not a credit score. Debt payments are not in it yet.'
 const MAX_PLACES = 3
 const ANOTHER_PLACE: Chip = { label: 'Add another place', value: 'another', opensKeyboard: true }
+/** A reopened rent chat's button (the page shows it at the end of a restored thread with a range), and its chip. */
+export const CHECK_ANOTHER_PLACE = 'Check another place'
+export const ANOTHER_PLACE_CHIP = '__another_place__'
+export const PLACE_NEXT_TEXT = 'Looking at another one? Give me its rent.'
+
+/**
+ * "What's this for?" under the rent answer's button (Nov 23): why they came, in one optional tap with no turn of
+ * its own. ribbit_intent_shown with the answer, ribbit_intent_answered from the page.
+ */
+export const INTENT_QUESTION = "What's this for?"
+export const INTENTS = [
+  { label: 'Signing a lease soon', value: 'lease_soon' },
+  { label: 'Comparing places', value: 'comparing' },
+  { label: 'Moving for a new job', value: 'new_job' },
+  { label: 'Just curious', value: 'curious' },
+] as const
+export type Intent = (typeof INTENTS)[number]['value']
 
 function askPlace(state: ChatState, before: ChatMessage[], events: ChatEvent[]): Step {
   return say({ ...state, turn: 'R2b' }, [...before, { from: 'ribbit', text: PLACE_PROMPT_TEXT }], [
@@ -1287,6 +1317,7 @@ async function placeTurn(state: ChatState, chip: string | undefined, text: strin
     return say(state, [{ from: 'ribbit', text: `I can line up ${MAX_PLACES} places at a time. Start over to check a new set.` }], state.ui?.chips ?? [], 'money')
   }
   const place = { rent, ...placeName(text, places.length + 1) }
+  if (f.placeFrom === 'restored' && !f.placeSaved) return placeFit(state, place)
   if (!f.placeSaved) {
     return say({ ...state, turn: 'R2b_saved', facts: { ...f, pendingPlace: place } },
       [{ from: 'ribbit', text: `Got it, ${fc(rent)}. One question so I can score it: how much do you have set aside for the move?` }], SAVED_CHIPS, 'money')
@@ -1294,40 +1325,73 @@ async function placeTurn(state: ChatState, chip: string | undefined, text: strin
   return placeChecked(state, place)
 }
 
+/** A place's figures against the chat's take-home and range: the cash to move in, what's left, its share of pay. */
+function placeFigures(f: Facts, given: { rent: number; name: string; short: string }, score: number): Place {
+  const takeHome = f.takeHomeMonthly ?? 0
+  const moveIn = calculateUpfrontCash({ ...f.range!, low: given.rent, high: given.rent }, takeHome).high
+  return { ...given, moveIn, left: Math.max(0, takeHome - given.rent), share: takeHome ? given.rent / takeHome : 0, score }
+}
+
+const placeFitKind = (rent: number, range: RentRange) => (rent > range.high ? 'above' : rent < range.low ? 'below' : 'in_range')
+
+/** Where a place's rent falls in their range, in a sentence. */
+function placeFitLine(rent: number, range: RentRange): string {
+  return rent > range.high
+    ? `${fc(rent)} is above your range of ${range.formatted}, so it leaves less for everything else.`
+    : rent < range.low
+      ? `${fc(rent)} is under your range, so it leaves room to save.`
+      : `${fc(rent)} fits, ${rent >= (range.low + range.high) / 2 ? 'near the top' : 'in the lower half'} of your range.`
+}
+
+function placeCard(place: Place): NonNullable<ChatMessage['planCard']> {
+  return {
+    title: place.name, badge: `${fc(place.rent)}/mo`, locked: [],
+    known: [
+      { label: 'Cash before you move', value: fc(place.moveIn) },
+      { label: 'Left each month after rent', value: fc(place.left) },
+      { label: 'Rent as a share of take-home', value: `${Math.round(place.share * 100)}%` },
+    ],
+  }
+}
+
+/**
+ * A place checked from a reopened chat (Nov 23): B's card without the move-in score, so no savings question
+ * first, and one card a place (the side-by-side compares scores). "That's the one" asks as B does.
+ */
+function placeFit(state: ChatState, given: { rent: number; name: string; short: string }): Step {
+  const f = state.facts
+  const place = placeFigures(f, given, 0)
+  f.places = [...(f.places ?? []), place]
+  return say({ ...state, turn: 'R2b_more', invited: true }, [
+    { from: 'ribbit', text: placeFitLine(place.rent, f.range!), turn: 'R2b', planCard: placeCard(place) },
+    { from: 'ribbit', text: PLACE_NEXT_TEXT },
+  ], [...(f.places.length < MAX_PLACES ? [ANOTHER_PLACE] : []), { label: "That's the one", value: 'the_one' }], 'money', [{ name: 'ribbit_place_checked', props: {
+    turn: 'R2b', n: f.places.length, rent: place.rent, fit: placeFitKind(place.rent, f.range!), source: 'restored',
+  } }])
+}
+
 function placeChecked(state: ChatState, given: { rent: number; name: string; short: string }): Step {
   const f = state.facts
   const takeHome = f.takeHomeMonthly ?? 0
   const range = f.range!
-  const moveIn = calculateUpfrontCash({ ...range, low: given.rent, high: given.rent }, takeHome).high
-  const s = moveInScore(SAVED_MIDDLE[f.placeSaved!], moveIn, f.debtMonthly ?? 0, takeHome)
-  const place: Place = { ...given, moveIn, left: Math.max(0, takeHome - given.rent), share: takeHome ? given.rent / takeHome : 0, score: s.total }
+  const unscored = placeFigures(f, given, 0)
+  const s = moveInScore(SAVED_MIDDLE[f.placeSaved!], unscored.moveIn, f.debtMonthly ?? 0, takeHome)
+  const place: Place = { ...unscored, score: s.total }
   const places = [...(f.places ?? []), place]
   f.places = places
   const events: ChatEvent[] = [{ name: 'ribbit_place_checked', props: {
     turn: 'R2b', n: places.length, rent: place.rent, score: s.total, gap: s.gap,
-    fit: place.rent > range.high ? 'above' : place.rent < range.low ? 'below' : 'in_range', saved_band: f.placeSaved,
+    fit: placeFitKind(place.rent, range), saved_band: f.placeSaved,
   } }]
   if (places.length === 1) {
     // A quiet save under the first card (most check one place at most): the plan at this rent.
     f.pick = place.rent
     f.upfront = { low: place.moveIn, high: place.moveIn }
-    const fit = place.rent > range.high
-      ? `${fc(place.rent)} is above your range of ${range.formatted}, so it leaves less for everything else.`
-      : place.rent < range.low
-        ? `${fc(place.rent)} is under your range, so it leaves room to save.`
-        : `${fc(place.rent)} fits, ${place.rent >= (range.low + range.high) / 2 ? 'near the top' : 'in the lower half'} of your range.`
     const tight = s.gap === 'move_in_cash' ? ' The tight part is the cash before the keys.' : ''
     return say({ ...state, turn: 'R2b_more', invited: true }, [
       {
-        from: 'ribbit', text: fit + tight, figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: PLACE_FINE, turn: 'R2b',
-        planCard: {
-          title: place.name, badge: `${fc(place.rent)}/mo`, locked: [],
-          known: [
-            { label: 'Cash before you move', value: fc(place.moveIn) },
-            { label: 'Left each month after rent', value: fc(place.left) },
-            { label: 'Rent as a share of take-home', value: `${Math.round(place.share * 100)}%` },
-          ],
-        },
+        from: 'ribbit', text: placeFitLine(place.rent, range) + tight, figure: `${s.total} / 100`, figureLabel: 'Move-in score', fine: PLACE_FINE, turn: 'R2b',
+        planCard: placeCard(place),
         appAsk: { label: 'Save this place', why: 'place_check', quiet: true },
       },
       { from: 'ribbit', text: PLACE_ANOTHER_TEXT },
