@@ -47,6 +47,24 @@ export function parseMoney(text: string): number | null {
   return v > 0 ? v : null
 }
 
+/**
+ * A listing's monthly rent as people type or paste it: "$1,450", "1.2k", "1200/mo", "2 bed 1 bath $1,200/month",
+ * "$1,200 in Shreveport, Louisiana". Bed, bath and square-foot counts and a link's digits are not the rent; a dollar
+ * sign, a k or a per-month word marks it, else the first amount a rent could be. Null if none.
+ */
+export function parseRent(text: string): number | null {
+  const t = text.toLowerCase().replace(/https?:\/\/\S+|\bwww\.\S+/g, ' ').replace(/,/g, '')
+  const amounts = [...t.matchAll(/(\$\s*)?(\d+(?:\.\d+)?)\s*(k|grand)?\b(\s*(?:\/\s*mo(?:nth)?|a month|per month|monthly|mo)\b)?(\s*(?:beds?|bd|br|bdrm|bedrooms?|baths?|ba|bth|sq|sqft|square|ft|feet|minutes?|mins?|miles?|mi)\b)?/g)]
+    .filter((m) => !m[5])
+    .map((m) => ({ marked: Boolean(m[1] || m[3] || m[4]), v: Math.round(parseFloat(m[2]) * (m[3] ? 1_000 : 1)) }))
+    .filter((a) => a.v >= 200 && a.v <= 20_000)
+  const v = (amounts.find((a) => a.marked) ?? amounts[0])?.v ?? wordsToNumber(t)
+  return v && v >= 200 && v <= 20_000 ? v : null
+}
+
+/** A link pasted in place of an answer. */
+export const hasLink = (text: string) => /https?:\/\/|\bwww\.|\b[a-z0-9-]+\.(com|net|org|io|co)\//i.test(text)
+
 /** As parseMoney, with the cents kept: a price per share ("$4.40", "1.10"). "20 million" is 20,000,000. */
 export function parseDecimal(text: string): number | null {
   const m = text.toLowerCase().replace(/,/g, '').match(/(\d*\.?\d+)\s*(k|thousand|m|mm|million|b|billion)?\b/)

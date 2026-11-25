@@ -242,7 +242,8 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
   const checkPlace = thread.state.flow === 'rent' && !!thread.state.facts.range && !thread.state.facts.places?.length
     && !thread.state.turn.startsWith('R2b') && !anotherPlace && !busy
     ? () => {
-      track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'intent', ...armProps('rent', thread.state.rentArm) })
+      // `source` as ribbit_place_checked has it; `from` stays for the rows before Nov 25.
+      track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'intent', source: 'intent', ...armProps('rent', thread.state.rentArm) })
       inputRef.current?.focus()
       answer({ chip: CHECK_PLACE_CHIP, label: CHECK_A_PLACE })
     }
@@ -314,7 +315,7 @@ export function RibbitChat({ initialFlow, entry }: { initialFlow: Flow | null; e
           <button
             type="button"
             onClick={() => {
-              track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'restored', ...armProps('rent', thread.state.rentArm) })
+              track('ribbit_another_place_tapped', { thread_id: thread.id, flow: 'rent', turn: thread.state.turn, from: 'restored', source: 'restored', ...armProps('rent', thread.state.rentArm) })
               // Focused in the tap: the next turn asks for a rent, and a phone opens its keypad only for a tap's focus.
               inputRef.current?.focus()
               answer({ chip: ANOTHER_PLACE_CHIP, label: CHECK_ANOTHER_PLACE })
@@ -427,7 +428,7 @@ function Bubble({ m, facts, threadId, flow, route, rentArm, signup, onFinish, on
 }) {
   if (m.from === 'you') {
     return (
-      <div className="max-w-[85%] self-end rounded-2xl rounded-br-md bg-[#EFE9DD] px-4 py-2.5 text-[15px] leading-snug text-ink">
+      <div className="max-w-[85%] self-end rounded-2xl rounded-br-md bg-[#EFE9DD] px-4 py-2.5 text-[15px] leading-snug text-ink [overflow-wrap:anywhere]">
         {m.text}
       </div>
     )
