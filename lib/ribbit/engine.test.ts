@@ -5,10 +5,10 @@ import { calculateMarketRentRange } from '@/lib/zoriClient'
 import { calculateRentRange, calculateUpfrontCash } from '@/lib/rent'
 import { STANDARD_DEDUCTION_2026_SINGLE } from '@/lib/firstPaycheck/constants'
 import { computeOfferValue, MARKET_PTO_DAYS } from '@/lib/offer/calculate'
-import { ANOTHER_PLACE_CHIP, CHECK_PLACE_CHIP, INTENT_NUDGE, APP_LINK_TEXT, HANDOFF_TEXT, INTENTS, PLACE_NEXT_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_PROMPT_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
+import { ANOTHER_PLACE_CHIP, CHECK_PLACE_CHIP, INTENT_NUDGE, APP_LINK_TEXT, HANDOFF_TEXT, INTENTS, PLACE_NEXT_TEXT, MOVE_PLAN_LOCKED, MOVE_PLAN_NOTE, MOVE_PLAN_TEXT, PLACE_ANOTHER_TEXT, PLACE_ASK_NOTE, PLACE_LINK_TEXT, PLACE_PROMPT_TEXT, PLACE_RENT_AGAIN_TEXT, assignRentArm, placeName, type RentArm, INVITE_TEXT, RANGE_SPENDING_CHECK_NOTE, RANGE_SPENDING_CHECK_TEXT, TAKEHOME_SPENDING_CHECK_NOTE, TAKEHOME_SPENDING_CHECK_TEXT, MONEY_BACK_FAILED_TEXT, MONEY_OFFER_TEXT, NOT_CAUGHT_TEXT, MONEY_REOFFER_TEXT, PLAN_PREVIEW_TEXT, GAP_BUTTON, SCORE_CARD_TEXT, SCORE_FINE, SCORE_OFFER_TEXT, moveInScore, monthsToClear, reply, start, type ChatServices, type ChatState, type Reply, type Step } from './engine'
 import { ribbitPlanParams } from './appLink'
 import { startupPlanData } from './payload'
-import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
+import { matchPresetCity, matchState, parseDecimal, parseGrant, parseMatch, parseMoney, parseRent, readPay, redactForLog, salaryOrTakeHome, splitCityState } from './parse'
 
 /**
  * Parity, the spec's rule: the chat takes what the pages take and gives the figures the pages give. The services
@@ -42,6 +42,17 @@ describe('parse', () => {
     expect(splitCityState('Texas')).toEqual({ city: '' })
     expect(splitCityState('TX')).toEqual({ city: '' })
     expect(splitCityState('New Mexico')).toEqual({ city: '' })
+  })
+
+  it('reads a listing\'s rent: the dollar amount, not a bed count or a link\'s digits', () => {
+    expect(parseRent('2 bed 1 bath $1,200/month')).toBe(1_200)
+    expect(parseRent('1450 Main St, 2 bed, $1,300/mo')).toBe(1_300)
+    expect(parseRent('1.2k')).toBe(1_200)
+    expect(parseRent('twelve hundred')).toBe(1_200)
+    expect(parseRent('750 sq ft for 1400')).toBe(1_400)
+    expect(parseRent('https://www.zillow.com/homedetails/123-Main-St-Bossier-City-LA-71111/12345_zpid/')).toBeNull()
+    expect(parseRent('is that too much?')).toBeNull()
+    expect(parseRent('2 bedrooms')).toBeNull()
   })
 
   it('reads money the way people type it', () => {
@@ -1332,5 +1343,52 @@ describe('rent intent and a reopened chat (Nov 23)', () => {
     expect(ribbitPlanParams({ ...facts(s[4]), intent: 'comparing' }, 'rent', 'place_check', 't', 'control').intent).toBe('comparing')
     expect(ribbitPlanParams(facts(s[4]), 'rent', 'place_check', 't', 'control').intent).toBeUndefined()
     expect(ribbitPlanParams({ ...facts(s[4]), intent: 'comparing' }, 'offer', 'move_plan', 't', 'control').intent).toBeUndefined()
+  })
+
+  // Nov 24: a paid visitor tapped "Check a place", typed, and got a free answer; no place was checked.
+  const RENTS: Array<[string, number]> = [
+    ['$1,200', 1_200], ['1200', 1_200], ['1.2k', 1_200], ['$1,200 in Shreveport', 1_200], ['1200/mo', 1_200], ['1200 mo', 1_200],
+    ['$1,200 in Shreveport, Louisiana', 1_200], ['1200 in Kansas City', 1_200], ['2 bed 1 bath $1,200/month', 1_200],
+    ['Rent is 1,200 a month', 1_200], ['1450 Main St, 2 bed, $1,300/mo', 1_300],
+  ]
+  for (const [chip, source] of [[CHECK_PLACE_CHIP, 'intent'], [ANOTHER_PLACE_CHIP, 'restored']] as const) {
+    it.each(RENTS)(`after ${source === 'intent' ? '"Check a place"' : '"Check another place"'}, "%s" is checked as a place`, async (typed, rent) => {
+      const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip }, { text: typed }])
+      expect(s[4].state.turn).toBe('R2b_more')
+      expect(facts(s[4]).stateCode).toBe('NY')
+      expect(named(s[4], 'ribbit_place_checked')[0].props).toMatchObject({ n: 1, rent, source })
+      expect(named(s[4], 'ribbit_question_typed')).toEqual([])
+    })
+
+    it(`after ${source}, a non-rent gets the rent question again once, then goes to Ribbit`, async () => {
+      const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip }, { text: 'is that too much?' }, { text: 'Bossier City' }])
+      expect(said(s[4])).toBe(PLACE_RENT_AGAIN_TEXT)
+      expect(s[4].state.turn).toBe('R2b')
+      expect(s[4].input).toBe('money')
+      expect(named(s[4], 'ribbit_place_rent_asked_again')[0].props).toEqual({ turn: 'R2b', source, link: false })
+      expect(named(s[4], 'ribbit_question_typed')).toEqual([])
+      expect(said(s[5])).toBe('answer to: Bossier City')
+      expect(named(s[5], 'ribbit_question_typed')).toHaveLength(1)
+    })
+  }
+
+  it('a pasted listing link gets asked for its rent, and the rent after it is checked', async () => {
+    const link = 'https://www.zillow.com/homedetails/123-Main-St-Bossier-City-LA-71111/12345_zpid/'
+    const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip: CHECK_PLACE_CHIP }, { text: link }, { text: '$1,250' }])
+    expect(said(s[4])).toBe(PLACE_LINK_TEXT)
+    expect(named(s[4], 'ribbit_place_rent_asked_again')[0].props).toMatchObject({ link: true })
+    expect(named(s[5], 'ribbit_place_checked')[0].props).toMatchObject({ rent: 1_250, source: 'intent' })
+  })
+
+  it('a free question after a place is checked still goes to Ribbit', async () => {
+    const s = await run('rent', [{ text: '71500' }, { chip: 'NYC' }, { chip: CHECK_PLACE_CHIP }, { text: '1450' }, { text: 'does that include utilities?' }])
+    expect(said(s[5])).toBe('answer to: does that include utilities?')
+  })
+
+  it('a rent card is named from the words around the rent', () => {
+    expect(placeName('2 bed 1 bath $1,200/month', 1).name).toBe('2 bed 1 bath')
+    expect(placeName('$1,200 in Shreveport', 1)).toEqual({ name: 'Shreveport', short: 'Shreveport' })
+    expect(placeName('Rent is 1,200 a month', 1).name).toBe('Place 1')
+    expect(placeName('$1,450, a 1-bed in East Austin', 1)).toEqual({ name: '1-bed in East Austin', short: 'East Austin' })
   })
 })

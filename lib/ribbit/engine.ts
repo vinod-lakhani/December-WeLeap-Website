@@ -27,7 +27,7 @@ import { DEFAULT_CLIFF_MONTHS, DEFAULT_VEST_YEARS, FUTURE_ROUNDS, afterDilution,
 import type { ParsedOffer } from '@/lib/offer-parse/fields'
 import { US_STATES_NAMED } from '@/lib/states'
 import defaultMetroMappingData from '@/data/default_metro_mapping.json'
-import { DEFAULT_HOURS, splitCityState, matchPresetCity, matchState, parseDebt, parseDecimal, parseGrant, parseMatch, parseMoney, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
+import { DEFAULT_HOURS, splitCityState, hasLink, matchPresetCity, matchState, parseDebt, parseDecimal, parseGrant, parseMatch, parseMoney, parseRent, parseTwoNumbers, readPay, salaryOrTakeHome, type Pay } from './parse'
 import { ESSENTIALS_SHARE, moneyOrder, payoff, type MoneyDebt, type MoneyInputs, type MoneyStep } from './moneyOrder'
 import { computeCapitalRouting } from '@/lib/allocator/capitalRouting'
 import { EF_TARGET_MONTHS, IRA_LIMIT } from '@/lib/allocator/constants'
@@ -207,6 +207,8 @@ export interface Facts {
   /** The places came from "Check another place" on a reopened chat or the "Comparing places" pick: checked
    * against the range, with no score. */
   placeFrom?: 'restored' | 'intent'
+  /** That check asked for the rent again once; a second answer that isn't one goes to Ribbit as a question. */
+  placeRentAskedAgain?: boolean
   /** The "What's this for?" pick (the page sets it), carried on the app link. */
   intent?: Intent
   // rent arm D: the answers the leaps are worked out from, and the backend's net worth for them
@@ -411,6 +413,7 @@ async function route(state: ChatState, r: Reply, svc: ChatServices): Promise<Ste
   // check from their range, without its savings question.
   if ((chip === ANOTHER_PLACE_CHIP || chip === CHECK_PLACE_CHIP) && state.flow === 'rent' && f.range) {
     f.placeFrom = chip === CHECK_PLACE_CHIP ? 'intent' : 'restored'
+    f.placeRentAskedAgain = undefined
     return placeTurn({ ...state, turn: 'R2b' }, 'type_rent', '', svc)
   }
   if (r.letter) return readLetter(state, r.letter)
@@ -1265,6 +1268,9 @@ const ANOTHER_PLACE: Chip = { label: 'Add another place', value: 'another', open
 export const CHECK_ANOTHER_PLACE = 'Check another place'
 export const ANOTHER_PLACE_CHIP = '__another_place__'
 export const PLACE_NEXT_TEXT = 'Looking at another one? Give me its rent.'
+/** "Check a place" asked for a rent and got something else: the same question, once more. */
+export const PLACE_RENT_AGAIN_TEXT = "What's the listing's monthly rent? A number like $1,450 is all I need."
+export const PLACE_LINK_TEXT = "I can't open links. What's the listing's monthly rent?"
 
 /**
  * "What's this for?" under the rent answer's button (Nov 23): why they came, in one optional tap with no turn of
@@ -1300,13 +1306,15 @@ function askPlace(state: ChatState, before: ChatMessage[], events: ChatEvent[]):
 
 /** What they called the place, from the words around its rent ("$1,450, a 1-bed in East Austin"), else Place 2. */
 export function placeName(text: string, n: number): { name: string; short: string } {
+  // The rent is the dollar amount wherever it sits ("2 bed 1 bath $1,200/month"), else the first number.
+  const amount = /\d[\d,]*(\.\d+)?\s*k?\b(\s*(\/\s*mo(nth)?|a month|per month|monthly))?/
   const words = text
-    .replace(/\$?\d[\d,]*(\.\d+)?\s*k?\b(\s*(\/\s*mo(nth)?|a month|per month|monthly))?/i, ' ')
+    .replace(text.includes('$') ? new RegExp(`\\$\\s?${amount.source}`, 'gi') : new RegExp(`\\$?${amount.source}`, 'i'), ' ')
     .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, '')
-    .replace(/^(it'?s|is|for|at|about|around|a|an)\s+/i, '')
+    .replace(/^(rent is|rent's|it'?s|is|for|at|about|around|a|an|in)\s+/i, '')
     .replace(/\s+(is|at|for|about|around)$/i, '')
     .trim()
-  if (words.length < 3 || words.length > 40 || !/[a-z]{3}/i.test(words)) return { name: `Place ${n}`, short: `Place ${n}` }
+  if (words.length < 3 || words.length > 40 || !/[a-z]{3}/i.test(words) || /^(the )?rent$/i.test(words)) return { name: `Place ${n}`, short: `Place ${n}` }
   const name = words[0].toUpperCase() + words.slice(1)
   const area = name.match(/\b(?:in|on|near|at)\s+([A-Z][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,2})\s*$/)?.[1]
   return { name, short: area ?? (name.length <= 16 ? name : `Place ${n}`) }
@@ -1325,10 +1333,20 @@ async function placeTurn(state: ChatState, chip: string | undefined, text: strin
   if (chip === 'the_one' && places.length) return choosePlace(state, places[places.length - 1], [])
   const picked = chip?.startsWith('pick_') ? places[Number(chip.slice(5))] : undefined
   if (picked) return choosePlace(state, picked, [])
-  // A city instead of a rent ("Austin"): the control's next question, answered.
-  if (!chip && state.turn === 'R2b' && !places.length && (matchPresetCity(text) || matchState(text))) return chooseLocation({ ...state, turn: 'R2' }, undefined, text, svc)
-  const rent = chip ? null : parseMoney(text)
-  if (!rent || rent < 200 || rent > 20_000) return question(state, text, svc, 'the monthly rent of a place they are looking at')
+  const rent = chip ? null : parseRent(text)
+  // A city instead of a rent ("Austin"): the control's next question, answered. Not with a rent in it ("$1,200 in
+  // Shreveport, Louisiana" moved their city to Louisiana), and not in a check from "Check a place", which asks again.
+  if (!chip && !rent && state.turn === 'R2b' && !places.length && !f.placeFrom && (matchPresetCity(text) || matchState(text))) return chooseLocation({ ...state, turn: 'R2' }, undefined, text, svc)
+  if (!rent) {
+    // "Check a place" asked for one rent, so anything else gets that question again, once (Nov 24: a paid visitor's
+    // typed answer went to Ribbit as a question and no place was checked).
+    if (f.placeFrom && !places.length && !chip && !f.placeRentAskedAgain) {
+      const link = hasLink(text)
+      return say({ ...state, facts: { ...f, placeRentAskedAgain: true } }, [{ from: 'ribbit', text: link ? PLACE_LINK_TEXT : PLACE_RENT_AGAIN_TEXT }], [], 'money',
+        [{ name: 'ribbit_place_rent_asked_again', props: { turn: 'R2b', source: f.placeFrom, link } }])
+    }
+    return question(state, text, svc, 'the monthly rent of a place they are looking at')
+  }
   if (places.length >= MAX_PLACES) {
     return say(state, [{ from: 'ribbit', text: `I can line up ${MAX_PLACES} places at a time. Start over to check a new set.` }], state.ui?.chips ?? [], 'money')
   }
